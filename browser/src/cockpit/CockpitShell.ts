@@ -25,6 +25,7 @@ import { createSecurityPanel } from '../panels/security.ts';
 import { renderWorkflowStrip } from '../panels/workflow.ts';
 import { createProjectsSurface, type ProjectsSurfaceHandles } from './ProjectsSurface.ts';
 import { createSettingsSurface } from './SettingsSurface.ts';
+import { createWalkthrough, type WalkthroughHandles } from './Walkthrough.ts';
 import { showToast } from '../ui/toast.ts';
 
 interface DisposablePanel {
@@ -52,6 +53,7 @@ export interface CockpitHandles {
   statusRoot: HTMLElement;
   lspStatus: HTMLElement;
   notify(code: string, message: string): void;
+  walkthrough: WalkthroughHandles;
   setEditorHost(host: EditorHost): void;
 }
 
@@ -186,6 +188,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   }
 
   const notify = (code: string, message: string): void => showToast(statusRoot, code, message);
+  const walkthrough = createWalkthrough(app, store, { onToast: notify });
   const topbar = createTopbar(topbarHost, store);
   const navigation = createNavigationRail(navHost, store);
   const resident = createResidentCore(residentMount, store, { onToast: notify });
@@ -212,7 +215,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const verification = lazyPanel(verificationStage, () => createVerificationPanel(verificationStage, store));
   const security = lazyPanel(securityStage, () => createSecurityPanel(securityStage, store));
   const extensions = lazyPanel(extensionsStage, () => phaseGatedPanel(extensionsStage, 'EXTENSIONS', 'DISABLED', 'The extension host is not integrated into this cockpit phase. No extension capability or authority is implied.'));
-  const settings = lazyPanel(settingsStage, () => createSettingsSurface(settingsStage, store, { onToast: notify }));
+  const settings = lazyPanel(settingsStage, () => createSettingsSurface(settingsStage, store, { onToast: notify, onReopenWalkthrough: () => walkthrough.open() }));
 
   const panelRegistry: Record<Panel, PanelRegistration> = {
     'command-center': {
@@ -290,6 +293,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     statusRoot,
     lspStatus,
     notify,
+    walkthrough,
     setEditorHost(host: EditorHost): void {
       editorHost = host;
       projects?.setEditorHost(host);

@@ -145,6 +145,12 @@ import {
 } from '../../../common/contracts/workbench.ts';
 import { facadeHttpUrl } from './runtime-config.ts';
 import { withAuthority, approveRequest } from './authority.ts';
+import {
+  OnboardingStateResponse,
+  OnboardingCompleteResponse,
+  type OnboardingStateT,
+  type OnboardingCompleteResponseT
+} from '../../../common/contracts/onboarding.ts';
 
 export const API_FORMAT_HEADER = 'X-AIDE-API-Format';
 export const API_FORMAT = 'envelope-v1';
@@ -408,6 +414,12 @@ export const api = {
   },
   workbenches(): Promise<WorkbenchListResponseT> {
     return call('/api/workbenches', { schema: WorkbenchListResponse });
+  },
+  onboardingState(): Promise<OnboardingStateT> {
+    return call('/api/onboarding/state', { schema: OnboardingStateResponse }).then(response => response.state);
+  },
+  onboardingComplete(): Promise<OnboardingCompleteResponseT> {
+    return call('/api/onboarding/complete', { method: 'POST', schema: OnboardingCompleteResponse });
   },
   workbenchInstall(id: string): Promise<WorkbenchDetailResponseT> {
     const body = WorkbenchInstallRequest.safeParse({ id });

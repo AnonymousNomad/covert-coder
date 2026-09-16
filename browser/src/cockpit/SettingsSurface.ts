@@ -17,7 +17,7 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
   return node;
 }
 
-export function createSettingsSurface(parent: HTMLElement, _store: Store<AppState>, opts: { onToast: (code: string, message: string) => void }): SettingsSurfaceHandles {
+export function createSettingsSurface(parent: HTMLElement, _store: Store<AppState>, opts: { onToast: (code: string, message: string) => void; onReopenWalkthrough?: () => void }): SettingsSurfaceHandles {
   parent.innerHTML = '';
   const root = el('div', 'panel-content cockpit-settings-surface');
   const header = el('header', 'panel-header');
@@ -25,6 +25,17 @@ export function createSettingsSurface(parent: HTMLElement, _store: Store<AppStat
   header.appendChild(el('span', 'panel-maturity', 'AVAILABLE'));
   root.appendChild(header);
   root.appendChild(el('p', 'panel-intro', 'Provider and BYOK configuration surfaces are available. Stored credentials/configuration do not prove active remote execution; runtime route evidence remains in MODELS.'));
+
+  if (opts.onReopenWalkthrough !== undefined) {
+    const walkthroughSection = el('section', 'cockpit-settings-section');
+    walkthroughSection.appendChild(el('h3', 'cockpit-settings-section-title', 'WALKTHROUGH'));
+    const reopen = el('button', 'cockpit-settings-action', 'REOPEN WALKTHROUGH') as HTMLButtonElement;
+    reopen.type = 'button';
+    const reopenHandler = (): void => opts.onReopenWalkthrough!();
+    reopen.addEventListener('click', reopenHandler);
+    walkthroughSection.appendChild(reopen);
+    root.appendChild(walkthroughSection);
+  }
 
   const providersMount = el('section', 'cockpit-settings-section');
   const byokMount = el('section', 'cockpit-settings-section');
