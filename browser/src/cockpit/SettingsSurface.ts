@@ -17,7 +17,7 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
   return node;
 }
 
-export function createSettingsSurface(parent: HTMLElement, _store: Store<AppState>, opts: { onToast: (code: string, message: string) => void; onReopenWalkthrough?: () => void }): SettingsSurfaceHandles {
+export function createSettingsSurface(parent: HTMLElement, _store: Store<AppState>, opts: { onToast: (code: string, message: string) => void; onReopenWalkthrough?: () => void; onRunSetup?: () => void }): SettingsSurfaceHandles {
   parent.innerHTML = '';
   const root = el('div', 'panel-content cockpit-settings-surface');
   const header = el('header', 'panel-header');
@@ -34,6 +34,12 @@ export function createSettingsSurface(parent: HTMLElement, _store: Store<AppStat
     const reopenHandler = (): void => opts.onReopenWalkthrough!();
     reopen.addEventListener('click', reopenHandler);
     walkthroughSection.appendChild(reopen);
+    if (opts.onRunSetup !== undefined) {
+      const runSetup = el('button', 'cockpit-settings-action', 'RUN ADAPTIVE SETUP') as HTMLButtonElement;
+      runSetup.type = 'button';
+      runSetup.addEventListener('click', () => opts.onRunSetup!());
+      walkthroughSection.appendChild(runSetup);
+    }
     root.appendChild(walkthroughSection);
   }
 

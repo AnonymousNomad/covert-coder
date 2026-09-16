@@ -148,9 +148,18 @@ import { withAuthority, approveRequest } from './authority.ts';
 import {
   OnboardingStateResponse,
   OnboardingCompleteResponse,
+  OnboardingNextResponse,
+  OnboardingUserChoices,
   type OnboardingStateT,
-  type OnboardingCompleteResponseT
+  type OnboardingCompleteResponseT,
+  type OnboardingNextResponseT,
+  type OnboardingUserChoicesT
 } from '../../../common/contracts/onboarding.ts';
+import {
+  HardwareRecommendResponse,
+  type HardwareRecommendResponseT
+} from '../../../common/contracts/hardware.ts';
+import { WorkflowState, type WorkflowStateT } from '../../../common/contracts/workflow.ts';
 
 export const API_FORMAT_HEADER = 'X-AIDE-API-Format';
 export const API_FORMAT = 'envelope-v1';
@@ -418,8 +427,19 @@ export const api = {
   onboardingState(): Promise<OnboardingStateT> {
     return call('/api/onboarding/state', { schema: OnboardingStateResponse }).then(response => response.state);
   },
+  onboardingNext(choices: Partial<OnboardingUserChoicesT>): Promise<OnboardingNextResponseT> {
+    const body = OnboardingUserChoices.partial().safeParse(choices);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid onboarding choices');
+    return call('/api/onboarding/next', { body: body.data, schema: OnboardingNextResponse });
+  },
   onboardingComplete(): Promise<OnboardingCompleteResponseT> {
     return call('/api/onboarding/complete', { method: 'POST', schema: OnboardingCompleteResponse });
+  },
+  hardwareRecommend(): Promise<HardwareRecommendResponseT> {
+    return call('/api/hardware/recommend', { schema: HardwareRecommendResponse });
+  },
+  workflowState(): Promise<WorkflowStateT> {
+    return call('/api/workflow/state', { schema: WorkflowState });
   },
   workbenchInstall(id: string): Promise<WorkbenchDetailResponseT> {
     const body = WorkbenchInstallRequest.safeParse({ id });
