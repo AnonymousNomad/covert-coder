@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -11,7 +12,9 @@ const root = path.resolve(process.cwd());
 const fixtureDir = path.join(root, 'fixtures', 'debuggee');
 const fixture = path.join(fixtureDir, 'fizz_engine.py');
 const pidFile = path.join(fixtureDir, 'debuggee.pid');
-const evidenceDir = path.join(root, 'docs', 'evidence');
+// Runtime artifacts are test-owned and live outside the repository: tracked
+// historical evidence under docs/evidence must never be mutated by a test run.
+const artifactDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-dap-fixture-'));
 
 const run = promisify(execFile);
 const resolvePython = async () => {
@@ -63,7 +66,6 @@ const L2 = lineOf('print(report)');
 assert.ok(L1 > 0 && L2 > 0, 'fixture markers must resolve to real lines');
 
 await fs.rm(pidFile, { force: true });
-await fs.mkdir(evidenceDir, { recursive: true });
 
 const transcript = [];
 const manager = new DapManager({
@@ -210,7 +212,7 @@ try {
   await fs.rm(pidFile, { force: true });
 }
 
-const transcriptFile = path.join(evidenceDir, 'dap-wire-sequence.json');
+const transcriptFile = path.join(artifactDir, 'dap-wire-sequence.json');
 await fs.writeFile(transcriptFile, JSON.stringify({
   generated: new Date().toISOString(),
   tool: 'aide-sovereign-workbench dap fixture test',
@@ -222,6 +224,7 @@ await fs.writeFile(transcriptFile, JSON.stringify({
 }, null, 2));
 
 const failed = results.filter(r => !r.ok);
-console.log(`dap fixture test ${failed.length ? 'FAILED' : 'passed'} (${results.length - failed.length}/${results.length} assertions; wire sequence at ${path.relative(root, transcriptFile)})`);
+console.log(`dap fixture test ${failed.length ? 'FAILED' : 'passed'} (${results.length - failed.length}/${results.length} assertions; wire sequence at ${transcriptFile})`);
 for (const r of results) console.log(`  ${r.ok ? 'OK' : 'FAIL'}  ${r.name}${r.detail && r.ok ? ` (${r.detail})` : ''}`);
+await fs.rm(artifactDir, { recursive: true, force: true });
 if (failed.length) process.exitCode = 1;
