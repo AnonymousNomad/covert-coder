@@ -1,5 +1,11 @@
 # Security Policy
 
+## Private reporting
+
+Report suspected vulnerabilities in Covert Coder through [GitHub private vulnerability reporting](https://github.com/AnonymousNomad/covert-coder/security/advisories/new). This channel is enabled for the repository. Do not disclose vulnerabilities or sensitive reproduction data in public issues.
+
+Covert Coder retains AIDE Sovereign Workbench as its engineering lineage. Development/pre-release status is not a security certification.
+
 ## Scope
 
 Report vulnerabilities in the daemon, model manager, patch application, plugin host, LSP/DAP process boundaries, or release tooling.

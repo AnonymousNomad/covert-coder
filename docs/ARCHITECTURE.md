@@ -1,4 +1,4 @@
-# AIDE Architecture — Canonical Direction (FROZEN 2026-09-08)
+# AIDE Architecture — Canonical Direction (FROZEN; topology snapshot refreshed 2026-09-15)
 
 Source of truth for what AIDE's architecture IS, and where every legacy feature goes next.
 
@@ -22,7 +22,7 @@ capability services      (modelhub, git, lsp, dap, rg, training, etc. — off th
 Rules that are now non-negotiable:
 
 1. **No new subsystem until the P0 acceptance path proves the existing system works end-to-end.** (Collaborator directive, 2026-09-08.) Add nothing that grows right-of-way for unproven machinery. Finish first.
-2. **New route families** go through the full route-slice checklist (`C:\Users\Grey_\.agents\skills\aide-route-slice-sop\SKILL.md`): contract → service → route → openapi wiring → facade map → restart order → live verify through :4777.
+2. **New route families** go through the full route-slice checklist: contract → service → route → OpenAPI wiring → façade map → restart order → live verification through :4777.
 3. **The facade (`scripts/facade.mjs`) is the single product edge** on :4777. It routes `/api/<prefix>` to the TS backend (port 4778) or the legacy backend (port 4779) per `common/facade-route-map.json`. Nothing else is exposed.
 4. **The legacy stack (`app.js`, `daemon/server.mjs`) is a migration inventory, not a development surface.** Any new feature with a legacy-shaped ancestor gets a TS-era contract. Legacy routes are ported or consciously dropped via §4.
 5. Every user-facing surface the product ships must be testable through the facade on :4777. "Works on 4777" is the only valid green.
@@ -38,11 +38,11 @@ Rules that are now non-negotiable:
 
 Model engines run on private ports (8081–8099 range) spawned by the daemon; no engine is ever exposed to the product edge directly.
 
-## 3. Route Ownership (VERIFIED count, 2026-09-08)
+## 3. Route Ownership (VERIFIED count, 2026-09-15)
 
-- `common/openapi.json`: 159 documented `/api/*` paths, 166 total routes, 540,524 bytes.
-- TS backend route families (`node/src/routes/*.ts`, 37 families): agent, audit, byok, chat, closed-loop, commands, dap, dataset, desktop, editor-options, eval-export, exercise, experts, fs, git, handoff, hint, index, learner, lsp, memory, modelhub, models, notifications, onboarding, orch, problems, providers, rg, routing, session, system-map, tasks, telegram, training, workbenches.
-- Facade map: 21 `/api/*` prefixes + 3 exact + 1 upgrade (`/ws`) → TS. Everything else defaults to **legacy**.
+- `common/openapi.json`: 197 documented `/api/*` paths, 686,883 bytes.
+- TS backend route families (`node/src/routes/*.ts`, 45 families): academy, agent, artifacts, audit, authority, byok, chat, closed-loop, commands, community, dap, dataset, desktop, editor-options, eval-export, exercise, experts, fs, git, handoff, hardware, hint, index, learner, lsp, memory, modelhub, models, notifications, onboarding, orch, plugins, problems, providers, replays, resident, rg, routing, session, system-map, tasks, telegram, terminal, training, workbenches.
+- Facade map: 42 `/api/*` prefixes + 5 exact + 1 upgrade (`/ws`) → TS. Everything else defaults to **legacy**.
 - **Legacy dispatch: 77 distinct URL patterns in `daemon/server.mjs`.** (The collaborator audit said "87 handlers"; the measured distinct `request.url` pattern count is 77 — 76 `/api/*` + `/health`.)
 
 ## 4. Migration Checklist — the 77 legacy handlers

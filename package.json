@@ -43,11 +43,11 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anonymousnomad/aide-sovereign-workbench.git"
+    "url": "https://github.com/AnonymousNomad/covert-coder.git"
   },
   "homepage": "https://huggingface.co/FerrellSyntheticIntelligence/aide-sovereign-workbench",
   "bugs": {
-    "url": "https://github.com/anonymousnomad/aide-sovereign-workbench/issues"
+    "url": "https://github.com/AnonymousNomad/covert-coder/issues"
   },
   "dependencies": {
     "monaco-editor": "^0.56.0",

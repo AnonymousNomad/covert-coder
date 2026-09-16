@@ -1,10 +1,9 @@
-# AIDE Getting Started
+# Covert Coder Getting Started
 
 ## Local Mode
 
-1. Install Node.js 26 or newer (the README's `engines` floor is `>=20`; the
-   26+ floor is the verified runtime per `package.json` and
-   `docs/AUDIT-2026-08-31.md`).
+1. Install Node.js 26.4.0, the pinned CI reference runtime. The package's
+   older `>=20` declaration is not a verified Node 20 compatibility claim.
 2. Run `npm install`.
 3. Run `npm run doctor`.
 4. Run `npm start`.
