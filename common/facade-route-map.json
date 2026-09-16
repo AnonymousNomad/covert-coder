@@ -33,6 +33,7 @@
     "/api/settings": "ts",
     "/api/workspace": "ts",
     "/api/workbenches": "ts",
+    "/api/workflow": "ts",
     "/api/academy": "ts",
     "/api/artifacts": "ts",
     "/api/community": "ts",
