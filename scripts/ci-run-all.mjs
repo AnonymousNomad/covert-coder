@@ -4,14 +4,44 @@ import { appendFile, readFile } from 'node:fs/promises';
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const testScript = pkg.scripts.test;
 const commands = testScript.split('&&').map(part => part.trim()).filter(Boolean);
+const commandTimeoutMs = Number.parseInt(process.env.AIDE_CI_COMMAND_TIMEOUT_MS ?? '1200000', 10);
+
+function stopProcessTree(child) {
+  if (!child.pid || child.exitCode !== null) return;
+  if (process.platform === 'win32') {
+    spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `taskkill /PID ${child.pid} /T /F`], {
+      stdio: 'ignore',
+      windowsHide: true
+    });
+    return;
+  }
+  try { process.kill(-child.pid, 'SIGTERM'); } catch { child.kill('SIGTERM'); }
+}
 
 const results = [];
 for (const command of commands) {
   const [bin, ...args] = command.split(/\s+/);
   const outcome = await new Promise(resolve => {
-    const child = spawn(bin, args, { stdio: 'inherit', shell: process.platform === 'win32' });
-    child.once('exit', code => resolve(code === 0));
-    child.once('error', error => resolve(`${error.message}`));
+    const child = spawn(bin, args, {
+      stdio: 'inherit',
+      shell: process.platform === 'win32',
+      detached: process.platform !== 'win32',
+      windowsHide: true
+    });
+    let timedOut = false;
+    let settled = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      stopProcessTree(child);
+    }, commandTimeoutMs);
+    const finish = value => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    child.once('exit', code => finish(timedOut ? `timeout after ${commandTimeoutMs}ms` : code === 0));
+    child.once('error', error => finish(`${error.message}`));
   });
   results.push({ command, ok: outcome === true, detail: outcome === true ? '' : String(outcome) });
   if (outcome !== true) console.log(`\n[ci-run-all] FAILED: ${command}${typeof outcome === 'string' ? ` (${outcome})` : ''}\n`);

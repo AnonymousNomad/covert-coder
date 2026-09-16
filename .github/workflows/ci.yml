@@ -4,47 +4,55 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: aide-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     env:
       AIDE_PYTHON: python3
+      CI: 'true'
+      TZ: UTC
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
         with:
-          node-version: 26
+          node-version: 26.4.0
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: '3.x'
+          python-version: '3.12'
       - run: python -m pip install --quiet debugpy
-      - run: npm ci
-      - run: node scripts/ci-run-all.mjs
+        id: install_debugpy
+      - name: install locked dependencies
+        id: install
+        run: npm ci
+      - name: frontend build
+        id: frontend
+        if: always() && steps.install.outcome == 'success'
+        run: npm run build:frontend
+      - name: backend and integration tests
+        id: backend_tests
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 25
+        run: node scripts/ci-run-all.mjs
       - name: type checks and lint
-        timeout-minutes: 10
+        id: static
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 15
         run: npx tsc -p tsconfig.node.json && npx tsc -p browser/tsconfig.browser.json && npx eslint .
       - name: architecture tests (bounded)
+        id: architecture
+        if: always() && steps.install.outcome == 'success'
         timeout-minutes: 20
         run: |
           set +e
-          # Node 26+ supports --experimental-strip-types so .ts test files run
-          # natively (no tsx dependency). --test-force-exit breaks out of the
-          # child even if a test's after() hook holds an open handle (the
-          # known CI hang documented in
-          # C:\Users\Grey_\.agents\skills\aide-release-engineering\SKILL.md).
-          # Without these flags, the run hangs at the 900s ceiling and the step
-          # is killed externally -- blocking every PR (see docs/AUDIT-2026-08-31.md).
-          # --import ./scripts/http-close-shim.mjs preloads a patch that makes
-          # http.Server.prototype.close call closeAllConnections() first. This is
-          # the root-cause fix for the 46-error hang across 6+ arch test files:
-          # every failing test uses `httpServer.close(() => resolve())` in its
-          # after() hook, but the inner fetch() calls keep the keep-alive
-          # connection alive so the close callback never fires.
-          # closeAllConnections() force-closes them so the existing resolve()
-          # callbacks fire reliably. Surgical, no test files modified, no
-          # assertions weakened.
-          timeout -k 30 900 node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=60000 --test-force-exit "tests/arch/*.test.ts" > /tmp/arch-out.txt 2>&1
+          timeout -k 30 900 node scripts/run-arch.mjs > /tmp/arch-out.txt 2>&1
           status=$?
           echo "node --test exit=$status"
           echo "=== output tail ==="
@@ -64,13 +72,15 @@ jobs:
           exit 0
       - name: upload arch test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: arch-test-log
           path: /tmp/arch-out.txt
           if-no-files-found: ignore
       - name: veritas gates
-        if: always()
+        id: veritas
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 25
         run: |
           set +e
           npm run veritas -- --json > /tmp/veritas.json 2>/tmp/veritas.err
@@ -81,10 +91,63 @@ jobs:
           printf '%s\n' "::error::VERITAS_JSONHEAD: $(head -c 400 /tmp/veritas.json | tr -d '\n\r')"
           exit $status
       - name: veritas report from captured gates
-        if: always()
+        if: always() && steps.install.outcome == 'success'
         run: node scripts/veritas-report-from-json.mjs /tmp/veritas.json artifacts/veritas.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: veritas-report
           path: artifacts/veritas.md
+          if-no-files-found: ignore
+      - name: generated-file and worktree check
+        id: worktree
+        if: always() && steps.install.outcome == 'success'
+        env:
+          AIDE_CI_WORKTREE_REPORT: /tmp/ci-worktree-status.txt
+        run: node scripts/ci-worktree-check.mjs
+      - name: fixture cleanup
+        id: cleanup
+        if: always()
+        env:
+          AIDE_CI_CLEANUP_REPORT: /tmp/ci-cleanup-status.txt
+        run: node scripts/ci-cleanup.mjs
+      - name: upload CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ci-diagnostics
+          path: |
+            /tmp/arch-out.txt
+            /tmp/veritas.json
+            /tmp/veritas.err
+            /tmp/ci-worktree-status.txt
+            /tmp/ci-cleanup-status.txt
+          if-no-files-found: ignore
+      - name: required gate summary
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          FRONTEND: ${{ steps.frontend.outcome }}
+          BACKEND_TESTS: ${{ steps.backend_tests.outcome }}
+          STATIC: ${{ steps.static.outcome }}
+          ARCHITECTURE: ${{ steps.architecture.outcome }}
+          VERITAS: ${{ steps.veritas.outcome }}
+          WORKTREE: ${{ steps.worktree.outcome }}
+          CLEANUP: ${{ steps.cleanup.outcome }}
+        run: |
+          printf 'AIDE CI gates: install=%s frontend=%s backend_tests=%s static=%s architecture=%s veritas=%s worktree=%s cleanup=%s\n' \
+            "$INSTALL" "$FRONTEND" "$BACKEND_TESTS" "$STATIC" "$ARCHITECTURE" "$VERITAS" "$WORKTREE" "$CLEANUP"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo '## AIDE CI required gates'
+              echo
+              echo '| Gate | Outcome |'
+              echo '| --- | --- |'
+              printf '| install | %s |\n| frontend | %s |\n| backend tests | %s |\n| TypeScript + ESLint | %s |\n| architecture | %s |\n| Veritas | %s |\n| worktree | %s |\n| cleanup | %s |\n' \
+                "$INSTALL" "$FRONTEND" "$BACKEND_TESTS" "$STATIC" "$ARCHITECTURE" "$VERITAS" "$WORKTREE" "$CLEANUP"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ "$INSTALL" != 'success' ] || [ "$FRONTEND" != 'success' ] || [ "$BACKEND_TESTS" != 'success' ] || [ "$STATIC" != 'success' ] || [ "$ARCHITECTURE" != 'success' ] || [ "$VERITAS" != 'success' ] || [ "$WORKTREE" != 'success' ] || [ "$CLEANUP" != 'success' ]; then
+            echo "::error::CI_GATE_FAILURE: one or more required gates failed; see the gate summary and ci-diagnostics artifact."
+            exit 1
+          fi

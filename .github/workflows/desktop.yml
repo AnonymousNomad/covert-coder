@@ -5,8 +5,12 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: read
+
 jobs:
   desktop:
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -18,11 +22,14 @@ jobs:
           - os: windows-2022
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
+    env:
+      CI: 'true'
+      TZ: UTC
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
         with:
-          node-version: 22
+          node-version: 22.20.0
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -36,9 +43,14 @@ jobs:
       - if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/desktop-lifecycle-smoke.ps1
-      - uses: actions/upload-artifact@v4
-        if: success()
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
         with:
           name: aide-desktop-${{ matrix.os }}-${{ matrix.target }}
           path: desktop/target/release/bundle/**
           if-no-files-found: error
+      - name: fixture cleanup
+        if: always()
+        env:
+          AIDE_CI_DESKTOP: '1'
+        run: node scripts/ci-cleanup.mjs
