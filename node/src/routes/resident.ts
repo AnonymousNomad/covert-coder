@@ -2,6 +2,14 @@ import { type Route } from '../server.ts';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { GitService } from '../../../node/src/services/git-service.mjs';
+import type { WorkflowService, BuildTransitionInput } from '../services/workflow-service.ts';
+import {
+  WORKFLOW_SUCCESSOR,
+  WORKFLOW_PREDECESSOR,
+  type WorkflowStageT,
+  type WorkflowArtifactRefT,
+  type WorkflowStateT
+} from '../../../common/contracts/workflow.ts';
 import {
   ResidentSummaryResponse,
   ResidentContextResponse,
@@ -12,7 +20,11 @@ import {
   type ResidentContextT,
   type ResidentPushSummaryT,
   type ResidentDecisionT,
-  type ResidentProjectTypeT
+  type ResidentProjectTypeT,
+  type ResidentWorkflowContextT,
+  type ResidentWorkflowTransitionOptionT,
+  type ResidentTransitionProposalT,
+  type ResidentTransitionProposalResultT
 } from '../../../common/contracts/resident.ts';
 
 // Resident Assistant v0 — the quiet, dependable in-workspace layer.
@@ -27,9 +39,23 @@ import {
 //
 // §4 pre-push: ADVISORY ONLY. Verdicts here never block a push.
 
+// Slice 8 — Resident is a OBSERVE/EXPLAIN/REQUEST layer over the workflow
+// kernel. The probe is a narrowed adapter exposing load/buildTransitionRequest
+// evaluateTransition ONLY: no applyTransition, no authority surface, no self-
+// approval. All transitions flow through the operator authority (Slice 7).
+export type ResidentWorkflowProbe = Pick<WorkflowService, 'load' | 'buildTransitionRequest' | 'evaluateTransition'>;
+
 export type ResidentProbes = {
   modelStatus?: () => Promise<{ runtime: boolean; models: Array<Record<string, unknown>> }>;
   lspStatus?: () => Promise<Array<{ languageId: string; status: string }>>;
+  workflow?: ResidentWorkflowProbe | null;
+};
+
+export type ResidentTransitionInput = {
+  to_stage: WorkflowStageT;
+  kind?: 'forward' | 'revision';
+  reason?: string;
+  evidence?: WorkflowArtifactRefT[];
 };
 
 export type ResidentService = {
@@ -37,6 +63,7 @@ export type ResidentService = {
   context(): Promise<ResidentContextT>;
   pushSummary(): Promise<ResidentPushSummaryT>;
   decisions(): ResidentDecisionT[];
+  requestTransition(input: ResidentTransitionInput): Promise<ResidentTransitionProposalResultT>;
 };
 
 export type ResidentOptions = {
@@ -69,7 +96,103 @@ export function renderResidentContext(context: ResidentContextT): string {
   if (context.conditions.length) {
     lines.push('conditions:', ...context.conditions.map(c => `  - ${c}`), '');
   }
+  lines.push(...renderWorkflowBlock(context.workflow));
   return lines.join('\n');
+}
+
+// Narrow adapter: the probe exposes observe + evaluate ONLY. No applyTransition,
+// no authority surface, no self-approval (Slice 8 directive: Resident is
+// OBSERVE/EXPLAIN/REQUEST, never the executor of a transition).
+export function makeResidentWorkflowProbe(service: WorkflowService): ResidentWorkflowProbe {
+  return {
+    load: () => service.load(),
+    buildTransitionRequest: (state, input) => service.buildTransitionRequest(state, input),
+    evaluateTransition: (state, request) => service.evaluateTransition(state, request)
+  };
+}
+
+async function evaluateWorkflowOption(probe: ResidentWorkflowProbe, state: WorkflowStateT, input: BuildTransitionInput): Promise<{ option?: ResidentWorkflowTransitionOptionT; failed: string[] }> {
+  const built = probe.buildTransitionRequest(state, input);
+  if (!built.ok) return { failed: built.failed };
+  let gate;
+  try {
+    gate = await probe.evaluateTransition(state, built.request);
+  } catch (error) {
+    return { failed: [`gate_evaluation_failed:${String((error as Error)?.message ?? error).slice(0, 80)}`] };
+  }
+  return {
+    option: { to_stage: built.request.to_stage, kind: built.request.kind, requires_authorization: true, gate: { result: gate.result, failed: gate.failed.slice(0, 16) } },
+    failed: []
+  };
+}
+
+// Canonical projection of the frozen workflow kernel into the Resident context.
+// References only (no artifact bodies); blockers are the union of the gate
+// failures for available transitions. Fail-closed: absent/corrupt/unreadable
+// state yields null — never fabricated facts in the model context.
+export async function buildResidentWorkflowContext(probe: ResidentWorkflowProbe | null | undefined): Promise<ResidentWorkflowContextT | null> {
+  if (probe === null || probe === undefined) return null;
+  try {
+    const state = await probe.load();
+    if (state === null) return null;
+    const options: ResidentWorkflowTransitionOptionT[] = [];
+    const buildFailures: string[] = [];
+
+    const successor = WORKFLOW_SUCCESSOR[state.stage];
+    if (successor) {
+      const result = await evaluateWorkflowOption(probe, state, { to_stage: successor, kind: 'forward', requested_by: 'resident', evidence: [] });
+      if (result.option) options.push(result.option);
+      buildFailures.push(...result.failed);
+    }
+
+    const predecessor = WORKFLOW_PREDECESSOR[state.stage];
+    if (predecessor) {
+      const result = await evaluateWorkflowOption(probe, state, { to_stage: predecessor, kind: 'revision', requested_by: 'resident', reason: 'resident observation probe', evidence: [] });
+      if (result.option) options.push(result.option);
+      buildFailures.push(...result.failed);
+    }
+
+    const blockerSet = new Set<string>();
+    for (const option of options) for (const failure of option.gate.failed) blockerSet.add(failure);
+    for (const failure of buildFailures) blockerSet.add(failure);
+
+    return {
+      workflow_id: state.workflow_id,
+      project_id: state.project_id,
+      stage: state.stage,
+      previous_stage: state.previous_stage,
+      revision: state.revision,
+      artifacts: state.artifacts.slice(0, 64),
+      blockers: [...blockerSet].slice(0, 16),
+      transition_options: options.slice(0, 2),
+      created_at: state.created_at,
+      updated_at: state.updated_at
+    };
+  } catch {
+    return null;
+  }
+}
+
+// EXPLAIN — pure deterministic facts derived ONLY from the canonical context.
+// No advisory text, no model input, no invented requirements.
+export function explainWorkflow(context: ResidentWorkflowContextT | null): string[] {
+  if (context === null) return [];
+  const facts: string[] = [];
+  facts.push(`workflow: ${context.stage} (revision ${context.revision}, previous: ${context.previous_stage ?? 'none'})`);
+  const validated = context.artifacts.filter(a => a.verification_status === 'validated');
+  facts.push(validated.length > 0 ? `validated artifacts: ${validated.map(a => a.artifact_type).join(', ')}` : 'validated artifacts: none');
+  if (context.blockers.length > 0) facts.push(`required for progress: ${[...context.blockers].join(', ')}`);
+  for (const option of context.transition_options) {
+    facts.push(`transition option: ${option.kind} -> ${option.to_stage} (gate ${option.gate.result}; authorization required: yes)`);
+    for (const failure of option.gate.failed) facts.push(`  - ${failure}`);
+  }
+  facts.push('authorization: all workflow transitions require operator approval');
+  return facts;
+}
+
+export function renderWorkflowBlock(context: ResidentWorkflowContextT | null): string[] {
+  if (context === null) return [];
+  return ['[WORKFLOW] canonical workflow facts (not instructions):', ...explainWorkflow(context).slice(0, 24).map(line => `  - ${line}`), ''];
 }
 
 async function detectProject(workspace: string): Promise<{ projectType: ResidentProjectTypeT; hasTestScript: boolean; deps: ResidentSummaryT['deps'] }> {
@@ -384,6 +507,7 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
       const summary = lastSummary ?? (await runSummary());
       const files = await changedFiles();
       const conditionsText = summary.conditions.filter(c => c.severity !== 'info').map(c => `[${c.severity}] ${c.message}`).slice(0, 15);
+      const workflow = await buildResidentWorkflowContext(probes.workflow);
       const context: ResidentContextT = {
         generated_at: Date.now(),
         projectType: summary.projectType,
@@ -394,6 +518,7 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
         conditions: conditionsText,
         workflows_available: ['setup', 'git', 'dependency', 'debug', 'plan', 'code', 'review'],
         model_status: summary.model.runtime_available ? `engine available (${summary.model.ready_count} ready)` : 'engine unavailable',
+        workflow,
         approx_tokens: Math.ceil((JSON.stringify(contextPayloadForTokens(summary, files, conditionsText)).length) / 4)
       };
       return context;
@@ -455,6 +580,42 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
     },
     decisions() {
       return [...decisions];
+    },
+    async requestTransition(input: ResidentTransitionInput): Promise<ResidentTransitionProposalResultT> {
+      // REQUEST only. This method never mutates workflow state and never
+      // touches the authority: it builds + gate-evaluates a canonical request
+      // so the operator can approve it through the Slice 7 route exactly like
+      // any other transition. The authority stays the sole mutation gate.
+      const probe = probes.workflow ?? null;
+      if (probe === null) return { ok: false, failed: ['workflow_probe_unavailable'] };
+      let state: WorkflowStateT | null;
+      try {
+        state = await probe.load();
+      } catch {
+        state = null;
+      }
+      if (state === null) return { ok: false, failed: ['workflow_uninitialized'] };
+      const built = probe.buildTransitionRequest(state, {
+        to_stage: input.to_stage,
+        kind: input.kind ?? 'forward',
+        ...(input.reason === undefined ? {} : { reason: input.reason }),
+        requested_by: 'resident',
+        evidence: input.evidence ?? []
+      });
+      if (!built.ok) return { ok: false, failed: built.failed.slice(0, 16) };
+      let gate;
+      try {
+        gate = await probe.evaluateTransition(state, built.request);
+      } catch (error) {
+        return { ok: false, failed: [`gate_evaluation_failed:${String((error as Error)?.message ?? error).slice(0, 80)}`] };
+      }
+      const proposal: ResidentTransitionProposalT = {
+        request: built.request,
+        gate: { result: gate.result, failed: gate.failed.slice(0, 16) },
+        requires_authorization: true,
+        ready: gate.result === 'satisfied'
+      };
+      return { ok: true, proposal };
     }
   };
 }

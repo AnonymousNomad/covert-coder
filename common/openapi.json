@@ -2040,6 +2040,7 @@
                 "subagent.done",
                 "subagent.error",
                 "desktop",
+                "workflow.transition",
                 "approval",
                 "rejection",
                 "abort"
@@ -14382,6 +14383,226 @@
                           "type": "string",
                           "maxLength": 200
                         },
+                        "workflow": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "workflow_id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "project_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 128
+                                },
+                                "stage": {
+                                  "type": "string",
+                                  "enum": [
+                                    "DISCOVERY",
+                                    "ARCHITECTURE",
+                                    "DESIGN",
+                                    "IMPLEMENTATION",
+                                    "VALIDATION",
+                                    "DEPLOYMENT"
+                                  ]
+                                },
+                                "previous_stage": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "DISCOVERY",
+                                        "ARCHITECTURE",
+                                        "DESIGN",
+                                        "IMPLEMENTATION",
+                                        "VALIDATION",
+                                        "DEPLOYMENT"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "revision": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "artifacts": {
+                                  "maxItems": 64,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "artifact_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "artifact_type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "EXPERIENCE_BRIEF",
+                                          "EXPERIENCE_BLUEPRINT",
+                                          "VISUAL_SYSTEM",
+                                          "INTERACTION_PLAN",
+                                          "IMPLEMENTATION_BLUEPRINT",
+                                          "RELEASE_EVIDENCE",
+                                          "DEPLOYMENT_RECORD"
+                                        ]
+                                      },
+                                      "stage": {
+                                        "type": "string",
+                                        "enum": [
+                                          "DISCOVERY",
+                                          "ARCHITECTURE",
+                                          "DESIGN",
+                                          "IMPLEMENTATION",
+                                          "VALIDATION",
+                                          "DEPLOYMENT"
+                                        ]
+                                      },
+                                      "path": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 512
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{64}$"
+                                      },
+                                      "created_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                      },
+                                      "verification_status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "unvalidated",
+                                          "validated",
+                                          "invalid",
+                                          "stale"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "artifact_id",
+                                      "artifact_type",
+                                      "stage",
+                                      "path",
+                                      "sha256",
+                                      "created_at",
+                                      "verification_status"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "blockers": {
+                                  "maxItems": 16,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "transition_options": {
+                                  "maxItems": 2,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "to_stage": {
+                                        "type": "string",
+                                        "enum": [
+                                          "DISCOVERY",
+                                          "ARCHITECTURE",
+                                          "DESIGN",
+                                          "IMPLEMENTATION",
+                                          "VALIDATION",
+                                          "DEPLOYMENT"
+                                        ]
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "forward",
+                                          "revision"
+                                        ]
+                                      },
+                                      "requires_authorization": {
+                                        "type": "boolean",
+                                        "const": true
+                                      },
+                                      "gate": {
+                                        "type": "object",
+                                        "properties": {
+                                          "result": {
+                                            "type": "string",
+                                            "enum": [
+                                              "satisfied",
+                                              "unsatisfied"
+                                            ]
+                                          },
+                                          "failed": {
+                                            "maxItems": 16,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "result",
+                                          "failed"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "required": [
+                                      "to_stage",
+                                      "kind",
+                                      "requires_authorization",
+                                      "gate"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "created_at": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "updated_at": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "workflow_id",
+                                "project_id",
+                                "stage",
+                                "previous_stage",
+                                "revision",
+                                "artifacts",
+                                "blockers",
+                                "transition_options",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
                         "approx_tokens": {
                           "type": "integer",
                           "exclusiveMinimum": 0,
@@ -14398,6 +14619,7 @@
                         "conditions",
                         "workflows_available",
                         "model_status",
+                        "workflow",
                         "approx_tokens"
                       ],
                       "additionalProperties": false
@@ -20233,6 +20455,571 @@
                 },
                 "required": [
                   "id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/state": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "workflow_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "workspace": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "project_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            "stage": {
+                              "type": "string",
+                              "enum": [
+                                "DISCOVERY",
+                                "ARCHITECTURE",
+                                "DESIGN",
+                                "IMPLEMENTATION",
+                                "VALIDATION",
+                                "DEPLOYMENT"
+                              ]
+                            },
+                            "previous_stage": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "DISCOVERY",
+                                    "ARCHITECTURE",
+                                    "DESIGN",
+                                    "IMPLEMENTATION",
+                                    "VALIDATION",
+                                    "DEPLOYMENT"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "artifacts": {
+                              "maxItems": 64,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "artifact_id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "artifact_type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "EXPERIENCE_BRIEF",
+                                      "EXPERIENCE_BLUEPRINT",
+                                      "VISUAL_SYSTEM",
+                                      "INTERACTION_PLAN",
+                                      "IMPLEMENTATION_BLUEPRINT",
+                                      "RELEASE_EVIDENCE",
+                                      "DEPLOYMENT_RECORD"
+                                    ]
+                                  },
+                                  "stage": {
+                                    "type": "string",
+                                    "enum": [
+                                      "DISCOVERY",
+                                      "ARCHITECTURE",
+                                      "DESIGN",
+                                      "IMPLEMENTATION",
+                                      "VALIDATION",
+                                      "DEPLOYMENT"
+                                    ]
+                                  },
+                                  "path": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{64}$"
+                                  },
+                                  "created_at": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  },
+                                  "verification_status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "unvalidated",
+                                      "validated",
+                                      "invalid",
+                                      "stale"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "artifact_id",
+                                  "artifact_type",
+                                  "stage",
+                                  "path",
+                                  "sha256",
+                                  "created_at",
+                                  "verification_status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "last_transition_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "created_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "updated_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "workflow_id",
+                            "workspace",
+                            "project_id",
+                            "stage",
+                            "previous_stage",
+                            "revision",
+                            "artifacts",
+                            "last_transition_id",
+                            "created_at",
+                            "updated_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/transition": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "applied",
+                        "rejected"
+                      ]
+                    },
+                    "gate": {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "satisfied",
+                            "unsatisfied"
+                          ]
+                        },
+                        "failed": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "result",
+                        "failed"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "workflow_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "workspace": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "project_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            "stage": {
+                              "type": "string",
+                              "enum": [
+                                "DISCOVERY",
+                                "ARCHITECTURE",
+                                "DESIGN",
+                                "IMPLEMENTATION",
+                                "VALIDATION",
+                                "DEPLOYMENT"
+                              ]
+                            },
+                            "previous_stage": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "DISCOVERY",
+                                    "ARCHITECTURE",
+                                    "DESIGN",
+                                    "IMPLEMENTATION",
+                                    "VALIDATION",
+                                    "DEPLOYMENT"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "artifacts": {
+                              "maxItems": 64,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "artifact_id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "artifact_type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "EXPERIENCE_BRIEF",
+                                      "EXPERIENCE_BLUEPRINT",
+                                      "VISUAL_SYSTEM",
+                                      "INTERACTION_PLAN",
+                                      "IMPLEMENTATION_BLUEPRINT",
+                                      "RELEASE_EVIDENCE",
+                                      "DEPLOYMENT_RECORD"
+                                    ]
+                                  },
+                                  "stage": {
+                                    "type": "string",
+                                    "enum": [
+                                      "DISCOVERY",
+                                      "ARCHITECTURE",
+                                      "DESIGN",
+                                      "IMPLEMENTATION",
+                                      "VALIDATION",
+                                      "DEPLOYMENT"
+                                    ]
+                                  },
+                                  "path": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{64}$"
+                                  },
+                                  "created_at": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  },
+                                  "verification_status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "unvalidated",
+                                      "validated",
+                                      "invalid",
+                                      "stale"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "artifact_id",
+                                  "artifact_type",
+                                  "stage",
+                                  "path",
+                                  "sha256",
+                                  "created_at",
+                                  "verification_status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "last_transition_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "created_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "updated_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "workflow_id",
+                            "workspace",
+                            "project_id",
+                            "stage",
+                            "previous_stage",
+                            "revision",
+                            "artifacts",
+                            "last_transition_id",
+                            "created_at",
+                            "updated_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "operation_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "gate",
+                    "state",
+                    "operation_id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workflow_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "from_stage": {
+                    "type": "string",
+                    "enum": [
+                      "DISCOVERY",
+                      "ARCHITECTURE",
+                      "DESIGN",
+                      "IMPLEMENTATION",
+                      "VALIDATION",
+                      "DEPLOYMENT"
+                    ]
+                  },
+                  "to_stage": {
+                    "type": "string",
+                    "enum": [
+                      "DISCOVERY",
+                      "ARCHITECTURE",
+                      "DESIGN",
+                      "IMPLEMENTATION",
+                      "VALIDATION",
+                      "DEPLOYMENT"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "forward",
+                      "revision"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 2000
+                  },
+                  "requested_by": {
+                    "default": "operator",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "evidence": {
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "artifact_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "artifact_type": {
+                          "type": "string",
+                          "enum": [
+                            "EXPERIENCE_BRIEF",
+                            "EXPERIENCE_BLUEPRINT",
+                            "VISUAL_SYSTEM",
+                            "INTERACTION_PLAN",
+                            "IMPLEMENTATION_BLUEPRINT",
+                            "RELEASE_EVIDENCE",
+                            "DEPLOYMENT_RECORD"
+                          ]
+                        },
+                        "stage": {
+                          "type": "string",
+                          "enum": [
+                            "DISCOVERY",
+                            "ARCHITECTURE",
+                            "DESIGN",
+                            "IMPLEMENTATION",
+                            "VALIDATION",
+                            "DEPLOYMENT"
+                          ]
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 512
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "verification_status": {
+                          "type": "string",
+                          "enum": [
+                            "unvalidated",
+                            "validated",
+                            "invalid",
+                            "stale"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "artifact_id",
+                        "artifact_type",
+                        "stage",
+                        "path",
+                        "sha256",
+                        "created_at",
+                        "verification_status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "workflow_id",
+                  "from_stage",
+                  "to_stage",
+                  "kind",
+                  "requested_by",
+                  "evidence"
                 ],
                 "additionalProperties": false
               }

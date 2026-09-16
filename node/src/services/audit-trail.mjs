@@ -36,6 +36,7 @@
 // readEgressJournal() so the operator gets one unified view.
 
 import { createStateBus } from '../../../harness/cipher-state.mjs';
+import { WorkflowTransitionEvent } from '../../../common/contracts/workflow.ts';
 
 // Egress is journaled separately in .aide/egress/journal.jsonl (per
 // services/egress-journal.mjs). The audit endpoint surfaces it via a
@@ -67,6 +68,9 @@ const KNOWN_TYPES = new Set([
   // Resident Assistant workspace-observation row (advisory state). The
   // closed-loop OBSERVE stage sees it; DETECT ignores it (not a failure).
   'resident',
+  // Workflow production-spine transitions (Slice 2: audit surface only; the
+  // workflow service that emits these rows lands in a later slice).
+  'workflow.transition',
   // Pre-existing shapes from the older capture (X1.a decisions); kept
   // for backwards compatibility with the [learned] injector.
   'approval',
@@ -295,6 +299,48 @@ export function createAuditTrail({ workspace }) {
 
     async emitContext({ sessionId, source, status, error = null }) {
       return emit({ type: 'agent.context', session_id: sessionId, source, status, error });
+    },
+
+    /** Workflow stage transition row (production spine; Slice 2 teaches the
+     *  surface only — the workflow service that calls this lands later).
+     *  Sanitized to identifiers, digests, stage names, status and gate
+     *  results — never artifact bodies — then validated against the frozen
+     *  workflow contract. Malformed events are rejected without a write
+     *  (fail-closed), so only contract-valid rows enter the history spine. */
+    async emitWorkflowTransition(event) {
+      const source = event && typeof event === 'object' ? event : {};
+      const safe = {
+        type: source.type,
+        ts: typeof source.ts === 'string' && source.ts.length > 0 ? source.ts : new Date().toISOString(),
+        workspace: source.workspace,
+        workflow_id: source.workflow_id,
+        sequence: source.sequence,
+        from_stage: source.from_stage,
+        to_stage: source.to_stage,
+        kind: source.kind,
+        status: source.status,
+        reason: source.reason ?? null,
+        operation_id: source.operation_id ?? null,
+        actor_id: source.actor_id ?? null,
+        gate: source.gate && typeof source.gate === 'object'
+          ? { result: source.gate.result, failed: source.gate.failed }
+          : source.gate,
+        evidence: Array.isArray(source.evidence)
+          ? source.evidence.map(item => item && typeof item === 'object'
+            ? { artifact_id: item.artifact_id, artifact_type: item.artifact_type, sha256: item.sha256 }
+            : item)
+          : source.evidence,
+        error: source.error ?? null
+      };
+      const parsed = WorkflowTransitionEvent.safeParse(safe);
+      if (!parsed.success) {
+        const issues = parsed.error.issues
+          .slice(0, 4)
+          .map(issue => `${issue.path.join('.') || '$'}: ${issue.message}`)
+          .join('; ');
+        return { persisted: false, error: `invalid workflow.transition event: ${issues}`.slice(0, 500) };
+      }
+      return emit(parsed.data);
     },
 
     // Read APIs. The audit endpoint hits these.

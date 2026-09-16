@@ -15,7 +15,8 @@ export const OPERATION_POLICY = Object.freeze({
   'capability.read': 'read', 'capability.write': 'write',
   'capability.execute': 'execute', 'capability.external': 'external',
   'authority.grant': 'permission', 'telegram.read': 'read',
-  'telegram.connect': 'external', 'telegram.start': 'external', 'telegram.disconnect': 'revoke'
+  'telegram.connect': 'external', 'telegram.start': 'external', 'telegram.disconnect': 'revoke',
+  'workflow.read': 'read', 'workflow.create': 'write', 'workflow.transition': 'write'
 });
 
 // Explicit endpoint classifications; neither HTTP method nor caller labels
@@ -104,7 +105,12 @@ const HTTP_POLICY = new Map([
   // Phase 2A wave 3R: pure read/compute routes proven in the descriptor design
   // pass (no durable effect, no process, no egress).
   ['POST /api/models/route', 'capability.read'], ['POST /api/models/fit', 'capability.read'],
-  ['POST /api/training/export-eval', 'capability.read']
+  ['POST /api/training/export-eval', 'capability.read'],
+  // Workflow production spine (Slice 7): state reads are auto-approved on
+  // prepare; transitions are operator-approved writes whose deterministic
+  // gates are enforced by the workflow service (validators + Veritas lookup).
+  ['GET /api/workflow/state', 'workflow.read'],
+  ['POST /api/workflow/transition', 'workflow.transition']
 ]);
 
 export function httpOperationKind(method, routePath) {

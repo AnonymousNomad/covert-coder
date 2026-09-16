@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WorkflowArtifactRef, WorkflowStage, WorkflowTransitionRequest } from './workflow.ts';
 
 export const ResidentSeverity = z.enum(['info', 'warn', 'error']);
 
@@ -71,6 +72,59 @@ export const ResidentSummary = z
   })
   .strict();
 
+// Workflow projection (Slice 8) — canonical workflow facts for the Resident
+// context: stage, revision, artifact references and deterministic gate
+// blockers. References only (no bodies), computed by evaluateTransition from
+// the frozen workflow kernel. requires_authorization is always true: Resident
+// NEVER self-approves; approval travels the operator authority as in Slice 7.
+export const ResidentWorkflowTransitionOption = z
+  .object({
+    to_stage: WorkflowStage,
+    kind: z.enum(['forward', 'revision']),
+    requires_authorization: z.literal(true),
+    gate: z
+      .object({
+        result: z.enum(['satisfied', 'unsatisfied']),
+        failed: z.array(z.string().min(1)).max(16)
+      })
+      .strict()
+  })
+  .strict();
+
+export const ResidentWorkflowContext = z
+  .object({
+    workflow_id: z.string().uuid(),
+    project_id: z.string().min(1).max(128),
+    stage: WorkflowStage,
+    previous_stage: WorkflowStage.nullable(),
+    revision: z.number().int().gte(0),
+    artifacts: z.array(WorkflowArtifactRef).max(64),
+    blockers: z.array(z.string().min(1)).max(16),
+    transition_options: z.array(ResidentWorkflowTransitionOption).max(2),
+    created_at: z.string().datetime(),
+    updated_at: z.string().datetime()
+  })
+  .strict();
+
+export const ResidentTransitionProposal = z
+  .object({
+    request: WorkflowTransitionRequest,
+    gate: z
+      .object({
+        result: z.enum(['satisfied', 'unsatisfied']),
+        failed: z.array(z.string().min(1)).max(16)
+      })
+      .strict(),
+    requires_authorization: z.literal(true),
+    ready: z.boolean()
+  })
+  .strict();
+
+export const ResidentTransitionProposalResult = z.union([
+  z.object({ ok: z.literal(true), proposal: ResidentTransitionProposal }).strict(),
+  z.object({ ok: z.literal(false), failed: z.array(z.string().min(1)).max(16) }).strict()
+]);
+
 export const ResidentContext = z
   .object({
     generated_at: z.number().int(),
@@ -82,6 +136,7 @@ export const ResidentContext = z
     conditions: z.array(z.string().min(1)).max(15),
     workflows_available: z.array(z.string().min(1)).max(20),
     model_status: z.string().max(200),
+    workflow: ResidentWorkflowContext.nullable(),
     approx_tokens: z.number().int().positive()
   })
   .strict();
@@ -128,6 +183,10 @@ export type ResidentConditionT = z.infer<typeof ResidentCondition>;
 export type ResidentProjectTypeT = z.infer<typeof ResidentProjectType>;
 export type ResidentGitStateT = z.infer<typeof ResidentGitState>;
 export type ResidentSummaryT = z.infer<typeof ResidentSummary>;
+export type ResidentWorkflowTransitionOptionT = z.infer<typeof ResidentWorkflowTransitionOption>;
+export type ResidentWorkflowContextT = z.infer<typeof ResidentWorkflowContext>;
+export type ResidentTransitionProposalT = z.infer<typeof ResidentTransitionProposal>;
+export type ResidentTransitionProposalResultT = z.infer<typeof ResidentTransitionProposalResult>;
 export type ResidentContextT = z.infer<typeof ResidentContext>;
 export type ResidentPushSummaryT = z.infer<typeof ResidentPushSummary>;
 export type ResidentDecisionT = z.infer<typeof ResidentDecision>;

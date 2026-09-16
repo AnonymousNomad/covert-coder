@@ -23,6 +23,7 @@ export const AuditEventType = z.enum([
   'subagent.done',
   'subagent.error',
   'desktop',
+  'workflow.transition',
   'approval',
   'rejection',
   'abort'

@@ -66,7 +66,7 @@ import { routesForDesktop, createDesktopService } from './routes/desktop.ts';
 import { routesForTelegram, createTelegramBridgeService } from './routes/telegram.ts';
 import { routesForExperts, createExpertsService } from './routes/experts.ts';
 import { routesForHardware } from './routes/hardware.ts';
-import { routesForResident, createResidentService, renderResidentContext } from './routes/resident.ts';
+import { routesForResident, createResidentService, renderResidentContext, makeResidentWorkflowProbe } from './routes/resident.ts';
 import { createRequire } from 'node:module';
 import { createOrchService } from './services/orch-context.mjs';
 import { createAgentTools } from './services/agent-tools.mjs';
@@ -74,8 +74,10 @@ import { createCheckpointService } from '../../node/src/services/agent-checkpoin
 import { createAgentLoop, requiresToolApproval } from '../../node/src/services/agent-loop.mjs';
 import { routesForAgent } from './routes/agent.ts';
 import { createAuditTrail } from './services/audit-trail.mjs';
+import { createWorkflowService } from './services/workflow-service.ts';
 import { createSkillsLoader } from './services/skills-loader.mjs';
 import { routesForAudit } from './routes/audit.ts';
+import { routesForWorkflow } from './routes/workflow.ts';
 import { routesForAuthority } from './routes/authority.ts';
 import { routesForClosedLoop } from './routes/closed-loop.ts';
 import { createIndexService } from '../../node/src/services/index-service.mjs';
@@ -411,15 +413,27 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // is injected into the agent loop so emits stay best-effort (fail-closed:
   // a failed write must never break the operation it audits).
   const memoryService = createMemoryService(workspace);
+  const auditTrail = createAuditTrail({ workspace });
+  // Workflow production spine (Slice 7): one service instance shared by the
+  // workflow routes. Without an execution authority (coverage/openapi builds)
+  // the service is not constructed and the routes fail closed with NOT_READY.
+  const workflowService = options.authority
+    ? createWorkflowService({ workspace, authority: options.authority, audit: auditTrail })
+    : null;
   // Resident Assistant: quiet in-workspace observation layer (aide-resident-assistant).
   // §10 milestone: workspace/probe state, deterministic rules, ADVISORY only.
   // §4 pre-push: advisory READY / ATTENTION_REQUIRED — never blocks.
+  // Slice 8: the workflow probe exposes observe + evaluate ONLY (makeResidentWorkflowProbe
+  // narrows the service to load/buildTransitionRequest/evaluateTransition). The
+  // context projection carries canonical workflow facts; REQUEST proposals still
+  // require operator approval through the normal workflow route.
   const residentService = createResidentService(workspace, {
     modelStatus: () => modelRuntime.status(),
     lspStatus: async () => {
       const entries = manager.status();
       return entries.map(e => ({ languageId: e.languageId, status: e.status }));
-    }
+    },
+    workflow: workflowService ? makeResidentWorkflowProbe(workflowService) : null
   }, {
     onSummary: async (summary) => {
       void auditTrail.emitResident({
@@ -431,7 +445,6 @@ export async function buildRoutes(workspace: string, version: string, options: B
       });
     }
   });
-  const auditTrail = createAuditTrail({ workspace });
   const skillsRoot = options.skillsRoot ?? repoRoot;
   const skillProvider = await createSkillsLoader({ skillsRoot });
   const agentLoop = createAgentLoop({
@@ -575,6 +588,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForProblems(workspace),
     ...routesForOrch(createOrchService({ workspace: workspace, runtime: modelRuntime })),
     ...routesForMemory(memoryService),
+    // Workflow production spine (Slice 7): GET state + POST transition over
+    // the governed kernel (validator-backed gates, operator approvals, audit
+    // spine). Adapters only — no workflow logic lives in the routes.
+    ...routesForWorkflow({ service: workflowService, audit: auditTrail }),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the

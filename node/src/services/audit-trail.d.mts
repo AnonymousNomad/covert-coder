@@ -1,4 +1,5 @@
 import type { PersistenceResult } from '../../../harness/cipher-state.mjs';
+import type { WorkflowTransitionEventT } from '../../../common/contracts/workflow.ts';
 // audit-trail.d.mts
 // Type declaration for harness/cipher-state.mjs sibling. Mirrors the
 // public API exposed by createAuditTrail. Used by node/src/openapi.ts
@@ -28,6 +29,7 @@ export interface AuditTrailService {
   emitVerification(event: { sessionId: string; outcome: string; passed: boolean; status: string; score?: number; threshold?: number; evidenceLevel?: string; failedChecks?: string[]; extra?: Record<string, unknown> }): Promise<PersistenceResult>;
   emitResident(event: { status: string; projectType: string; conditionCount: number; recommendation: string; extra?: Record<string, unknown> }): Promise<PersistenceResult>;
   emitContext(event: { sessionId: string; source: string; status: string; error?: string | null }): Promise<PersistenceResult>;
+  emitWorkflowTransition(event: WorkflowTransitionEventT): Promise<PersistenceResult>;
   readEvents(filter?: { type?: string; sessionId?: string; bundleId?: string; since?: string; limit?: number }): Promise<AuditEvent[]>;
   knownTypes(): string[];
   sessionTrajectory(sessionId: string, options?: { limit?: number }): Promise<{
