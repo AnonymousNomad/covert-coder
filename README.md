@@ -10,7 +10,13 @@ tags:
 pipeline_tag: text-generation
 ---
 
-# COVERT CODER
+![Covert Coder emblem](docs/assets/branding/covert-coder-emblem.png)
+
+# Covert Coder
+
+Your models. Your machine. Your workflow.
+Local by default. Connected by choice.
+Vibe at the surface. Engineering underneath.
 
 **Sovereign Development Environment · AIDE Sovereign Workbench lineage**
 
