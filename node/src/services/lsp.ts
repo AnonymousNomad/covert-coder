@@ -38,7 +38,7 @@ const LANGUAGES = [
   { languageId: 'javascript', name: 'JavaScript' }
 ];
 
-function toFileUri(workspace: string): string {
+export function toFileUri(workspace: string): string {
   const normalized = workspace.replace(/\\/g, '/').replace(/ /g, '%20');
   // POSIX absolute paths must become file:///tmp/... (three slashes); the
   // Windows form keeps file:///C:/.... A bare 'file://' + '/tmp' would emit
@@ -47,7 +47,7 @@ function toFileUri(workspace: string): string {
   return normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`;
 }
 
-function toAbsoluteUri(workspace: string, uri: string): string {
+export function toAbsoluteUri(workspace: string, uri: string): string {
   const stripped = uri.replace(/^file:\/\//, '');
   if (/^\/[a-zA-Z]:/.test(stripped)) return uri;
   if (stripped.startsWith('/')) return `file://${stripped}`;
