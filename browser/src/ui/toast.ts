@@ -23,6 +23,18 @@ export function translateError(code: string, message: string): string {
 }
 
 export function showToast(root: HTMLElement, code: string, message: string): void {
-  root.textContent = translateError(code, message);
-  root.dataset.level = code === 'INTERNAL' || code === 'BAD_RESPONSE' ? 'err' : 'warn';
+  const region = root.querySelector<HTMLElement>('[data-aide-toast-region]') ?? (() => {
+    const created = document.createElement('div');
+    created.dataset.aideToastRegion = 'true';
+    created.className = 'aide-toast-region';
+    root.appendChild(created);
+    return created;
+  })();
+  const toast = document.createElement('div');
+  toast.className = 'aide-toast';
+  toast.dataset.level = code === 'INTERNAL' || code === 'BAD_RESPONSE' ? 'err' : 'warn';
+  toast.setAttribute('role', 'status');
+  toast.textContent = translateError(code, message);
+  region.appendChild(toast);
+  window.setTimeout(() => toast.remove(), 8000);
 }

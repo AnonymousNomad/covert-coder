@@ -1,4 +1,5 @@
 import type { ZodType } from 'zod';
+import { z } from 'zod';
 import { Envelope } from '../../../common/errors.ts';
 import {
   FileReadQuery,
@@ -53,6 +54,28 @@ import {
   type ModelStatusResponseT
 } from '../../../common/contracts/models.ts';
 import {
+  ClosedLoopStatusResponse,
+  type ClosedLoopStatusT
+} from '../../../common/contracts/closed-loop.ts';
+import {
+  HardwareProfileResponse,
+  type HardwareProfileResponseT
+} from '../../../common/contracts/hardware.ts';
+import {
+  TaskListResponse,
+  type TaskListResponseT,
+  TaskStatusResponse,
+  type TaskStatusResponseT
+} from '../../../common/contracts/tasks.ts';
+import {
+  AuditReadResponse,
+  type AuditReadQueryT,
+  type AuditReadResponseT
+} from '../../../common/contracts/audit.ts';
+import {
+  GitStatusResponse
+} from '../../../common/contracts/git.ts';
+import {
   RoutesResponse,
   RouteRequest,
   RouteResponse,
@@ -101,7 +124,13 @@ import {
 } from '../../../common/contracts/providers.ts';
 import {
   ResidentSummaryResponse,
-  type ResidentSummaryResponseT
+  type ResidentSummaryResponseT,
+  ResidentContextResponse,
+  type ResidentContextResponseT,
+  ResidentPushSummaryResponse,
+  type ResidentPushSummaryResponseT,
+  ResidentDecisionsResponse,
+  type ResidentDecisionsResponseT
 } from '../../../common/contracts/resident.ts';
 import {
   WorkbenchListResponse,
@@ -260,6 +289,24 @@ export const api = {
   modelsStatus(): Promise<ModelStatusResponseT> {
     return call('/api/models/status', { schema: ModelStatusResponse });
   },
+  closedLoopStatus(): Promise<ClosedLoopStatusT> {
+    return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });
+  },
+  hardwareProfile(): Promise<HardwareProfileResponseT> {
+    return call('/api/hardware/profile', { schema: HardwareProfileResponse });
+  },
+  tasksList(): Promise<TaskListResponseT> {
+    return call('/api/tasks', { schema: TaskListResponse });
+  },
+  tasksStatus(): Promise<TaskStatusResponseT> {
+    return call('/api/tasks/status', { schema: TaskStatusResponse });
+  },
+  auditRead(query: AuditReadQueryT): Promise<AuditReadResponseT> {
+    return call('/api/audit/events', { query: query, schema: AuditReadResponse });
+  },
+  gitStatus(): Promise<z.infer<typeof GitStatusResponse>> {
+    return call('/api/git/status', { schema: GitStatusResponse });
+  },
   routes(): Promise<RoutesResponseT> {
     return call('/api/models/routes', { schema: RoutesResponse });
   },
@@ -347,6 +394,17 @@ export const api = {
   },
   residentSummary(): Promise<ResidentSummaryResponseT> {
     return call('/api/resident/summary', { schema: ResidentSummaryResponse });
+  },
+  residentContext(): Promise<ResidentContextResponseT> {
+    return call('/api/resident/context', { schema: ResidentContextResponse });
+  },
+  residentPush(): Promise<ResidentPushSummaryResponseT> {
+    return call('/api/resident/push-summary', { schema: ResidentPushSummaryResponse });
+  },
+  residentDecisions(limit: number): Promise<ResidentDecisionsResponseT> {
+    const params = new URLSearchParams();
+    params.append('limit', String(limit));
+    return call(`/api/resident/decisions?${params.toString()}`, { schema: ResidentDecisionsResponse });
   },
   workbenches(): Promise<WorkbenchListResponseT> {
     return call('/api/workbenches', { schema: WorkbenchListResponse });

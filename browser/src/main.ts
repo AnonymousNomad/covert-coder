@@ -6,21 +6,20 @@ import { Store } from './store/store.ts';
 import { INITIAL_STATE } from './store/state.ts';
 import { api } from './services/api.ts';
 import { SessionService } from './services/session.ts';
-import { createShell } from './shell/shell.ts';
-import { showToast } from './ui/toast.ts';
+import { mountCockpit, type CockpitHandles } from './cockpit/CockpitShell.ts';
+import './cockpit/cockpit.css';
 import { createEditorHost, type EditorHost } from './editor/host.ts';
 import { createGroups } from './editor/groups.ts';
 import { createSearchPanel } from './editor/search.ts';
 import { onDirtyChange, isDirty, openPaths } from './editor/models.ts';
 import { ArchLspBridge, applyDiagnostics } from './editor/lsp-bridge.ts';
 import { registerLspProviders } from './editor/lsp-providers.ts';
-import { createChatPanel } from './chat/chat.ts';
-import { createProvidersPanel } from './providers/providers.ts';
-import { createByokPanel } from './byok/byok.ts';
-import { createWorkbenchesPanel } from './workbenches/workbenches.ts';
-import { createResidentPanel } from './resident/resident.ts';
 import type { DiagnosticsEventT } from '../../common/contracts/events.ts';
 import type { LspStatusEventT } from '../../common/contracts/lsp.ts';
+import type { ModelStatusResponseT } from '../../common/contracts/models.ts';
+import type { ByokStatusResponseT } from '../../common/contracts/byok.ts';
+import type { ClosedLoopStatusT } from '../../common/contracts/closed-loop.ts';
+
 import { connectEvents } from './services/ws.ts';
 import { facadeWebSocketUrl } from './services/runtime-config.ts';
 import { initializeAuthority } from './services/authority.ts';
@@ -58,24 +57,16 @@ function renderAllTabs(host: EditorHost): void {
   for (const group of host.groups()) renderTabBar(group.tabBar, group.id, host);
 }
 
-function renderLspStatus(shell: ReturnType<typeof createShell>, states: Record<string, string>): void {
-  const active = Object.entries(states);
-  if (active.length === 0) {
-    shell.lspStatus.textContent = '';
-    return;
-  }
-  shell.lspStatus.textContent = active.map(([languageId, status]) => `${languageId}: ${status}`).join(' · ');
-  shell.lspStatus.className = 'item lsp-status' + (active.every(([, status]) => status === 'running' || status === 'available') ? ' ok' : active.some(([, status]) => status === 'error' || status === 'not_found') ? ' err' : '');
-}
-
 async function boot(): Promise<void> {
   await initializeAuthority();
   const app = document.getElementById('app');
   if (app === null) throw new Error('#app missing');
   const store = new Store(INITIAL_STATE);
-  const shell = createShell(app, store);
+  const shell: CockpitHandles = mountCockpit(app, store);
   const session = new SessionService();
-  const groups = createGroups(shell.editorRoot, {
+
+  // Editor mounts inside the cockpit center column.
+  const groups = createGroups(shell.editorWorkspace, {
     onSplit: direction => {
       void host.split(direction);
     },
@@ -88,55 +79,44 @@ async function boot(): Promise<void> {
     onTabChange: () => {
       renderAllTabs(host);
       if (openPaths().length > 0) session.set(() => host.captureSession());
-      const active = host.activePath();
-      shell.statusLeft.textContent = active === null ? 'ready' : `${active}${isDirty(active) ? ' \u25cf' : ''}`;
     },
-    onToast: (code, message) => showToast(shell.statusRight, code, message)
+    onToast: shell.notify
   }, new ArchLspBridge());
   registerLspProviders(host);
+  createSearchPanel(shell.searchMount, { host, onToast: shell.notify });
+  shell.setEditorHost(host);
+  shell.bottom.setOpenFile(path => { void host.open(path); });
   onDirtyChange(() => renderAllTabs(host));
   groups.onGroupsChange(() => renderAllTabs(host));
-  createSearchPanel(shell.searchPanel, { host, onToast: (code, message) => showToast(shell.statusRight, code, message) });
-  const chatPanel = createChatPanel(shell.chatPanel, { onToast: (code, message) => showToast(shell.statusRight, code, message) });
-  void chatPanel.refreshModels();
-  createProvidersPanel(shell.providersPanel, { onToast: (code, message) => showToast(shell.statusRight, code, message) });
-  createByokPanel(shell.byokPanel, { onToast: (code, message) => showToast(shell.statusRight, code, message) });
-  createWorkbenchesPanel(shell.workbenchesPanel, { onToast: (code, message) => showToast(shell.statusRight, code, message) });
-  createResidentPanel(shell.residentPanel, shell.residentStatus, { onToast: (code, message) => showToast(shell.statusRight, code, message) });
 
   const events = connectEvents(facadeWebSocketUrl('/ws'), {
     onStatus: connected => {
-      shell.statusDot.className = connected ? 'status-dot ok' : 'status-dot err';
+      shell.topbar.setDaemon({ label: connected ? 'ONLINE' : 'OFFLINE', reachable: connected });
     }
   });
+  const lspStates: Record<string, string> = {};
   events.subscribe('log', data => {
     const event = data as { level?: string; message?: string; path?: string };
-    if (event.level === 'error') showToast(shell.statusRight, 'INTERNAL', `daemon: ${event.message ?? 'error'}${event.path ? ` (${event.path})` : ''}`);
+    if (event.level === 'error') shell.notify('INTERNAL', `daemon: ${event.message ?? 'error'}${event.path ? ` (${event.path})` : ''}`);
   });
   events.subscribe('diagnostics', data => {
-    applyDiagnostics(data as DiagnosticsEventT);
+    const event = data as DiagnosticsEventT;
+    applyDiagnostics(event);
+    shell.bottom.setLatestDiagnostics({ uri: event.uri, markers: event.markers });
   });
-  const lspStates: Record<string, string> = {};
   events.subscribe('lsp-status', data => {
     const event = data as LspStatusEventT;
     lspStates[event.languageId] = event.status;
     renderLspStatus(shell, lspStates);
   });
-  void api.lspStatus().then(status => {
-    for (const server of status.servers) lspStates[server.languageId] = server.status;
-    renderLspStatus(shell, lspStates);
-  }).catch(() => {});
 
   try {
     const health = await api.health();
     store.set(prev => ({ ...prev, booted: true, health }));
-    shell.statusDot.className = 'status-dot ok';
-    shell.title.textContent = `AIDE — ${health.workspace}`;
-    shell.statusLeft.textContent = `daemon ${health.version}`;
+    shell.topbar.setDaemon({ label: 'ONLINE', reachable: true });
   } catch (error) {
-    shell.statusDot.className = 'status-dot err';
-    shell.title.textContent = 'AIDE — daemon unreachable';
-    showToast(shell.statusRight, 'NOT_READY', error instanceof Error ? error.message : 'daemon unreachable');
+    shell.topbar.setDaemon({ label: 'DOWN', reachable: false });
+    shell.notify('NOT_READY', error instanceof Error ? error.message : 'daemon unreachable');
     return;
   }
 
@@ -152,29 +132,155 @@ async function boot(): Promise<void> {
   try {
     const workspace = await api.workspaceList();
     store.set(prev => ({ ...prev, workspace }));
-    const list = document.createElement('ul');
-    list.className = 'file-list';
-    for (const entry of workspace.entries.filter(e => e.kind === 'file')) {
-      const item = document.createElement('li');
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = entry.name;
-      button.addEventListener('click', () => {
-        void host.open(entry.name);
-      });
-      item.appendChild(button);
-      list.appendChild(item);
-    }
-    shell.mapFiles.replaceChildren(list);
-  } catch (error) {
-    showToast(shell.statusRight, 'INTERNAL', error instanceof Error ? error.message : 'workspace unavailable');
+  } catch {
+    // workspace listing is best-effort
   }
+
+  void wireTopbarToBackends(shell);
+  void refreshLspStatus(shell, lspStates);
 
   window.addEventListener('pagehide', () => {
     session.set(() => host.captureSession());
     void session.flush();
     events.dispose();
   });
+}
+
+async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
+  void refreshEngineChip(shell);
+  void refreshCloudChip(shell);
+  void refreshHarnessChip(shell);
+  void refreshVerificationChip(shell);
+  void refreshModes(shell);
+}
+
+async function refreshModes(shell: CockpitHandles): Promise<void> {
+  // Mode derivation from real backend state only:
+  //   PRIVATE   = BYOK consent disabled (no egress consented)
+  //   LOCAL     = daemon health reachable (the daemon runs on 127.0.0.1)
+  //   VERIFIABLE = audit bus reachable (verification evidence infrastructure exists)
+  let privateMode: boolean | null = null;
+  let localMode: boolean | null = null;
+  let verifiable: boolean | null = null;
+
+  try {
+    const byok = await api.byokStatus();
+    privateMode = !byok.consent_enabled;
+  } catch { privateMode = null; }
+
+  try {
+    await api.health();
+    localMode = true;
+  } catch { localMode = false; }
+
+  try {
+    await api.auditRead({ limit: 1 });
+    verifiable = true;
+  } catch { verifiable = false; }
+
+  shell.topbar.setModes({ private: privateMode, local: localMode, verifiable });
+}
+
+async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
+  let res: ModelStatusResponseT;
+  try { res = await api.modelsStatus(); }
+  catch {
+    shell.topbar.setEngine({ label: 'NO MODEL READY', ready: false });
+    return;
+  }
+  const readyModels = res.models.filter(m =>
+    (m.status === 'ready' || m.status === 'running') &&
+    m.runtime_available &&
+    m.artifact_available
+  );
+  const readyCount = readyModels.length;
+  const totalCount = res.models.length;
+  if (readyCount === 0) {
+    shell.topbar.setEngine({ label: totalCount > 0 ? `0 OF ${totalCount} MODELS READY` : 'NO MODEL READY', ready: false });
+    return;
+  }
+  const label = totalCount > 0
+    ? `${readyCount} OF ${totalCount} MODELS READY`
+    : `${readyCount} MODEL${readyCount > 1 ? 'S' : ''} READY`;
+  shell.topbar.setEngine({ label, ready: true });
+}
+
+async function refreshCloudChip(shell: CockpitHandles): Promise<void> {
+  let res: ByokStatusResponseT;
+  try { res = await api.byokStatus(); }
+  catch { shell.topbar.setCloud('LOCAL_ONLY'); return; }
+  if (!res.consent_enabled) {
+    shell.topbar.setCloud('LOCAL_ONLY');
+    return;
+  }
+  const providersWithKey = res.providers.filter(p => p.key_stored);
+  if (providersWithKey.length === 0) {
+    shell.topbar.setCloud('CREDENTIAL_MISSING');
+    return;
+  }
+  shell.topbar.setCloud('REMOTE_CONFIGURED');
+}
+
+function renderLspStatus(shell: CockpitHandles, states: Record<string, string>): void {
+  const entries = Object.entries(states);
+  if (entries.length === 0) {
+    shell.lspStatus.textContent = 'LSP: NONE REPORTED';
+    return;
+  }
+  const available = entries.filter(([, state]) => state === 'running' || state === 'available').length;
+  shell.lspStatus.textContent = `LSP: ${available}/${entries.length} AVAILABLE`;
+}
+
+async function refreshLspStatus(shell: CockpitHandles, states: Record<string, string>): Promise<void> {
+  try {
+    const status = await api.lspStatus();
+    for (const server of status.servers) states[server.languageId] = server.status;
+    renderLspStatus(shell, states);
+  } catch {
+    shell.lspStatus.textContent = 'LSP: UNAVAILABLE';
+  }
+}
+
+async function refreshHarnessChip(shell: CockpitHandles): Promise<void> {
+  let res: ClosedLoopStatusT;
+  try { res = await api.closedLoopStatus(); }
+  catch { shell.topbar.setHarness('STANDBY'); return; }
+  if (!res.enabled) {
+    shell.topbar.setHarness('STANDBY');
+    return;
+  }
+  // No live current-running signal is exposed by /api/closed-loop/status
+  // (enabled is configuration, last_run_logged_at is historical, no WS tick).
+  // ON is intentionally never emitted today — a stale run is not operation.
+  shell.topbar.setHarness('ENABLED');
+}
+
+async function refreshVerificationChip(shell: CockpitHandles): Promise<void> {
+  // Truth-gate (Checkpoint 0 — final): the topbar reflects CURRENT UI scope.
+  // Without a scope-correlation key (no current_session_id / current_bundle_id
+  // exposed to the frontend, no workspace-scoped audit query), neither
+  // unscoped positive NOR unscoped negative audit events may alter the
+  // current-scope topbar. They remain visible in the VERIFY/AUDIT panels
+  // for human review. The only workspace-scoped signal that may emit
+  // DEGRADED on the topbar is ResidentPushSummary.verdict === 'ATTENTION_REQUIRED'
+  // (ResidentPushSummary is workspace-scoped per its contract).
+  let pushOk = false;
+  let pushAttention = false;
+  try {
+    const push = (await api.residentPush()).push;
+    pushOk = true;
+    pushAttention = push.verdict === 'ATTENTION_REQUIRED';
+  } catch {
+    // push unavailable
+  }
+  if (pushOk && pushAttention) {
+    shell.topbar.setVerification('DEGRADED');
+    return;
+  }
+  // No scope-correlated positive or negative evidence exists today.
+  // All audit-only signals (including most-recent agent.verification failure)
+  // remain visible in the VERIFY/AUDIT panels but do not alter this topbar.
+  shell.topbar.setVerification('UNVERIFIED');
 }
 
 void boot();
