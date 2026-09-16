@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AIDE — Sovereign Workbench</title>
+<title>AIDE â€” Sovereign Workbench</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body class="state-cold">
@@ -60,9 +60,9 @@
             <form id="term-form" class="hub-row term-row"><input id="term-input" placeholder="command (e.g. node --version)" autocomplete="off" spellcheck="false"><button type="submit" class="secondary-btn">RUN</button></form>
           </div>
           <div id="ship-panel" class="ship-panel" hidden>
-            <div class="ship-head eyebrow">SHIP — REVIEW &amp; COMMIT</div>
-            <div id="ship-files" class="ship-files"><span class="muted small">Loading changes…</span></div>
-            <textarea id="ship-message" rows="3" placeholder="Commit message…"></textarea>
+            <div class="ship-head eyebrow">SHIP â€” REVIEW &amp; COMMIT</div>
+            <div id="ship-files" class="ship-files"><span class="muted small">Loading changesâ€¦</span></div>
+            <textarea id="ship-message" rows="3" placeholder="Commit messageâ€¦"></textarea>
             <label class="ship-trailer"><input type="checkbox" id="ship-trailer" checked> Append <code>Assisted-by: AIDE</code> trailer</label>
             <div class="approval-bar">
               <button id="ship-commit" class="approve">COMMIT</button>
@@ -89,32 +89,32 @@
     <div class="zone-title">MISSION CHECKLIST</div>
     <ol class="checklist" id="checklist">
       <li data-step="1"><span>Pick the recommended engine</span><b class="st"></b></li>
-      <li data-step="2"><span>Start it — wait for green</span><b class="st"></b></li>
+      <li data-step="2"><span>Start it â€” wait for green</span><b class="st"></b></li>
       <li data-step="3"><span>Describe a task</span><b class="st"></b></li>
     </ol>
     <div class="rail-block"><span class="k">HARNESS</span><span class="badge off" id="harness-badge" aria-live="polite">STANDBY</span></div>
     <div class="rail-block" style="cursor:pointer" id="delegation-toggle" role="button" tabindex="0" title="Toggle how much authority the agent gets" aria-pressed="false"><span class="k">DELEGATION</span><span class="badge on" id="delegation-badge">STANDARD</span></div>
-    <div class="rail-block"><span class="k">CLOUD</span><span class="badge off" id="cloud-state" aria-live="polite">CHECKING…</span></div>
+    <div class="rail-block"><span class="k">CLOUD</span><span class="badge off" id="cloud-state" aria-live="polite">CHECKINGâ€¦</span></div>
     <div class="rail-block" style="cursor:pointer" id="fos-toggle" role="button" tabindex="0" title="Format TS/JS/JSON/CSS/HTML when saving" aria-pressed="false"><span class="k">FORMAT ON SAVE</span><span class="badge off" id="fos-badge">OFF</span></div>
     <div class="rail-block"><span class="k">EGRESS</span><span class="badge off">LOCAL ONLY</span></div>
-    <div class="rail-block"><span class="k">GIT</span><span class="badge off" id="git-badge" aria-live="polite">—</span></div>
-    <div class="rail-block"><span class="k">DIAGNOSTICS</span><span class="badge off" id="diag-badge" aria-live="polite">—</span></div>
-    <div class="rail-block muted small">Terminal · extensions wire in over upcoming updates.</div>
+    <div class="rail-block"><span class="k">GIT</span><span class="badge off" id="git-badge" aria-live="polite">â€”</span></div>
+    <div class="rail-block"><span class="k">DIAGNOSTICS</span><span class="badge off" id="diag-badge" aria-live="polite">â€”</span></div>
+    <div class="rail-block muted small">Terminal Â· extensions wire in over upcoming updates.</div>
   </aside>
 </main>
 
-<footer class="strip" role="contentinfo"><span id="strip-text" aria-live="polite">Booting…</span><span class="strip-spacer"></span><span id="status-lang" class="strip-item" title="Language mode">Plain Text</span><span id="status-pos" class="strip-item" title="Cursor position">Ln 1, Col 1</span><span id="status-encoding" class="strip-item" title="File encoding">UTF-8</span><span id="status-eol" class="strip-item" title="End of line sequence">LF</span></footer>
+<footer class="strip" role="contentinfo"><span id="strip-text" aria-live="polite">Bootingâ€¦</span><span class="strip-spacer"></span><span id="status-lang" class="strip-item" title="Language mode">Plain Text</span><span id="status-pos" class="strip-item" title="Cursor position">Ln 1, Col 1</span><span id="status-encoding" class="strip-item" title="File encoding">UTF-8</span><span id="status-eol" class="strip-item" title="End of line sequence">LF</span></footer>
 
 <section id="help-panel" class="overlay" role="dialog" aria-modal="true" aria-labelledby="help-heading" hidden>
   <div class="panel-card">
     <div class="eyebrow">AIDE / HOW IT WORKS</div>
     <h2 id="help-heading">Three moves.</h2>
     <ol class="help-steps">
-      <li><b>START</b> — one button starts the best local model for this machine. Everything stays on this computer.</li>
-      <li><b>DESCRIBE</b> — tell the orchestrator what you want. It plans before touching anything.</li>
-      <li><b>APPROVE</b> — nothing changes without your approval. Verification results appear in the right rail.</li>
+      <li><b>START</b> â€” one button starts the best local model for this machine. Everything stays on this computer.</li>
+      <li><b>DESCRIBE</b> â€” tell the orchestrator what you want. It plans before touching anything.</li>
+      <li><b>APPROVE</b> â€” nothing changes without your approval. Verification results appear in the right rail.</li>
     </ol>
-    <p class="muted">Cloud models arrive later — strictly opt-in, clearly labeled, never required.</p>
+    <p class="muted">Cloud models arrive later â€” strictly opt-in, clearly labeled, never required.</p>
     <button id="help-close" class="primary" aria-label="Close help">GOT IT</button>
   </div>
 </section>
@@ -123,10 +123,10 @@
   <div class="panel-card wide">
     <div class="eyebrow">MODELS / ENGINES &amp; HUB</div>
     <h2>Engines</h2>
-    <div id="engine-list" class="engine-list"><span class="muted">Loading…</span></div>
+    <div id="engine-list" class="engine-list"><span class="muted">Loadingâ€¦</span></div>
     <h2>Download from Hugging Face</h2>
     <div class="hub-row">
-      <input id="hub-query" placeholder="e.g. qwen2.5 coder, llama 3.2, phi-4…" autocomplete="off">
+      <input id="hub-query" placeholder="e.g. qwen2.5 coder, llama 3.2, phi-4â€¦" autocomplete="off">
       <button id="hub-search-btn" class="secondary-btn">SEARCH</button>
     </div>
     <div id="hub-results" class="hub-results"></div>
@@ -134,7 +134,7 @@
     <h2>Downloads</h2>
     <div id="downloads-list" class="downloads-list"><span class="muted">No active downloads.</span></div>
     <div id="tuning-block" hidden>
-      <h2>Tuning — <span id="tuning-engine" class="muted"></span></h2>
+      <h2>Tuning â€” <span id="tuning-engine" class="muted"></span></h2>
       <div class="hub-row">
         <button class="secondary-btn" data-preset="precise">PRECISE</button>
         <button class="secondary-btn" data-preset="balanced">BALANCED</button>
@@ -145,7 +145,7 @@
     </div>
     <h2>Import from this computer</h2>
     <div class="hub-row">
-      <input id="import-path" placeholder="Full path to a .gguf file on this machine…" autocomplete="off" spellcheck="false">
+      <input id="import-path" placeholder="Full path to a .gguf file on this machineâ€¦" autocomplete="off" spellcheck="false">
       <input id="import-ctx" placeholder="ctx" style="max-width:80px" title="Context size (default 4096)">
       <button id="import-btn" class="secondary-btn">IMPORT</button>
     </div>
@@ -157,38 +157,38 @@
 
 <section id="command-palette" class="overlay cmdk" role="dialog" aria-modal="true" hidden>
   <div class="cmdk-box">
-    <input id="cmdk-input" placeholder="Type a command (>), or a file name…" autocomplete="off" spellcheck="false">
+    <input id="cmdk-input" placeholder="Type a command (>), or a file nameâ€¦" autocomplete="off" spellcheck="false">
     <div id="cmdk-results" class="cmdk-results"></div>
-    <div class="cmdk-hint muted small">Enter runs · Esc closes · &gt; commands only</div>
+    <div class="cmdk-hint muted small">Enter runs Â· Esc closes Â· &gt; commands only</div>
   </div>
 </section>
 
 <section id="search-overlay" class="overlay cmdk" role="dialog" aria-modal="true" hidden>
   <div class="cmdk-box wide">
     <div class="hub-row">
-      <input id="gs-query" placeholder="Find in workspace…" autocomplete="off" spellcheck="false">
-      <input id="gs-replace" placeholder="Replace with…" autocomplete="off" spellcheck="false">
+      <input id="gs-query" placeholder="Find in workspaceâ€¦" autocomplete="off" spellcheck="false">
+      <input id="gs-replace" placeholder="Replace withâ€¦" autocomplete="off" spellcheck="false">
       <button id="gs-go" class="secondary-btn">SEARCH</button>
       <button id="gs-replace-all" class="secondary-btn" disabled>REPLACE ALL</button>
     </div>
-    <div class="muted small" style="margin-bottom:6px">Replace-all rewrites every match across the workspace — review the hits first, then confirm.</div>
+    <div class="muted small" style="margin-bottom:6px">Replace-all rewrites every match across the workspace â€” review the hits first, then confirm.</div>
     <div id="gs-results" class="cmdk-results"></div>
   </div>
 </section>
 
 <section id="git-sheet" class="overlay" role="dialog" aria-modal="true" hidden>
   <div class="panel-card">
-    <div class="eyebrow">GIT — BRANCHES &amp; HISTORY</div>
+    <div class="eyebrow">GIT â€” BRANCHES &amp; HISTORY</div>
     <div class="hub-row">
       <select id="git-branch-select" class="git-select"></select>
       <button id="git-switch" class="secondary-btn">SWITCH</button>
     </div>
     <div id="git-ab" class="muted small"></div>
     <h2>Recent commits</h2>
-    <div id="git-history" class="cmdk-results"><span class="muted small">Loading…</span></div>
+    <div id="git-history" class="cmdk-results"><span class="muted small">Loadingâ€¦</span></div>
     <div class="hub-row">
       <button id="git-push" class="secondary-btn">PUSH TO REMOTE</button>
-      <span id="push-note" class="muted small">Push uploads commits to your remote — one logged network call.</span>
+      <span id="push-note" class="muted small">Push uploads commits to your remote â€” one logged network call.</span>
     </div>
     <button id="git-close" class="primary">CLOSE</button>
   </div>
@@ -196,9 +196,9 @@
 
 <section id="skills-panel" class="overlay cmdk" role="dialog" aria-modal="true" hidden>
   <div class="cmdk-box wide">
-    <div class="eyebrow">SKILLS — 139 SOP PACKS IN THE BOX</div>
+    <div class="eyebrow">SKILLS â€” 139 SOP PACKS IN THE BOX</div>
     <div class="hub-row">
-      <input id="skills-query" placeholder="Search operating procedures…" autocomplete="off" spellcheck="false">
+      <input id="skills-query" placeholder="Search operating proceduresâ€¦" autocomplete="off" spellcheck="false">
       <select id="skills-cat" class="git-select"><option value="">ALL</option></select>
     </div>
     <div id="skills-results" class="cmdk-results"></div>
@@ -208,7 +208,7 @@
 
 <section id="plugins-panel" class="overlay cmdk" role="dialog" aria-modal="true" hidden>
   <div class="cmdk-box wide">
-    <div class="eyebrow">PLUGINS — LOCAL, OPT-IN, CAPABILITY-GATED</div>
+    <div class="eyebrow">PLUGINS â€” LOCAL, OPT-IN, CAPABILITY-GATED</div>
     <div id="plugins-installed" class="hub-results"></div>
     <h2 style="font:bold 13px var(--mono);color:var(--blue);margin:14px 0 8px">CATALOG</h2>
     <div id="plugins-catalog" class="hub-results"></div>
@@ -218,16 +218,16 @@
 
 <section id="telegram-panel" class="overlay cmdk" role="dialog" aria-modal="true" hidden>
   <div class="cmdk-box wide">
-    <div class="eyebrow">TELEGRAM BRIDGE — YOUR BOT · YOUR MACHINE · TRANSPORT ONLY</div>
-    <div id="tg-body" class="hub-results"><div class="muted">Loading…</div></div>
+    <div class="eyebrow">TELEGRAM BRIDGE â€” YOUR BOT Â· YOUR MACHINE Â· TRANSPORT ONLY</div>
+    <div id="tg-body" class="hub-results"><div class="muted">Loadingâ€¦</div></div>
     <div id="tg-connect" hidden>
-      <div class="muted" style="margin-bottom:10px">1. In Telegram, open <b>@BotFather</b> → send <code>/newbot</code> → follow prompts.<br>2. Copy the bot token it gives you (<code>123456:AAH...</code>).<br>3. Paste it below. It is encrypted with Windows DPAPI and never leaves this machine except to Telegram's own API.</div>
+      <div class="muted" style="margin-bottom:10px">1. In Telegram, open <b>@BotFather</b> â†’ send <code>/newbot</code> â†’ follow prompts.<br>2. Copy the bot token it gives you (<code>123456:AAH...</code>).<br>3. Paste it below. It is encrypted with Windows DPAPI and never leaves this machine except to Telegram's own API.</div>
       <input id="tg-token" type="password" style="width:100%;margin:4px 0 10px;background:#111;border:1px solid #333;color:var(--fg);padding:6px;font-family:var(--mono)" placeholder="123456:AAHxyz...">
       <button id="tg-connect-btn" class="primary">CONNECT BOT</button>
       <span id="tg-connect-err" class="small" style="color:#ff8080;margin-left:8px"></span>
     </div>
     <div id="tg-authorize" hidden>
-      <div class="muted small" style="margin-bottom:8px">Now send <b>any message</b> to your bot in Telegram (press START in the bot chat first). It will appear below — authorize it.</div>
+      <div class="muted small" style="margin-bottom:8px">Now send <b>any message</b> to your bot in Telegram (press START in the bot chat first). It will appear below â€” authorize it.</div>
       <div id="tg-seen" style="margin-bottom:8px"></div>
       <button id="tg-rescan" style="background:#111;border:1px solid #333;color:var(--fg);padding:6px 12px;font-family:var(--mono);cursor:pointer">RESCAN</button>
     </div>
@@ -242,10 +242,10 @@
 
 <section id="desktop-panel" class="overlay cmdk" role="dialog" aria-modal="true" hidden>
   <div class="cmdk-box wide">
-    <div class="eyebrow">DESKTOP CONTROL — STRICT OPT-IN · SESSION-SCOPED · DENY-BY-DEFAULT</div>
-    <div id="desktop-body" class="hub-results"><div class="muted">Loading…</div></div>
+    <div class="eyebrow">DESKTOP CONTROL â€” STRICT OPT-IN Â· SESSION-SCOPED Â· DENY-BY-DEFAULT</div>
+    <div id="desktop-body" class="hub-results"><div class="muted">Loadingâ€¦</div></div>
     <div id="dc-wizard" hidden>
-      <div class="muted" style="margin-bottom:10px">Off by default. When enabled, the agent may launch allow-listed apps, open paths under granted folders, and focus listed windows — every action is logged, session-scoped, and revocable instantly.</div>
+      <div class="muted" style="margin-bottom:10px">Off by default. When enabled, the agent may launch allow-listed apps, open paths under granted folders, and focus listed windows â€” every action is logged, session-scoped, and revocable instantly.</div>
       <label class="small muted">APPS (comma-separated)</label>
       <input id="dc-apps" style="width:100%;margin:4px 0 8px;background:#111;border:1px solid #333;color:var(--fg);padding:6px;font-family:var(--mono)" placeholder="notepad.exe">
       <label class="small muted">GRANTED FOLDERS (absolute paths, comma-separated)</label>
@@ -263,7 +263,7 @@
         <h2 style="font:bold 13px var(--mono);color:#ffb0b0;margin:0 0 6px">PENDING APPROVALS</h2>
         <div id="dc-pending-list"></div>
       </div>
-      <button id="dc-panic" style="background:#5a1010;border:1px solid #a33;color:#ffb0b0;padding:8px 14px;font-family:var(--mono);cursor:pointer">PANIC — REVOKE EVERYTHING NOW</button>
+      <button id="dc-panic" style="background:#5a1010;border:1px solid #a33;color:#ffb0b0;padding:8px 14px;font-family:var(--mono);cursor:pointer">PANIC â€” REVOKE EVERYTHING NOW</button>
       <button id="dc-disable" style="margin-left:8px;background:#111;border:1px solid #333;color:var(--fg);padding:8px 14px;font-family:var(--mono);cursor:pointer">DISABLE GRACEFULLY</button>
     </div>
     <button id="desktop-close" class="primary" style="margin-top:12px">CLOSE</button>
