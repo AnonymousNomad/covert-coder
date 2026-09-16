@@ -20,6 +20,14 @@ function toRouteError(error: unknown): RouteError {
   return new RouteError('CHILD_FAILED', error instanceof Error ? error.message : 'provider operation failed');
 }
 
+// Input-binding digest over the exact UTF-8 secret, plus its exact UTF-16
+// code-unit length. The approved operation binds the exact credential without
+// ever persisting, logging, or echoing the secret. Input-binding only: not
+// permission, validation, or proof.
+function secretDigest(secret: string): string {
+  return createHash('sha256').update(secret, 'utf8').digest('hex');
+}
+
 export function routeForProvidersList(service: ProviderService): Route {
   return {
     method: 'GET',
@@ -29,12 +37,33 @@ export function routeForProvidersList(service: ProviderService): Route {
   };
 }
 
-export function routeForProviderConnect(service: ProviderService): Route {
+export function routeForProviderConnect(service: ProviderService, workspace: string): Route {
   return {
     method: 'POST',
     path: '/api/providers/connect',
     body: ProviderConnectRequest,
     response: ProviderConnectResponse,
+    // Connect stores a credential and probes the provider over the network;
+    // the descriptor binds the provider identity, the exact secret (digest +
+    // length), and the non-secret connection metadata — never the raw key.
+    describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
+      const request = body as { providerId: string; key: string; baseUrl?: string; model?: string; approveHost?: boolean };
+      return {
+        workspace,
+        taskId,
+        kind: 'capability.external',
+        args: {
+          body: {
+            providerId: request.providerId,
+            keyDigest: secretDigest(request.key),
+            keyLength: request.key.length,
+            baseUrl: request.baseUrl ?? null,
+            model: request.model ?? null,
+            approveHost: request.approveHost ?? false
+          }
+        }
+      };
+    },
     handler: async ({ body }) => {
       try {
         return await service.connect(body as Parameters<ProviderService['connect']>[0]);
@@ -45,12 +74,16 @@ export function routeForProviderConnect(service: ProviderService): Route {
   };
 }
 
-export function routeForProviderDisconnect(service: ProviderService): Route {
+export function routeForProviderDisconnect(service: ProviderService, workspace: string): Route {
   return {
     method: 'POST',
     path: '/api/providers/disconnect',
     body: ProviderDisconnectRequest,
     response: ProviderDisconnectResponse,
+    describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
+      const request = body as { providerId: string };
+      return { workspace, taskId, kind: 'capability.write', args: { body: { providerId: request.providerId } } };
+    },
     handler: async ({ body }) => {
       try {
         const request = body as { providerId: string };

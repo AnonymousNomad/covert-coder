@@ -110,11 +110,15 @@ export async function taskServiceFixture(workspace: string, onEvent: (event: Tas
 
 // The fixture owns the composition root, not an HTTP token-mint endpoint.
 // Pair through the production route; mutation approval is always explicit.
+// The per-request deadline defaults to 5s; on the documented memory-starved
+// dev box (16GB, no pagefile, ~2GB free) spawn/audit stalls can exceed that,
+// so an opt-in env override raises it. Default is unchanged everywhere.
+const FIXTURE_TIMEOUT_MS = Number.parseInt(process.env.AIDE_FIXTURE_TIMEOUT_MS ?? '', 10) || 5000;
 export async function pairFixture(arch: ArchServer, base: string, origin = 'http://fixture.local') {
   const proof = arch.authority.control.createPairing(origin);
   const exchange = await fetch(`${base}/api/authority/pair`, {
     method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json', 'X-AIDE-API-Format': 'envelope-v1' },
-    body: JSON.stringify({ proof }), signal: AbortSignal.timeout(5000)
+    body: JSON.stringify({ proof }), signal: AbortSignal.timeout(FIXTURE_TIMEOUT_MS)
   });
   const paired = await exchange.json() as { ok: boolean; data: { token: string; actor_id: string } };
   assert.equal(exchange.status, 200);
@@ -124,7 +128,7 @@ export async function pairFixture(arch: ArchServer, base: string, origin = 'http
   const request = (pathname: string, init: RequestInit = {}): Promise<Response> => {
     const requestHeaders = new Headers(headers);
     new Headers(init.headers).forEach((value, key) => requestHeaders.set(key, value));
-    return fetch(`${base}${pathname}`, { ...init, headers: requestHeaders, signal: init.signal ?? AbortSignal.timeout(5000) });
+    return fetch(`${base}${pathname}`, { ...init, headers: requestHeaders, signal: init.signal ?? AbortSignal.timeout(FIXTURE_TIMEOUT_MS) });
   };
   async function propose(method: string, pathname: string, body: unknown, taskId: string) {
     const response = await request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({ method, path: pathname, body, task_id: taskId }) });

@@ -89,47 +89,131 @@ test('GET /api/providers lists the built-ins through the envelope without keys',
   assert.ok(!JSON.stringify(payload).match(/sk-|api[_-]?key/i), 'the list must never leak key material');
 });
 
-test('POST /api/providers/connect remains migration-waived (fail closed, key never evaluated or echoed)', async () => {
-  // POST /api/providers/connect is ARCHITECTURE-DECISION in the migration
-  // waiver: it has no authority policy, so a paired actor is refused 403
-  // before any provider logic runs. The denial must not echo the key.
-  const response = await owner.request('/api/providers/connect', {
+test('POST /api/providers/connect is a governed write: approval, denial, digest/length binding and key privacy', async () => {
+  const sentinel = 'sk-bad-key-xyz';
+
+  // Anonymous writes refused before the authority edge.
+  const anonymous = await fetch(`${base}/api/providers/connect`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ providerId: 'openai', key: sentinel }), signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(anonymous.status, 403, 'anonymous connect rejected');
+
+  // Paired but unapproved connect fails with the approval-gated 409; nothing stored.
+  const unapproved = await owner.request('/api/providers/connect', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ providerId: 'openai', key: 'sk-bad-key-xyz' })
+    body: JSON.stringify({ providerId: 'openai', key: sentinel })
   });
-  assert.equal(response.status, 403, 'waived route stays fail-closed until its own wave');
-  const envelope = Envelope.safeParse(await response.json());
-  assert.equal(envelope.success, true);
-  if (!envelope.success || envelope.data.ok) return;
-  assert.equal(envelope.data.error.code, 'FORBIDDEN');
-  assert.ok(!JSON.stringify(envelope.data).includes('sk-bad-key-xyz'), 'the key must be scrubbed from the denial');
+  assert.equal(unapproved.status, 409);
+  const unapprovedEnvelope = Envelope.safeParse(await unapproved.json());
+  assert.equal(unapprovedEnvelope.success, true);
+  if (!unapprovedEnvelope.success || unapprovedEnvelope.data.ok) return;
+  assert.equal(unapprovedEnvelope.data.error.code, 'NOT_READY');
+  assert.equal((unapprovedEnvelope.data.error.detail as { reason?: string }).reason, 'APPROVAL_REQUIRED');
+
+  // Prepare/inspect privacy: the descriptor binds providerId + key digest +
+  // length + connection metadata — never the raw key.
+  const prepared = await owner.request('/api/authority/prepare', {
+    method: 'POST',
+    body: JSON.stringify({ method: 'POST', path: '/api/providers/connect', task_id: 'task:connect-inspect', body: { providerId: 'openai', key: sentinel, model: 'gpt-4o-mini' } })
+  });
+  assert.equal(prepared.status, 200);
+  const preparedText = await prepared.text();
+  const preparedEnvelope = JSON.parse(preparedText) as { data: { operation_id: string; state: string; args: { body: { providerId: string; keyDigest: string; keyLength: number; baseUrl: unknown; model: string; approveHost: boolean } } } };
+  assert.equal(preparedEnvelope.data.state, 'pending');
+  assert.equal(preparedEnvelope.data.args.body.providerId, 'openai');
+  assert.equal(preparedEnvelope.data.args.body.keyDigest, sha256(sentinel), 'canonical sha256 of the exact UTF-8 secret');
+  assert.equal(preparedEnvelope.data.args.body.keyLength, sentinel.length, 'exact UTF-16 code-unit length');
+  assert.equal(preparedEnvelope.data.args.body.model, 'gpt-4o-mini');
+  assert.equal(preparedEnvelope.data.args.body.approveHost, false);
+  assert.ok(!preparedText.includes(sentinel), 'raw secret must not appear in the prepare serialization');
+  assert.ok(!/sk-bad-/.test(preparedText), 'no partial key material may reach the operator');
+  const inspected = await owner.request(`/api/authority/operation?id=${preparedEnvelope.data.operation_id}`);
+  assert.equal(inspected.status, 200);
+  assert.ok(!(await inspected.text()).includes(sentinel), 'inspect exposes the digest, never the raw secret');
+  assert.equal((await owner.decide(preparedEnvelope.data.operation_id, 'reject')).status, 200);
+
+  // Approved exact key: the builtin host probe runs; a rejected key reports
+  // invalid_key without ever echoing the key.
+  const badHeaders = await owner.approve('POST', '/api/providers/connect', { providerId: 'openai', key: sentinel }, 'task:connect-bad');
+  const keyChanged = await owner.request('/api/providers/connect', { method: 'POST', headers: badHeaders, body: JSON.stringify({ providerId: 'openai', key: 'sk-bad-key-OTHER' }) });
+  assert.equal(keyChanged.status, 409, 'a different secret cannot reuse the approval');
+  const keyShort = await owner.request('/api/providers/connect', { method: 'POST', headers: badHeaders, body: JSON.stringify({ providerId: 'openai', key: 'sk-abc' }) });
+  assert.equal(keyShort.status, 409, 'a lower-length secret cannot reuse the approval');
+  const appliedBad = await owner.request('/api/providers/connect', { method: 'POST', headers: badHeaders, body: JSON.stringify({ providerId: 'openai', key: sentinel }) });
+  assert.equal(appliedBad.status, 200);
+  const badEnvelope = Envelope.safeParse(await appliedBad.json());
+  assert.equal(badEnvelope.success, true);
+  if (!badEnvelope.success || !badEnvelope.data.ok) return;
+  const badResult = badEnvelope.data.data as { status: string; message: string };
+  assert.equal(badResult.status, 'invalid_key');
+  assert.match(badResult.message, /rejected by the provider/);
+  assert.ok(!JSON.stringify(badEnvelope.data).includes(sentinel), 'the connect result never echoes the key');
+  const replayBad = await owner.request('/api/providers/connect', { method: 'POST', headers: badHeaders, body: JSON.stringify({ providerId: 'openai', key: sentinel }) });
+  assert.equal(replayBad.status, 409, 'consumed connect approval cannot replay');
+
+  // Approved exact valid key reaches 'connected' through the real probe.
+  const goodHeaders = await owner.approve('POST', '/api/providers/connect', { providerId: 'openai', key: 'sk-valid', model: 'gpt-4o-mini' }, 'task:connect-good');
+  const appliedGood = await owner.request('/api/providers/connect', { method: 'POST', headers: goodHeaders, body: JSON.stringify({ providerId: 'openai', key: 'sk-valid', model: 'gpt-4o-mini' }) });
+  assert.equal(appliedGood.status, 200);
+  const goodEnvelope = Envelope.safeParse(await appliedGood.json());
+  assert.equal(goodEnvelope.success, true);
+  if (!goodEnvelope.success || !goodEnvelope.data.ok) return;
+  const goodResult = goodEnvelope.data.data as { status: string; message: string };
+  assert.equal(goodResult.status, 'connected');
+  assert.match(goodResult.message, /connected/);
+
+  // The list reflects the connection without ever leaking the key.
+  const listed = await owner.request('/api/providers');
+  const listedEnvelope = Envelope.safeParse(await listed.json());
+  assert.equal(listedEnvelope.success, true);
+  if (!listedEnvelope.success || !listedEnvelope.data.ok) return;
+  const payload = listedEnvelope.data.data as { providers: { id: string; status: string; configured: boolean }[] };
+  assert.ok(payload.providers.some(provider => provider.id === 'openai' && provider.status === 'connected'));
+  assert.ok(!JSON.stringify(payload).match(/sk-|api[_-]?key/i), 'the list must never leak key material');
+
+  // An approved exact connect to an unapproved host is admitted by the
+  // authority edge, then refused by the domain host gate (double approval).
+  const hostHeaders = await owner.approve('POST', '/api/providers/connect', { providerId: 'openai', key: 'k', baseUrl: 'https://evil-relay.example/v1' }, 'task:connect-host');
+  const hostRes = await owner.request('/api/providers/connect', { method: 'POST', headers: hostHeaders, body: JSON.stringify({ providerId: 'openai', key: 'k', baseUrl: 'https://evil-relay.example/v1' }) });
+  assert.equal(hostRes.status, 403, 'host gate refuses the unapproved relay host');
+  const hostEnvelope = Envelope.safeParse(await hostRes.json());
+  assert.equal(hostEnvelope.success, true);
+  if (!hostEnvelope.success || hostEnvelope.data.ok) return;
+  assert.equal(hostEnvelope.data.error.code, 'FORBIDDEN');
+  assert.match(hostEnvelope.data.error.message, /not approved/);
+
+  // Durable authorities: the audit journal never captures the raw secret.
+  const auditText = await fs.readFile(path.join(dir, '.aide', 'cipher-state.jsonl'), 'utf8');
+  assert.ok(!auditText.includes(sentinel), 'audit journal never stores the raw provider secret');
 });
 
-test('POST /api/providers/connect with an unapproved custom host is refused fail-closed', async () => {
-  const response = await owner.request('/api/providers/connect', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ providerId: 'openai', key: 'k', baseUrl: 'https://evil-relay.example/v1' })
+test('POST /api/providers/disconnect is a governed write and removes the connection', async () => {
+  const anonymous = await fetch(`${base}/api/providers/disconnect`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ providerId: 'openai' }), signal: AbortSignal.timeout(5000)
   });
-  assert.equal(response.status, 403, 'waived route stays fail-closed before any host evaluation');
-  const envelope = Envelope.safeParse(await response.json());
-  assert.equal(envelope.success, true);
-  if (!envelope.success || envelope.data.ok) return;
-  assert.equal(envelope.data.error.code, 'FORBIDDEN');
-});
+  assert.equal(anonymous.status, 403, 'anonymous disconnect rejected');
+  const unapproved = await owner.request('/api/providers/disconnect', { method: 'POST', body: JSON.stringify({ providerId: 'openai' }) });
+  assert.equal(unapproved.status, 409, 'paired without approval fails');
 
-test('POST /api/providers/connect with a valid key remains migration-waived (fail closed)', async () => {
-  const response = await owner.request('/api/providers/connect', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ providerId: 'anthropic', key: 'ant-valid' })
-  });
-  assert.equal(response.status, 403, 'waived route stays fail-closed until its own wave');
-  const envelope = Envelope.safeParse(await response.json());
-  assert.equal(envelope.success, true);
-  if (!envelope.success || envelope.data.ok) return;
-  assert.equal(envelope.data.error.code, 'FORBIDDEN');
+  const delHeaders = await owner.approve('POST', '/api/providers/disconnect', { providerId: 'openai' }, 'task:disconnect-openai');
+  const changedId = await owner.request('/api/providers/disconnect', { method: 'POST', headers: delHeaders, body: JSON.stringify({ providerId: 'anthropic' }) });
+  assert.equal(changedId.status, 409, 'a different provider cannot reuse the approval');
+  const applied = await owner.request('/api/providers/disconnect', { method: 'POST', headers: delHeaders, body: JSON.stringify({ providerId: 'openai' }) });
+  assert.equal(applied.status, 200);
+  const appEnvelope = Envelope.safeParse(await applied.json());
+  assert.equal(appEnvelope.success, true);
+  if (!appEnvelope.success || !appEnvelope.data.ok) return;
+  assert.deepEqual(appEnvelope.data.data, { ok: true });
+  const replay = await owner.request('/api/providers/disconnect', { method: 'POST', headers: delHeaders, body: JSON.stringify({ providerId: 'openai' }) });
+  assert.equal(replay.status, 409, 'consumed disconnect approval cannot replay');
+
+  const after = await owner.request('/api/providers');
+  const post = Envelope.safeParse(await after.json());
+  assert.equal(post.success, true);
+  if (!post.success || !post.data.ok) return;
+  const payload = post.data.data as { providers: { id: string; status: string }[] };
+  assert.ok(payload.providers.every(provider => provider.status === 'not_connected' || provider.id !== 'openai'), 'disconnect clears the provider status');
 });
 
 test('POST /api/providers/import authority matrix: digest binding, privacy, cap and partial truth', async () => {
