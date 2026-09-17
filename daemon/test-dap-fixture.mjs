@@ -150,9 +150,9 @@ try {
   assert.ok(fizz, 'nested items[2] must be Fizz (3 levels of variablesReference)');
   record('nested variables depth 3 (items[2] = Fizz)', true);
 
+  const nextWatermark = (manager.events.get(ID) || []).length;
   const next = await ask( { command: 'next', arguments: { threadId: stopThreadId } });
   assert.equal(next.success, true);
-  const nextWatermark = (manager.events.get(ID) || []).length;
   const stop2 = await waitEvent(manager, ID, e => e.event === 'stopped', { watermark: nextWatermark, timeoutMs: 30000, label: 'step stop' });
   assert.equal(stop2.body.reason, 'step', `step stop reason must be step (got ${stop2.body.reason})`);
   assert.equal(stop2.body.threadId, stopThreadId, 'threadId must stay stable across stops');
@@ -160,9 +160,9 @@ try {
   assert.equal(stack2.body.stackFrames[0].line, L1 + 1, `next must advance exactly one statement (got ${stack2.body.stackFrames[0].line})`);
   record('next step advanced to line ' + (L1 + 1), true);
 
+  const continueWatermark = (manager.events.get(ID) || []).length;
   const cont = await ask( { command: 'continue', arguments: { threadId: stopThreadId } });
   assert.equal(cont.success, true);
-  const continueWatermark = (manager.events.get(ID) || []).length;
   const stop3 = await waitEvent(manager, ID, e => e.event === 'stopped', { watermark: continueWatermark, timeoutMs: 30000, label: 'second breakpoint stop' });
   assert.equal(stop3.body.reason, 'breakpoint', `second stop reason must be breakpoint (got ${stop3.body.reason})`);
   assert.equal(stop3.body.threadId, stopThreadId, 'threadId must stay stable');
