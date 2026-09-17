@@ -26,7 +26,7 @@ function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['pro
   name.textContent = provider.name;
   const status = document.createElement('span');
   status.className = 'provider-status';
-  status.textContent = `${provider.model_id} · key ${provider.key_stored ? 'stored' : 'missing'}`;
+  status.textContent = provider.key_stored ? 'CONNECTED (key stored — run Test to verify)' : 'NOT CONFIGURED';
   const test = document.createElement('button');
   test.type = 'button';
   test.className = 'provider-action';
@@ -45,12 +45,12 @@ function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['pro
     api
       .byokTest(provider.id)
       .then(result => {
-        status.textContent = result.ok ? `reachable (${result.detail})` : `failed: ${result.detail}`;
+        status.textContent = result.ok ? `CONNECTED (${result.detail})` : `INVALID CREDENTIAL (${result.detail})`;
         opts.onToast(result.ok ? 'OK' : 'NOT_READY', result.detail);
       })
       .catch((error: unknown) => {
         const message = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'test failed';
-        status.textContent = message;
+        status.textContent = `UNAVAILABLE (${message})`;
         opts.onToast('INTERNAL', message);
       })
       .finally(() => {

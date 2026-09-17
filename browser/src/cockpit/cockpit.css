@@ -1717,6 +1717,24 @@ html, body {
   border-top: 1px solid var(--ck-line-soft);
 }
 
+.cockpit-settings-section-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--ck-cyan);
+}
+
+.cockpit-settings-subtitle {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--ck-text-dim);
+}
+
+.cockpit-settings-action {
+  margin-right: 8px;
+}
+
 .cockpit-settings-section > .providers-panel,
 .cockpit-settings-section > .byok-panel {
   margin-top: 8px;

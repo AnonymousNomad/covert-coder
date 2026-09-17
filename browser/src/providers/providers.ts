@@ -15,8 +15,16 @@ function statusClass(status: ProviderConnectionStatusT): string {
   return `provider-dot ${status}`;
 }
 
+const STATE_LABELS: Record<ProviderConnectionStatusT, string> = {
+  connected: 'CONNECTED',
+  invalid_key: 'INVALID CREDENTIAL',
+  not_connected: 'NOT CONFIGURED',
+  unreachable: 'UNAVAILABLE',
+  checking: 'CONNECTING'
+};
+
 function statusText(status: ProviderConnectionStatusT): string {
-  return status.replace(/_/g, ' ');
+  return STATE_LABELS[status];
 }
 
 function renderRow(list: HTMLElement, provider: ProviderInfoT, onAction: (row: HTMLElement) => void): void {

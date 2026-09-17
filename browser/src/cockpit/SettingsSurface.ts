@@ -44,6 +44,9 @@ export function createSettingsSurface(parent: HTMLElement, _store: Store<AppStat
   }
 
   const providersMount = el('section', 'cockpit-settings-section');
+  providersMount.appendChild(el('h3', 'cockpit-settings-section-title', 'SECURITY'));
+  providersMount.appendChild(el('h4', 'cockpit-settings-subtitle', 'SECRETS'));
+  providersMount.appendChild(el('p', 'panel-intro', 'Stored credentials are encrypted at rest by the daemon and are never re-displayed. ADD / REPLACE / REMOVE / TEST CONNECTION run through the same operator pairing owner that authorizes every other write; there is no separate credential store.'));
   const byokMount = el('section', 'cockpit-settings-section');
   root.append(providersMount, byokMount);
   parent.appendChild(root);
