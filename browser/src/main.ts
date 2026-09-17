@@ -20,7 +20,7 @@ import type { ModelStatusResponseT } from '../../common/contracts/models.ts';
 import type { ByokStatusResponseT } from '../../common/contracts/byok.ts';
 import type { ClosedLoopStatusT } from '../../common/contracts/closed-loop.ts';
 
-import { connectEvents } from './services/ws.ts';
+import { connectEvents, setSharedEvents } from './services/ws.ts';
 import { facadeWebSocketUrl } from './services/runtime-config.ts';
 import { initializeAuthority } from './services/authority.ts';
 
@@ -94,6 +94,7 @@ async function boot(): Promise<void> {
       shell.topbar.setDaemon({ label: connected ? 'ONLINE' : 'OFFLINE', reachable: connected });
     }
   });
+  setSharedEvents(events);
   const lspStates: Record<string, string> = {};
   events.subscribe('log', data => {
     const event = data as { level?: string; message?: string; path?: string };

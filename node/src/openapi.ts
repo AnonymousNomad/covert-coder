@@ -48,6 +48,7 @@ import { routeForEditorOptions } from './routes/editor-options.ts';
 import { routesForGit } from './routes/git.ts';
 import { routesForTasks } from './routes/tasks.ts';
 import { routesForTerminal } from './routes/terminal.ts';
+import { routesForTerminalSessions } from './routes/terminal-sessions.ts';
 import { routesForProblems } from './routes/problems.ts';
 import { routesForNotifications } from './routes/notifications.ts';
 import { NotificationService } from '../../node/src/services/notification-service.mjs';
@@ -122,6 +123,9 @@ export interface BuildRoutesOptions {
   dapManager?: DapManager;
   modelRuntime?: ModelRuntime;
   providerService?: ProviderService;
+  // Optional interactive terminal session service. When provided, the PTY
+  // routes are registered; when absent (tests/CLI), no PTY code path exists.
+  terminalSessions?: import('./services/terminal-sessions.ts').TerminalSessionService;
   agentChatFn?: (messages: Array<{ role: string; content: string }>) => Promise<string>;
   indexEmbedFn?: (texts: string[]) => Promise<number[][]>;
   // Opt-in index freshness watcher (server boot only). buildRoutes must stay
@@ -529,6 +533,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForSearchReplace(fsService),
     routeForPatchApply(fsService),
     ...routesForTerminal(fsService),
+    ...(options.terminalSessions ? routesForTerminalSessions(options.terminalSessions) : []),
     routeForSessionGet(new SessionStore(workspace)),
     routeForSessionPut(new SessionStore(workspace)),
     routeForModelStatus(modelRuntime),

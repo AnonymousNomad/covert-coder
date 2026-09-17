@@ -6,8 +6,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { fail, ok, type ErrorCode } from '../../common/errors.ts';
 import { Logger } from './services/logger.ts';
 import { ProcessManager } from './services/process-manager.ts';
-import { EventHub } from './events.ts';
+import { EventHub, type WsControlHandler } from './events.ts';
 import { buildRoutes, createLspManager, createDapManager, createModelRuntime } from './openapi.ts';
+import { TerminalSessionService } from './services/terminal-sessions.ts';
 import { createExecutionAuthority, AuthorityError, type ExecutionAuthority, type ActorHandle, type AuthorityOperation, type ExecutionHandle } from './services/execution-authority.mjs';
 import { createAuditTrail } from './services/audit-trail.mjs';
 import { httpOperationKind, type OperationInput } from '../../common/security/operation-policy.mjs';
@@ -60,6 +61,7 @@ export class ArchServer {
   readonly logFile: string;
   private readonly routes: Route[] = [];
   private readonly shutdownHooks: Array<() => Promise<void>> = [];
+  private controlHandler?: WsControlHandler;
   legacyDescribe?: (input: { method: string; path: string; task_id: string; body?: unknown }) => Promise<OperationInput>;
 
   constructor(workspace: string, logFile: string) {
@@ -74,6 +76,14 @@ export class ArchServer {
 
   addShutdownHook(hook: () => Promise<void>): this {
     this.shutdownHooks.push(hook);
+    return this;
+  }
+
+  // Inbound WebSocket control messages (e.g. terminal input) are routed here.
+  // The handler receives the server-derived identity of the authenticated
+  // socket and must fail closed when it is absent or does not match the owner.
+  registerControlHandler(handler: WsControlHandler): this {
+    this.controlHandler = handler;
     return this;
   }
 
@@ -96,8 +106,10 @@ export class ArchServer {
     });
     this.events.attach(server, (token, origin) => {
       const actor = this.authority.authenticate(token, origin);
-      return () => this.authority.assertActor(actor);
-    });
+      // Bind the server-derived actor to the socket so ownership-scoped
+      // control handlers (terminal input/stop) can verify the operator.
+      return { assert: () => this.authority.assertActor(actor), identity: { id: actor.id, kind: actor.kind } };
+    }, this.controlHandler);
     server.once('close', () => { this.events.close(); this.authority.control.close(); });
     await new Promise<void>((resolve, reject) => {
       server.once('error', reject);
@@ -340,7 +352,23 @@ export async function main(): Promise<void> {
   server.addShutdownHook(() => dapManager.stopAll());
   const modelRuntime = await createModelRuntime(repoRoot, workspace, { events: server.events, logger: server.logger });
   server.addShutdownHook(() => modelRuntime.stopAll());
-  const routes = await buildRoutes(workspace, version, { authority: server.authority, events: server.events, logger: server.logger, lspManager: manager, dapManager, modelRuntime, watchIndex: true });
+  // Real interactive terminals (DeepSeek #1 lane). Sessions are admitted only
+  // via approved terminal.session.start operations; the WS control channel
+  // verifies ownership against the authenticated actor on every message, and
+  // output is delivered only to the owner.
+  const terminalSessions = new TerminalSessionService({
+    defaultCwd: workspace,
+    logger: server.logger,
+    onEvent: (event, owner) => {
+      server.events.publish('terminal', event, identity => identity?.id === owner);
+    }
+  });
+  server.registerControlHandler((message, context) => terminalSessions.handleControl(message, context.identity));
+  server.addShutdownHook(async () => terminalSessions.stopAll());
+  const routes = await buildRoutes(workspace, version, {
+    authority: server.authority, events: server.events, logger: server.logger,
+    lspManager: manager, dapManager, modelRuntime, terminalSessions, watchIndex: true
+  });
   for (const route of routes) server.route(route);
   const listener = await server.listen(port);
   resolveReady(listener.address());

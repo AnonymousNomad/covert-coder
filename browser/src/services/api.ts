@@ -160,6 +160,18 @@ import {
   type HardwareRecommendResponseT
 } from '../../../common/contracts/hardware.ts';
 import { WorkflowState, type WorkflowStateT } from '../../../common/contracts/workflow.ts';
+import {
+  TerminalProviderListResponse,
+  type TerminalProviderListResponseT,
+  TerminalSessionListResponse,
+  type TerminalSessionListResponseT,
+  TerminalSessionOpenRequest,
+  type TerminalSessionOpenResponseT,
+  TerminalSessionOpenResponse,
+  TerminalSessionStopRequest,
+  type TerminalSessionStopResponseT,
+  TerminalSessionStopResponse
+} from '../../../common/contracts/terminal.ts';
 
 export const API_FORMAT_HEADER = 'X-AIDE-API-Format';
 export const API_FORMAT = 'envelope-v1';
@@ -455,5 +467,23 @@ export const api = {
     const body = WorkbenchUninstallRequest.safeParse({ id });
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid workbench uninstall request');
     return call('/api/workbenches/uninstall', { body: body.data, schema: WorkbenchUninstallResponse });
+  },
+  terminalProviders(): Promise<TerminalProviderListResponseT> {
+    return call('/api/terminal/providers', { schema: TerminalProviderListResponse });
+  },
+  terminalSessions(): Promise<TerminalSessionListResponseT> {
+    return call('/api/terminal/sessions', { schema: TerminalSessionListResponse });
+  },
+  terminalSessionOpen(request: { provider: string; shell: string | null; cwd?: string; cols: number; rows: number }): Promise<TerminalSessionOpenResponseT> {
+    const body = TerminalSessionOpenRequest.safeParse(JSON.parse(JSON.stringify(request)));
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid terminal session request');
+    // Execute-kind: the daemon rejects without X-AIDE-Operation, and apiFetch
+    // surfaces the ONE-TIME operator approval before the PTY can exist.
+    return call('/api/terminal/sessions', { method: 'POST', body: body.data, schema: TerminalSessionOpenResponse });
+  },
+  async terminalSessionStop(sessionId: string): Promise<TerminalSessionStopResponseT> {
+    const body = TerminalSessionStopRequest.safeParse({ sessionId });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid terminal stop request');
+    return call('/api/terminal/sessions/stop', { method: 'POST', body: body.data, schema: TerminalSessionStopResponse });
   }
 };

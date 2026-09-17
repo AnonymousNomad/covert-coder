@@ -4,6 +4,7 @@ import { authenticateEventSocket } from './authority.ts';
 export interface EventBus {
   subscribe(channel: string, handler: (data: unknown) => void): () => void;
   connected(): boolean;
+  send(data: unknown): void;
   dispose(): void;
 }
 
@@ -95,11 +96,17 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
     };
   }
 
+  function send(data: unknown): void {
+    if (socket === null || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify(data));
+  }
+
   open();
 
   return {
     subscribe,
     connected: () => connected,
+    send,
     dispose: () => {
       disposed = true;
       if (reconnectTimer !== null) clearTimeout(reconnectTimer);
@@ -108,4 +115,17 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
       handlers.clear();
     }
   };
+}
+
+// One authenticated event socket for the whole cockpit. The terminal panel
+// needs both the 'terminal' events AND the control channel on the same socket
+// (the daemon derives the actor from that authenticated connection).
+let sharedEvents: EventBus | null = null;
+
+export function setSharedEvents(bus: EventBus): void {
+  sharedEvents = bus;
+}
+
+export function getSharedEvents(): EventBus | null {
+  return sharedEvents;
 }

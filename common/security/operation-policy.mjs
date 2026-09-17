@@ -6,6 +6,7 @@ export const OPERATION_POLICY = Object.freeze({
   'git.read': 'read', 'git.mutate': 'write', 'git.push': 'external',
   'tasks.read': 'read', 'tasks.run': 'execute', 'tasks.stop': 'write',
   'terminal.read': 'read', 'terminal.run': 'execute',
+  'terminal.session.start': 'execute', 'terminal.session.stop': 'execute',
   'desktop.read': 'read', 'desktop.action': 'execute', 'desktop.panic': 'revoke',
   'desktop.grants': 'permission', 'agent.start': 'execute', 'agent.read': 'read',
   'agent.tool': 'execute', 'agent.decision': 'permission',
@@ -42,6 +43,16 @@ const HTTP_POLICY = new Map([
   // metadata (one declared owner per route).
   ['POST /api/tasks/stop', 'tasks.stop'],
   ['POST /api/terminal/run', 'terminal.run'],
+  // Interactive PTY sessions (real terminal lane): the create/stop operations
+  // are the authority-bearing actions — the approved operation admits the
+  // session; a long-lived PTY is service-owned activity inside that admitted,
+  // actor-bound context, never a parallel execution path. Reads are central
+  // reads. Kept as exact central kinds (no route-owned descriptors) so the
+  // authority accounting stays central and the waiver count is untouched.
+  ['GET /api/terminal/providers', 'terminal.read'],
+  ['GET /api/terminal/sessions', 'terminal.read'],
+  ['POST /api/terminal/sessions', 'terminal.session.start'],
+  ['POST /api/terminal/sessions/stop', 'terminal.session.stop'],
   ['GET /api/desktop/status', 'desktop.read'], ['POST /api/desktop/action', 'desktop.action'],
   ['POST /api/desktop/grants', 'desktop.grants'], ['POST /api/desktop/panic', 'desktop.panic'],
   ['POST /api/desktop/pending', 'capability.write'], ['GET /api/desktop/pending', 'desktop.read'],
