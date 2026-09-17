@@ -542,6 +542,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
       if (!byokService.getConsent()) return null;
       return secretStore.getKey('huggingface') ?? null;
     });
+  const chatContextProviders = {
+    resident: async () => renderResidentContext(await residentService.context()),
+    skills: (task: string) => skillProvider(task)
+  };
   const core: Route[] = [
     ...routesForAuthority(),
     makeHealthRoute(workspace, version),
@@ -566,8 +570,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForRoutes(modelRouter),
     routeForRoute(modelRouter),
     routeForFit(),
-    routeForChat(modelRouter, modelRuntime, workspace, indexService),
-    routeForChatStream(modelRouter),
+    routeForChat(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders }),
+    routeForChatStream(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders }),
     routeForChatHistory(chatStore),
     routeForChatHistorySave(chatStore, workspace),
     routeForProvidersList(providerService),

@@ -64,6 +64,9 @@ export const HarnessMeta = z
     context_hits: z.number().int().nonnegative().optional(),
     context_degraded: z.boolean().optional(),
     context_tokens: z.number().int().nonnegative().optional(),
+    memory_recall_hits: z.number().int().nonnegative().optional(),
+    memory_recall_tokens: z.number().int().nonnegative().optional(),
+    memory_recall_degraded: z.boolean().optional(),
     reason: z.string().optional()
   })
   .strict();
