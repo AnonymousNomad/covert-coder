@@ -1,4 +1,4 @@
-# AIDE Workflow Bundles - End-to-End Architecture Proposal (2026-08-29)
+# Covert Coder Workflow Bundles - End-to-End Architecture Proposal (2026-08-29)
 
 Author: cline/T4 (cline branch) | Status: PROPOSAL - research-grounded, ready for review
 
