@@ -5,6 +5,7 @@ import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { createProvidersPanel } from '../providers/providers.ts';
 import { createByokPanel } from '../byok/byok.ts';
+import { createConnectionsPanel } from '../connections/connections.ts';
 
 export interface SettingsSurfaceHandles {
   dispose(): void;
@@ -48,11 +49,16 @@ export function createSettingsSurface(parent: HTMLElement, _store: Store<AppStat
   providersMount.appendChild(el('h4', 'cockpit-settings-subtitle', 'SECRETS'));
   providersMount.appendChild(el('p', 'panel-intro', 'Stored credentials are encrypted at rest by the daemon and are never re-displayed. ADD / REPLACE / REMOVE / TEST CONNECTION run through the same operator pairing owner that authorizes every other write; there is no separate credential store.'));
   const byokMount = el('section', 'cockpit-settings-section');
-  root.append(providersMount, byokMount);
+  const connectionsMount = el('section', 'cockpit-settings-section');
+  connectionsMount.appendChild(el('h3', 'cockpit-settings-section-title', 'CONNECTIONS'));
+  connectionsMount.appendChild(el('h4', 'cockpit-settings-subtitle', 'UNIFIED PROVIDER VIEW'));
+  connectionsMount.appendChild(el('p', 'panel-intro', 'One canonical read over subscription runtimes, API-key providers, the local runtime, and catalog access. States are local evidence only: stored keys and installed CLIs are shown as configured, never as live connections.'));
+  root.append(providersMount, byokMount, connectionsMount);
   parent.appendChild(root);
 
   createProvidersPanel(providersMount, opts);
   createByokPanel(byokMount, { onToast: opts.onToast });
+  createConnectionsPanel(connectionsMount, { onToast: opts.onToast });
 
   return {
     dispose() {

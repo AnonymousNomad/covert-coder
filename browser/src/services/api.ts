@@ -109,6 +109,20 @@ import {
 } from '../../../common/contracts/byok.ts';
 import type { ByokStatusResponseT, ByokTestResponseT, ProviderSetRequestT, KeyPutRequestT, RoutingPutRequestT } from '../../../common/contracts/byok.ts';
 import {
+  ConnectionsViewResponse,
+  ConnectionsPreferencePutRequest,
+  ConnectionsTestRequest,
+  ConnectionsTestResponse,
+  HfTokenPutRequest,
+  HfTokenPutResponse,
+  HfTokenDeleteRequest,
+  HfTokenDeleteResponse,
+  ConnectionsAuthRequest,
+  ConnectionsAuthResponse,
+  type ConnectionsViewResponseT,
+  type RoutingPreferenceT
+} from '../../../common/contracts/connections.ts';
+import {
   ProviderListResponse,
   ProviderConnectRequest,
   ProviderConnectResponse,
@@ -418,6 +432,34 @@ export const api = {
     const body = ByokTestRequest.safeParse({ provider_id: providerId });
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid test request');
     return call('/api/byok/test', { method: 'POST', body: body.data, schema: ByokTestResponse });
+  },
+  connections(): Promise<ConnectionsViewResponseT> {
+    return call('/api/connections', { schema: ConnectionsViewResponse });
+  },
+  connectionsSetPreference(preference: RoutingPreferenceT): Promise<RoutingPreferenceT> {
+    const body = ConnectionsPreferencePutRequest.safeParse({ preference });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid routing preference');
+    return call('/api/connections/preference', { method: 'PUT', body: body.data, schema: ConnectionsViewResponse.pick({ preference: true }) }).then(result => result.preference);
+  },
+  connectionsTest(connectionId: string): Promise<z.infer<typeof ConnectionsTestResponse>> {
+    const body = ConnectionsTestRequest.safeParse({ connection_id: connectionId });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid connection id');
+    return call('/api/connections/test', { method: 'POST', body: body.data, schema: ConnectionsTestResponse });
+  },
+  async connectionsHfSet(apiKey: string): Promise<void> {
+    const body = HfTokenPutRequest.safeParse({ api_key: apiKey });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid token payload');
+    await call('/api/connections/hf-token', { method: 'PUT', body: body.data, schema: HfTokenPutResponse });
+  },
+  async connectionsHfDelete(): Promise<void> {
+    const body = HfTokenDeleteRequest.safeParse({});
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid token delete');
+    await call('/api/connections/hf-token', { method: 'DELETE', body: body.data, schema: HfTokenDeleteResponse });
+  },
+  connectionsSubscriptionAuth(subscriptionId: string): Promise<z.infer<typeof ConnectionsAuthResponse>> {
+    const body = ConnectionsAuthRequest.safeParse({ subscription_id: subscriptionId });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid subscription id');
+    return call('/api/connections/subscription/auth', { method: 'POST', body: body.data, schema: ConnectionsAuthResponse });
   },
   residentSummary(): Promise<ResidentSummaryResponseT> {
     return call('/api/resident/summary', { schema: ResidentSummaryResponse });

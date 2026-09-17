@@ -1736,8 +1736,130 @@ html, body {
 }
 
 .cockpit-settings-section > .providers-panel,
-.cockpit-settings-section > .byok-panel {
+.cockpit-settings-section > .byok-panel,
+.cockpit-settings-section > .connections-panel {
   margin-top: 8px;
+}
+
+.provider-dot.sign_in_required {
+  background: #e6a23c;
+}
+
+.provider-dot.unavailable {
+  background: #d0576e;
+}
+
+.provider-action.danger,
+.provider-confirm.danger {
+  background: #b3424e;
+}
+
+.connections-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+}
+
+.connections-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.connections-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+}
+
+.connections-consensus {
+  font-size: 11px;
+  color: var(--ck-cyan);
+  background: rgba(54, 167, 224, 0.12);
+  border: 1px solid rgba(54, 167, 224, 0.3);
+  border-radius: 10px;
+  padding: 1px 8px;
+  letter-spacing: 0.04em;
+}
+
+.connections-consensus.empty {
+  color: var(--ck-text-dim);
+}
+
+.connections-pref {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ck-text-dim);
+}
+
+.connections-pref-select {
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  border: 1px solid var(--ck-line);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.connections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conn-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--ck-line);
+  border-radius: 4px;
+  background: var(--ck-panel);
+}
+
+.conn-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conn-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ck-fg);
+}
+
+.conn-meta {
+  font-size: 11px;
+  color: var(--ck-text-dim);
+}
+
+.conn-badges {
+  font-size: 11px;
+  color: var(--ck-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.conn-badge {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ck-fg);
+  background: rgba(54, 167, 224, 0.14);
+  border-radius: 3px;
+  padding: 0 5px;
+}
+
+.conn-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 980px) {
