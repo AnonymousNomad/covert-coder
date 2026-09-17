@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-09T20:12:28.194Z",
-  "count": 274,
+  "generated_at": "2026-09-15T16:06:49.804Z",
+  "count": 292,
   "categories": [
     "academy",
     "aide-core",
@@ -618,6 +618,13 @@
       "description": "SOP for AIDE's per-task model recommendation engine — mapping Hugging Face GGUF models to task suitability (coding / planning-chat / utility) using Hub API metadata (pipeline_tag, library=gguf, num_parameters ranges), merging with on-device fit verdicts (M2) and measured benchmarks (llama-bench lane), producing the ranked \"recommended for YOUR machine + YOUR task\" lists in the hub UI. Use when building the recommender service, designing the task taxonomy, wiring hub starter grids, or debugging recommendation ranking.",
       "category": "aide-core",
       "path": "skills/packs/aide-model-task-recommender/SKILL.md"
+    },
+    {
+      "name": "aide-moe-aux-loss-stability",
+      "title": "aide-moe-aux-loss-stability",
+      "description": "",
+      "category": "aide-core",
+      "path": "skills/packs/aide-moe-aux-loss-stability/SKILL.md"
     },
     {
       "name": "aide-msvc-build-tools-setup",
@@ -1293,9 +1300,9 @@
     },
     {
       "name": "developer-way",
-      "title": "THE DEVELOPER'S WAY",
-      "description": "The revised universal credo applying at all times — build with purpose, one failure is a signal, protect the system, follow the Way but serve truth, make no claim without evidence, master your tools, leave evidence behind, close the loop, prove it. Supersedes prior credo versions. Use at session start, before every task, before claiming anything done, whenever behavior must be judged, and whenever evidence contradicts a procedure. The canonical developer discipline document.",
-      "category": "discipline",
+      "title": "developer-way",
+      "description": "THE DEVELOPER'S WAY — the permanent operating creed that applies at all times, to every action, every task, every decision. Use ALWAYS at session start, before ANY action, and before/after any write to AGENT_NOTES.md or any skill file. Overrides all other guidance when in conflict. This is the canonical developer discipline document — the only version that matters.",
+      "category": "general",
       "path": "skills/packs/developer-way/SKILL.md"
     },
     {
@@ -1320,6 +1327,97 @@
       "path": "skills/packs/edge-deployment-ci/SKILL.md"
     },
     {
+      "name": "ex-aiui-embedded-assistant-design",
+      "title": "ex-aiui-embedded-assistant-design",
+      "description": "AI-native interface design for embedded intelligence in web experiences. Integrates conversational AI, local intelligence, and agent capabilities as a natural interface layer rather than a bolted-on chatbot. Use when designing embedded AI assistants for websites, planning conversational interfaces that serve the experience, integrating local-first AI capabilities, designing AI-powered discovery or recommendation flows, building intelligence that enhances rather than interrupts the user journey, or planning human-AI interaction patterns for web experiences.",
+      "category": "general",
+      "path": "skills/packs/ex-aiui-embedded-assistant-design/SKILL.md"
+    },
+    {
+      "name": "ex-arch-immersive-landing-architecture",
+      "title": "ex-arch-immersive-landing-architecture",
+      "description": "Experience architecture for immersive web pages. Converts a discovery brief into information hierarchy, narrative sequence, section and scene design, attention flow, and mobile-first page architecture before implementation. Use when designing landing page structure, planning section ordering and narrative flow, architecting immersive single-page experiences, designing information hierarchy for cinematic pages, planning attention-driven section sequences, or structuring mobile-first page layouts with narrative purpose.",
+      "category": "general",
+      "path": "skills/packs/ex-arch-immersive-landing-architecture/SKILL.md"
+    },
+    {
+      "name": "ex-com-premium-storefront-architecture",
+      "title": "ex-com-premium-storefront-architecture",
+      "description": "Commerce experience architecture for premium and narrative-driven storefronts. Designs commerce experiences around product narrative, trust architecture, exploration patterns, and conversion flow rather than generic product grids. Use when architecting premium ecommerce experiences, designing product narrative flows, planning trust-building commerce patterns, structuring catalog exploration for discovery, designing checkout and cart experiences with narrative continuity, or building storefronts where browsing feels like an interactive story.",
+      "category": "general",
+      "path": "skills/packs/ex-com-premium-storefront-architecture/SKILL.md"
+    },
+    {
+      "name": "ex-del-revision-approval-workflow",
+      "title": "ex-del-revision-approval-workflow",
+      "description": "Client delivery workflow for immersive web experiences. Controls client revision cycles, approval gates, scope boundaries, and design integrity throughout the delivery process. Use when managing client feedback and revision cycles, defining approval gates and sign-off requirements, controlling scope creep during delivery, maintaining design integrity under client pressure, structuring delivery milestones and checkpoints, or managing the human relationship between design intent and client preferences.",
+      "category": "general",
+      "path": "skills/packs/ex-del-revision-approval-workflow/SKILL.md"
+    },
+    {
+      "name": "ex-dply-static-hosting-deploy",
+      "title": "ex-dply-static-hosting-deploy",
+      "description": "Deployment and hosting for verified static and edge-compatible immersive web experiences. Ships verified experiences reproducibly with build identity, deployment method verification, rollback strategy, and post-deployment validation. Use when deploying static or edge-compatible web experiences, configuring CDN and hosting strategies, planning build pipelines for immersive experiences, executing post-deployment verification, managing rollback strategies, or compiling deployment records with build identity and verification evidence.",
+      "category": "general",
+      "path": "skills/packs/ex-dply-static-hosting-deploy/SKILL.md"
+    },
+    {
+      "name": "ex-fnt-component-composition",
+      "title": "ex-fnt-component-composition",
+      "description": "Frontend implementation architecture for immersive web experiences. Translates approved experience blueprints and visual systems into maintainable component trees with explicit state ownership, client and server boundaries, asset strategy, and performance budgets. Use when designing component architecture for a web experience, defining state management boundaries, planning client and server responsibility splits, structuring asset loading strategies, setting performance budgets for rendering, or translating design systems into implementation architecture.",
+      "category": "general",
+      "path": "skills/packs/ex-fnt-component-composition/SKILL.md"
+    },
+    {
+      "name": "ex-int-motion-choreography",
+      "title": "ex-int-motion-choreography",
+      "description": "Interaction and motion design for immersive web experiences. Uses motion for hierarchy, spatial continuity, feedback, and narrative purpose rather than decoration. Defines scroll behavior, transitions, micro-interactions, reduced-motion alternatives, and performance constraints. Use when choreographing scroll-triggered animations, designing page transitions, planning micro-interactions with purpose, creating reduced-motion fallbacks, defining motion performance budgets, or using animation to reinforce narrative hierarchy and spatial continuity.",
+      "category": "general",
+      "path": "skills/packs/ex-int-motion-choreography/SKILL.md"
+    },
+    {
+      "name": "ex-qc-production-readiness-checklist",
+      "title": "ex-qc-production-readiness-checklist",
+      "description": "Independent production readiness verification for immersive web experiences. Provides the no-ship-blind release gate covering accessibility, responsive design, performance, browser compatibility, security, and unresolved blockers. Use when running production readiness checks before launch, auditing accessibility compliance for web experiences, verifying responsive design across breakpoints, validating performance against budgets, checking browser compatibility, assessing security and privacy status, or compiling release evidence for stakeholder sign-off.",
+      "category": "general",
+      "path": "skills/packs/ex-qc-production-readiness-checklist/SKILL.md"
+    },
+    {
+      "name": "ex-strat-client-brief-extraction",
+      "title": "ex-strat-client-brief-extraction",
+      "description": "Discovery and strategy for immersive web experiences and website projects. Starts every build by researching audience needs, defining scope, and producing a bounded discovery brief with explicit constraints and conversion objectives that must achieve the project goals before any design work begins. Use first when creating a discovery brief, conducting audience research, scoping goals and requirements, translating business goals into an experience strategy, extracting strategy from a client conversation, or when any other skill in the experience chain depends on what has been established in the discovery foundation.",
+      "category": "general",
+      "path": "skills/packs/ex-strat-client-brief-extraction/SKILL.md"
+    },
+    {
+      "name": "ex-vis-premium-aesthetic-language",
+      "title": "ex-vis-premium-aesthetic-language",
+      "description": "Visual design systems for immersive web experiences. Translates brand intent, audience context, and experience architecture into a deliberate visual system including aesthetic thesis, typography direction, palette logic, spacing and rhythm, material and lighting language, and component tone. Use when defining visual identity for a web experience, designing typography systems and scale, creating color palettes with mood logic, establishing spacing rhythm and proportional systems, designing material and lighting language for atmosphere, or translating brand personality into visual design tokens.",
+      "category": "general",
+      "path": "skills/packs/ex-vis-premium-aesthetic-language/SKILL.md"
+    },
+    {
+      "name": "failure-apply-patch-same-path-replacement",
+      "title": "failure-apply-patch-same-path-replacement",
+      "description": "Prevent apply_patch transaction failures when replacing an entire file. Use when a patch attempts both Delete File and Add File for the same path.",
+      "category": "general",
+      "path": "skills/packs/failure-apply-patch-same-path-replacement/SKILL.md"
+    },
+    {
+      "name": "failure-apply-patch-stale-context",
+      "title": "failure-apply-patch-stale-context",
+      "description": "Diagnose apply_patch expected-line failures caused by already-applied or changed context. Use before retrying a rejected patch hunk.",
+      "category": "general",
+      "path": "skills/packs/failure-apply-patch-stale-context/SKILL.md"
+    },
+    {
+      "name": "failure-battery-memory-pressure-504",
+      "title": "failure-battery-memory-pressure-504",
+      "description": "Diagnose 504 CHILD_FAILED/TIMEOUT failures inside the arch battery (tests/arch/*) on the 16GB dev box without touching code. Use whenever a full run-arch.mjs battery reports 504s on execFile-backed routes (git checkout/push, terminal, patch) AFTER model-ingest tests, while the same tests pass in isolation under 10s. Root cause is memory-pressure process-spawn stalls, NOT timeouts or git.",
+      "category": "general",
+      "path": "skills/packs/failure-battery-memory-pressure-504/SKILL.md"
+    },
+    {
       "name": "failure-ci-platform-parity",
       "title": "failure-ci-platform-parity",
       "description": "Diagnose cross-platform CI failures where Windows-local tests pass but Ubuntu or macOS architecture tests fail. Use when GitHub annotations identify OS-specific commands, filesystem error codes, or environment-dependent executable probes.",
@@ -1334,11 +1432,25 @@
       "path": "skills/packs/failure-conventional-commit-message/SKILL.md"
     },
     {
+      "name": "failure-desktop-generated-staging-authority",
+      "title": "failure-desktop-generated-staging-authority",
+      "description": "Diagnose desktop packaging paths where an ignored staged artifact exists locally but has no tracked source or generator. Use when desktop/resources or desktop/frontend passes locally yet cannot be reproduced from a clean checkout.",
+      "category": "general",
+      "path": "skills/packs/failure-desktop-generated-staging-authority/SKILL.md"
+    },
+    {
       "name": "failure-desktop-runtime-env-name",
       "title": "failure-desktop-runtime-env-name",
       "description": "Diagnose desktop staging failures caused by confusing the engine-source variable with model-runtime variables, or by assuming an AIDE_LLAMA_SERVER_BINARY override exists. Use whenever desktop/prepare.mjs skips engine staging, when a staged stack reports a missing llama-server runtime, or when a skill claims AIDE_REQUIRE_MODEL_RUNTIME or AIDE_LLAMA_SERVER_BINARY drive staging.",
       "category": "general",
       "path": "skills/packs/failure-desktop-runtime-env-name/SKILL.md"
+    },
+    {
+      "name": "failure-desktop-staged-smoke-obsolete-route",
+      "title": "failure-desktop-staged-smoke-obsolete-route",
+      "description": "Repair packaged-stack smoke failures caused by probing a facade prefix that has no canonical route. Use when /api/models returns 404 while /api/models/status is the registered contract.",
+      "category": "general",
+      "path": "skills/packs/failure-desktop-staged-smoke-obsolete-route/SKILL.md"
     },
     {
       "name": "failure-desktop-staged-stack-exit",
@@ -1383,6 +1495,13 @@
       "path": "skills/packs/failure-npm-lru-cache/SKILL.md"
     },
     {
+      "name": "failure-playwright-managed-browser-absent",
+      "title": "failure-playwright-managed-browser-absent",
+      "description": "Recover Playwright acceptance when its managed Chromium executable is absent but a local Edge or Chrome channel is installed. Use on browserType.launch executable-does-not-exist errors without downloading software.",
+      "category": "general",
+      "path": "skills/packs/failure-playwright-managed-browser-absent/SKILL.md"
+    },
+    {
       "name": "failure-powershell-foreach-pipeline",
       "title": "failure-powershell-foreach-pipeline",
       "description": "Prevent PowerShell parser failures when checking a list with foreach and piping its output. Use whenever a verification command reports an empty pipe element around a foreach statement.",
@@ -1402,6 +1521,13 @@
       "description": "Fix strict TypeScript TS7016 failures for project JavaScript modules without weakening compiler settings. Use whenever a .ts file imports a local .mjs module and tsc reports an implicit-any declaration error.",
       "category": "general",
       "path": "skills/packs/failure-typescript-mjs-declaration/SKILL.md"
+    },
+    {
+      "name": "failure-vite-entry-relative-url-assertion",
+      "title": "failure-vite-entry-relative-url-assertion",
+      "description": "Prevent false Vite launch-test failures caused by comparing relative and root-relative HTML entry URLs as raw strings. Use when a dev index serves ./src/main.ts but the test expects /src/main.ts.",
+      "category": "general",
+      "path": "skills/packs/failure-vite-entry-relative-url-assertion/SKILL.md"
     },
     {
       "name": "felon-master",
