@@ -25,12 +25,37 @@ export class WorkspaceService {
     return target;
   }
 
+  private async resolveReal(relativePath: string): Promise<string> {
+    const lexical = this.resolve(relativePath);
+    let cursor = lexical;
+    const missing: string[] = [];
+    let existingReal: string;
+    while (true) {
+      try {
+        existingReal = await fs.realpath(cursor);
+        break;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        const parent = path.dirname(cursor);
+        if (parent === cursor) throw error;
+        missing.unshift(path.basename(cursor));
+        cursor = parent;
+      }
+    }
+    const rootReal = await fs.realpath(this.root);
+    const target = path.join(existingReal, ...missing);
+    if (target !== rootReal && !target.startsWith(`${rootReal}${path.sep}`)) {
+      throw new RouteError('FORBIDDEN', 'path resolves outside workspace');
+    }
+    return target;
+  }
+
   async read(relativePath: string): Promise<string> {
-    return fs.readFile(this.resolve(relativePath), 'utf8');
+    return fs.readFile(await this.resolveReal(relativePath), 'utf8');
   }
 
   async stat(relativePath: string): Promise<{ size: number } | null> {
-    const target = this.resolve(relativePath);
+    const target = await this.resolveReal(relativePath);
     try {
       const stat = await fs.stat(target);
       return { size: stat.size };
@@ -41,7 +66,7 @@ export class WorkspaceService {
 
   async write(relativePath: string, content: string, approved: boolean): Promise<{ path: string; bytes: number }> {
     if (approved !== true) throw new RouteError('FORBIDDEN', 'explicit approval required');
-    const target = this.resolve(relativePath);
+    const target = await this.resolveReal(relativePath);
     await fs.mkdir(path.dirname(target), { recursive: true });
     const temporary = `${target}.aide-tmp-${process.pid}`;
     await fs.writeFile(temporary, content, { mode: 0o600 });
@@ -83,6 +108,11 @@ export class WorkspaceService {
       for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
         if (entry.name.startsWith('.') || TREE_EXCLUDES.has(entry.name)) continue;
         const relative = path.relative(this.root, path.join(directory, entry.name)).split(path.sep).join('/');
+        try {
+          await this.resolveReal(relative);
+        } catch {
+          continue;
+        }
         if (entry.isDirectory()) {
           nodes.push({
             name: entry.name,

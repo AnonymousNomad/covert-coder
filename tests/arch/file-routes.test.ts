@@ -129,6 +129,38 @@ test('file write round-trips and rejects escapes', async () => {
   assert.equal(badEnvelope.data.error.code, 'FORBIDDEN');
 });
 
+test('workspace realpath containment rejects linked escapes and preserves internal links', async () => {
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-fs-outside-'));
+  const service = new WorkspaceService(dir);
+  const outsideFile = path.join(outside, 'secret.txt');
+  const outsideDir = path.join(outside, 'nested');
+  await fs.mkdir(outsideDir);
+  await fs.writeFile(outsideFile, 'outside-secret', 'utf8');
+  const escapeFile = path.join(dir, 'linked-secret.txt');
+  const escapeDir = path.join(dir, 'linked-dir');
+  const internalTarget = path.join(dir, 'internal-target.txt');
+  const internalLink = path.join(dir, 'internal-link.txt');
+  try {
+    try {
+      await fs.symlink(outsideFile, escapeFile, 'file');
+      await fs.symlink(outsideDir, escapeDir, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (error) {
+      if (!['EPERM', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+      return;
+    }
+    await assert.rejects(() => service.read('linked-secret.txt'), /outside workspace/);
+    await assert.rejects(() => service.write('linked-secret.txt', 'overwrite', true), /outside workspace/);
+    await assert.rejects(() => service.read('linked-dir/secret.txt'), /outside workspace/);
+    assert.equal(await fs.readFile(outsideFile, 'utf8'), 'outside-secret');
+
+    await fs.writeFile(internalTarget, 'internal-value', 'utf8');
+    await fs.symlink(internalTarget, internalLink, 'file');
+    assert.equal(await service.read('internal-link.txt'), 'internal-value');
+  } finally {
+    await fs.rm(outside, { recursive: true, force: true });
+  }
+});
+
 test('file write rejects a body with unknown keys (strict)', async () => {
   // Strict body validation runs at the transport boundary before any authority
   // dispatch, so this exact operation is rejected without an approval.
