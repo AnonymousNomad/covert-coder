@@ -1,4 +1,4 @@
-# AIDE DNA-Helix Memory - Gap Analysis (Step E of the Memory Sprint)
+# Covert Coder DNA-Helix Memory - Gap Analysis (Step E of the Memory Sprint)
 
 **Status:** Investigation complete. The helix already exists as **two half-built strands.** The gap is the missing third (the join + the retention policy) and the missing skill that documents the architecture.
 

@@ -1,4 +1,4 @@
-# AIDE Training Room
+# Covert Coder Training Room
 
 The Training Room is a visual control room for reproducible local model work. It is designed to make training accessible without allowing a model or UI prompt to execute arbitrary commands.
 

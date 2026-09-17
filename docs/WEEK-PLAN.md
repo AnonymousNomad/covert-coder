@@ -1,4 +1,4 @@
-# AIDE Week Plan — Production Push
+# Covert Coder Week Plan — Production Push
 
 ## Day-by-Day Milestones (each day = build → verify → push)
 
