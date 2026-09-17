@@ -88,6 +88,8 @@ import { routesForHandoff } from './routes/handoff.ts';
 import { createSecretStore } from '../../node/src/services/secret-store.mjs';
 import { createByokService } from '../../node/src/services/byok-service.mjs';
 import { routesForByok } from './routes/byok.ts';
+import { createProviderConnectionsService } from '../../node/src/services/provider-connections.mjs';
+import { routesForConnections } from './routes/connections.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
 import { ExerciseEngine } from '../../academy/exercise-engine.mjs';
@@ -133,6 +135,11 @@ export interface BuildRoutesOptions {
   // dir on Windows and breaks mkdtemp cleanup in test after() hooks.
   watchIndex?: boolean;
   byokSecretStore?: { setKey(id: string, key: string): void; getKey(id: string): string | null; deleteKey(id: string): boolean; listProviderIds(): string[] };
+  // Unified provider connections service override (tests inject hermetic stubs).
+  connectionsService?: unknown;
+  // Optional Authorization bearer source for modelhub egress (e.g. a vaulted
+  // Hugging Face access token). Failures degrade to anonymous access.
+  modelHubAuthorization?: () => Promise<string | null>;
   // Opt-in online doctrine: server names listed here are permitted egress
   // for online (offline: false) MCP servers. Default = none. The WorkbenchManager
   // uses this as the consent signal when setTrust(server, true) is called.
@@ -522,6 +529,19 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const handoffService = createHandoffService({ workspace, agentLoop });
   const secretStore = options.byokSecretStore ?? createSecretStore({ secretsPath: path.join(os.homedir(), '.aide', 'secrets.json') });
   const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch, onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
+  const connectionsService = options.connectionsService ?? createProviderConnectionsService({
+    workspace,
+    providerService,
+    byokService,
+    modelRuntime,
+    secretStore
+  });
+  const huggingfaceAuthorization =
+    options.modelHubAuthorization ??
+    (async () => {
+      if (!byokService.getConsent()) return null;
+      return secretStore.getKey('huggingface') ?? null;
+    });
   const core: Route[] = [
     ...routesForAuthority(),
     makeHealthRoute(workspace, version),
@@ -589,7 +609,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForRgSearch(rgService),
     routeForEditorOptions(settingsService),
     ...routesForGit(workspace),
-    ...await buildNotificationWiredRoutes(workspace, options),
+    ...await buildNotificationWiredRoutes(workspace, { ...options, modelHubAuthorization: huggingfaceAuthorization }),
     ...routesForProblems(workspace),
     ...routesForOrch(createOrchService({ workspace: workspace, runtime: modelRuntime })),
     ...routesForMemory(memoryService),
@@ -683,6 +703,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForAgent(agentLoop, {
       resolveProviderChatFn: role => {
         if (!byokService.getConsent()) throw Object.assign(new Error('BYOK egress consent is disabled'), { code: 'FORBIDDEN' });
+        // Unified routing preference (Unified Provider Connections): 'local-only'
+        // pins every role to the local runtime regardless of byok routing.
+        const preference = (connectionsService as { getPreference(): string }).getPreference();
+        if (preference === 'local-only') return null;
         return byokService.resolveChatFn(role);
       },
       // Expert advisory wire-in (aide-micro-expert-collective skill, audit
@@ -741,6 +765,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForIndex(indexService),
     ...routesForHandoff(handoffService),
     ...routesForByok(byokService, workspace),
+    ...routesForConnections(connectionsService as any, workspace),
     routeForLspStatus(manager),
     routeForLspStart(manager),
     routeForLspOpen(manager),
@@ -782,7 +807,8 @@ async function buildNotificationWiredRoutes(workspace: string, options: BuildRou
   const hub = createHubService({
     workspace,
     modelsDir: path.join(workspace, 'models'),
-    onEvent: event => options.events?.publish('modelhub', event)
+    onEvent: event => options.events?.publish('modelhub', event),
+    ...(options.modelHubAuthorization ? { authorization: options.modelHubAuthorization } : {})
   });
   return [
     ...routesForNotifications(notifications),

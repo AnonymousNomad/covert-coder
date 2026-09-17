@@ -4554,6 +4554,463 @@
         }
       }
     },
+    "/api/connections": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "consensus": {
+                      "type": "string",
+                      "maxLength": 160
+                    },
+                    "routed_roles": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "default": "local",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "local"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "provider_id": {
+                                  "type": "string"
+                                },
+                                "model_id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "provider_id",
+                                "model_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "act": {
+                          "default": "local",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "local"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "provider_id": {
+                                  "type": "string"
+                                },
+                                "model_id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "provider_id",
+                                "model_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "utility": {
+                          "default": "local",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "local"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "provider_id": {
+                                  "type": "string"
+                                },
+                                "model_id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "provider_id",
+                                "model_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "act",
+                        "utility"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "preference": {
+                      "type": "string",
+                      "enum": [
+                        "local-first",
+                        "local-only",
+                        "api-keys-with-approval"
+                      ]
+                    },
+                    "connections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "provider_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "subscription",
+                              "api-key",
+                              "local-runtime",
+                              "catalog-token"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "not_configured",
+                              "sign_in_required",
+                              "connected",
+                              "invalid_key",
+                              "unreachable",
+                              "unavailable"
+                            ]
+                          },
+                          "detail": {
+                            "type": "string",
+                            "maxLength": 300
+                          },
+                          "capabilities": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "chat",
+                                "act",
+                                "utility",
+                                "catalog"
+                              ]
+                            }
+                          },
+                          "routing_available": {
+                            "type": "boolean"
+                          },
+                          "account_label": {
+                            "type": "string",
+                            "maxLength": 120
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "provider_id",
+                          "name",
+                          "kind",
+                          "status",
+                          "detail",
+                          "capabilities",
+                          "routing_available",
+                          "account_label"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "consensus",
+                    "routed_roles",
+                    "preference",
+                    "connections"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/hf-token": {
+      "put": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "stored": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "stored"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "api_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "api_key"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/preference": {
+      "put": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preference": {
+                      "type": "string",
+                      "enum": [
+                        "local-first",
+                        "local-only",
+                        "api-keys-with-approval"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "preference"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "preference": {
+                    "type": "string",
+                    "enum": [
+                      "local-first",
+                      "local-only",
+                      "api-keys-with-approval"
+                    ]
+                  }
+                },
+                "required": [
+                  "preference"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/subscription/auth": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "command": {
+                      "type": "string",
+                      "maxLength": 300
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "not_configured",
+                        "sign_in_required",
+                        "connected",
+                        "invalid_key",
+                        "unreachable",
+                        "unavailable"
+                      ]
+                    },
+                    "detail": {
+                      "type": "string",
+                      "maxLength": 300
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "command",
+                    "status",
+                    "detail"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subscription_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "subscription_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/test": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "detail": {
+                      "type": "string",
+                      "maxLength": 300
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "detail"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "connection_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "connection_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/dap/breakpoints": {
       "post": {
         "responses": {

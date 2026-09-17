@@ -4,6 +4,7 @@
     "/api/agent": "ts",
     "/api/audit": "ts",
     "/api/closed-loop": "ts",
+    "/api/connections": "ts",
     "/api/byok": "ts",
     "/api/chat": "ts",
     "/api/commands": "ts",

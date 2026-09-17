@@ -68,7 +68,23 @@ function safeFilename(filename) {
   }
 }
 
-export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.fetch, onEvent }) {
+export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.fetch, onEvent, authorization }) {
+
+  // Authorization is optional and operator-owned: when provided it yields a
+  // bearer token (e.g. the vaulted Hugging Face access token) attached to HF
+  // egress. Failures degrade to anonymous — the token is never logged.
+  async function hubHeaders(extra = {}) {
+    const headers = { 'user-agent': USER_AGENT, ...extra };
+    if (typeof authorization === 'function') {
+      try {
+        const token = await authorization();
+        if (typeof token === 'string' && token.length > 0) headers.authorization = `Bearer ${token}`;
+      } catch {
+        // authorization provider failures degrade to anonymous access
+      }
+    }
+    return headers;
+  }
   const modelsDirLexical = path.resolve(modelsDir);
   const workspaceLexical = path.resolve(workspace);
 
@@ -160,7 +176,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
   async function search(q, sort = 'downloads', limit = 20) {
     const url = `${HF_API}?search=${encodeURIComponent(q)}&filter=gguf&sort=${sort}&direction=-1&limit=${limit}`;
     logEgress(workspace, { action: 'modelhub.search', url });
-    const response = await fetchImpl(url, { headers: { 'user-agent': USER_AGENT } });
+    const response = await fetchImpl(url, { headers: await hubHeaders() });
     if (!response.ok) {
       const error = new Error(`huggingface search failed with ${response.status}`);
       error.code = 'UPSTREAM';
@@ -180,7 +196,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
   async function listRepoFiles(repoId) {
     const url = `${HF_API}/${repoId}?blobs=true`;
     logEgress(workspace, { action: 'modelhub.files', url });
-    const response = await fetchImpl(url, { headers: { 'user-agent': USER_AGENT } });
+    const response = await fetchImpl(url, { headers: await hubHeaders() });
     if (!response.ok) {
       const error = new Error(`huggingface repo lookup failed with ${response.status}`);
       error.code = 'UPSTREAM';
@@ -258,8 +274,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       const { modelsReal } = await canonicalModelsRoot();
       await ensureContainedParent(modelsReal, partPath, 'partial download file');
       const resumeFrom = await assertSafePartial(partPath);
-      const headers = { 'user-agent': USER_AGENT };
-      if (resumeFrom > 0) headers.range = `bytes=${resumeFrom}-`;
+      const headers = await hubHeaders(resumeFrom > 0 ? { range: `bytes=${resumeFrom}-` } : {});
       const response = await fetchImpl(finalUrl, { headers });
       let effectiveResume = resumeFrom;
       if (response.status === 200 && effectiveResume > 0) effectiveResume = 0;

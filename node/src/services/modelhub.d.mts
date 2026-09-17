@@ -37,6 +37,7 @@ export declare function createHubService(options: {
   modelsDir: string;
   fetchImpl?: typeof fetch;
   onEvent?: (event: HubEvent) => void;
+  authorization?: () => Promise<string | null>;
 }): {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<HubSearchResult>;
