@@ -14,13 +14,17 @@ pipeline_tag: text-generation
 
 # Covert Coder
 
-Your models. Your machine. Your workflow.
-Local by default. Connected by choice.
 Vibe at the surface. Engineering underneath.
 
-**Sovereign Development Environment · AIDE Sovereign Workbench lineage**
+A sovereign AI development workbench that owns the agent lifecycle — model,
+context, memory, execution, verification, replay, and improvement — on
+hardware the operator controls.
 
-Covert Coder is the product direction for AIDE Sovereign Workbench: an open-source, local-first development environment for engineers who want an editor, models, Git, debugging, and verification under their control.
+Your models. Your machine. Your workflow.
+Local by default. Connected by choice.
+
+Covert Coder is the public product identity for this repository. AIDE Sovereign
+Workbench is historical lineage, not the product name.
 
 > **Status:** pre-production engineering release. Capability labels below describe tracked source and documented routes; uncommitted work is not release evidence.
 
@@ -30,7 +34,12 @@ Covert Coder is the product direction for AIDE Sovereign Workbench: an open-sour
 
 ## What it is
 
-AIDE provides a governed development loop around the project and its evidence. Resident proposes context and actions; the operator reviews plans and diffs; typed services expose workspace, model, Git, terminal, language, debugging, and verification capabilities. Local execution is the default. Connected providers and model downloads are explicit network choices, not implied by installation.
+Covert Coder provides a governed development loop around the project and its
+evidence. Resident proposes context and actions; the operator reviews plans
+and diffs; typed services expose workspace, model, Git, terminal, language,
+debugging, and verification capabilities. Local execution is the default.
+Connected providers and model downloads are explicit network choices, not
+implied by installation.
 
 **Vibe at the surface. Engineering underneath.**
 
@@ -48,7 +57,9 @@ AIDE provides a governed development loop around the project and its evidence. R
 | Browser workbench, editor, workspace, search, chat | Implemented | `browser/src`, typed services under `node/src/routes/` |
 | Git, terminal, tasks, TypeScript LSP, Python DAP | Implemented | `git`, `terminal`, `tasks`, `lsp`, and `dap` route families |
 | Resident context and decisions | Experimental | `/api/resident`; state is advisory and does not grant execution authority |
-| Local models, provider routing, and BYOK | Implemented / opt-in | `/api/models`, `/api/providers`, `/api/byok`; credentials remain daemon-side |
+| Local models and provider routing | Available / hardware-dependent | `/api/models`, `/api/providers`; credentials remain daemon-side |
+| BYOK and official provider runtime | Partial / opt-in | `/api/byok`; provider write authority remains phase-gated |
+| Hugging Face model integration | Partial / opt-in | Search/import paths exist; downloads remain explicit network operations |
 | Memory / Helix | Experimental | `/api/memory`; current public claims are limited to the verified subset |
 | Veritas and evidence gates | Implemented as tooling | `harness/`, `docs/VERITAS_HARNESS.md`; verification is not an execution permission |
 | Plugins and workbench bundles | Experimental | `/api/plugins`, `/api/workbenches`; trust and capability boundaries remain explicit |
@@ -59,6 +70,44 @@ AIDE provides a governed development loop around the project and its evidence. R
 Status labels are deliberately conservative. A route, model file, or visual placeholder is not by itself proof of readiness, authority, ownership, or successful runtime behavior.
 
 H2 process/tool ownership remains architecture-gated and is not production-promoted. Historical release assets and tags retain their AIDE identity; this documentation does not certify them against the current development branch.
+
+## Governed product loop
+
+The intended production topology is:
+
+```text
+USER
+  → RESIDENT ASSISTANT
+  → CONTEXT CONTROL ENGINE
+  → WORKFLOW ENGINE + SKILL INTELLIGENCE
+  → ORCHESTRATOR
+  → EXECUTION AUTHORITY
+  → HARNESS
+  → WORKER MODELS / TOOLS
+  → VERITAS
+  → GHOST CODE + MEMORY SPINE
+  → RESIDENT
+  → USER
+```
+
+The current implementation exposes these surfaces at different maturity
+levels:
+
+| Surface | Status | Boundary |
+| --- | --- | --- |
+| Resident assistant | Experimental | Advisory context and decisions; it does not grant execution authority |
+| Context Control | Partial | Canonical chat composition selects bounded context and memory; alternate surfaces remain phase-gated |
+| Workflow engine + Skill Intelligence | Experimental | Workflows and skill metadata are present; capability promotion remains governed |
+| Orchestrator | Available | Routes tasks and coordinates model/tool work through typed services |
+| Execution Authority | Available | Approval and authority routes mediate writes, terminal work, and other privileged actions |
+| Harness + Veritas | Available as tooling | Verification and evidence gates do not become execution permission |
+| Ghost Code + provenance | Partial | Replay/evidence surfaces exist; provenance claims remain bounded by their recorded evidence |
+| Memory Spine / Helix | Experimental | Scoped persistence and retrieval are present; retention and product promotion remain phase-gated |
+| Projects + Monaco editor | Available | Browser workbench, project/workspace services, and Monaco-backed editing are in the current tree |
+| Governed terminal | Available | Commands pass through typed routes and authority checks |
+
+No worker model receives raw authority, raw memory, or raw context. Everything
+is mediated through the governed context and execution boundaries above.
 
 ## Architecture
 
