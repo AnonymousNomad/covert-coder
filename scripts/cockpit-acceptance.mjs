@@ -292,8 +292,11 @@ try {
   assert.match(telemetryText, /CPU[\s\S]*UNAVAILABLE/, 'CPU usage must be explicitly unavailable');
   assert.match(telemetryText, /VRAM[\s\S]*UNAVAILABLE/, 'unsupported VRAM must be explicitly unavailable');
   assert.match(telemetryText, /DISK[\s\S]*UNAVAILABLE/, 'disk usage must be explicitly unavailable');
-  assert.equal(await page.locator('.cockpit-resident-action[disabled]').count(), 8, 'Resident quick actions must not pretend to execute');
-  assert.equal(await page.locator('.cockpit-resident-input[disabled]').count(), 1, 'Resident composer must be visibly unavailable');
+  assert.equal(await page.locator('.cockpit-resident-action').count(), 8, 'Resident quick-action surface is incomplete');
+  assert.equal(await page.locator('.cockpit-resident-action[disabled]').count(), 0, 'governed Resident quick actions must be usable');
+  assert.equal(await page.locator('.cockpit-resident-action[data-maturity="GOVERNED"]').count(), 8, 'Resident quick actions must identify their governed path');
+  assert.equal(await page.locator('.cockpit-resident-input[disabled]').count(), 0, 'governed Resident composer must be usable');
+  assert.match(await page.locator('.cockpit-resident-composer').innerText(), /GOVERNED RESIDENT COMPOSER[\s\S]*operator approval/i, 'Resident composer must disclose its approval boundary');
   assert.match(await page.locator('.cockpit-lineup-roles').innerText(), /Coder[\s\S]*UNASSIGNED/, 'unassigned role slots must remain truthful');
   await page.waitForFunction(() => Array.from(document.querySelectorAll('.wf-stage-name')).some(node => node.textContent === 'BUILD'));
   const buildStage = page.locator('.wf-stage').filter({ has: page.locator('.wf-stage-name', { hasText: 'BUILD' }) });

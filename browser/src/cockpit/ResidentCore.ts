@@ -6,9 +6,18 @@
 
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
-import { api } from '../services/api.ts';
+import { api, call } from '../services/api.ts';
 import { createChatPanel } from '../chat/chat.ts';
 import { createOperatorIdentity, type OperatorIdentityHandles, type OperatorPresenceState } from './OperatorIdentity.ts';
+import {
+  AgentDecisionRequest,
+  AgentDecisionResponse,
+  AgentStartRequest,
+  AgentStartResponse,
+  AgentStatusQuery,
+  AgentStatusResponse,
+  type AgentStatusResponseT
+} from '../../../common/contracts/agent.ts';
 import type {
   ResidentSummaryResponseT,
   ResidentContextT,
@@ -107,26 +116,132 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   root.appendChild(quickActions);
 
   const composer = el('form', 'cockpit-resident-composer');
-  composer.setAttribute('aria-label', 'Resident composer unavailable');
-  composer.appendChild(el('div', 'cockpit-resident-composer-note', 'Agent routes exist, but the Resident cockpit does not yet possess a lawful execution/composer integration.'));
+  composer.setAttribute('aria-label', 'Resident governed composer');
+  composer.appendChild(el('div', 'cockpit-resident-composer-note', 'GOVERNED RESIDENT COMPOSER · requests enter the existing AgentLoop and remain subject to operator approval.'));
   const input = document.createElement('textarea');
   input.className = 'cockpit-resident-input';
-  input.placeholder = 'Resident composer unavailable in this phase.';
+  input.placeholder = 'Describe a task for the governed Resident workflow…';
   input.rows = 2;
-  input.disabled = true;
   composer.appendChild(input);
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
   sendBtn.className = 'cockpit-resident-send';
-  sendBtn.textContent = 'COMPOSER UNAVAILABLE';
-  sendBtn.disabled = true;
+  sendBtn.textContent = 'START GOVERNED TASK';
   composer.appendChild(sendBtn);
+  const agentStatusMount = el('div', 'cockpit-resident-composer-status', 'No governed Resident task is running.');
+  composer.appendChild(agentStatusMount);
   root.appendChild(composer);
 
   parent.appendChild(root);
   createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
 
   let alive = true;
+  let activeSessionId: string | null = null;
+  let activeStatus: AgentStatusResponseT | null = null;
+  let pollTimer: number | null = null;
+
+  function stopAgentPolling(): void {
+    if (pollTimer !== null) window.clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+
+  function paintAgentStatus(status: AgentStatusResponseT | null, message?: string): void {
+    agentStatusMount.innerHTML = '';
+    if (message !== undefined) {
+      agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', message));
+      return;
+    }
+    if (status === null) {
+      agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', 'No governed Resident task is running.'));
+      return;
+    }
+    agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `SESSION ${status.session_id} · ${status.state.toUpperCase()} · ${status.mode.toUpperCase()}`));
+    if (status.error !== null) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `Agent error · ${status.error}`));
+    if (status.pending_approval !== null) {
+      const approval = status.pending_approval;
+      agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `OPERATOR DECISION REQUIRED · ${approval.tool}`));
+      const actions = el('div', 'cockpit-resident-actions');
+      for (const decision of ['approve', 'reject'] as const) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cockpit-resident-action';
+        button.textContent = decision === 'approve' ? 'APPROVE ONCE' : 'REJECT';
+        button.addEventListener('click', () => { void decideAgent(approval.approval_id, decision); });
+        actions.appendChild(button);
+      }
+      agentStatusMount.appendChild(actions);
+    }
+    if (status.verification !== undefined) {
+      agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `VERIFICATION · ${status.verification.state.toUpperCase()} · EXECUTION ${status.verification.execution.toUpperCase()}`));
+    }
+  }
+
+  async function pollAgent(): Promise<void> {
+    if (!alive || activeSessionId === null) return;
+    try {
+      const query = AgentStatusQuery.parse({ id: activeSessionId });
+      activeStatus = await call('/api/agent/status', { query, schema: AgentStatusResponse });
+      paintAgentStatus(activeStatus);
+      if (activeStatus.state === 'running' || activeStatus.state === 'awaiting_approval') {
+        pollTimer = window.setTimeout(() => { void pollAgent(); }, 1000);
+      } else {
+        pollTimer = null;
+      }
+    } catch (error) {
+      paintAgentStatus(null, `Resident task status unavailable · ${String((error as Error).message ?? error).slice(0, 180)}`);
+      pollTimer = null;
+    }
+  }
+
+  async function decideAgent(approvalId: string, decision: 'approve' | 'reject'): Promise<void> {
+    if (activeSessionId === null) return;
+    try {
+      const body = AgentDecisionRequest.parse({ session_id: activeSessionId, approval_id: approvalId, decision });
+      await call('/api/agent/decision', { method: 'POST', body, schema: AgentDecisionResponse });
+      await pollAgent();
+    } catch (error) {
+      paintAgentStatus(activeStatus, `Resident decision failed · ${String((error as Error).message ?? error).slice(0, 180)}`);
+    }
+  }
+
+  async function startAgent(task: string): Promise<void> {
+    const trimmed = task.trim();
+    if (!alive || trimmed.length === 0) return;
+    stopAgentPolling();
+    activeSessionId = null;
+    activeStatus = null;
+    sendBtn.disabled = true;
+    input.disabled = true;
+    paintAgentStatus(null, 'Preparing governed Resident task · operator approval may be requested…');
+    try {
+      const body = AgentStartRequest.parse({ task: trimmed, mode: 'act', chat_source: 'local' });
+      const started = await call('/api/agent/start', { method: 'POST', body, schema: AgentStartResponse });
+      activeSessionId = started.session_id;
+      await pollAgent();
+    } catch (error) {
+      paintAgentStatus(null, `Resident task was not started · ${String((error as Error).message ?? error).slice(0, 180)}`);
+    } finally {
+      sendBtn.disabled = false;
+      input.disabled = false;
+    }
+  }
+
+  composer.addEventListener('submit', event => {
+    event.preventDefault();
+    void startAgent(input.value);
+  });
+
+  for (const [button, action] of actionsRow.querySelectorAll<HTMLButtonElement>('button').entries()) {
+    const intent = QUICK_ACTIONS[button]?.intent;
+    if (intent === undefined) continue;
+    const label = QUICK_ACTIONS[button]?.label ?? intent;
+    const quickButton = action;
+    quickButton.disabled = false;
+    quickButton.dataset.maturity = 'GOVERNED';
+    quickButton.title = `Start a governed Resident task: ${label}`;
+    quickButton.setAttribute('aria-label', `${label}; starts a governed Resident task`);
+    quickButton.addEventListener('click', () => { void startAgent(`${label} for the current workspace.`); });
+  }
 
   async function loadSummary(): Promise<ResidentSummaryResponseT['summary'] | null> {
     try { return (await api.residentSummary()).summary; }
@@ -257,6 +372,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     refresh,
     dispose() {
       alive = false;
+      stopAgentPolling();
       window.clearInterval(interval);
       operator.dispose();
       parent.innerHTML = '';
