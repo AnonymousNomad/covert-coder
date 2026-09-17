@@ -120,3 +120,35 @@ test('chat routes deliver the same composed messages to their model transports',
     await fs.rm(workspace, { recursive: true, force: true });
   }
 });
+
+test('Context Control retrieves bounded workspace memory for the later model call', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-memory-'));
+  const otherWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-memory-other-'));
+  try {
+    await fs.mkdir(path.join(workspace, '.aide', 'memory'), { recursive: true });
+    const entries = Array.from({ length: 12 }, (_, index) => JSON.stringify({
+      session_id: `memory-${index}`,
+      ts: `2026-09-17T10:${String(index).padStart(2, '0')}:00Z`,
+      scope: 'workspace',
+      intent: 'editor preference continuity',
+      summary: `Use the dark editor layout for the project workspace ${index}.`,
+      outcome: 'validated'
+    })).join('\n') + '\n';
+    await fs.writeFile(path.join(workspace, '.aide', 'memory', 'sessions.jsonl'), entries, 'utf8');
+    const runtime = { refreshServedContext: async () => {}, getEffectiveContext: () => 4096 };
+    const request: ChatRequestT = { modelId: 'local:test', messages: [{ role: 'user', content: 'What editor preference should I use?' }] };
+    const composed = await createChatContextComposer({ workspace, runtime }).compose(request);
+    const isolated = await createChatContextComposer({ workspace: otherWorkspace, runtime }).compose(request);
+
+    assert.equal(composed.harness.memory_recall_degraded, false);
+    assert.ok(Number(composed.harness.memory_recall_hits) >= 1);
+    assert.ok(Number(composed.harness.memory_recall_tokens) <= 409);
+    assert.ok(composed.messages.some(message => message.content.includes('[recent context - recalled from prior session memory')));
+    assert.equal(isolated.harness.memory_recall_hits, 0);
+    assert.equal(isolated.harness.memory_recall_degraded, true);
+    assert.ok(!isolated.messages.some(message => message.content.includes('dark editor layout')));
+  } finally {
+    await fs.rm(workspace, { recursive: true, force: true });
+    await fs.rm(otherWorkspace, { recursive: true, force: true });
+  }
+});

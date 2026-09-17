@@ -7,6 +7,10 @@ export interface MemoryEntry {
   skills_invoked?: string[];
   files_touched?: string[];
   outcome?: string;
+  scope?: 'workspace';
+  fact_key?: string;
+  supersedes?: string[];
+  validated?: boolean;
   [key: string]: unknown;
 }
 export interface MemoryHit {
@@ -17,6 +21,7 @@ export interface MemoryHit {
   skills_invoked: string[];
   files_touched: string[];
   outcome?: string;
+  fact_key?: string;
   score: number;
 }
 export interface RecallResult {
@@ -29,9 +34,11 @@ export interface MemoryStatus {
   count: number;
   file: string;
   lastTs: string | null;
+  degraded: boolean;
+  reason?: string;
 }
 export interface MemoryRecallApi {
-  recall(query: string, opts?: { topN?: number }): Promise<RecallResult>;
+  recall(query: string, opts?: { topN?: number; budgetTokens?: number }): Promise<RecallResult>;
   remember(entry: { session_id?: string; ts?: string; [key: string]: unknown }): Promise<void>;
   status(): Promise<MemoryStatus>;
 }

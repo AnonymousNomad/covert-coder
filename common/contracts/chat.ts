@@ -150,7 +150,12 @@ export const ChatHistorySaveRequest = z
 export const ChatHistorySaveResponse = z
   .object({
     id: z.string().min(1),
-    updatedAt: z.number()
+    updatedAt: z.number(),
+    memory: z.object({
+      persisted: z.boolean(),
+      degraded: z.boolean(),
+      reason: z.string().optional()
+    }).strict()
   })
   .strict();
 

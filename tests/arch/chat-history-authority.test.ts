@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
+import { routeForChatHistorySave } from '../../node/src/routes/chat.ts';
 import { pairFixture } from './authority-fixture.ts';
 
 test('chat history save is an authority-bound conversation write with a local subordinate journal', async () => {
@@ -62,9 +63,11 @@ test('chat history save is an authority-bound conversation write with a local su
 
     const applied = await owner.request('/api/chat/history', { method: 'POST', headers, body: JSON.stringify(saveBody) });
     assert.equal(applied.status, 200);
-    const saved = (await applied.json()) as { data: { id: string; updatedAt: number } };
+    const saved = (await applied.json()) as { data: { id: string; updatedAt: number; memory: { persisted: boolean; degraded: boolean } } };
     assert.ok(saved.data.id.length > 0);
     assert.ok(saved.data.updatedAt > 0);
+    assert.equal(saved.data.memory.persisted, true, 'approved history save must report durable memory persistence');
+    assert.equal(saved.data.memory.degraded, false);
 
     const replay = await owner.request('/api/chat/history', { method: 'POST', headers, body: JSON.stringify(saveBody) });
     assert.equal(replay.status, 409, 'consumed save approval cannot replay');
@@ -100,5 +103,27 @@ test('chat history save is an authority-bound conversation write with a local su
         await new Promise(resolve => setTimeout(resolve, 250));
       }
     }
+  }
+});
+
+test('chat history save reports degraded continuity when the memory journal cannot persist', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-memory-failure-'));
+  try {
+    await fs.mkdir(path.join(workspace, '.aide', 'memory', 'sessions.jsonl'), { recursive: true });
+    const route = routeForChatHistorySave({
+      save: async () => ({ id: 'conversation-1', modelId: 'house-4b', title: 'failure probe', messages: [], updatedAt: Date.now() }),
+      list: () => [],
+      get: () => undefined
+    } as never, workspace);
+    const result = await route.handler({ query: {}, body: {
+      modelId: 'house-4b',
+      title: 'failure probe',
+      messages: [{ role: 'user', content: 'remember this continuity probe' }]
+    }} as never) as { memory: { persisted: boolean; degraded: boolean; reason?: string } };
+    assert.equal(result.memory.persisted, false);
+    assert.equal(result.memory.degraded, true);
+    assert.match(result.memory.reason ?? '', /persistence failed/);
+  } finally {
+    await fs.rm(workspace, { recursive: true, force: true });
   }
 });

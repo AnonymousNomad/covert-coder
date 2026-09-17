@@ -3825,11 +3825,31 @@
                     },
                     "updatedAt": {
                       "type": "number"
+                    },
+                    "memory": {
+                      "type": "object",
+                      "properties": {
+                        "persisted": {
+                          "type": "boolean"
+                        },
+                        "degraded": {
+                          "type": "boolean"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "persisted",
+                        "degraded"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "id",
-                    "updatedAt"
+                    "updatedAt",
+                    "memory"
                   ],
                   "additionalProperties": false
                 }

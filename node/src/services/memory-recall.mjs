@@ -37,6 +37,47 @@ function termFreq(tokens) {
   return tf;
 }
 
+const MAX_TEXT = 1200;
+const MAX_ITEMS = 16;
+const SECRET_PATTERNS = [
+  /\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|auth(?:orization)?|password|passwd|secret|credential)\s*[:=]\s*[^\s,;]+/gi,
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
+  /\b(?:sk|ghp|github_pat|hf|xoxb)-[A-Za-z0-9._-]{8,}/gi,
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g
+];
+
+function scrubText(value) {
+  let text = String(value ?? '').slice(0, MAX_TEXT);
+  for (const pattern of SECRET_PATTERNS) text = text.replace(pattern, match => {
+    const separator = match.search(/[:=]/);
+    return separator >= 0 ? `${match.slice(0, separator + 1)} [REDACTED]` : '[REDACTED]';
+  });
+  return text;
+}
+
+function scrubItems(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_ITEMS).map(item => scrubText(item)).filter(Boolean);
+}
+
+function normalizeEntry(entry) {
+  if (!entry || typeof entry !== 'object' || !entry.session_id || !entry.ts) throw new Error('memory entry needs session_id and ts');
+  if (entry.scope !== undefined && entry.scope !== 'workspace') throw new Error('memory scope must be workspace');
+  return {
+    session_id: scrubText(entry.session_id),
+    ts: scrubText(entry.ts),
+    scope: 'workspace',
+    ...(entry.fact_key ? { fact_key: scrubText(entry.fact_key) } : {}),
+    ...(Array.isArray(entry.supersedes) ? { supersedes: scrubItems(entry.supersedes) } : {}),
+    ...(entry.validated === false ? { validated: false } : {}),
+    ...(entry.intent ? { intent: scrubText(entry.intent) } : {}),
+    ...(entry.summary ? { summary: scrubText(entry.summary) } : {}),
+    ...(Array.isArray(entry.skills_invoked) ? { skills_invoked: scrubItems(entry.skills_invoked) } : {}),
+    ...(Array.isArray(entry.files_touched) ? { files_touched: scrubItems(entry.files_touched) } : {}),
+    ...(entry.outcome ? { outcome: scrubText(entry.outcome) } : {})
+  };
+}
+
 // Per-field term frequency. The query is matched against the union of all
 // per-field term maps; each field's contribution is scaled by its weight.
 function memoryFieldTfs(mem, weights) {
@@ -73,18 +114,38 @@ export function createMemoryRecall({ workspace }) {
 
   async function loadMemories() {
     let raw;
-    try { raw = await fs.readFile(memFile, 'utf8'); } catch { return []; }
+    try {
+      raw = await fs.readFile(memFile, 'utf8');
+    } catch (error) {
+      if (error?.code === 'ENOENT') return { memories: [], degraded: true, reason: 'no memories yet' };
+      return { memories: [], degraded: true, reason: 'memory storage read failed' };
+    }
     const out = [];
     for (const line of raw.split('\n')) {
       const t = line.trim();
       if (!t) continue;
       try {
         const obj = JSON.parse(t);
-        if (obj && obj.session_id && obj.ts) out.push(obj);
+        if (obj && obj.session_id && obj.ts && (obj.scope === undefined || obj.scope === 'workspace')) out.push(normalizeEntry(obj));
       } catch { /* skip malformed */ }
       if (out.length >= MAX_MEMORIES) break;
     }
-    return out;
+    return { memories: out, degraded: false };
+  }
+
+  function activeMemories(memories) {
+    const superseded = new Set();
+    const latestByFact = new Map();
+    for (const memory of memories) {
+      if (memory.validated === false) continue;
+      if (memory.fact_key) latestByFact.set(memory.fact_key, memory.session_id);
+      for (const target of memory.supersedes ?? []) superseded.add(target);
+    }
+    return memories.filter(memory => {
+      if (superseded.has(memory.session_id) || (memory.fact_key && superseded.has(memory.fact_key))) return false;
+      if (memory.fact_key && latestByFact.get(memory.fact_key) !== memory.session_id) return false;
+      return memory.validated !== false;
+    });
   }
 
   async function buildIdf(memories) {
@@ -109,9 +170,11 @@ export function createMemoryRecall({ workspace }) {
   }
 
   async function recall(query, opts) {
-    const topN = (opts && opts.topN) || 5;
-    const memories = await loadMemories();
-    if (memories.length === 0) return { hits: [], degraded: true, reason: 'no memories yet', approxTokens: 0 };
+    const topN = Math.min(Math.max(Number(opts?.topN ?? 5), 1), 5);
+    const budgetTokens = Math.min(Math.max(Number(opts?.budgetTokens ?? BUDGET_TOKENS), 64), BUDGET_TOKENS);
+    const loaded = await loadMemories();
+    const memories = activeMemories(loaded.memories);
+    if (memories.length === 0) return { hits: [], degraded: loaded.degraded, reason: loaded.reason ?? 'no active memories', approxTokens: 0 };
     const idf = await buildIdf(memories);
     const qTokens = tokenize(query);
     if (qTokens.length === 0) return { hits: [], degraded: true, reason: 'empty query', approxTokens: 0 };
@@ -130,13 +193,14 @@ export function createMemoryRecall({ workspace }) {
       skills_invoked: s.memory.skills_invoked || [],
       files_touched: s.memory.files_touched || [],
       outcome: s.memory.outcome,
+      ...(s.memory.fact_key ? { fact_key: s.memory.fact_key } : {}),
       score: Math.round(s.score * 100) / 100
     }));
     let chars = 0;
     const trimmed = [];
     for (const h of hits) {
       const est = JSON.stringify(h).length;
-      if ((chars + est) / 4 > BUDGET_TOKENS) break;
+      if ((chars + est) / 4 > budgetTokens) break;
       chars += est;
       trimmed.push(h);
     }
@@ -144,14 +208,20 @@ export function createMemoryRecall({ workspace }) {
   }
 
   async function remember(entry) {
-    if (!entry || !entry.session_id || !entry.ts) throw new Error('memory entry needs session_id and ts');
+    const normalized = normalizeEntry(entry);
     await fs.mkdir(path.dirname(memFile), { recursive: true });
-    await fs.appendFile(memFile, JSON.stringify(entry) + '\n', 'utf8');
+    const handle = await fs.open(memFile, 'a');
+    try {
+      await handle.writeFile(JSON.stringify(normalized) + '\n', 'utf8');
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
   }
 
   async function status() {
-    const memories = await loadMemories();
-    return { count: memories.length, file: memFile, lastTs: memories.length ? memories[memories.length - 1].ts : null };
+    const loaded = await loadMemories();
+    return { count: loaded.memories.length, file: memFile, lastTs: loaded.memories.length ? loaded.memories[loaded.memories.length - 1].ts : null, degraded: loaded.degraded, reason: loaded.reason };
   }
 
   return { recall, remember, status };

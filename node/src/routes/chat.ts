@@ -41,8 +41,6 @@ type MemoryRecallService = {
   }): Promise<void>;
 };
 
-let memoryRecall: MemoryRecallService | null = null;
-
 type ChatRouteOptions = {
   indexService?: ChatIndexService;
   providers?: ChatContextProviders;
@@ -224,10 +222,13 @@ export function routeForChatHistorySave(store: ChatStore, workspace: string): Ro
     handler: async ({ body }) => {
       const request = historySaveBody(body);
       const saved = await store.save(request);
+      let memory: { persisted: boolean; degraded: boolean; reason?: string } = {
+        persisted: false,
+        degraded: true,
+        reason: 'memory journal unavailable'
+      };
       try {
-        memoryRecall = memoryRecall || require('../services/memory-recall.mjs').createMemoryRecall({ workspace });
-        const memoryService = memoryRecall;
-        if (memoryService === null) throw new Error('memory recall unavailable');
+        const memoryService = require('../services/memory-recall.mjs').createMemoryRecall({ workspace }) as MemoryRecallService;
         const lastUser = [...request.messages].reverse().find(message => message.role === 'user');
         const lastAssistant = [...request.messages].reverse().find(message => message.role === 'assistant');
         const files = new Set<string>();
@@ -247,10 +248,13 @@ export function routeForChatHistorySave(store: ChatStore, workspace: string): Ro
           skills_invoked: [],
           files_touched: [...files]
         });
+        memory = { persisted: true, degraded: false };
       } catch {
-        // Journaling is subordinate to the approved history save.
+        // The conversation save remains authoritative, but the response must
+        // expose that continuity is degraded instead of claiming success.
+        memory = { persisted: false, degraded: true, reason: 'memory journal persistence failed' };
       }
-      return { id: saved.id, updatedAt: saved.updatedAt };
+      return { id: saved.id, updatedAt: saved.updatedAt, memory };
     }
   };
 }

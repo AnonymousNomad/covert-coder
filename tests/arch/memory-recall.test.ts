@@ -99,3 +99,45 @@ test('remember rejects entries missing required fields', async function() {
   await assert.rejects(function() { return r.remember({}); });
   await assert.rejects(function() { return r.remember({ session_id: 's1' }); });
 });
+
+test('memory is workspace-scoped, survives a new service instance, and excludes secrets', async function() {
+  const other = await fsp.mkdtemp(path.join(os.tmpdir(), 'aide-mem-other-'));
+  try {
+    const first = createMemoryRecall({ workspace: dir });
+    await first.remember({
+      session_id: 'workspace-a',
+      ts: '2026-09-17T10:00:00Z',
+      intent: 'remember the editor preference',
+      summary: 'Use the compact editor layout.',
+      outcome: 'api_key=sk-test-should-not-persist Bearer bearer-secret-value'
+    });
+    const raw = await fsp.readFile(path.join(dir, '.aide', 'memory', 'sessions.jsonl'), 'utf8');
+    assert.ok(!raw.includes('sk-test-should-not-persist'));
+    assert.ok(!raw.includes('bearer-secret-value'));
+    assert.match(raw, /REDACTED/);
+
+    const restarted = createMemoryRecall({ workspace: dir });
+    const recalled = await restarted.recall('compact editor layout');
+    assert.equal(recalled.hits[0]?.session_id, 'workspace-a');
+    const otherResult = await createMemoryRecall({ workspace: other }).recall('compact editor layout');
+    assert.equal(otherResult.hits.length, 0);
+    await assert.rejects(() => first.remember({ session_id: 'global', ts: '2026-09-17T11:00:00Z', scope: 'global' }));
+  } finally {
+    await fsp.rm(other, { recursive: true, force: true });
+  }
+});
+
+test('newer validated facts supersede stale facts and failed reads are degraded', async function() {
+  const r = createMemoryRecall({ workspace: dir });
+  await r.remember({ session_id: 'old-pref', ts: '2026-09-17T10:00:00Z', fact_key: 'editor.theme', intent: 'editor preference', summary: 'Use light theme.' });
+  await r.remember({ session_id: 'new-pref', ts: '2026-09-17T11:00:00Z', fact_key: 'editor.theme', intent: 'editor preference', summary: 'Use dark theme.' });
+  const out = await r.recall('editor theme');
+  assert.deepEqual(out.hits.map(hit => hit.session_id), ['new-pref']);
+
+  const broken = path.join(dir, '.aide', 'memory', 'sessions.jsonl');
+  await fsp.rm(broken, { force: true });
+  await fsp.mkdir(broken, { recursive: true });
+  const degraded = await r.recall('editor theme');
+  assert.equal(degraded.degraded, true);
+  assert.match(degraded.reason!, /storage read failed/);
+});
