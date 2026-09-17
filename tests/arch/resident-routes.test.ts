@@ -70,7 +70,7 @@ after(async () => {
 test('resident arch: healthy workspace yields READY with the §11 acceptance statement', async () => {
   const { createResidentService } = await import('../../node/src/routes/resident.ts');
   const service = createResidentService(workspace, {
-    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', artifact_available: true }] }),
+    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', runtime_available: true, artifact_available: true }] }),
     lspStatus: async () => [{ languageId: 'typescript', status: 'running' }]
   });
   const summary = await service.summary();
@@ -97,6 +97,20 @@ test('resident arch: failing probes fail closed (never throws, honest degraded f
   assert.equal(summary.status, 'attention');
 });
 
+test('resident arch: installed but not-running model is not reported as missing', async () => {
+  const { createResidentService } = await import('../../node/src/routes/resident.ts');
+  const service = createResidentService(workspace, {
+    modelStatus: async () => ({ runtime: true, models: [{ status: 'ready', runtime_available: true, artifact_available: true }] }),
+    lspStatus: async () => [{ languageId: 'typescript', status: 'running' }]
+  });
+  const summary = await service.summary();
+  assert.equal(summary.model.ready_count, 0);
+  assert.equal(summary.model.running, false);
+  assert.equal(summary.model.artifact_available, true);
+  assert.ok(summary.conditions.some(c => c.id === 'model.not_running'));
+  assert.equal(summary.conditions.some(c => c.id === 'model.artifact_missing'), false);
+});
+
 test('resident arch: §3 dependency observer flags missing lockfile as a warn, never info-noise', async () => {
   const noLock = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-resident-nolock-'));
   try {
@@ -120,7 +134,7 @@ test('resident arch: §3 dependency observer flags missing lockfile as a warn, n
 // §4 pre-push advisory: deterministic, ADVISORY ONLY (read-only route).
 test('resident arch: push-summary advisory verdict is derived, never blocks', async () => {
   const service = createResidentService(workspace, {
-    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', artifact_available: true }] }),
+    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', runtime_available: true, artifact_available: true }] }),
     lspStatus: async () => [{ languageId: 'typescript', status: 'running' }]
   });
   // Fixture workspace is not a git repo → advisory must say ATTENTION_REQUIRED
@@ -146,7 +160,7 @@ test('resident arch: push-summary verdict triage over a real git repo', async ()
   await git(['add', '.']);
   await git(['commit', '-m', 'base']);
   const readyService = createResidentService(repo, {
-    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', artifact_available: true }] }),
+    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', runtime_available: true, artifact_available: true }] }),
     lspStatus: async () => []
   });
   const ready = await readyService.pushSummary();
@@ -166,7 +180,7 @@ test('resident arch: push-summary verdict triage over a real git repo', async ()
   await git(['add', '.']);
   await git(['commit', '-m', 'feat: app']);
   const dirtyService = createResidentService(repo, {
-    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', artifact_available: true }] }),
+    modelStatus: async () => ({ runtime: true, models: [{ status: 'running', runtime_available: true, artifact_available: true }] }),
     lspStatus: async () => []
   });
   const committed = await dirtyService.pushSummary();

@@ -301,7 +301,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Project \u00b7 ${data.summary.projectType}`));
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Git \u00b7 ${data.summary.git.git_repo ? `${data.summary.git.branch ?? 'detached'} \u00b7 ${data.summary.git.clean ? 'clean' : `${data.summary.git.changes} working-tree changes`}` : 'not a repository'}`));
       details.appendChild(el('div', 'cockpit-resident-summary-item', `LSP \u00b7 ${data.summary.lsp.available ? 'available' : 'unavailable'}`));
-      details.appendChild(el('div', 'cockpit-resident-summary-item', `Model \u00b7 ${data.summary.model.runtime_available ? `${data.summary.model.ready_count} ready` : 'unavailable'}`));
+      details.appendChild(el('div', 'cockpit-resident-summary-item', `Model \u00b7 ${data.summary.model.runtime_available ? `${data.summary.model.ready_count} active` : 'unavailable'}`));
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Tests \u00b7 ${data.summary.hasTestScript ? 'script present' : 'not detected'}`));
       summary.appendChild(details);
       conversation.appendChild(summary);

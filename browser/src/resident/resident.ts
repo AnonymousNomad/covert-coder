@@ -68,7 +68,7 @@ export function createResidentPanel(root: HTMLElement, residentStatus: HTMLEleme
     detail.appendChild(el('div', {}, [`Git: ${summary.git.git_repo ? `${summary.git.branch ?? 'detached'} (${summary.git.clean ? 'clean' : `${summary.git.changes} changes`}${summary.git.behind > 0 ? `, ${summary.git.behind} behind` : ''})` : 'not a repo'}`]));
     detail.appendChild(el('div', {}, [`LSP: ${summary.lsp.available ? 'available' : 'unavailable'}`]));
     detail.appendChild(el('div', {}, [`Tests: ${summary.hasTestScript ? 'script present' : 'no script'}`]));
-    detail.appendChild(el('div', {}, [`Model: ${summary.model.runtime_available ? (summary.model.ready_count > 0 ? 'available' : 'engine ready, no artifact') : 'unavailable'}`]));
+    detail.appendChild(el('div', {}, [`Model: ${summary.model.runtime_available ? (summary.model.ready_count > 0 ? 'active' : 'engine available, no active model') : 'unavailable'}`]));
     if (summary.deps.has_manifest) {
       detail.appendChild(el('div', {}, [`Deps: ${summary.deps.dependencies} runtime / ${summary.deps.dev_dependencies} dev${summary.deps.has_lockfile ? ', lockfile committed' : ''}`]));
     }

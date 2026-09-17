@@ -26,6 +26,7 @@ import {
   type ResidentTransitionProposalT,
   type ResidentTransitionProposalResultT
 } from '../../../common/contracts/resident.ts';
+import { modelDisplayState } from '../../../common/model-state.ts';
 
 // Resident Assistant v0 — the quiet, dependable in-workspace layer.
 // Observe -> classify -> prepare -> recommend. NEVER acts: this service has
@@ -271,8 +272,9 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
     try {
       const status = probes.modelStatus ? await probes.modelStatus() : { runtime: false, models: [] as Array<Record<string, unknown>> };
       const models = Array.isArray(status.models) ? status.models : [];
-      const readyCount = models.filter(m => m.status === 'ready' || m.status === 'running').length;
-      const running = models.some(m => m.status === 'running');
+      const states = models.map(model => modelDisplayState(model));
+      const readyCount = states.filter(state => state === 'RUNNING' || state === 'READY').length;
+      const running = states.includes('RUNNING');
       const artifactAvailable = models.some(m => m.artifact_available === true);
       return { runtime_available: status.runtime === true, running, ready_count: readyCount, artifact_available: artifactAvailable };
     } catch {
@@ -348,9 +350,11 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
       });
     } else if (model.ready_count === 0) {
       out.push({
-        id: 'model.artifact_missing',
+        id: model.artifact_available ? 'model.not_running' : 'model.artifact_missing',
         severity: 'warn',
-        message: 'Model engine available but no model artifact is loaded.',
+        message: model.artifact_available
+          ? 'Model engine available but no model endpoint is active.'
+          : 'Model engine available but no model artifact is loaded.',
         recommendation: 'Add a GGUF model in the Model Hub or start one from the model status view.',
         workflow: 'setup'
       });
@@ -420,7 +424,7 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
         `Git: ${ctx.git.git_repo ? (ctx.git.clean ? 'clean' : `${ctx.git.changes} changes`) : 'not a repo'}. ` +
         `LSP: ${ctx.lsp.available ? 'available' : 'unavailable'}. ` +
         `Tests: ${ctx.project.hasTestScript ? 'script present' : 'no script'}. ` +
-        `Local model: ${ctx.model.runtime_available ? (ctx.model.ready_count > 0 ? 'available' : 'engine ready, no artifact') : 'unavailable'}. ` +
+        `Local model: ${ctx.model.runtime_available ? (ctx.model.ready_count > 0 ? 'active' : 'engine available, no active model') : 'unavailable'}. ` +
         `Workspace health: good. What would you like to build?`;
       return { text: line, workflow: null };
     }
@@ -517,7 +521,7 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
         diagnostics: [],
         conditions: conditionsText,
         workflows_available: ['setup', 'git', 'dependency', 'debug', 'plan', 'code', 'review'],
-        model_status: summary.model.runtime_available ? `engine available (${summary.model.ready_count} ready)` : 'engine unavailable',
+        model_status: summary.model.runtime_available ? `engine available (${summary.model.ready_count} active)` : 'engine unavailable',
         workflow,
         approx_tokens: Math.ceil((JSON.stringify(contextPayloadForTokens(summary, files, conditionsText)).length) / 4)
       };

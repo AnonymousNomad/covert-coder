@@ -6,6 +6,7 @@ import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { RouteEntryT } from '../../../common/contracts/routing.ts';
+import { modelDisplayState, modelIsActive } from '../../../common/model-state.ts';
 
 export interface ModelLineupHandles {
   root: HTMLElement;
@@ -26,10 +27,10 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
   return node;
 }
 
-function pillClass(status: string): string {
-  if (status === 'ready' || status === 'running') return 'pill-ok';
-  if (status === 'error') return 'pill-err';
-  if (status === 'starting') return 'pill-warn';
+function pillClass(state: string): string {
+  if (state === 'READY' || state === 'RUNNING') return 'pill-ok';
+  if (state === 'FAILED') return 'pill-err';
+  if (state === 'STARTABLE' || state === 'STARTING' || state === 'DEGRADED') return 'pill-warn';
   return 'pill-dim';
 }
 
@@ -79,9 +80,11 @@ export function createModelLineup(parent: HTMLElement, _store: Store<AppState>):
       return;
     }
     const header3 = el('div', 'cockpit-lineup-counts');
-    const ready = status.models.filter((m) => (m.status === 'ready' || m.status === 'running') && m.runtime_available && m.artifact_available).length;
+    const states = status.models.map((model) => modelDisplayState(model));
+    const active = states.filter(modelIsActive).length;
+    const startable = states.filter((state) => state === 'STARTABLE').length;
     const total = status.models.length;
-    header3.appendChild(el('span', 'cockpit-lineup-counts-value', `${ready} of ${total} ready`));
+    header3.appendChild(el('span', 'cockpit-lineup-counts-value', `${active} active · ${startable} startable · ${total} installed`));
     list.appendChild(header3);
 
     const roleSection = el('div', 'cockpit-lineup-roles');
@@ -105,20 +108,21 @@ export function createModelLineup(parent: HTMLElement, _store: Store<AppState>):
     }
 
     for (const m of status.models) {
-      const readyFlag = (m.status === 'ready' || m.status === 'running') && m.runtime_available && m.artifact_available;
-      const card = el('div', `cockpit-lineup-card ${readyFlag ? 'cockpit-lineup-card-ok' : 'cockpit-lineup-card-dim'}`);
-      const head = el('div', 'cockpit-lineup-card-head');
-      head.appendChild(el('span', `cockpit-lineup-card-status ${pillClass(m.status)}`, m.status.toUpperCase()));
-      head.appendChild(el('span', 'cockpit-lineup-card-name', m.name));
-      card.appendChild(head);
       const route = [m.id, `local:${m.id}`]
         .map((id) => routeById.get(id))
         .find((entry): entry is RouteEntryT => entry !== undefined);
+      const state = modelDisplayState(m, route?.status);
+      const active = modelIsActive(state);
+      const card = el('div', `cockpit-lineup-card ${active ? 'cockpit-lineup-card-ok' : 'cockpit-lineup-card-dim'}`);
+      const head = el('div', 'cockpit-lineup-card-head');
+      head.appendChild(el('span', `cockpit-lineup-card-status ${pillClass(state)}`, state));
+      head.appendChild(el('span', 'cockpit-lineup-card-name', m.name));
+      card.appendChild(head);
       const role = el('div', 'cockpit-lineup-card-role', route === undefined
         ? 'Role: UNASSIGNED'
         : `Roles: ${roleLabelsForRoute(route).join(', ')}`);
       card.appendChild(role);
-      const resource = el('div', 'cockpit-lineup-card-resource', readyFlag ? 'Resource: available' : 'Resource: pending');
+      const resource = el('div', 'cockpit-lineup-card-resource', state === 'STARTABLE' ? 'Resource: available · not running' : active ? 'Resource: active' : state === 'DEGRADED' ? 'Resource: unavailable' : 'Resource: pending');
       card.appendChild(resource);
       if (route) {
         card.appendChild(el('div', 'cockpit-lineup-card-route', `Route: ${route.providerType} \u00b7 ${route.status}`));

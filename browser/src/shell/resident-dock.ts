@@ -159,7 +159,7 @@ export function createResidentDock(parent: HTMLElement, store: Store<AppState>):
         kv('Node', summary.nodeVersion),
         kv('Test script', summary.hasTestScript ? 'present' : 'absent'),
         kv('LSP', summary.lsp.available ? 'available' : 'unavailable'),
-        kv('Model', summary.model.runtime_available ? (summary.model.ready_count > 0 ? `${summary.model.ready_count} ready` : 'engine ready, no artifact') : 'unavailable')
+        kv('Model', summary.model.runtime_available ? (summary.model.ready_count > 0 ? `${summary.model.ready_count} active` : 'engine available, no active model') : 'unavailable')
       ]);
       dockBody.appendChild(section);
 

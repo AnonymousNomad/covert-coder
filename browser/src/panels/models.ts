@@ -7,6 +7,7 @@ import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { ModelStatusResponseT } from '../../../common/contracts/models.ts';
 import type { RoutesResponseT } from '../../../common/contracts/routing.ts';
+import { modelDisplayState, modelIsActive } from '../../../common/model-state.ts';
 
 export interface PanelHandles {
   dispose(): void;
@@ -19,10 +20,10 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
   return node;
 }
 
-function statusClass(status: string): string {
-  if (status === 'ready' || status === 'running') return 'ok';
-  if (status === 'error') return 'err';
-  if (status === 'starting') return 'warn';
+function statusClass(state: string): string {
+  if (state === 'READY' || state === 'RUNNING') return 'ok';
+  if (state === 'FAILED') return 'err';
+  if (state === 'STARTABLE' || state === 'STARTING' || state === 'DEGRADED') return 'warn';
   return 'dim';
 }
 
@@ -70,20 +71,25 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       return;
     }
 
-    const readyCount = status.models.filter(m => (m.status === 'ready' || m.status === 'running') && m.runtime_available && m.artifact_available).length;
+    const routeById = new Map(routes.routes.map(route => [route.id, route]));
+    const states = status.models.map(model => modelDisplayState(model, routeById.get(`local:${model.id}`)?.status));
+    const activeCount = states.filter(modelIsActive).length;
+    const startableCount = states.filter(state => state === 'STARTABLE').length;
     const totalCount = status.models.length;
     const counts = el('div', 'models-counts');
-    counts.appendChild(el('span', 'models-counts-value', `${readyCount} OF ${totalCount} MODELS READY`));
+    counts.appendChild(el('span', 'models-counts-value', `${activeCount} ACTIVE · ${startableCount} STARTABLE · ${totalCount} INSTALLED`));
     body.appendChild(counts);
 
     const listHeader = el('div', 'models-section-header', 'INSTALLED MODELS');
     body.appendChild(listHeader);
     const list = el('div', 'models-list');
     for (const m of status.models) {
-      const card = el('div', `model-card ${statusClass(m.status)}`);
+      const route = routeById.get(`local:${m.id}`);
+      const state = modelDisplayState(m, route?.status);
+      const card = el('div', `model-card ${statusClass(state)}`);
       const head = el('div', 'model-card-head');
       head.appendChild(el('span', 'model-card-name', m.name));
-      const statusBadge = el('span', `model-card-status ${statusClass(m.status)}`, m.status.toUpperCase());
+      const statusBadge = el('span', `model-card-status ${statusClass(state)}`, state);
       head.appendChild(statusBadge);
       card.appendChild(head);
       const meta = el('div', 'model-card-meta');

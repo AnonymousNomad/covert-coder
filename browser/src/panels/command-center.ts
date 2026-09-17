@@ -7,6 +7,7 @@ import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { HealthResponseT } from '../../../common/contracts/health.ts';
 import type { ModelStatusResponseT } from '../../../common/contracts/models.ts';
+import { modelDisplayState, modelIsActive } from '../../../common/model-state.ts';
 import type { ResidentSummaryResponseT, ResidentPushSummaryT } from '../../../common/contracts/resident.ts';
 
 import type { ByokStatusResponseT } from '../../../common/contracts/byok.ts';
@@ -95,26 +96,28 @@ export function createCommandCenterPanel(parent: HTMLElement, _store: Store<AppS
       content.appendChild(el('div', 'cc-missing', 'Model status endpoint unavailable.'));
       return tile('MODELS', content, 'err');
     }
-    const ready = status.models.filter(m => (m.status === 'ready' || m.status === 'running') && m.runtime_available && m.artifact_available);
+    const states = status.models.map(model => modelDisplayState(model));
     const total = status.models.length;
-    const readyCount = ready.length;
+    const activeCount = states.filter(modelIsActive).length;
+    const startableCount = states.filter(state => state === 'STARTABLE').length;
     const sec = section([
       kv('Runtime available', status.runtime ? 'yes' : 'no'),
-      kv('Ready', `${readyCount} of ${total}`)
+      kv('Active', `${activeCount} of ${total}`),
+      kv('Startable', `${startableCount} of ${total}`)
     ]);
     if (total > 0) {
       const list = el('ul', 'cc-model-list');
       for (const m of status.models.slice(0, 6)) {
-        const ready = (m.status === 'ready' || m.status === 'running') && m.runtime_available && m.artifact_available;
+        const state = modelDisplayState(m);
         const li = el('li', 'cc-model-item');
-        li.appendChild(pill(m.status, ready ? 'ok' : m.status === 'error' ? 'err' : 'dim'));
+        li.appendChild(pill(state, modelIsActive(state) ? 'ok' : state === 'FAILED' ? 'err' : state === 'STARTABLE' || state === 'STARTING' ? 'warn' : 'dim'));
         li.appendChild(el('span', 'cc-model-name', m.name));
         list.appendChild(li);
       }
       sec.appendChild(list);
     }
     content.appendChild(sec);
-    return tile('MODELS', content, total === 0 ? 'err' : readyCount > 0 ? 'ok' : 'warn');
+    return tile('MODELS', content, total === 0 ? 'err' : activeCount > 0 ? 'ok' : startableCount > 0 ? 'warn' : 'dim');
   }
 
   function renderResident(summary: ResidentSummaryResponseT['summary'] | null, push: ResidentPushSummaryT | null): HTMLElement {

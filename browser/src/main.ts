@@ -17,6 +17,7 @@ import { registerLspProviders } from './editor/lsp-providers.ts';
 import type { DiagnosticsEventT } from '../../common/contracts/events.ts';
 import type { LspStatusEventT } from '../../common/contracts/lsp.ts';
 import type { ModelStatusResponseT } from '../../common/contracts/models.ts';
+import { modelDisplayState, modelIsActive, modelIsVerifiedReady } from '../../common/model-state.ts';
 import type { ByokStatusResponseT } from '../../common/contracts/byok.ts';
 import type { ClosedLoopStatusT } from '../../common/contracts/closed-loop.ts';
 
@@ -186,24 +187,18 @@ async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
   let res: ModelStatusResponseT;
   try { res = await api.modelsStatus(); }
   catch {
-    shell.topbar.setEngine({ label: 'NO MODEL READY', ready: false });
+    shell.topbar.setEngine({ label: 'NO MODEL ACTIVE', ready: false });
     return;
   }
-  const readyModels = res.models.filter(m =>
-    (m.status === 'ready' || m.status === 'running') &&
-    m.runtime_available &&
-    m.artifact_available
-  );
-  const readyCount = readyModels.length;
+  const states = res.models.map(model => modelDisplayState(model));
+  const activeCount = states.filter(modelIsActive).length;
+  const startableCount = states.filter(state => state === 'STARTABLE').length;
   const totalCount = res.models.length;
-  if (readyCount === 0) {
-    shell.topbar.setEngine({ label: totalCount > 0 ? `0 OF ${totalCount} MODELS READY` : 'NO MODEL READY', ready: false });
+  if (activeCount === 0) {
+    shell.topbar.setEngine({ label: startableCount > 0 ? `${startableCount} OF ${totalCount} MODELS STARTABLE` : totalCount > 0 ? 'NO MODEL ACTIVE' : 'NO MODEL INSTALLED', ready: false });
     return;
   }
-  const label = totalCount > 0
-    ? `${readyCount} OF ${totalCount} MODELS READY`
-    : `${readyCount} MODEL${readyCount > 1 ? 'S' : ''} READY`;
-  shell.topbar.setEngine({ label, ready: true });
+  shell.topbar.setEngine({ label: `${activeCount} OF ${totalCount} MODELS ACTIVE`, ready: states.some(modelIsVerifiedReady) });
 }
 
 async function refreshCloudChip(shell: CockpitHandles): Promise<void> {
