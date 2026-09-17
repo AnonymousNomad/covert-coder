@@ -1,4 +1,4 @@
-# AIDE Universal Harness
+# Covert Coder Universal Harness
 
 The harness is the layer that makes every connected model safer and more useful. It does not secretly retrain weights. It improves system behavior through curated context, role-specific prompts, deterministic tools, external verification, calibrated feedback, and reversible execution.
 

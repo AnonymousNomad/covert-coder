@@ -1,14 +1,14 @@
-# AIDE Local Runtime
+# Covert Coder Local Runtime
 
-AIDE uses local OpenAI-compatible adapters so model runtimes can be replaced without changing the IDE.
+Covert Coder uses local OpenAI-compatible adapters so model runtimes can be replaced without changing the workbench.
 
-## AIDE Model Pack
+## Covert Coder Model Pack
 
 - **SmolLM2 360M Instruct Q8_0:** fast chat and planning, about 386 MB.
 - **Qwen2.5-Coder 0.5B Instruct Q4_K_M:** fast autocomplete, about 491 MB.
 - **Qwen2.5-Coder 1.5B Instruct Q4_K_M:** primary builder, about 1.12 GB.
 
-All three official repositories declare Apache-2.0. The default installer should offer them as optional model packs so users on small devices can choose one. AIDE does not include unfinished project-specific checkpoints in this package.
+All three official repositories declare Apache-2.0. The default installer should offer them as optional model packs so users on small devices can choose one. Covert Coder does not include unfinished project-specific checkpoints in this package.
 
 Run both sequentially on constrained hardware. Do not load two large copies unless memory measurements prove it is safe.
 

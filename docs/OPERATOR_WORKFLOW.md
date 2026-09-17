@@ -1,4 +1,4 @@
-# AIDE Shared Model Workflow
+# Covert Coder Shared Model Workflow
 
 AIDE presents multi-model work in one visible conversation. Models do not have a
 private uninspectable debate. Each handoff is a typed, reviewable artifact.
