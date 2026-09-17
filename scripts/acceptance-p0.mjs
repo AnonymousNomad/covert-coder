@@ -137,8 +137,13 @@ try {
   assert.equal(models.status, 200);
   assert.ok(Array.isArray(models.body.data.models), 'models status returns models array');
 
-  // PHASE 8: BYOK mutation routes are still migration-waived: they must fail
-  // closed for a paired operator until their authority decision lands.
+  // PHASE 8: BYOK mutation routes are ENROLLED exact-operation routes. Their
+  // intended authority state machine (server.ts dispatch) is:
+  //   no authenticated actor        -> 403 FORBIDDEN
+  //   paired but no approved exact  -> 409 APPROVAL_REQUIRED
+  //   approved exact + replay       -> 200 once, then 409 CONFLICT
+  // This mirrors the file/write (409) and agent/start (409) gates in this
+  // battery: the migration-waiver doctrine for these routes ended at 22e1231.
   const byokWrites = [
     ['PUT', '/api/byok/providers/set', { provider: { id: 'hermetic', name: 'Hermetic', base_url: 'http://127.0.0.1:1/v1', api_type: 'chat-completions', model_id: 'hermetic-1', tool_calling: true } }],
     ['PUT', '/api/byok/key', { provider_id: 'hermetic', api_key: 'sk-hermetic-p0-test' }],
@@ -148,12 +153,23 @@ try {
   ];
   for (const [method, pathname, body] of byokWrites) {
     const denied = await stack.json('facade', method, pathname, { body });
-    assert.equal(denied.status, 403, `${method} ${pathname} must remain fail-closed`);
-    assert.equal(denied.body.error.code, 'FORBIDDEN');
+    assert.equal(denied.status, 409, `${method} ${pathname} requires an approved exact operation`);
+    assert.equal(denied.body.error?.code, 'NOT_READY');
+    assert.equal(denied.body.error?.detail?.reason, 'APPROVAL_REQUIRED');
   }
+  // An unauthenticated client has no authority at the transport edge: 403.
+  const anonymousWrite = await fetch(`${stack.bases.facade}/api/byok/consent`, {
+    method: 'PUT',
+    headers: { Origin: stack.origin, 'X-AIDE-API-Format': 'envelope-v1', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: true }),
+    signal: AbortSignal.timeout(30000)
+  });
+  assert.equal(anonymousWrite.status, 403, 'anonymous BYOK write has no authority');
   const byokStatus = await stack.json('facade', 'GET', '/api/byok/status');
   assert.equal(byokStatus.status, 200);
   assert.equal(byokStatus.body.data.consent_enabled, false, 'consent never enabled by denied writes');
+  assert.deepEqual(byokStatus.body.data.providers, [], 'no provider configured by denied writes');
+  assert.equal(byokStatus.body.data.routing.plan, 'local', 'no routing altered by denied writes');
 
   // PHASE 9: unapproved agent start is rejected at the authority edge
   const agentDenied = await stack.json('facade', 'POST', '/api/agent/start', { body: { task: 'Improve note.md', mode: 'act', chat_source: 'provider' } });
