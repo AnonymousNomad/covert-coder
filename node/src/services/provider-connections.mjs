@@ -72,7 +72,10 @@ export function createProviderConnectionsService(options) {
   }
 
   function connected(entry) {
-    return entry && entry.runtime_available === true;
+    // The runtime binary being available does not make every catalog entry a
+    // usable local provider. Require the model artifact as well; endpoint
+    // serving is verified separately by the model router.
+    return entry && entry.runtime_available === true && entry.artifact_available === true;
   }
 
   async function localConnection() {
@@ -83,15 +86,15 @@ export function createProviderConnectionsService(options) {
     } catch {
       models = [];
     }
-    const ready = models.filter(connected);
+    const installed = models.filter(connected);
     return {
       id: 'local-runtime',
       provider_id: 'local',
       name: 'Local runtime (llama.cpp GGUF)',
       kind: 'local-runtime',
-      status: ready.length > 0 ? 'connected' : 'not_configured',
-      detail: ready.length > 0 ? `${ready.length} model${ready.length === 1 ? '' : 's'} ready` : 'no local GGUF model ready',
-      capabilities: ready.length > 0 ? ['chat', 'act', 'utility'] : [],
+      status: installed.length > 0 ? 'connected' : 'not_configured',
+      detail: installed.length > 0 ? `${installed.length} model${installed.length === 1 ? '' : 's'} installed; serving endpoint must be verified` : 'no local GGUF model installed',
+      capabilities: installed.length > 0 ? ['chat', 'act', 'utility'] : [],
       routing_available: true,
       account_label: 'self-hosted'
     };
