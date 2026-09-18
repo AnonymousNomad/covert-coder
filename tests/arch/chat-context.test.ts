@@ -152,3 +152,93 @@ test('Context Control retrieves bounded workspace memory for the later model cal
     await fs.rm(otherWorkspace, { recursive: true, force: true });
   }
 });
+
+test('stream and non-stream chat receive the same bounded memory context through the composer', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-memory-parity-'));
+  try {
+    await fs.mkdir(path.join(workspace, '.aide', 'memory'), { recursive: true });
+    const entries = Array.from({ length: 10 }, (_, index) => JSON.stringify({
+      session_id: `memory-${index}`,
+      ts: `2026-09-17T10:${String(index).padStart(2, '0')}:00Z`,
+      scope: 'workspace',
+      intent: 'editor preference continuity',
+      summary: `Prefer the dark editor layout while maintaining the canopy workflow for the project workspace ${index}.`,
+      outcome: 'validated'
+    })).join('\n') + '\n';
+    await fs.writeFile(path.join(workspace, '.aide', 'memory', 'sessions.jsonl'), entries, 'utf8');
+    const runtime = { refreshServedContext: async () => {}, getEffectiveContext: () => 8192 };
+    const request: ChatRequestT = {
+      modelId: 'local:test',
+      messages: [{ role: 'user', content: 'Which editor layout should I keep for this workspace?' }]
+    };
+
+    const nonStream = await createChatContextComposer({ workspace, runtime }).compose(request);
+    const stream = await createChatContextComposer({ workspace, runtime }).compose({ ...request, harness: true });
+
+    assert.equal(nonStream.harness.injected, true);
+    assert.equal(stream.harness.injected, true);
+    assert.equal(Number(stream.harness.memory_recall_hits), Number(nonStream.harness.memory_recall_hits));
+    assert.ok(Number(stream.harness.memory_recall_hits) >= 1, 'memory must actually be recalled');
+    assert.equal(Number(stream.harness.memory_recall_tokens), Number(nonStream.harness.memory_recall_tokens));
+    assert.ok(Number(stream.harness.memory_recall_tokens) <= 800, 'memory token budget must be bounded');
+    assert.ok(stream.messages.some(message => message.content.includes('[recent context - recalled from prior session memory')));
+    assert.deepEqual(stream.messages, nonStream.messages);
+  } finally {
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('chat routes hand the same bounded memory context to both model transports', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-routes-memory-'));
+  try {
+    await fs.mkdir(path.join(workspace, '.aide', 'memory'), { recursive: true });
+    const entries = Array.from({ length: 10 }, (_, index) => JSON.stringify({
+      session_id: `memory-${index}`,
+      ts: `2026-09-17T10:${String(index).padStart(2, '0')}:00Z`,
+      scope: 'workspace',
+      intent: 'editor preference continuity',
+      summary: `Prefer the dark editor layout while maintaining the canopy workflow for the project workspace ${index}.`,
+      outcome: 'validated'
+    })).join('\n') + '\n';
+    await fs.writeFile(path.join(workspace, '.aide', 'memory', 'sessions.jsonl'), entries, 'utf8');
+
+    const seen: ChatMessageT[][] = [];
+    const router = {
+      chat: async (_modelId: string, messages: ChatMessageT[]) => {
+        seen.push(messages);
+        return { text: 'ok', modelId: 'local:test', timingMs: 1 };
+      },
+      chatStream: async (_modelId: string, messages: ChatMessageT[], onDelta: (delta: string) => void) => {
+        seen.push(messages);
+        onDelta('ok');
+        return { modelId: 'local:test', usedApprox: 1, dropped: 0, truncatedSystem: false, timingMs: 1 };
+      }
+    } as unknown as ModelRouter;
+    const runtime = {
+      refreshServedContext: async () => {},
+      getEffectiveContext: () => 8192
+    } as unknown as ModelRuntime;
+    const request = {
+      modelId: 'local:test',
+      messages: [{ role: 'user', content: 'Which editor layout should I keep for this workspace?' }]
+    } satisfies ChatRequestT;
+
+    await routeForChat(router, runtime, workspace).handler({ query: {}, body: request });
+    const response = new EventEmitter() as EventEmitter & {
+      writeHead: (...args: unknown[]) => void;
+      write: (chunk: string) => void;
+      end: () => void;
+    };
+    response.writeHead = () => {};
+    response.write = () => {};
+    response.end = () => {};
+    await routeForChatStream(router, runtime, workspace).stream!({ query: {}, body: request }, response as never);
+
+    assert.equal(seen.length, 2);
+    assert.deepEqual(seen[1], seen[0], 'both transports must receive the exact same composed context');
+    assert.ok(seen[0]!.some(message => message.content.includes('[recent context - recalled from prior session memory')));
+    assert.ok(Number((seen[0]!.flatMap(m => m.content.match(/Prefer the dark editor layout/g) ?? []).length)) >= 1);
+  } finally {
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
