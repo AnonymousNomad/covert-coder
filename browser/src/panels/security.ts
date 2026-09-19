@@ -6,37 +6,44 @@
 
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
-import { showToast } from '../ui/toast.ts';
+import { authorityPresentation } from '../services/authority.ts';
 
 export interface PanelHandles {
   dispose(): void;
 }
 
-export function createSecurityPanel(parent: HTMLElement, _store: Store<AppState>): PanelHandles {
+export function createSecurityPanel(parent: HTMLElement, store: Store<AppState>): PanelHandles {
   parent.innerHTML = '';
   const root = document.createElement('div');
   root.className = 'panel-content security-panel';
   root.innerHTML = `
     <header class="panel-header">
       <h2 class="panel-title">SECURITY</h2>
-      <span class="panel-maturity">DISABLED</span>
+      <span class="panel-maturity">PARTIAL</span>
     </header>
     <section class="panel-empty">
       <div class="panel-empty-glyph" aria-hidden="true">\u2756</div>
-      <h3>Not yet integrated</h3>
-      <p>No security surface is wired to the frontend today. Desktop control remains session-scoped and deny-by-default on the backend (<code>/api/desktop/*</code>); Telegram bridge (<code>/api/telegram/*</code>) is also not wired. Authority state is not exposed to the browser yet.</p>
-      <p class="panel-empty-detail">The Security panel will become informative only after the facade exposes a read-only <code>GET /api/security/state</code> returning current capability posture (e.g., desktop enabled/disabled, panic-stop reachable, telegram paired/disabled). The frontend never grants itself authority it does not have.</p>
-      <p class="panel-empty-action">Until then, this surface exists to make the absence visible.</p>
+      <h3>Explicit authority. Bounded operations.</h3>
+      <p class="security-pairing" role="status"></p>
+      <p>Pairing identifies this browser session. Each privileged operation still requires a separate decision bound to its exact arguments. Resident has no authority to approve work.</p>
+      <p class="panel-empty-detail">Aggregate containment, pending operations, and consumed authority are not exposed here. Their absence is not a security verdict.</p>
+      <button type="button" class="cockpit-mode security-settings">PROVIDER &amp; NETWORK SETTINGS</button>
     </section>
   `;
   parent.appendChild(root);
 
-  root.addEventListener('click', () => {
-    showToast(root, 'NOT_READY', 'No aggregate read-only security posture is exposed to the cockpit.');
-  });
+  const status = root.querySelector<HTMLElement>('.security-pairing')!;
+  const paint = (): void => {
+    const session = authorityPresentation();
+    status.textContent = session.paired ? `PAIRED · session expires ${new Date(session.expiresAt!).toLocaleTimeString()}. No operation approval is implied.` : 'UNPAIRED / EXPIRED · reload and pair from the launch terminal.';
+  };
+  paint();
+  const interval = window.setInterval(paint, 10000);
+  root.querySelector('.security-settings')?.addEventListener('click', () => store.set(previous => ({ ...previous, panel: 'settings' })));
 
   return {
     dispose() {
+      window.clearInterval(interval);
       parent.innerHTML = '';
     }
   };

@@ -61,7 +61,7 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
       workspaceList.appendChild(el('div', 'panel-empty-detail', 'Workspace/file navigation is unavailable until the daemon responds.'));
       return;
     }
-    workspaceMeta.textContent = `${workspace.workspace} · ${workspace.entries.length} top-level entries`;
+    workspaceMeta.textContent = `${workspace.workspace.split(/[\\/]/).filter(Boolean).pop() ?? 'Workspace'} · ${workspace.entries.length} top-level entries`;
     for (const entry of workspace.entries.slice(0, 120)) {
       const row = el('div', 'cockpit-projects-file-row');
       row.appendChild(el('span', 'cockpit-projects-file-kind', entry.kind === 'directory' ? 'DIR' : 'FILE'));
@@ -70,10 +70,13 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
         open.type = 'button';
         open.className = 'cockpit-projects-file-button';
         open.textContent = entry.name;
-        open.title = `Open ${entry.name} in Monaco`;
+        open.title = editorHost === null ? 'Waiting for editor session restoration' : `Open ${entry.name} in Monaco`;
         open.disabled = editorHost === null;
         open.addEventListener('click', () => {
-          if (editorHost !== null) void editorHost.open(entry.name);
+          if (editorHost !== null) {
+            store.set(previous => ({ ...previous, panel: 'editor' }));
+            void editorHost.open(entry.name);
+          }
         });
         row.appendChild(open);
       } else {
@@ -84,7 +87,9 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
   }
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
+    if (!alive || refreshButton.disabled) return;
+    refreshButton.disabled = true;
+    refreshButton.textContent = 'REFRESHING…';
     try {
       const workspace = await api.workspaceList();
       if (!alive) return;
@@ -92,6 +97,11 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
       renderWorkspace(workspace);
     } catch {
       renderWorkspace(null);
+    } finally {
+      if (alive) {
+        refreshButton.disabled = false;
+        refreshButton.textContent = 'REFRESH';
+      }
     }
   }
 

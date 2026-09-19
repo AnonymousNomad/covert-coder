@@ -1,6 +1,6 @@
-# Contributing to AIDE
+# Contributing to Covert Coder
 
-AIDE is a local-first, offline-capable development workbench. Contributions should preserve user control, reproducibility, and honest capability reporting.
+Covert Coder is a local-first development workbench. Contributions should preserve user control, reproducibility, and honest capability reporting.
 
 ## Before A Change
 
@@ -10,6 +10,19 @@ AIDE is a local-first, offline-capable development workbench. Contributions shou
 - Add a test and update the relevant manifest or documentation.
 
 ## Required Checks
+
+Use Node.js 26.4.0 and the locked dependencies (`npm ci`). For cockpit changes, include a production-build browser review and responsive captures. Do not substitute mocked telemetry for live-product screenshots.
+
+```bash
+npx tsc -p browser/tsconfig.browser.json
+npx eslint .
+npm run build:frontend
+node scripts/cockpit-acceptance.mjs
+```
+
+The cockpit browser driver uses locally installed Microsoft Edge. Its fixtures test UI behavior, not real inference. Include affected route/architecture tests and disclose unavailable hardware/runtime acceptance separately. Keep backend contracts and `data-authority="none"` intact. An appearance preference is not a Harness Mode.
+
+Broader release gates remain:
 
 ```bash
 npm test

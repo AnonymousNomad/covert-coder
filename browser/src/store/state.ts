@@ -34,9 +34,10 @@ export type Maturity = 'AVAILABLE' | 'EXPERIMENTAL' | 'DEGRADED' | 'DISABLED';
 
 export type VerificationState = 'UNVERIFIED' | 'VERIFIED' | 'DEGRADED' | 'FAILED';
 
-export type HarnessState = 'STANDBY' | 'ENABLED' | 'ON';
+export type HarnessState = 'UNKNOWN' | 'STANDBY' | 'ENABLED' | 'ON';
 
 export type NetworkState =
+  | 'UNKNOWN'
   | 'LOCAL_ONLY'
   | 'CREDENTIAL_MISSING'
   | 'REMOTE_CONFIGURED';

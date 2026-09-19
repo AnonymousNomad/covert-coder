@@ -17,12 +17,12 @@ interface NavItem {
 
 const ITEMS: NavItem[] = [
   { id: 'command-center', icon: '\u25ce', label: 'COMMAND CENTER', description: 'Operator overview' },
-  { id: 'resident', icon: '\u29bf', label: 'RESIDENT', description: 'Local / Remote' },
+  { id: 'resident', icon: '\u29bf', label: 'RESIDENT', description: 'Persistent intelligence' },
   { id: 'projects', icon: '\u25a4', label: 'PROJECTS', description: 'Workbenches' },
   { id: 'editor', icon: '\u2261', label: 'EDITOR', description: 'Source surface' },
-  { id: 'terminal', icon: '\u2766', label: 'TERMINAL', description: 'Process IO' },
+  { id: 'terminal', icon: '>_', label: 'TERMINAL', description: 'Governed sessions' },
   { id: 'models', icon: '\u25c8', label: 'MODELS', description: 'Loaded lineup' },
-  { id: 'skills', icon: '\u2756', label: 'SKILLS', description: 'Procedural surface' },
+  { id: 'skills', icon: '\u2756', label: 'SKILLS', description: 'Methods / workflows' },
   { id: 'memory', icon: '\u29c7', label: 'MEMORY', description: 'Helix state' },
   { id: 'verification', icon: '\u2713', label: 'VERIFICATION', description: 'Gate evidence' },
   { id: 'security', icon: '\u25cb', label: 'SECURITY', description: 'Capability state' },
@@ -70,13 +70,15 @@ export function createNavigationRail(parent: HTMLElement, store: Store<AppState>
 
   parent.appendChild(root);
 
-  const unbind = store.subscribe((state) => {
+  const paint = (state: AppState): void => {
     root.querySelectorAll<HTMLElement>('.cockpit-rail-item').forEach((b) => {
       const isActive = b.dataset.itemId === state.panel;
       b.classList.toggle('active', isActive);
       b.setAttribute('aria-current', isActive ? 'page' : 'false');
     });
-  });
+  };
+  paint(store.get());
+  const unbind = store.subscribe(paint);
 
   window.addEventListener('unload', () => unbind());
 

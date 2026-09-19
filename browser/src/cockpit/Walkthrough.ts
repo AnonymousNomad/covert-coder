@@ -71,6 +71,7 @@ export function createWalkthrough(
 
   let index = 0;
   let open = false;
+  let opener: HTMLElement | null = null;
 
   function highlight(step: Step | null): void {
     host.querySelectorAll<HTMLElement>('.cockpit-rail-item.cockpit-walkthrough-target').forEach(item => item.classList.remove('cockpit-walkthrough-target'));
@@ -92,25 +93,29 @@ export function createWalkthrough(
   }
 
   function show(): void {
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     open = true;
     root.hidden = false;
     render();
+    next.focus();
   }
 
   function dismiss(): void {
     open = false;
     root.hidden = true;
     highlight(null);
+    opener?.focus();
   }
+  root.addEventListener('keydown', event => { if (event.key === 'Escape') dismiss(); });
 
   back.addEventListener('click', () => { if (index > 0) { index--; render(); } });
   next.addEventListener('click', () => { if (index < STEPS.length - 1) { index++; render(); } });
-  skip.addEventListener('click', () => { opts.onToast('BAD_REQUEST', 'Walkthrough skipped. Reopen it any time from SETTINGS.'); dismiss(); });
+  skip.addEventListener('click', () => { opts.onToast('INFO', 'Walkthrough skipped. Reopen it any time from SETTINGS.'); dismiss(); });
   finish.addEventListener('click', () => {
     dismiss();
     void api.onboardingComplete().then(
-      () => opts.onToast('BAD_REQUEST', 'Walkthrough complete. Welcome to Covert Coder.'),
-      () => opts.onToast('BAD_REQUEST', 'Walkthrough closed. Completion needs an approved operation; reopen from SETTINGS.')
+      () => opts.onToast('OK', 'Walkthrough complete. Welcome to Covert Coder.'),
+      () => opts.onToast('INFO', 'Walkthrough closed. Completion needs an approved operation; reopen from SETTINGS.')
     );
   });
 

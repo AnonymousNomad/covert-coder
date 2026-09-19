@@ -6,13 +6,15 @@
 }
 
 :root {
-  --bg: #1e1e1e;
-  --bg-panel: #252526;
-  --bg-active: #37373d;
-  --fg: #cccccc;
-  --fg-dim: #858585;
-  --accent: #0e639c;
-  --border: #3c3c3c;
+  --bg: var(--ck-bg-primary);
+  --bg-panel: var(--ck-bg-panel);
+  --bg-active: var(--ck-bg-elevated);
+  --fg: var(--ck-text);
+  --fg-dim: var(--ck-text-muted);
+  --dim: var(--ck-text-muted);
+  --panel: var(--ck-bg-panel);
+  --accent: var(--ck-blue);
+  --border: var(--ck-line);
   --mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
 }
 
@@ -44,7 +46,7 @@ body {
   gap: 8px;
   height: 30px;
   padding: 0 10px;
-  background: #323233;
+  background: var(--ck-bg-panel);
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
 }
@@ -62,11 +64,11 @@ body {
 }
 
 .title-bar .status-dot.ok {
-  background: #89d185;
+  background: var(--ck-green);
 }
 
 .title-bar .status-dot.err {
-  background: #f14c4c;
+  background: var(--ck-danger);
 }
 
 .workbench {
@@ -236,7 +238,7 @@ body {
 }
 
 .group.active .group-toolbar {
-  background: #2d2d30;
+  background: var(--ck-bg-secondary);
 }
 
 .group-tabbar {
@@ -423,7 +425,7 @@ body {
   height: 22px;
   padding: 0 10px;
   background: var(--accent);
-  color: #ffffff;
+  color: var(--ck-text);
   flex: 0 0 auto;
   font-size: 11px;
 }
@@ -518,7 +520,7 @@ body {
 .chat-send,
 .chat-stop {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--ck-text);
   border: none;
   border-radius: 4px;
   padding: 6px 14px;
@@ -532,7 +534,7 @@ body {
 }
 
 .chat-stop {
-  background: #8b2f2f;
+  background: var(--ck-danger);
 }
 
 .chat-banner {
@@ -641,19 +643,19 @@ body {
 }
 
 .provider-dot.connected {
-  background: #4caf50;
+  background: var(--ck-green);
 }
 
 .provider-dot.invalid_key {
-  background: #e6a23c;
+  background: var(--ck-amber);
 }
 
 .provider-dot.unreachable {
-  background: #e06c75;
+  background: var(--ck-danger);
 }
 
 .provider-dot.checking {
-  background: #61afef;
+  background: var(--ck-cyan);
 }
 
 .provider-name {
@@ -671,7 +673,7 @@ body {
 .provider-confirm,
 .provider-cancel {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--ck-text);
   border: none;
   border-radius: 3px;
   padding: 3px 10px;
@@ -817,18 +819,18 @@ body {
    ========================================================================= */
 
 :root {
-  --covert-bg-graphite: #0b1014;
-  --covert-bg-gunmetal: #141a22;
-  --covert-bg-steel: #1c2530;
-  --covert-line: #2a3441;
-  --covert-text: #d6e0e8;
-  --covert-muted: #718994;
-  --covert-blue: #58c7ff;
-  --covert-purple: #b277ff;
-  --covert-pink: #ff5fcf;
-  --covert-green: #72ff9e;
-  --covert-amber: #ffc76b;
-  --covert-danger: #ff6d82;
+  --covert-bg-graphite: var(--ck-bg-primary);
+  --covert-bg-gunmetal: var(--ck-bg-panel);
+  --covert-bg-steel: var(--ck-bg-elevated);
+  --covert-line: var(--ck-line);
+  --covert-text: var(--ck-text);
+  --covert-muted: var(--ck-text-muted);
+  --covert-blue: var(--ck-cyan);
+  --covert-purple: var(--ck-purple);
+  --covert-pink: var(--ck-pink);
+  --covert-green: var(--ck-green);
+  --covert-amber: var(--ck-amber);
+  --covert-danger: var(--ck-danger);
   --covert-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
 }
 
@@ -937,7 +939,7 @@ body {
 }
 
 .topbar-chip:hover {
-  border-color: #3a586e;
+  border-color: var(--ck-line);
   color: var(--covert-text);
 }
 
@@ -1003,7 +1005,7 @@ body {
 }
 
 .topbar-hint:hover {
-  border-color: #3a586e;
+  border-color: var(--ck-line);
   color: var(--covert-text);
 }
 
@@ -1151,7 +1153,7 @@ body {
 
 .dock-toggle:hover {
   color: var(--covert-text);
-  border-color: #3a586e;
+  border-color: var(--ck-line);
 }
 
 .dock-body {
@@ -1475,9 +1477,9 @@ body {
 }
 
 .panel-content {
-  padding: 14px 18px;
-  font-family: var(--covert-mono);
-  font-size: 12px;
+  padding: 24px;
+  font-family: var(--ck-font-sans);
+  font-size: 13px;
   color: var(--covert-text);
   min-height: 100%;
 }
@@ -1493,7 +1495,8 @@ body {
 
 .panel-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 20px;
+  font-family: var(--ck-font-mono);
   font-weight: bold;
   letter-spacing: 0.08em;
   color: var(--covert-text);
@@ -1510,7 +1513,7 @@ body {
 
 .panel-intro {
   color: var(--covert-muted);
-  font-size: 11px;
+  font-size: 13px;
   margin-bottom: 14px;
   line-height: 1.5;
 }
@@ -1598,7 +1601,7 @@ body {
 /* Command Center grid */
 .cc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 
@@ -2141,7 +2144,7 @@ body {
 .terminal-xterm {
   height: 320px;
   padding: 6px;
-  background: #101418;
+  background: var(--ck-bg-deepest);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -2332,7 +2335,7 @@ body {
 }
 .dock-refresh:hover {
   color: var(--covert-text);
-  border-color: #3a586e;
+  border-color: var(--ck-line);
 }
 
 .dock-loading {
@@ -2618,4 +2621,3 @@ body {
   font-size: 11px;
   color: var(--dim);
 }
-

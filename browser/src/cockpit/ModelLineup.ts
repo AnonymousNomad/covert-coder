@@ -47,13 +47,16 @@ function roleLabelsForRoute(r: RouteEntryT): string[] {
   return labels.length > 0 ? labels : ['UNASSIGNED'];
 }
 
-export function createModelLineup(parent: HTMLElement, _store: Store<AppState>): ModelLineupHandles {
+export function createModelLineup(parent: HTMLElement, store: Store<AppState>): ModelLineupHandles {
   parent.innerHTML = '';
   const root = el('div', 'cockpit-lineup');
 
   const header = el('header', 'cockpit-lineup-header');
   header.appendChild(el('h2', 'cockpit-lineup-title', 'MODEL LINEUP'));
-  header.appendChild(el('span', 'cockpit-lineup-subtitle', 'Local / Remote workers'));
+  const manage = el('button', 'cockpit-mode', 'MANAGE') as HTMLButtonElement;
+  manage.type = 'button';
+  manage.addEventListener('click', () => store.set(previous => ({ ...previous, panel: 'models' })));
+  header.appendChild(manage);
   root.appendChild(header);
 
   const list = el('div', 'cockpit-lineup-list');
@@ -62,13 +65,16 @@ export function createModelLineup(parent: HTMLElement, _store: Store<AppState>):
   parent.appendChild(root);
 
   let alive = true;
+  let refreshing = false;
   let routeById = new Map<string, RouteEntryT>();
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
+    if (!alive || refreshing) return;
+    refreshing = true;
     const [statusResult, routesResult] = await Promise.allSettled([api.modelsStatus(), api.routes()]);
     const status = statusResult.status === 'fulfilled' ? statusResult.value : null;
     const routes = routesResult.status === 'fulfilled' ? routesResult.value : null;
+    refreshing = false;
     if (!alive) return;
 
     routeById = new Map((routes?.routes ?? []).map((r) => [r.id, r]));
@@ -84,7 +90,7 @@ export function createModelLineup(parent: HTMLElement, _store: Store<AppState>):
     const active = states.filter(modelIsActive).length;
     const startable = states.filter((state) => state === 'STARTABLE').length;
     const total = status.models.length;
-    header3.appendChild(el('span', 'cockpit-lineup-counts-value', `${active} active · ${startable} startable · ${total} installed`));
+    header3.appendChild(el('span', 'cockpit-lineup-counts-value', `${active} active · ${startable} startable · ${total} registered`));
     list.appendChild(header3);
 
     const roleSection = el('div', 'cockpit-lineup-roles');
@@ -100,14 +106,17 @@ export function createModelLineup(parent: HTMLElement, _store: Store<AppState>):
       roleSection.appendChild(row);
     }
     if (routes === null) roleSection.appendChild(el('div', 'cockpit-lineup-unavailable', 'Role slots are unavailable until /api/models/routes responds.'));
-    list.appendChild(roleSection);
+    const roleDetails = document.createElement('details');
+    roleDetails.appendChild(el('summary', '', 'Role assignments'));
+    roleDetails.appendChild(roleSection);
+    list.appendChild(roleDetails);
 
     if (status.models.length === 0) {
       list.appendChild(el('div', 'cockpit-lineup-empty', 'No models installed. Install a GGUF via /api/modelhub to populate this surface.'));
       return;
     }
 
-    for (const m of status.models) {
+    for (const m of status.models.slice(0, 3)) {
       const route = [m.id, `local:${m.id}`]
         .map((id) => routeById.get(id))
         .find((entry): entry is RouteEntryT => entry !== undefined);
@@ -122,18 +131,10 @@ export function createModelLineup(parent: HTMLElement, _store: Store<AppState>):
         ? 'Role: UNASSIGNED'
         : `Roles: ${roleLabelsForRoute(route).join(', ')}`);
       card.appendChild(role);
-      const resource = el('div', 'cockpit-lineup-card-resource', state === 'STARTABLE' ? 'Resource: available · not running' : active ? 'Resource: active' : state === 'DEGRADED' ? 'Resource: unavailable' : 'Resource: pending');
-      card.appendChild(resource);
-      if (route) {
-        card.appendChild(el('div', 'cockpit-lineup-card-route', `Route: ${route.providerType} \u00b7 ${route.status}`));
-      } else {
-        card.appendChild(el('div', 'cockpit-lineup-card-route', 'Route: UNASSIGNED'));
-      }
-      if (m.endpoint.length > 0) {
-        card.appendChild(el('div', 'cockpit-lineup-card-endpoint', m.endpoint));
-      }
+      card.title = route ? `${route.providerType} · ${route.status}. Open Models for runtime details.` : 'Route unassigned. Open Models for runtime details.';
       list.appendChild(card);
     }
+    if (total > 3) list.appendChild(el('div', 'cockpit-lineup-subtitle', `${total - 3} more in Models · Manage to inspect all`));
   }
 
   void refresh();

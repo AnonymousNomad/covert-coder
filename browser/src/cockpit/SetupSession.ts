@@ -93,6 +93,7 @@ export function createSetupSession(
   root.hidden = true;
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-label', 'Resident adaptive setup session');
+  root.setAttribute('aria-modal', 'true');
   const card = el('div', 'cockpit-setup-card');
   const header = el('div', 'cockpit-setup-header');
   const stageLabel = el('span', 'cockpit-setup-stage', '');
@@ -112,6 +113,7 @@ export function createSetupSession(
   const STAGES = ['WELCOME', 'INTERVIEW', 'CONFIGURATION PLAN', 'APPROVAL', 'PROVIDERS / SECRETS', 'HARDWARE', 'MODEL RECOMMENDATIONS', 'MODEL SETUP', 'WORKFLOW / SKILLS', 'INTEGRATIONS', 'VALIDATION', 'WORKSPACE READY'];
   let stage = 0;
   let open = false;
+  let opener: HTMLElement | null = null;
   let answers: Answers = { ...DEFAULT_ANSWERS };
   let plan: SetupPlanT | null = null;
   let planBusy = false;
@@ -282,7 +284,7 @@ export function createSetupSession(
       body.appendChild(el('p', 'cockpit-setup-detail', 'Secrets are never part of this plan and never enter the record; provider credentials are configured separately under SETTINGS → SECURITY.'));
       if (answers.approvalStrictness !== 'STRICT') body.appendChild(el('p', 'cockpit-setup-note', 'BALANCED and RELAXED are planned policies; today every operation is approved (STRICT).'));
     } else if (stage === 4) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Provider status comes live from the unified connection registry (Gate #1). A connected row is a LIVE connection — kitschy rows mean not configured, not ready-to-pretend.'));
+      body.appendChild(el('p', 'cockpit-setup-detail', 'Provider state comes from the connection registry. Review each status and its evidence; an unconfigured provider requires setup before use.'));
       const list = el('div', 'cockpit-setup-plan');
       for (const provider of plan?.providers ?? []) {
         list.appendChild(line(`${provider.name} (${provider.kind})`, `${provider.status.toUpperCase()}${provider.routing_available ? ' · ROUTING AVAILABLE' : ' · ROUTING NOT AVAILABLE'}${provider.selected ? ' · SELECTED' : ''}`));
@@ -457,7 +459,7 @@ export function createSetupSession(
       if (response.profile === null) throw new Error('server returned no profile');
       const profile = response.profile;
       appliedProfile = profile;
-      opts.onToast('BAD_REQUEST', `Setup profile applied (${profile.answers.mode} · ${profile.skillFamilies.length} skill families).`);
+      opts.onToast('OK', `Setup profile applied (${profile.answers.mode} · ${profile.skillFamilies.length} skill families).`);
     } catch (error) {
       opts.onToast('BAD_REQUEST', `Profile apply needs approval or failed (${String((error as Error).message).slice(0, 90)}).`);
       return false;
@@ -472,12 +474,12 @@ export function createSetupSession(
   }
 
   async function rescanHardware(): Promise<void> {
-    opts.onToast('BAD_REQUEST', 'Rescanning hardware…');
+    opts.onToast('INFO', 'Rescanning hardware…');
     try {
       const response = await api.setupPlan(answers);
       plan = response.plan;
       await api.setupProfilePut(buildProfile(), appliedProfile?.updatedAt ?? null).then(r => { appliedProfile = r.profile; });
-      opts.onToast('BAD_REQUEST', `Hardware snapshot updated (${plan.hardware.totalRamGb} GB RAM).`);
+      opts.onToast('OK', `Hardware snapshot updated (${plan.hardware.totalRamGb} GB RAM).`);
     } catch (error) {
       opts.onToast('BAD_REQUEST', `Rescan needs approval or failed (${String((error as Error).message).slice(0, 90)}).`);
     }
@@ -494,7 +496,7 @@ export function createSetupSession(
       roles = { planner: null, coder: null, reviewer: null };
       selectedRole = null;
       chosenFamilies = [];
-      opts.onToast('BAD_REQUEST', 'Setup profile reset; the wizard starts fresh.');
+      opts.onToast('OK', 'Setup profile reset; the wizard starts fresh.');
     } catch (error) {
       opts.onToast('BAD_REQUEST', `Reset needs approval or failed (${String((error as Error).message).slice(0, 90)}).`);
     }
@@ -520,7 +522,7 @@ export function createSetupSession(
     void api.setupProfilePut(buildProfile(), appliedProfile?.updatedAt ?? null)
       .then(response => {
         appliedProfile = response.profile;
-        opts.onToast('BAD_REQUEST', 'Setup profile updated.');
+        opts.onToast('OK', 'Setup profile updated.');
       })
       .catch(error => opts.onToast('BAD_REQUEST', `Update needs approval or failed (${String((error as Error).message).slice(0, 90)}).`));
   }
@@ -557,17 +559,28 @@ export function createSetupSession(
   }
 
   function show(): void {
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     open = true;
     root.hidden = false;
     stage = 0;
     renderStage();
+    next.focus();
     void hydrate().then(() => renderStage());
   }
 
   function close(): void {
     open = false;
     root.hidden = true;
+    opener?.focus();
   }
+  root.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); close(); }
+    if (event.key !== 'Tab') return;
+    const controls = [...root.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')].filter(node => node.getClientRects().length > 0);
+    const first = controls[0]; const last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  });
 
   return {
     open(): void { show(); },

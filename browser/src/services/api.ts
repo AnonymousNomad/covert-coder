@@ -253,7 +253,10 @@ export async function call<T>(path: string, opts: { query?: unknown; body?: unkn
     headers: { 'content-type': 'application/json' }
   };
   if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
-  if (opts.timeoutMs !== undefined) init.signal = AbortSignal.timeout(opts.timeoutMs);
+  // A stalled read projection must leave loading state. Mutations keep their
+  // caller timeout and are never automatically replayed after uncertain results.
+  const timeoutMs = opts.timeoutMs ?? (method === 'GET' ? 15000 : undefined);
+  if (timeoutMs !== undefined) init.signal = AbortSignal.timeout(timeoutMs);
   const res = await apiFetch(url, init);
   let env: unknown;
   try {

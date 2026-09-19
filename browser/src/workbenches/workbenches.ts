@@ -7,6 +7,7 @@
 // actions go through POST /api/workbenches/{install,trust,uninstall}.
 
 import { api } from '../services/api.ts';
+import { productText } from '../ui/product-text.ts';
 import type { WorkbenchListResponseT } from '../../../common/contracts/workbench.ts';
 
 // Local DOM element factory (T2 — workbenches.ts is mid-flight; this
@@ -82,7 +83,7 @@ export function createWorkbenchesPanel(root: HTMLElement, opts: { onToast: (code
       el('span', { class: 'badge ' + (wb.enabled ? 'badge-ok' : 'badge-pending') }, [wb.enabled ? 'ENABLED' : 'DISABLED']),
       el('span', { class: 'badge ' + (wb.validated ? 'badge-ok' : 'badge-warn') }, [wb.validated ? 'VALIDATED' : 'ISSUES'])
     ]);
-    const desc = el('div', { class: 'workbench-card-desc' }, [wb.description.slice(0, 200) + (wb.description.length > 200 ? '\u2026' : '')]);
+    const desc = el('div', { class: 'workbench-card-desc' }, [productText(wb.description.slice(0, 200)) + (wb.description.length > 200 ? '\u2026' : '')]);
     const counts = el('div', { class: 'workbench-card-counts' }, []);
     if (wb.plugins_count !== undefined) counts.appendChild(el('span', {}, [`${wb.plugins_count} plugins`]));
     if (wb.skills_count !== undefined) counts.appendChild(el('span', {}, [`${wb.skills_count} skills`]));

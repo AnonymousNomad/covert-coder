@@ -7,6 +7,7 @@ export class SessionService {
   current: SessionFileT;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private saving: Promise<SessionFileT> | null = null;
+  onError: (error: unknown) => void = () => {};
 
   constructor(initial: SessionFileT = { version: 1, tabs: [] }) {
     this.current = initial;
@@ -24,7 +25,7 @@ export class SessionService {
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.flush();
+      void this.flush().catch(this.onError);
     }, SAVE_DEBOUNCE_MS);
   }
 

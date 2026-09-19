@@ -12,14 +12,6 @@ export function createAmbientEffects(parent: HTMLElement): AmbientHandles {
   grid.className = 'cockpit-ambient-grid';
   parent.appendChild(grid);
 
-  const scan = document.createElement('div');
-  scan.className = 'cockpit-ambient-scan';
-  parent.appendChild(scan);
-
-  const dots = document.createElement('div');
-  dots.className = 'cockpit-ambient-dots';
-  parent.appendChild(dots);
-
   // Honor prefers-reduced-motion
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduced) {

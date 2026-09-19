@@ -34,8 +34,18 @@ export function createVerificationPanel(parent: HTMLElement, _store: Store<AppSt
   header.appendChild(el('h2', 'panel-title', 'VERIFICATION'));
   header.appendChild(el('span', 'panel-maturity', 'DEGRADED'));
   root.appendChild(header);
-  const intro = el('div', 'panel-intro', 'Workspace posture and recent agent.verification events. Topbar VERIFIED state is gated on current-scope evidence (see Checkpoint 0); this panel surfaces audit history for human review.');
+  const intro = el('div', 'panel-intro', 'Veritas owns verification. A completed task is a claim; recorded evidence must support a verdict for the current scope.');
   root.appendChild(intro);
+  const chain = el('section', 'verification-chain');
+  for (const [label, detail] of [
+    ['CLAIM', 'What the task or agent says happened.'],
+    ['EVIDENCE', 'Recorded checks, results, and provenance.'],
+    ['VERDICT', 'NEEDS EVIDENCE · current-scope correlation is not exposed.']
+  ]) {
+    const step = el('div', 'verification-chain-step');
+    step.append(el('h3', '', label), el('p', '', detail)); chain.appendChild(step);
+  }
+  root.appendChild(chain);
   const body = el('div', 'verification-body');
   root.appendChild(body);
   parent.appendChild(root);
@@ -91,7 +101,7 @@ export function createVerificationPanel(parent: HTMLElement, _store: Store<AppSt
       head.appendChild(el('span', 'verification-event-type', ev.type));
       head.appendChild(el('span', 'verification-event-time', ev.at ?? ev.ts ?? '\u2014'));
       if (ev.ok !== undefined) {
-        head.appendChild(el('span', `verification-event-ok ${ev.ok ? 'ok' : 'err'}`, ev.ok ? 'ok' : 'err'));
+        head.appendChild(el('span', `verification-event-ok ${ev.ok ? 'dim' : 'err'}`, ev.ok ? 'RECORDED PASS · UNSCOPED' : 'RECORDED FAILURE'));
       }
       card.appendChild(head);
       const meta = el('div', 'verification-event-meta');
@@ -129,6 +139,7 @@ export function createVerificationPanel(parent: HTMLElement, _store: Store<AppSt
     ]);
     if (pushResult.status === 'fulfilled') push = pushResult.value.push;
     const audit = auditResult.status === 'fulfilled' ? auditResult.value : null;
+    if (!alive) return;
     body.innerHTML = '';
     body.appendChild(renderPosture(push));
     body.appendChild(renderAuditEvents(audit?.events ?? null));

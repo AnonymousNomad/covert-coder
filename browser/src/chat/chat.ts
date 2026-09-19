@@ -16,7 +16,7 @@ export interface ChatPanel {
 const STATUS_ORDER: Record<string, number> = { ready: 0, starting: 1, unverified: 2, down: 3 };
 
 function routeLabel(route: RouteEntryT): string {
-  const status = route.status === 'down' ? ' (down)' : route.status === 'starting' ? ' (starting)' : '';
+  const status = ` · ${route.status.toUpperCase()}`;
   return `${route.displayName} · ${route.providerType}${status}`;
 }
 
@@ -24,14 +24,15 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   container.innerHTML = `
     <div class="chat-panel">
       <div class="chat-toolbar">
-        <label class="chat-model-label">Model</label>
+        <label class="chat-model-label" for="chat-model">Model</label>
         <select id="chat-model" class="chat-model-select"></select>
+        <button type="button" class="cockpit-mode chat-refresh" aria-label="Refresh model routes">Refresh</button>
         <span id="chat-meter" class="chat-meter"></span>
       </div>
       <div id="chat-banner" class="chat-banner"></div>
       <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-input-row">
-        <textarea id="chat-input" class="chat-input" rows="2" placeholder="Ask the model…"></textarea>
+        <textarea id="chat-input" class="chat-input" aria-label="Message to selected model" rows="2" placeholder="Message Resident’s selected model…"></textarea>
         <button type="button" id="chat-send" class="chat-send">Send</button>
         <button type="button" id="chat-stop" class="chat-stop hidden">Stop</button>
       </div>
@@ -52,6 +53,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   const stopButton: HTMLButtonElement = stopBtnEl;
   const banner: HTMLElement = bannerEl;
   const meter: HTMLElement = meterEl;
+  const refreshButton = container.querySelector<HTMLButtonElement>('.chat-refresh')!;
 
   let routes: RouteEntryT[] = [];
   let boundModelId = '';
@@ -59,6 +61,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   let history: ChatMessageT[] = [];
   let streaming = false;
   let controller: AbortController | null = null;
+  sendButton.disabled = true;
 
   function orderedRoutes(): RouteEntryT[] {
     return [...routes].sort((a, b) => STATUS_ORDER[a.status]! - STATUS_ORDER[b.status]! || a.displayName.localeCompare(b.displayName));
@@ -69,6 +72,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   }
 
   async function refreshModels(): Promise<void> {
+    refreshButton.disabled = true;
     try {
       routes = (await api.routes()).routes;
       const current = boundModelId;
@@ -86,9 +90,15 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
         modelSelect.value = ready?.id ?? (modelSelect.options.length > 0 ? modelSelect.options[0]!.value : '');
       }
       boundModelId = modelSelect.value;
+      sendButton.disabled = boundModelId.length === 0 || streaming || input.value.trim().length === 0;
+      if (boundModelId.length === 0) showBanner('No model route is available. Open Models to inspect runtime and artifact state.');
+      else hideBanner();
       void refreshMeter();
     } catch {
-      // routes unavailable; picker stays empty
+      showBanner('Model routes are unavailable. Check Models and the local runtime, then refresh routes here.');
+      sendButton.disabled = true;
+    } finally {
+      refreshButton.disabled = streaming;
     }
   }
 
@@ -127,7 +137,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
         renderAll();
       }
     } catch {
-      // fresh conversation
+      showBanner('Previous conversation unavailable. This conversation starts locally; continuity is not confirmed.');
     }
   }
 
@@ -172,7 +182,10 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
 
   function setStreaming(value: boolean): void {
     streaming = value;
-    sendButton.disabled = value;
+    sendButton.disabled = value || boundModelId.length === 0 || input.value.trim().length === 0;
+    modelSelect.disabled = value;
+    refreshButton.disabled = value;
+    input.disabled = value;
     stopButton.classList.toggle('hidden', !value);
   }
 
@@ -199,7 +212,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
       const saved = await api.chatHistorySave(request);
       conversationId = saved.id;
     } catch {
-      // persistence is best-effort
+      showBanner('Conversation was not saved. Keep this tab open; durable continuity is not confirmed.');
     }
   }
 
@@ -207,6 +220,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
     const content = input.value.trim();
     if (content.length === 0 && history[history.length - 1]?.role !== 'user') return;
     if (streaming || boundModelId.length === 0) return;
+    hideBanner();
     if (content.length > 0) {
       input.value = '';
       history.push({ role: 'user', content });
@@ -279,7 +293,6 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
     } finally {
       setStreaming(false);
       controller = null;
-      hideBanner();
       renderAll();
       void persistConversation();
       void refreshMeter();
@@ -300,6 +313,8 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   });
 
   sendButton.addEventListener('click', () => void send());
+  input.addEventListener('input', () => { sendButton.disabled = streaming || boundModelId.length === 0 || input.value.trim().length === 0; });
+  refreshButton.addEventListener('click', () => { void refreshModels(); });
   input.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -310,8 +325,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
     controller?.abort();
   });
 
-  void restoreLatest();
-  void refreshModels();
+  void refreshModels().then(() => restoreLatest());
 
   return { refreshModels };
 }

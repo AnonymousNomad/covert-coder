@@ -44,7 +44,7 @@ const python = process.env.AIDE_PYTHON;
 const debugpy = spawnSync(python || 'python', ['-c', 'import debugpy'], { encoding: 'utf8', timeout: 10000 });
 if (debugpy.status === 0) pass('Python debugpy', python || 'python');
 else warn('Python debugpy', python ? `AIDE_PYTHON (${python}) cannot import debugpy` : 'set AIDE_PYTHON to a Python environment with debugpy installed (pip install debugpy) to use the Python debugger');
-console.log('\nAIDE Doctor\n');
+console.log('\nCovert Coder Doctor\n');
 for (const check of checks) console.log(`${check.ok ? (check.warning ? 'WARN' : 'OK') : 'FAIL'}  ${check.name}: ${check.detail}`);
 const failures = checks.filter(check => !check.ok).length;
 console.log(`\n${failures ? 'Preflight failed' : 'Preflight passed'}: ${checks.length - failures}/${checks.length} checks\n`);

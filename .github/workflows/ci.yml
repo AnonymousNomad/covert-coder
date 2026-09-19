@@ -1,4 +1,4 @@
-name: AIDE CI
+name: Covert Coder CI
 
 on:
   push:

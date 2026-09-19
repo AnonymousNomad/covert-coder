@@ -74,7 +74,7 @@ export function deriveWorkflowState(
     id: 'describe',
     label: STAGE_LABELS.describe,
     status: 'unavailable',
-    evidence: 'No describe endpoint is wired to the frontend today. The narrative-of-intent step is currently operator-typed only (search bar, file picker, manual command).'
+    evidence: 'Task intent can be entered in Resident. No current-task stage signal is available in this overview.'
   };
 
   // PLAN — no /api/plan endpoint. Unavailable.
@@ -82,7 +82,7 @@ export function deriveWorkflowState(
     id: 'plan',
     label: STAGE_LABELS.plan,
     status: 'unavailable',
-    evidence: 'No plan endpoint exists. Until plan synthesis is exposed as a facade route, this stage is shown as unavailable; not simulated as in-progress.'
+    evidence: 'No current-task planning signal is exposed in this overview.'
   };
 
   // APPROVE — no approval endpoint exposed to the frontend.
@@ -90,7 +90,7 @@ export function deriveWorkflowState(
     id: 'approve',
     label: STAGE_LABELS.approve,
     status: 'unavailable',
-    evidence: 'No approval endpoint is surfaced. Authority-grant operations exist on the backend (capability.write descriptors) but are not exposed to the browser facade. This stage will only activate when facade routes land.'
+    evidence: 'Operations use explicit approval dialogs. No aggregate pending-approval signal is exposed in this overview.'
   };
 
   // BUILD — backend evidence: /api/tasks/status with running jobs.

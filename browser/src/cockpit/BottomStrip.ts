@@ -51,17 +51,44 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
     btn.type = 'button';
     btn.className = 'cockpit-strip-tab';
     btn.dataset.tab = t.id;
+    btn.id = `console-tab-${t.id}`;
+    btn.setAttribute('aria-controls', 'console-pane');
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-label', `${t.label} tab`);
     btn.textContent = t.label;
     btn.addEventListener('click', () => {
       store.set((prev) => ({ ...prev, bottomTab: t.id }));
     });
+    btn.addEventListener('keydown', event => {
+      const index = TABS.findIndex(tab => tab.id === t.id);
+      const next = event.key === 'ArrowRight' ? (index + 1) % TABS.length : event.key === 'ArrowLeft' ? (index + TABS.length - 1) % TABS.length : event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : -1;
+      if (next < 0) return;
+      event.preventDefault();
+      const target = tabsRow.querySelector<HTMLButtonElement>(`[data-tab="${TABS[next]!.id}"]`);
+      target?.click();
+      target?.focus();
+    });
     tabsRow.appendChild(btn);
   }
   root.appendChild(tabsRow);
+  const collapse = document.createElement('button');
+  collapse.type = 'button';
+  collapse.className = 'cockpit-console-toggle';
+  collapse.textContent = 'COLLAPSE';
+  collapse.setAttribute('aria-label', 'Collapse console');
+  collapse.setAttribute('aria-expanded', 'true');
+  collapse.addEventListener('click', () => {
+    const collapsed = parent.closest('.cockpit-shell')?.classList.toggle('console-collapsed') ?? false;
+    collapse.textContent = collapsed ? 'EXPAND' : 'COLLAPSE';
+    collapse.setAttribute('aria-label', collapsed ? 'Expand console' : 'Collapse console');
+    collapse.setAttribute('aria-expanded', String(!collapsed));
+  });
+  tabsRow.appendChild(collapse);
 
   const body = el('div', 'cockpit-strip-body');
+  body.id = 'console-pane';
+  body.setAttribute('role', 'tabpanel');
+  body.setAttribute('aria-labelledby', `console-tab-${store.get().bottomTab}`);
   const diagnosticsLine = el('div', 'cockpit-strip-diagnostics');
   diagnosticsLine.hidden = true;
   root.appendChild(diagnosticsLine);
@@ -70,7 +97,7 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
   parent.appendChild(root);
 
   let alive = true;
-  let openFile: (path: string) => void = () => {};
+  let openFile: ((path: string) => void) | null = null;
   const LATEST_DIAGNOSTICS: { current: { uri: string; markers: ReadonlyArray<unknown> } | null } = { current: null };
 
   function setLatestDiagnostics(diagnostics: { uri: string; markers: Array<{ severity: number; message: string; startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number }> }): void {
@@ -89,15 +116,19 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
       card.appendChild(el('div', 'cockpit-strip-pane-empty', '/api/workspace unavailable.'));
       return card;
     }
-    card.appendChild(el('div', 'cockpit-strip-pane-meta', workspace.workspace));
+    card.appendChild(el('div', 'cockpit-strip-pane-meta', `${workspace.workspace.split(/[\\/]/).filter(Boolean).pop() ?? 'Workspace'} · ${workspace.entries.length} entries · local filesystem`));
     const list = el('ul', 'cockpit-strip-file-list');
-    for (const entry of workspace.entries.slice(0, 80)) {
+    for (const entry of workspace.entries.slice(0, 12)) {
       const item = el('li', 'cockpit-strip-file-item');
       item.appendChild(el('span', 'cockpit-strip-file-kind', entry.kind === 'directory' ? 'DIR' : 'FILE'));
       item.appendChild(el('span', 'cockpit-strip-file-name', entry.name));
       list.appendChild(item);
     }
     card.appendChild(list);
+    const browse = el('button', 'cockpit-mode', 'OPEN PROJECTS') as HTMLButtonElement;
+    browse.type = 'button';
+    browse.addEventListener('click', () => store.set(previous => ({ ...previous, panel: 'projects' })));
+    card.appendChild(browse);
     return card;
   }
 
@@ -119,8 +150,9 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
       button.type = 'button';
       button.className = 'cockpit-strip-file-open';
       button.textContent = entry.name;
-      button.title = `Open ${entry.name} in Monaco`;
-      button.addEventListener('click', () => openFile(entry.name));
+      button.title = openFile === null ? 'Waiting for editor session restoration' : `Open ${entry.name} in Monaco`;
+      button.disabled = openFile === null;
+      button.addEventListener('click', () => { store.set(previous => ({ ...previous, panel: 'editor' })); openFile?.(entry.name); });
       list.appendChild(button);
     }
     card.appendChild(list);
@@ -180,7 +212,8 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
   function paintSystemMap(): HTMLElement {
     const card = el('div', 'cockpit-strip-pane');
     card.appendChild(el('h3', 'cockpit-strip-pane-title', 'SYSTEM MAP'));
-    card.appendChild(el('div', 'cockpit-strip-pane-empty', 'System map is not exposed on the browser facade. See legacy bottom-strip SYSTEM MAP for the operator dashboard snapshot.'));
+    card.appendChild(el('div', 'cockpit-strip-pane-empty', 'Architecture reference · not a live execution trace'));
+    card.appendChild(el('div', 'cockpit-system-map', 'Resident → Context Control → Skill Intelligence + Workflow Engine → Orchestrator → Execution Authority → Harness → Models / Tools → Veritas → Ghost + Memory → Resident'));
     return card;
   }
 
@@ -191,7 +224,7 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
       let workspace: WorkspaceListResponseT | null = null;
       try { workspace = await api.workspaceList(); }
       catch { workspace = null; }
-      if (!alive) return;
+      if (!alive || store.get().bottomTab !== active) return;
       body.appendChild(active === 'workspace' ? paintWorkspace(workspace) : paintFiles(workspace));
       return;
     }
@@ -199,7 +232,7 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
       let jobs: TaskStatusResponseT | null = null;
       try { jobs = await api.tasksStatus(); }
       catch { jobs = null; }
-      if (!alive) return;
+      if (!alive || store.get().bottomTab !== active) return;
       body.appendChild(active === 'terminal' ? paintTerminal(jobs === null ? null : jobs.jobs) : paintOutput(jobs === null ? null : jobs.jobs));
       return;
     }
@@ -207,18 +240,23 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
       let tasks: TaskListResponseT | null = null;
       try { tasks = await api.tasksList(); }
       catch { tasks = null; }
-      if (!alive) return;
+      if (!alive || store.get().bottomTab !== active) return;
       body.appendChild(paintTests(tasks));
       return;
     }
     if (active === 'system-map') body.appendChild(paintSystemMap());
   }
 
+  let currentTab = store.get().bottomTab;
   const unbind = store.subscribe((state) => {
+    if (state.bottomTab === currentTab) return;
+    currentTab = state.bottomTab;
     parent.querySelectorAll<HTMLElement>('.cockpit-strip-tab').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tab === state.bottomTab);
       btn.setAttribute('aria-selected', btn.dataset.tab === state.bottomTab ? 'true' : 'false');
+      btn.tabIndex = btn.dataset.tab === state.bottomTab ? 0 : -1;
     });
+    body.setAttribute('aria-labelledby', `console-tab-${state.bottomTab}`);
     void refreshPane(state.bottomTab);
   });
   window.addEventListener('unload', () => unbind());
@@ -227,6 +265,7 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
   parent.querySelectorAll<HTMLElement>('.cockpit-strip-tab').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tab === store.get().bottomTab);
     btn.setAttribute('aria-selected', btn.dataset.tab === store.get().bottomTab ? 'true' : 'false');
+    btn.tabIndex = btn.dataset.tab === store.get().bottomTab ? 0 : -1;
   });
   void refreshPane(store.get().bottomTab);
 
@@ -235,9 +274,11 @@ export function createBottomStrip(parent: HTMLElement, store: Store<AppState>): 
     setLatestDiagnostics,
     setOpenFile(nextOpenFile: (path: string) => void) {
       openFile = nextOpenFile;
+      if (store.get().bottomTab === 'files') void refreshPane('files');
     },
     dispose() {
       alive = false;
+      unbind();
       parent.innerHTML = '';
     }
   };

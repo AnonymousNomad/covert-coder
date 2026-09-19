@@ -16,7 +16,7 @@ export const MESSAGES: Record<string, string> = {
 
 export function translateError(code: string, message: string): string {
   const label = MESSAGES[code] ?? message;
-  if ((code === 'INTERNAL' || code === 'CHILD_FAILED') && message.length > 0 && label !== message) {
+  if (message.length > 0 && label !== message) {
     return `${label}: ${message}`;
   }
   return label;
@@ -32,7 +32,7 @@ export function showToast(root: HTMLElement, code: string, message: string): voi
   })();
   const toast = document.createElement('div');
   toast.className = 'aide-toast';
-  toast.dataset.level = code === 'INTERNAL' || code === 'BAD_RESPONSE' ? 'err' : 'warn';
+  toast.dataset.level = code === 'OK' || code === 'INFO' ? 'info' : code === 'INTERNAL' || code === 'BAD_RESPONSE' ? 'err' : 'warn';
   toast.setAttribute('role', 'status');
   toast.textContent = translateError(code, message);
   region.appendChild(toast);
