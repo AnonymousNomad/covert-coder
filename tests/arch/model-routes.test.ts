@@ -36,8 +36,20 @@ before(async () => {
 after(async () => {
   server.events.close();
   await server.logger.flush();
+  httpServer.closeAllConnections();
   await new Promise<void>(resolve => httpServer.close(() => resolve()));
-  await fs.rm(dir, { recursive: true, force: true });
+  // Bounded retry matches the sibling suite teardown doctrine: async writers
+  // (logger streams, index/lazy services) can recreate a file mid-rm, which
+  // fails with EPERM/EBUSY/ENOTEMPTY on both Windows and POSIX.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      await fs.rm(dir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!['EBUSY', 'ENOTEMPTY', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+  }
 });
 
 test('GET /api/models/status lists the bundled models through the envelope', async t => {
