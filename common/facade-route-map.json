@@ -15,6 +15,7 @@
     "/api/git": "ts",
     "/api/health": "ts",
     "/api/hooks": "ts",
+    "/api/harness-lab": "ts",
     "/api/index": "ts",
     "/api/keybindings": "ts",
     "/api/lsp": "ts",

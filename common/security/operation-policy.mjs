@@ -102,6 +102,10 @@ const HTTP_POLICY = new Map([
   ['GET /api/harness-lab/events', 'capability.read'], ['GET /api/harness-lab/passports', 'capability.read'],
   ['GET /api/harness-lab/passport', 'capability.read'], ['GET /api/harness-lab/modes', 'capability.read'],
   ['GET /api/harness-lab/mode', 'capability.read'], ['POST /api/harness-lab/recommend', 'capability.read'],
+  ['GET /api/harness-lab/qualifications', 'capability.read'],
+  // Qualification runs a bounded functional probe through the real runtime, so
+  // it is an execution (route-owned descriptor binds the exact model identity).
+  ['POST /api/harness-lab/qualify', 'capability.execute'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/

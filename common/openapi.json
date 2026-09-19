@@ -3550,6 +3550,133 @@
                           "minimum": 0,
                           "maximum": 9007199254740991
                         },
+                        "exact_prompt_tokens": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "context_budget": {
+                          "type": "object",
+                          "properties": {
+                            "served_context_tokens": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "input_tokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "input_measurement": {
+                              "type": "string",
+                              "enum": [
+                                "EXACT",
+                                "ESTIMATED"
+                              ]
+                            },
+                            "generation_reserve_tokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "reasoning_reserve_tokens": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "structured_output_reserve_tokens": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "sources": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "source": {
+                                    "type": "string",
+                                    "enum": [
+                                      "SYSTEM_SCAFFOLD",
+                                      "HARNESS_ADVISORY",
+                                      "LEARNED_PREFERENCES",
+                                      "MEMORY_BLOCKS",
+                                      "MEMORY_RECALL",
+                                      "WORKSPACE_CONTEXT",
+                                      "RESIDENT",
+                                      "SKILL_CONTEXT",
+                                      "WORKFLOW",
+                                      "USER_REQUEST",
+                                      "CONVERSATION_HISTORY",
+                                      "DRIFT_REMINDER",
+                                      "OTHER_INJECTED"
+                                    ]
+                                  },
+                                  "entries": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tokens": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "measurement": {
+                                    "type": "string",
+                                    "enum": [
+                                      "EXACT",
+                                      "ESTIMATED"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "source",
+                                  "entries",
+                                  "tokens",
+                                  "measurement"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "double_count_ok": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "served_context_tokens",
+                            "input_tokens",
+                            "input_measurement",
+                            "generation_reserve_tokens",
+                            "reasoning_reserve_tokens",
+                            "structured_output_reserve_tokens",
+                            "sources",
+                            "double_count_ok"
+                          ],
+                          "additionalProperties": false
+                        },
                         "compose_ms": {
                           "type": "number"
                         },
@@ -8978,428 +9105,1080 @@
                     "events": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "schema_version": {
-                            "type": "string",
-                            "const": "1.0"
-                          },
-                          "event_id": {
-                            "type": "string",
-                            "minLength": 1
-                          },
-                          "run": {
+                        "anyOf": [
+                          {
                             "type": "object",
                             "properties": {
-                              "run_id": {
+                              "schema_version": {
+                                "type": "string",
+                                "const": "1.1"
+                              },
+                              "event_id": {
                                 "type": "string",
                                 "minLength": 1
                               },
-                              "task_id": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "timestamp": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "covert_sha": {
-                                "type": "string",
-                                "minLength": 7
-                              },
-                              "harness_version": {
-                                "type": "string",
-                                "minLength": 1
-                              }
-                            },
-                            "required": [
-                              "run_id",
-                              "task_id",
-                              "timestamp",
-                              "covert_sha",
-                              "harness_version"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "model": {
-                            "type": "object",
-                            "properties": {
-                              "model_id": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "provider": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "runtime": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "model_version": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "artifact_hash": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "quantization": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "configured_context": {
-                                "type": "integer",
-                                "exclusiveMinimum": 0,
-                                "maximum": 9007199254740991
-                              }
-                            },
-                            "required": [
-                              "model_id",
-                              "provider",
-                              "runtime",
-                              "model_version",
-                              "artifact_hash",
-                              "quantization",
-                              "configured_context"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "machine": {
-                            "type": "object",
-                            "properties": {
-                              "hardware_profile_id": {
-                                "type": "string",
-                                "minLength": 1
-                              }
-                            },
-                            "required": [
-                              "hardware_profile_id"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "operating_mode": {
-                            "type": "object",
-                            "properties": {
-                              "mode_id": {
-                                "type": "string",
-                                "minLength": 1
-                              }
-                            },
-                            "required": [
-                              "mode_id"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "methodology": {
-                            "type": "object",
-                            "properties": {
-                              "workflow_id": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "workflow_version": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "skill_ids": {
-                                "type": "array",
-                                "items": {
-                                  "type": "string",
-                                  "minLength": 1
-                                }
-                              },
-                              "sop_ids": {
-                                "type": "array",
-                                "items": {
-                                  "type": "string",
-                                  "minLength": 1
-                                }
-                              }
-                            },
-                            "required": [
-                              "workflow_id",
-                              "workflow_version",
-                              "skill_ids",
-                              "sop_ids"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "task": {
-                            "type": "object",
-                            "properties": {
-                              "benchmark_suite": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "benchmark_task_id": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "task_class": {
-                                "type": "string",
-                                "minLength": 1
-                              }
-                            },
-                            "required": [
-                              "benchmark_suite",
-                              "benchmark_task_id",
-                              "task_class"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "execution": {
-                            "type": "object",
-                            "properties": {
-                              "attempts": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "tool_calls": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "tool_failures": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "retries": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "escalations": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "authority_requests": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "duration_ms": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "time_to_first_token_ms": {
-                                "anyOf": [
-                                  {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "input_tokens": {
-                                "anyOf": [
-                                  {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "output_tokens": {
-                                "anyOf": [
-                                  {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "peak_ram_mb": {
-                                "anyOf": [
-                                  {
-                                    "type": "number",
-                                    "minimum": 0
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "peak_vram_mb": {
-                                "anyOf": [
-                                  {
-                                    "type": "number",
-                                    "minimum": 0
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              }
-                            },
-                            "required": [
-                              "attempts",
-                              "tool_calls",
-                              "tool_failures",
-                              "retries",
-                              "escalations",
-                              "authority_requests",
-                              "duration_ms",
-                              "time_to_first_token_ms",
-                              "input_tokens",
-                              "output_tokens",
-                              "peak_ram_mb",
-                              "peak_vram_mb"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "verification": {
-                            "type": "object",
-                            "properties": {
-                              "deterministic_checks": {
+                              "run": {
                                 "type": "object",
                                 "properties": {
-                                  "passed": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
+                                  "run_id": {
+                                    "type": "string",
+                                    "minLength": 1
                                   },
-                                  "failed": {
+                                  "task_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "timestamp": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "covert_sha": {
+                                    "type": "string",
+                                    "minLength": 7
+                                  },
+                                  "harness_version": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "run_id",
+                                  "task_id",
+                                  "timestamp",
+                                  "covert_sha",
+                                  "harness_version"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "model": {
+                                "type": "object",
+                                "properties": {
+                                  "model_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "provider": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "runtime": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "model_version": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "artifact_hash": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "quantization": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "configured_context": {
                                     "type": "integer",
-                                    "minimum": 0,
+                                    "exclusiveMinimum": 0,
                                     "maximum": 9007199254740991
                                   }
                                 },
                                 "required": [
-                                  "passed",
-                                  "failed"
+                                  "model_id",
+                                  "provider",
+                                  "runtime",
+                                  "model_version",
+                                  "artifact_hash",
+                                  "quantization",
+                                  "configured_context"
                                 ],
                                 "additionalProperties": false
                               },
-                              "tests_passed": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
+                              "machine": {
+                                "type": "object",
+                                "properties": {
+                                  "hardware_profile_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "hardware_profile_id"
+                                ],
+                                "additionalProperties": false
                               },
-                              "tests_failed": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
+                              "operating_mode": {
+                                "type": "object",
+                                "properties": {
+                                  "mode_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "mode_id"
+                                ],
+                                "additionalProperties": false
                               },
-                              "veritas_verdict": {
-                                "type": [
-                                  "string",
-                                  "null"
-                                ]
+                              "methodology": {
+                                "type": "object",
+                                "properties": {
+                                  "workflow_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "workflow_version": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "skill_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "sop_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "loaded": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "enum": [
+                                            "workflow",
+                                            "mode",
+                                            "skill",
+                                            "sop",
+                                            "memory",
+                                            "resident"
+                                          ]
+                                        },
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "tokens": {
+                                          "anyOf": [
+                                            {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 9007199254740991
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "id",
+                                        "tokens"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "workflow_id",
+                                  "workflow_version",
+                                  "skill_ids",
+                                  "sop_ids",
+                                  "loaded"
+                                ],
+                                "additionalProperties": false
                               },
-                              "evidence_refs": {
-                                "type": "array",
-                                "items": {
-                                  "type": "string",
-                                  "minLength": 1
-                                }
+                              "task": {
+                                "type": "object",
+                                "properties": {
+                                  "benchmark_suite": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "benchmark_task_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "task_class": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "benchmark_suite",
+                                  "benchmark_task_id",
+                                  "task_class"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "execution": {
+                                "type": "object",
+                                "properties": {
+                                  "attempts": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tool_calls": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tool_failures": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "retries": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "escalations": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "authority_requests": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "duration_ms": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "time_to_first_token_ms": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "input_tokens": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "output_tokens": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "peak_ram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "peak_vram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "context_budget": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "served_context_tokens": {
+                                            "type": "integer",
+                                            "exclusiveMinimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "input_tokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "input_measurement": {
+                                            "type": "string",
+                                            "enum": [
+                                              "EXACT",
+                                              "ESTIMATED"
+                                            ]
+                                          },
+                                          "generation_reserve_tokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "reasoning_reserve_tokens": {
+                                            "anyOf": [
+                                              {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "structured_output_reserve_tokens": {
+                                            "anyOf": [
+                                              {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "sources": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "source": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "SYSTEM_SCAFFOLD",
+                                                    "HARNESS_ADVISORY",
+                                                    "LEARNED_PREFERENCES",
+                                                    "MEMORY_BLOCKS",
+                                                    "MEMORY_RECALL",
+                                                    "WORKSPACE_CONTEXT",
+                                                    "RESIDENT",
+                                                    "SKILL_CONTEXT",
+                                                    "WORKFLOW",
+                                                    "USER_REQUEST",
+                                                    "CONVERSATION_HISTORY",
+                                                    "DRIFT_REMINDER",
+                                                    "OTHER_INJECTED"
+                                                  ]
+                                                },
+                                                "entries": {
+                                                  "type": "integer",
+                                                  "minimum": 0,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                "tokens": {
+                                                  "type": "integer",
+                                                  "minimum": 0,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                "measurement": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "EXACT",
+                                                    "ESTIMATED"
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "source",
+                                                "entries",
+                                                "tokens",
+                                                "measurement"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          },
+                                          "double_count_ok": {
+                                            "type": "boolean"
+                                          }
+                                        },
+                                        "required": [
+                                          "served_context_tokens",
+                                          "input_tokens",
+                                          "input_measurement",
+                                          "generation_reserve_tokens",
+                                          "reasoning_reserve_tokens",
+                                          "structured_output_reserve_tokens",
+                                          "sources",
+                                          "double_count_ok"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "attempts",
+                                  "tool_calls",
+                                  "tool_failures",
+                                  "retries",
+                                  "escalations",
+                                  "authority_requests",
+                                  "duration_ms",
+                                  "time_to_first_token_ms",
+                                  "input_tokens",
+                                  "output_tokens",
+                                  "peak_ram_mb",
+                                  "peak_vram_mb",
+                                  "context_budget"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "verification": {
+                                "type": "object",
+                                "properties": {
+                                  "deterministic_checks": {
+                                    "type": "object",
+                                    "properties": {
+                                      "passed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "failed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "passed",
+                                      "failed"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "tests_passed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tests_failed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "veritas_verdict": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "evidence_refs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "veritas": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "VERIFIED",
+                                          "FAILED",
+                                          "ABSTAINED",
+                                          "NOT_CONTRACTED"
+                                        ]
+                                      },
+                                      "task_class": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "contract_ref": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "failed_checks": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "evidence_refs": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "task_class",
+                                      "contract_ref",
+                                      "failed_checks",
+                                      "evidence_refs"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "deterministic_checks",
+                                  "tests_passed",
+                                  "tests_failed",
+                                  "veritas_verdict",
+                                  "evidence_refs",
+                                  "veritas"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "outcome": {
+                                "type": "object",
+                                "properties": {
+                                  "completed": {
+                                    "type": "boolean"
+                                  },
+                                  "first_attempt_success": {
+                                    "type": "boolean"
+                                  },
+                                  "fallback_required": {
+                                    "type": "boolean"
+                                  },
+                                  "failure_class": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "completed",
+                                  "first_attempt_success",
+                                  "fallback_required",
+                                  "failure_class"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "provenance": {
+                                "type": "object",
+                                "properties": {
+                                  "ghost_ref": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "ghost_ref"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "chain": {
+                                "type": "object",
+                                "properties": {
+                                  "seq": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "prev_hash": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "hash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "seq",
+                                  "prev_hash",
+                                  "hash"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
-                              "deterministic_checks",
-                              "tests_passed",
-                              "tests_failed",
-                              "veritas_verdict",
-                              "evidence_refs"
+                              "schema_version",
+                              "event_id",
+                              "run",
+                              "model",
+                              "machine",
+                              "operating_mode",
+                              "methodology",
+                              "task",
+                              "execution",
+                              "verification",
+                              "outcome",
+                              "provenance",
+                              "chain"
                             ],
                             "additionalProperties": false
                           },
-                          "outcome": {
+                          {
                             "type": "object",
                             "properties": {
-                              "completed": {
-                                "type": "boolean"
+                              "schema_version": {
+                                "type": "string",
+                                "const": "1.0"
                               },
-                              "first_attempt_success": {
-                                "type": "boolean"
-                              },
-                              "fallback_required": {
-                                "type": "boolean"
-                              },
-                              "failure_class": {
-                                "type": [
-                                  "string",
-                                  "null"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "completed",
-                              "first_attempt_success",
-                              "fallback_required",
-                              "failure_class"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "provenance": {
-                            "type": "object",
-                            "properties": {
-                              "ghost_ref": {
-                                "type": [
-                                  "string",
-                                  "null"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "ghost_ref"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "chain": {
-                            "type": "object",
-                            "properties": {
-                              "seq": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 9007199254740991
-                              },
-                              "prev_hash": {
+                              "event_id": {
                                 "type": "string",
                                 "minLength": 1
                               },
-                              "hash": {
-                                "type": "string",
-                                "pattern": "^[a-f0-9]{64}$"
+                              "run": {
+                                "type": "object",
+                                "properties": {
+                                  "run_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "task_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "timestamp": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "covert_sha": {
+                                    "type": "string",
+                                    "minLength": 7
+                                  },
+                                  "harness_version": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "run_id",
+                                  "task_id",
+                                  "timestamp",
+                                  "covert_sha",
+                                  "harness_version"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "model": {
+                                "type": "object",
+                                "properties": {
+                                  "model_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "provider": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "runtime": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "model_version": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "artifact_hash": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "quantization": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "configured_context": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "model_id",
+                                  "provider",
+                                  "runtime",
+                                  "model_version",
+                                  "artifact_hash",
+                                  "quantization",
+                                  "configured_context"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "machine": {
+                                "type": "object",
+                                "properties": {
+                                  "hardware_profile_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "hardware_profile_id"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "operating_mode": {
+                                "type": "object",
+                                "properties": {
+                                  "mode_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "mode_id"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "methodology": {
+                                "type": "object",
+                                "properties": {
+                                  "workflow_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "workflow_version": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "skill_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "sop_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "workflow_id",
+                                  "workflow_version",
+                                  "skill_ids",
+                                  "sop_ids"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "task": {
+                                "type": "object",
+                                "properties": {
+                                  "benchmark_suite": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "benchmark_task_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "task_class": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "benchmark_suite",
+                                  "benchmark_task_id",
+                                  "task_class"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "execution": {
+                                "type": "object",
+                                "properties": {
+                                  "attempts": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tool_calls": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tool_failures": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "retries": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "escalations": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "authority_requests": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "duration_ms": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "time_to_first_token_ms": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "input_tokens": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "output_tokens": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "peak_ram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "peak_vram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "attempts",
+                                  "tool_calls",
+                                  "tool_failures",
+                                  "retries",
+                                  "escalations",
+                                  "authority_requests",
+                                  "duration_ms",
+                                  "time_to_first_token_ms",
+                                  "input_tokens",
+                                  "output_tokens",
+                                  "peak_ram_mb",
+                                  "peak_vram_mb"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "verification": {
+                                "type": "object",
+                                "properties": {
+                                  "deterministic_checks": {
+                                    "type": "object",
+                                    "properties": {
+                                      "passed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "failed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "passed",
+                                      "failed"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "tests_passed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tests_failed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "veritas_verdict": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "evidence_refs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "deterministic_checks",
+                                  "tests_passed",
+                                  "tests_failed",
+                                  "veritas_verdict",
+                                  "evidence_refs"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "outcome": {
+                                "type": "object",
+                                "properties": {
+                                  "completed": {
+                                    "type": "boolean"
+                                  },
+                                  "first_attempt_success": {
+                                    "type": "boolean"
+                                  },
+                                  "fallback_required": {
+                                    "type": "boolean"
+                                  },
+                                  "failure_class": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "completed",
+                                  "first_attempt_success",
+                                  "fallback_required",
+                                  "failure_class"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "provenance": {
+                                "type": "object",
+                                "properties": {
+                                  "ghost_ref": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "ghost_ref"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "chain": {
+                                "type": "object",
+                                "properties": {
+                                  "seq": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "prev_hash": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "hash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "seq",
+                                  "prev_hash",
+                                  "hash"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
-                              "seq",
-                              "prev_hash",
-                              "hash"
+                              "schema_version",
+                              "event_id",
+                              "run",
+                              "model",
+                              "machine",
+                              "operating_mode",
+                              "methodology",
+                              "task",
+                              "execution",
+                              "verification",
+                              "outcome",
+                              "provenance",
+                              "chain"
                             ],
                             "additionalProperties": false
                           }
-                        },
-                        "required": [
-                          "schema_version",
-                          "event_id",
-                          "run",
-                          "model",
-                          "machine",
-                          "operating_mode",
-                          "methodology",
-                          "task",
-                          "execution",
-                          "verification",
-                          "outcome",
-                          "provenance",
-                          "chain"
-                        ],
-                        "additionalProperties": false
+                        ]
                       }
                     },
                     "integrity": {
@@ -10222,7 +11001,7 @@
                       "properties": {
                         "schema_version": {
                           "type": "string",
-                          "const": "1.0"
+                          "const": "1.1"
                         },
                         "performance_identity": {
                           "type": "string",
@@ -10275,6 +11054,70 @@
                         "generated_at": {
                           "type": "string",
                           "minLength": 1
+                        },
+                        "qualification": {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "UNQUALIFIED",
+                                "QUALIFYING",
+                                "QUALIFIED",
+                                "QUALIFICATION_FAILED",
+                                "QUALIFICATION_UNKNOWN"
+                              ]
+                            },
+                            "checked_at": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "failure_class": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "runtime_error",
+                                    "engine_not_ready",
+                                    "empty_output",
+                                    "degenerate_output",
+                                    "probe_mismatch",
+                                    "probe_timeout",
+                                    "transport_invalid",
+                                    "other"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "qualification_identity": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "checked_at",
+                            "failure_class",
+                            "qualification_identity"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "evidence_class": {
+                          "type": "string",
+                          "enum": [
+                            "INSUFFICIENT_DATA",
+                            "UNPROBED",
+                            "QUALIFICATION_FAILED",
+                            "QUALIFIED_LOW_SAMPLE",
+                            "QUALIFIED_EVIDENCE_AVAILABLE"
+                          ]
                         },
                         "evidence": {
                           "type": "object",
@@ -10717,6 +11560,8 @@
                         "performance_identity",
                         "identity",
                         "generated_at",
+                        "qualification",
+                        "evidence_class",
                         "evidence",
                         "outcome",
                         "execution",
@@ -10774,7 +11619,7 @@
                         "properties": {
                           "schema_version": {
                             "type": "string",
-                            "const": "1.0"
+                            "const": "1.1"
                           },
                           "performance_identity": {
                             "type": "string",
@@ -10827,6 +11672,70 @@
                           "generated_at": {
                             "type": "string",
                             "minLength": 1
+                          },
+                          "qualification": {
+                            "type": "object",
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "UNQUALIFIED",
+                                  "QUALIFYING",
+                                  "QUALIFIED",
+                                  "QUALIFICATION_FAILED",
+                                  "QUALIFICATION_UNKNOWN"
+                                ]
+                              },
+                              "checked_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "failure_class": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "runtime_error",
+                                      "engine_not_ready",
+                                      "empty_output",
+                                      "degenerate_output",
+                                      "probe_mismatch",
+                                      "probe_timeout",
+                                      "transport_invalid",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "qualification_identity": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "state",
+                              "checked_at",
+                              "failure_class",
+                              "qualification_identity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "evidence_class": {
+                            "type": "string",
+                            "enum": [
+                              "INSUFFICIENT_DATA",
+                              "UNPROBED",
+                              "QUALIFICATION_FAILED",
+                              "QUALIFIED_LOW_SAMPLE",
+                              "QUALIFIED_EVIDENCE_AVAILABLE"
+                            ]
                           },
                           "evidence": {
                             "type": "object",
@@ -11269,6 +12178,8 @@
                           "performance_identity",
                           "identity",
                           "generated_at",
+                          "qualification",
+                          "evidence_class",
                           "evidence",
                           "outcome",
                           "execution",
@@ -11290,6 +12201,361 @@
                   ],
                   "additionalProperties": false
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/harness-lab/qualifications": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "records": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "schema_version": {
+                            "type": "string",
+                            "const": "1.0"
+                          },
+                          "qualification_identity": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "identity": {
+                            "type": "object",
+                            "properties": {
+                              "model_id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "artifact_hash": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "quantization": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "runtime": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "configured_context": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "profile_digest": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "model_id",
+                              "artifact_hash",
+                              "quantization",
+                              "runtime",
+                              "configured_context",
+                              "profile_digest"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "UNQUALIFIED",
+                              "QUALIFYING",
+                              "QUALIFIED",
+                              "QUALIFICATION_FAILED",
+                              "QUALIFICATION_UNKNOWN"
+                            ]
+                          },
+                          "failure_class": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "runtime_error",
+                                  "engine_not_ready",
+                                  "empty_output",
+                                  "degenerate_output",
+                                  "probe_mismatch",
+                                  "probe_timeout",
+                                  "transport_invalid",
+                                  "other"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "checked_at": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "probe_version": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "probes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "passed": {
+                                  "type": "boolean"
+                                },
+                                "detail": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "passed",
+                                "detail"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "evidence_refs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "notes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        },
+                        "required": [
+                          "schema_version",
+                          "qualification_identity",
+                          "identity",
+                          "state",
+                          "failure_class",
+                          "checked_at",
+                          "probe_version",
+                          "probes",
+                          "evidence_refs",
+                          "notes"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "records"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/harness-lab/qualify": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "record": {
+                      "type": "object",
+                      "properties": {
+                        "schema_version": {
+                          "type": "string",
+                          "const": "1.0"
+                        },
+                        "qualification_identity": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "identity": {
+                          "type": "object",
+                          "properties": {
+                            "model_id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "artifact_hash": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "quantization": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "runtime": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "configured_context": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "profile_digest": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "model_id",
+                            "artifact_hash",
+                            "quantization",
+                            "runtime",
+                            "configured_context",
+                            "profile_digest"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "UNQUALIFIED",
+                            "QUALIFYING",
+                            "QUALIFIED",
+                            "QUALIFICATION_FAILED",
+                            "QUALIFICATION_UNKNOWN"
+                          ]
+                        },
+                        "failure_class": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "runtime_error",
+                                "engine_not_ready",
+                                "empty_output",
+                                "degenerate_output",
+                                "probe_mismatch",
+                                "probe_timeout",
+                                "transport_invalid",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checked_at": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "probe_version": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "probes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "passed": {
+                                "type": "boolean"
+                              },
+                              "detail": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "passed",
+                              "detail"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "evidence_refs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "notes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "schema_version",
+                        "qualification_identity",
+                        "identity",
+                        "state",
+                        "failure_class",
+                        "checked_at",
+                        "probe_version",
+                        "probes",
+                        "evidence_refs",
+                        "notes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "record"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "artifact_hash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "model_id"
+                ],
+                "additionalProperties": false
               }
             }
           }

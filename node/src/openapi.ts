@@ -575,7 +575,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForChatStream(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders }),
     routeForChatHistory(chatStore),
     routeForChatHistorySave(chatStore, workspace),
-    ...routesForHarnessLab({ workspace }),
+    ...routesForHarnessLab({ workspace, modelRuntime }),
     routeForProvidersList(providerService),
     routeForProviderConnect(providerService, workspace),
     routeForProviderDisconnect(providerService, workspace),

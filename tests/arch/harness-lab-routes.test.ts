@@ -12,6 +12,7 @@ import { promises as fs } from 'node:fs';
 import { ArchServer } from '../../node/src/server.ts';
 import { routesForAuthority } from '../../node/src/routes/authority.ts';
 import { routesForHarnessLab } from '../../node/src/routes/harness-lab.ts';
+import { ModelRuntime } from '../../node/src/services/model-runtime.ts';
 import { createPerformanceLedger } from '../../node/src/services/performance-ledger.ts';
 import { pairFixture } from './authority-fixture.ts';
 import { makeEvent } from './performance-fixture.ts';
@@ -26,9 +27,19 @@ before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-harness-lab-routes-'));
   const ledger = createPerformanceLedger({ root: path.join(dir, '.aide', 'harness-lab') });
   await ledger.append(makeEvent({ modelId: 'stub-model', taskClass: 'bug-repair', durationMs: 1200, checksPassed: 2 }));
+  const manifestPath = path.join(dir, 'models.json');
+  await fs.writeFile(manifestPath, JSON.stringify({ models: [] }), 'utf8');
+  const modelRuntime = new ModelRuntime({
+    workspace: dir,
+    manifestPath,
+    ingestedPath: path.join(dir, '.aide', 'ingested-models.json'),
+    modelDir: path.join(dir, 'models'),
+    spawnChild: (() => { throw new Error('qualification probe must not spawn in this route test'); }) as never
+  });
+  await modelRuntime.load();
   server = new ArchServer(dir, path.join(dir, 'arch-harness-lab.log'));
   for (const route of routesForAuthority()) server.route(route);
-  for (const route of routesForHarnessLab({ workspace: dir })) server.route(route);
+  for (const route of routesForHarnessLab({ workspace: dir, modelRuntime })) server.route(route);
   httpServer = await server.listen(0);
   const address = httpServer.address();
   assert.ok(address && typeof address === 'object');
@@ -100,6 +111,21 @@ test('mode listing and deterministic composition over HTTP', async () => {
   assert.ok(composedMode.effective.prohibited_effects.includes('offensive-automation'));
 
   assert.equal((await paired('/api/harness-lab/mode?primary=not-a-mode')).status, 404);
+});
+
+test('qualification routes are governed and fail closed for unknown models', async () => {
+  const anonymous = await fetch(`${base}/api/harness-lab/qualify`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model_id: 'nope' }), signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(anonymous.status, 403);
+  const unapproved = await paired('/api/harness-lab/qualify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model_id: 'nope' }) });
+  assert.equal(unapproved.status, 409, 'qualification is an approved exact operation');
+  const headers = await owner.approve('POST', '/api/harness-lab/qualify', { model_id: 'nope' }, 'task:qualify-unknown');
+  const unknown = await paired('/api/harness-lab/qualify', { method: 'POST', headers, body: JSON.stringify({ model_id: 'nope' }) });
+  assert.equal(unknown.status, 404, 'unregistered models cannot be qualified');
+  const listed = await paired('/api/harness-lab/qualifications');
+  assert.equal(listed.status, 200);
+  assert.deepEqual((listed.body.data as { records: unknown[] }).records, []);
 });
 
 test('recommendation is read-only evidence and rejects extra fields', async () => {
