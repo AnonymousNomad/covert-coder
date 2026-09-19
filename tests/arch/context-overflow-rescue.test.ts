@@ -77,15 +77,15 @@ function createStubEngine(state: StubState): Promise<{ url: string; close: () =>
 let dir: string;
 let engine: { url: string; close: () => Promise<void> };
 
-async function makeRuntime(contextTokens: number): Promise<ModelRuntime> {
-  const manifestPath = path.join(dir, `manifest-${contextTokens}.json`);
+async function makeRuntime(contextTokens: number, endpoint = engine.url): Promise<ModelRuntime> {
+  const manifestPath = path.join(dir, `manifest-${contextTokens}-${Buffer.from(endpoint).toString('hex').slice(-8)}.json`);
   await fs.writeFile(manifestPath, JSON.stringify({
     models: [{
       id: 'stub-overflow',
       name: 'Stub Overflow',
       status: 'ready',
       roles: ['chat'],
-      endpoint: engine.url,
+      endpoint,
       model: 'stub-overflow',
       artifact_uri: 'local://stub-overflow.gguf',
       context_tokens: contextTokens,
@@ -147,4 +147,48 @@ test('chat still fails honestly when the effective window is unknown', async () 
     (error: unknown) => error instanceof Error && error.message.includes('HTTP 400')
   );
   await runtime.stopAll();
+});
+
+// 2026-09-19 live-gate regression: a dense system scaffold estimates as fitting
+// (chars/4) while the engine still rejects it (~2.2 chars/token on the real
+// gate prompt). The first refit therefore overflowed again; the runtime must
+// fall back to the minimal prompt instead of surfacing the 400.
+test('chat falls back to the minimal prompt when the estimator undercounts dense context', async () => {
+  const state: StubState = { overflowBodyChars: 5000, requests: [] };
+  const dense = await createStubEngine(state);
+  try {
+    const runtime = await makeRuntime(2048, dense.url);
+    const result = await runtime.chat('stub-overflow', [
+      { role: 'system', content: `[AIDE harness]\n${'x'.repeat(5100)}` },
+      { role: 'user', content: 'final question' }
+    ], { maxTokens: 16 });
+    assert.equal(result.text, 'stub ok', 'minimal-prompt fallback succeeded instead of surfacing the 400');
+    const bodies = state.requests.map(request => request.bodyChars);
+    assert.ok(state.requests.some(request => request.overflow), 'the oversized prompt was rejected at least once');
+    assert.ok(bodies.length >= 3, `expected warmup + two rescue attempts, got ${bodies.length} request(s)`);
+    assert.ok(bodies[bodies.length - 1]! < Math.max(...bodies), 'the successful request is smaller than the rejected attempts');
+    await runtime.stopAll();
+  } finally {
+    await dense.close();
+  }
+});
+
+test('chatStream falls back to the minimal prompt under the same estimator lie', async () => {
+  const state: StubState = { overflowBodyChars: 5000, requests: [] };
+  const dense = await createStubEngine(state);
+  try {
+    const runtime = await makeRuntime(2048, dense.url);
+    const deltas: string[] = [];
+    await runtime.chatStream('stub-overflow', [
+      { role: 'system', content: `[AIDE harness]\n${'x'.repeat(5100)}` },
+      { role: 'user', content: 'final question' }
+    ], delta => deltas.push(delta), new AbortController().signal, { maxTokens: 16 });
+    assert.ok(deltas.join('').includes('stub ok'), 'streamed minimal-prompt fallback produced deltas');
+    const bodies = state.requests.map(request => request.bodyChars);
+    assert.ok(state.requests.some(request => request.overflow), 'the oversized stream prompt was rejected at least once');
+    assert.ok(bodies[bodies.length - 1]! < Math.max(...bodies), 'the successful stream request is smaller than the rejected attempts');
+    await runtime.stopAll();
+  } finally {
+    await dense.close();
+  }
 });

@@ -638,25 +638,63 @@ export class ModelRuntime {
   // window. llama.cpp rejects an overflowing prompt with HTTP 400; without
   // this rescue the router surfaced a 504 with zero output (audit B3/G1).
   // The newest user turn is always preserved; oldest history is dropped.
-  private refitForOverflow(id: string, messages: Array<{ role: string; content: string }>, reserveTokens: number): Array<{ role: string; content: string }> | null {
+  //
+  // `safety` exists because the chars/4 estimate undercounts dense, code-heavy
+  // prompts (the 2026-09-19 live gate measured ~2.2 chars/token on a scaffold +
+  // workspace-context prompt): a refit that "fits" at 100% can still overflow
+  // the engine, so every post-400 refit runs at a reduced budget.
+  private refitForOverflow(id: string, messages: Array<{ role: string; content: string }>, reserveTokens: number, safety = 0.7): Array<{ role: string; content: string }> | null {
     const budget = this.getEffectiveBudget(id, reserveTokens);
     if (budget === null) return null;
+    const fitBudget = Math.max(16, Math.floor(budget * safety));
     const newest = messages[messages.length - 1];
     if (newest === undefined) return null;
     const kept: Array<{ role: string; content: string }> = [];
     let used = estimateTokens(newest.content);
-    if (used > budget) {
+    if (used > fitBudget) {
       // Single oversized turn: hard-truncate its head, keep the tail.
-      const keepChars = budget * 4;
+      const keepChars = fitBudget * 4;
       kept.push({ role: newest.role, content: newest.content.slice(Math.max(0, newest.content.length - keepChars)) });
       return kept;
     }
     for (let index = messages.length - 2; index >= 0; index--) {
       const message = messages[index]!;
       const cost = estimateTokens(message.content);
-      if (used + cost > budget) continue;
+      if (used + cost > fitBudget) continue;
       kept.unshift(message);
       used += cost;
+    }
+    return kept;
+  }
+
+  // Last-resort fit for the residual case where even the safety refit overflows
+  // (the estimator was wrong twice): keep the primary system message — the
+  // harness scaffold lives in the first system slot — only when it demonstrably
+  // fits against half the window, then always keep the newest turn. Returning a
+  // minimal prompt beats surfacing an empty-output 504 when the engine rejected
+  // the composed context (doctrine: never surface an empty-output 504).
+  private hardFit(id: string, messages: Array<{ role: string; content: string }>, reserveTokens: number): Array<{ role: string; content: string }> | null {
+    const budget = this.getEffectiveBudget(id, reserveTokens);
+    if (budget === null) return null;
+    const fitBudget = Math.max(16, Math.floor(budget * 0.5));
+    const newest = messages[messages.length - 1];
+    if (newest === undefined) return null;
+    const kept: Array<{ role: string; content: string }> = [];
+    let used = 0;
+    const system = messages.find(message => message.role === 'system');
+    const newestCost = estimateTokens(newest.content);
+    if (system !== undefined) {
+      const systemCost = estimateTokens(system.content);
+      if (newestCost + systemCost <= fitBudget) {
+        kept.push({ role: system.role, content: system.content });
+        used += systemCost;
+      }
+    }
+    if (newestCost > fitBudget - used) {
+      const keepChars = Math.max(64, (fitBudget - used) * 4);
+      kept.push({ role: newest.role, content: newest.content.slice(Math.max(0, newest.content.length - keepChars)) });
+    } else {
+      kept.push({ role: newest.role, content: newest.content });
     }
     return kept;
   }
@@ -696,6 +734,15 @@ export class ModelRuntime {
       if (refit !== null && refit.length < messages.length) {
         this.logger?.warn('completion overflowed served context; retrying with refit history', { id, messages: messages.length, refit: refit.length });
         response = await attemptRequest(refit);
+      }
+      if (response.status === 400) {
+        // Residual overflow: the estimator undercounted the refit as well.
+        // Fall back to the minimal prompt (scaffold if it fits + newest turn).
+        const minimal = this.hardFit(id, messages, reserve);
+        if (minimal !== null) {
+          this.logger?.warn('completion still overflowed after refit; retrying with the minimal prompt', { id, messages: messages.length, minimal: minimal.length });
+          response = await attemptRequest(minimal);
+        }
       }
     }
     if (!response.ok) throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);
@@ -748,6 +795,15 @@ export class ModelRuntime {
       if (refit !== null && refit.length < messages.length) {
         this.logger?.warn('stream overflowed served context; retrying with refit history', { id, messages: messages.length, refit: refit.length });
         response = await attemptRequest(refit);
+      }
+      if (response.status === 400) {
+        // Residual overflow after the refit: minimal prompt (scaffold if it
+        // fits + newest turn), same fallback as chat().
+        const minimal = this.hardFit(id, messages, reserve);
+        if (minimal !== null) {
+          this.logger?.warn('stream still overflowed after refit; retrying with the minimal prompt', { id, messages: messages.length, minimal: minimal.length });
+          response = await attemptRequest(minimal);
+        }
       }
     }
     if (!response.ok || response.body === null) throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);

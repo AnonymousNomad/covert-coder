@@ -78,14 +78,64 @@ test('POST /api/models/start rejects an unknown model with CHILD_FAILED for appr
   assert.equal(envelope.data.error.code, 'CHILD_FAILED');
 });
 
-test('POST /api/models/ingest rejects a non-gguf path', async t => {
-  t.skip('POST /api/models/ingest remains migration-waived (ARCHITECTURE-DECISION); re-enable the validation assertions when it enrolls');
+test('POST /api/models/ingest is governed and rejects a non-gguf path', async () => {
+  const body = { path: path.join(dir, 'notes.txt') };
+  const anonymous = await fetch(`${base}/api/models/ingest`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(anonymous.status, 403, 'anonymous actor rejected');
+  const noApproval = await owner.request('/api/models/ingest', { method: 'POST', body: JSON.stringify(body) });
+  assert.equal(noApproval.status, 409, 'unapproved ingest denied');
+  const headers = await owner.approve('POST', '/api/models/ingest', body, 'task:model-ingest-invalid');
+  const changed = await owner.request('/api/models/ingest', {
+    method: 'POST', headers, body: JSON.stringify({ path: path.join(dir, 'other.txt') })
+  });
+  assert.equal(changed.status, 409, 'changed path cannot reuse the approval');
+  const response = await owner.request('/api/models/ingest', { method: 'POST', headers, body: JSON.stringify(body) });
+  assert.equal(response.status, 504, 'non-gguf path fails truthfully');
+  const envelope = Envelope.safeParse(await response.json());
+  assert.equal(envelope.success, true);
+  if (envelope.success && !envelope.data.ok) assert.match(envelope.data.error.message, /only \.gguf/);
 });
 
-test('POST /api/chat on an unstarted model returns NOT_READY', async t => {
-  t.skip('POST /api/chat remains migration-waived (ARCHITECTURE-DECISION); re-enable the not-ready assertion (and the endpoint-occupancy guard) when it enrolls');
+test('POST /api/chat is governed and reports NOT_READY before any model is running', async () => {
+  const body = { modelId: 'smollm2-360m-q8', messages: [{ role: 'user', content: 'ping' }] };
+  const anonymous = await fetch(`${base}/api/chat`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(anonymous.status, 403, 'anonymous actor rejected');
+  const noApproval = await owner.request('/api/chat', { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+  assert.equal(noApproval.status, 409, 'unapproved chat denied');
+  const headers = await owner.approve('POST', '/api/chat', body, 'task:chat-not-ready');
+  const changed = await owner.request('/api/chat', {
+    method: 'POST', headers, body: JSON.stringify({ modelId: 'smollm2-360m-q8', messages: [{ role: 'user', content: 'different' }] }), signal: AbortSignal.timeout(30000)
+  });
+  assert.equal(changed.status, 409, 'changed prompt cannot reuse the approval');
+  const response = await owner.request('/api/chat', { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(120000) });
+  const text = await response.text();
+  assert.equal(response.status, 409, text);
+  const envelope = Envelope.safeParse(JSON.parse(text));
+  assert.equal(envelope.success, true);
+  if (envelope.success && !envelope.data.ok) {
+    assert.equal(envelope.data.error.code, 'NOT_READY');
+    assert.match(envelope.data.error.message, /start this model/i);
+  }
 });
 
-test('POST /api/chat/stream on an unstarted model emits a validated error event', async t => {
-  t.skip('POST /api/chat/stream remains migration-waived (ARCHITECTURE-DECISION); re-enable the SSE error-event assertion when it enrolls');
+test('POST /api/chat/stream is governed and emits a validated error event before any model is running', async () => {
+  const body = { modelId: 'smollm2-360m-q8', messages: [{ role: 'user', content: 'ping' }] };
+  const anonymous = await fetch(`${base}/api/chat/stream`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(anonymous.status, 403, 'anonymous actor rejected');
+  const noApproval = await owner.request('/api/chat/stream', { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+  assert.equal(noApproval.status, 409, 'unapproved stream denied');
+  const headers = await owner.approve('POST', '/api/chat/stream', body, 'task:chat-stream-not-ready');
+  const response = await owner.request('/api/chat/stream', { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) });
+  assert.equal(response.status, 200, 'SSE stream accepted');
+  const text = await response.text();
+  const events = text.split('\n\n').filter(Boolean).map(line => JSON.parse(line.replace(/^data: /, '')) as { error?: string; delta?: string; done?: boolean });
+  const errorEvent = events.find(event => typeof event.error === 'string');
+  assert.ok(errorEvent, `expected a truthful error event, got: ${text.slice(0, 200)}`);
+  assert.match(errorEvent.error!, /start this model/i);
 });
