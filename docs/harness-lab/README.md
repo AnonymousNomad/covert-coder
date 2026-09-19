@@ -12,13 +12,15 @@ TASK -> context/methodology -> authority -> ONE Covert Harness -> model
 
 | Component | Location | Purpose |
 |---|---|---|
-| Performance event contract | `common/contracts/performance.ts` | Versioned (`schema_version: 1.0`) strict observation schema: run/model/machine/operating_mode/methodology/task/execution/verification/outcome/provenance |
-| Local ledger | `node/src/services/performance-ledger.ts` | Append-only JSONL with a sha256 chain (`seq`/`prev_hash`/`hash`), secret-shape rejection, corruption detection, bounded queries |
-| Model Passport | `node/src/services/model-passport.ts` | DERIVED projection (counts/rates/medians) per performance identity — never raw truth, never a fabricated score |
+| Performance event contract | `common/contracts/performance.ts` | Versioned (`schema_version: 1.1`) strict observation schema: run/model/machine/operating_mode/methodology/task/execution/verification/outcome/provenance — plus context economics, Veritas outcome, and loaded methodology |
+| Local ledger | `node/src/services/performance-ledger.ts` | Append-only JSONL with a sha256 chain (`seq`/`prev_hash`/`hash`), secret-shape rejection, corruption detection, bounded queries; v1.0 history stays readable |
+| Model qualification | `node/src/services/model-qualification.ts` | Bounded FUNCTIONAL probe (echo/JSON/arithmetic + degeneracy detection) per artifact+quant+runtime+context+profile identity; failures persist and are excluded from qualified candidates |
+| Model Passport | `node/src/services/model-passport.ts` | DERIVED projection (counts/rates/medians) per performance identity with qualification-aware evidence classes — never raw truth, never a fabricated score |
 | Operating modes | `common/contracts/harness-modes.ts`, `harness/modes.mjs` | Typed loadouts for one harness; deterministic composition; constraints accumulate, budgets tighten, status is the weakest component |
 | Battery v1 | `harness/lab/tasks.json`, `harness/lab/battery.mjs`, `harness/lab/fixtures/` | 8 objective tasks (7 text-fixture + 2 execution-verified; `bug-repair` and `regression-test` run real code) |
-| Live runner | `scripts/harness-lab.mjs` | Drives the real supervised stack through approved exact operations for every model/task |
-| Query surface | `GET/POST /api/harness-lab/*` | Read-only: events, passports, passport, modes, composed mode, evidence recommendation |
+| Veritas outcomes | `harness/lab/veritas-outcome.mjs` | VERIFIED / FAILED / ABSTAINED / NOT_CONTRACTED from deterministic execution evidence via the existing Veritas gates |
+| Live runner | `scripts/harness-lab.mjs` | Drives the real supervised stack through approved exact operations for every model/task; qualifies first, skips failed configurations, re-pairs on authority session expiry |
+| Query surface | `GET/POST /api/harness-lab/*` | Read-only: events, passports, passport, qualifications, modes, composed mode, evidence recommendation; `POST /api/harness-lab/qualify` is the one governed execution |
 
 ## Data location (local by default)
 
