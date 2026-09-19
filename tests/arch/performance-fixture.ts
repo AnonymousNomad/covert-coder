@@ -1,5 +1,40 @@
 import { randomUUID } from 'node:crypto';
-import type { PerformanceEventT } from '../../common/contracts/performance.ts';
+import type { PerformanceEventT, ContextBudgetT, VeritasOutcomeT, QualificationRecordT } from '../../common/contracts/performance.ts';
+
+export function makeQualification(options: {
+  modelId?: string;
+  artifactHash?: string;
+  quantization?: string;
+  runtime?: string;
+  configuredContext?: number;
+  profileDigest?: string;
+  state?: QualificationRecordT['state'];
+  failureClass?: QualificationRecordT['failure_class'];
+  checkedAt?: string;
+} = {}): QualificationRecordT {
+  const identity = {
+    model_id: options.modelId ?? 'stub-model',
+    artifact_hash: options.artifactHash ?? 'a'.repeat(64),
+    quantization: options.quantization ?? 'Q8_0',
+    runtime: options.runtime ?? 'llama-server',
+    configured_context: options.configuredContext ?? 2048,
+    profile_digest: options.profileDigest ?? 'none'
+  };
+  const state = options.state ?? 'QUALIFIED';
+  const failureClass = options.failureClass === undefined ? (state === 'QUALIFICATION_FAILED' ? 'degenerate_output' : null) : options.failureClass;
+  return {
+    schema_version: '1.0',
+    qualification_identity: `${identity.model_id}@${identity.artifact_hash}:${identity.configured_context}:${identity.runtime}|${identity.quantization}|${identity.profile_digest}`,
+    identity,
+    state,
+    failure_class: failureClass,
+    checked_at: options.checkedAt ?? '2026-09-19T12:00:00.000Z',
+    probe_version: '1.0',
+    probes: [{ name: 'echo-instruction', passed: state === 'QUALIFIED', detail: state === 'QUALIFIED' ? 'QUALIFY-OK' : 'degenerate output' }],
+    evidence_refs: ['qualification-runs/stub/echo-instruction.txt'],
+    notes: []
+  };
+}
 
 export interface EventOptions {
   eventId?: string;
@@ -20,6 +55,7 @@ export interface EventOptions {
   workflowVersion?: string;
   skillIds?: string[];
   sopIds?: string[];
+  loaded?: PerformanceEventT['methodology']['loaded'];
   completed?: boolean;
   firstAttemptSuccess?: boolean;
   fallbackRequired?: boolean;
@@ -35,11 +71,13 @@ export interface EventOptions {
   toolFailures?: number;
   evidenceRefs?: string[];
   veritasVerdict?: string | null;
+  veritas?: VeritasOutcomeT;
+  contextBudget?: ContextBudgetT | null;
 }
 
 export function makeEvent(options: EventOptions = {}): PerformanceEventT {
   return {
-    schema_version: '1.0',
+    schema_version: '1.1',
     event_id: options.eventId ?? randomUUID(),
     run: {
       run_id: options.runId ?? 'test-run-1',
@@ -63,7 +101,8 @@ export function makeEvent(options: EventOptions = {}): PerformanceEventT {
       workflow_id: options.workflowId ?? 'harness-baseline-v1',
       workflow_version: options.workflowVersion ?? '1.0',
       skill_ids: options.skillIds ?? [],
-      sop_ids: options.sopIds ?? []
+      sop_ids: options.sopIds ?? [],
+      loaded: options.loaded ?? []
     },
     task: {
       benchmark_suite: options.suite ?? 'harness-baseline-v1',
@@ -82,13 +121,15 @@ export function makeEvent(options: EventOptions = {}): PerformanceEventT {
       input_tokens: null,
       output_tokens: options.outputTokens === undefined ? 32 : options.outputTokens,
       peak_ram_mb: null,
-      peak_vram_mb: null
+      peak_vram_mb: null,
+      context_budget: options.contextBudget ?? null
     },
     verification: {
       deterministic_checks: { passed: options.checksPassed ?? 1, failed: options.checksFailed ?? 0 },
       tests_passed: options.testsPassed ?? 0,
       tests_failed: options.testsFailed ?? 0,
       veritas_verdict: options.veritasVerdict ?? null,
+      veritas: options.veritas ?? { status: 'NOT_CONTRACTED', task_class: null, contract_ref: null, failed_checks: [], evidence_refs: [] },
       evidence_refs: options.evidenceRefs ?? ['evidence/meta.json']
     },
     outcome: {

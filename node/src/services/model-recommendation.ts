@@ -23,6 +23,10 @@ export function recommendModels(input: { request: RecommendationRequestT; passpo
     const reasons: string[] = [];
     let qualified = true;
 
+    if (passport.evidence_class === 'QUALIFICATION_FAILED') {
+      qualified = false;
+      reasons.push(`qualification failed (${passport.qualification.failure_class ?? 'unknown'}): configuration excluded from qualified candidates`);
+    }
     if (request.local_only && passport.identity.provider !== 'local') {
       qualified = false;
       reasons.push(`provider ${passport.identity.provider} is not local`);

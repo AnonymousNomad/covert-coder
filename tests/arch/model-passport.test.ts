@@ -16,7 +16,7 @@ import { createPerformanceLedger } from '../../node/src/services/performance-led
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { makeEvent } from './performance-fixture.ts';
+import { makeEvent, makeQualification } from './performance-fixture.ts';
 
 test('confidence labels are mechanical, never invented', () => {
   assert.equal(evidenceConfidence(0), 'INSUFFICIENT');
@@ -83,6 +83,42 @@ test('workflow, skill and mode associations are recorded per identity', () => {
   assert.equal(passport.by_mode.length, 2);
   const bugRepair = passport.by_task_class.find(entry => entry.task_class === 'bug-repair');
   assert.equal(bugRepair?.sample_size, 2);
+});
+
+test('qualification dispositions drive passport evidence classes and exclusion', () => {
+  const identityArgs = { modelId: 'model-q', artifactHash: 'q'.repeat(64), configuredContext: 2048 };
+  const failedQualification = makeQualification({ ...identityArgs, state: 'QUALIFICATION_FAILED', failureClass: 'degenerate_output' });
+  const oneEvent = makeEvent(identityArgs);
+
+  const failedPassport = derivePassport([oneEvent], { qualifications: [failedQualification] });
+  assert.ok(failedPassport);
+  assert.equal(failedPassport.evidence_class, 'QUALIFICATION_FAILED');
+  assert.equal(failedPassport.qualification.state, 'QUALIFICATION_FAILED');
+  assert.equal(failedPassport.qualification.failure_class, 'degenerate_output');
+
+  const qualified = makeQualification(identityArgs);
+  const lowSample = derivePassport([oneEvent], { qualifications: [qualified] });
+  assert.ok(lowSample);
+  assert.equal(lowSample.evidence_class, 'QUALIFIED_LOW_SAMPLE');
+
+  const fourEvents = [1, 2, 3, 4].map(index => makeEvent({ ...identityArgs, taskId: `t${index}` }));
+  const evidenceAvailable = derivePassport(fourEvents, { qualifications: [qualified] });
+  assert.ok(evidenceAvailable);
+  assert.equal(evidenceAvailable.evidence_class, 'QUALIFIED_EVIDENCE_AVAILABLE');
+
+  const withoutProbe = derivePassport([oneEvent]);
+  assert.ok(withoutProbe);
+  assert.equal(withoutProbe.evidence_class, 'UNPROBED');
+});
+
+test('a failed configuration with no events is still inspectable', () => {
+  const failedQualification = makeQualification({ modelId: 'model-dead', artifactHash: 'd'.repeat(64), state: 'QUALIFICATION_FAILED', failureClass: 'degenerate_output' });
+  const passports = derivePassports([], { qualifications: [failedQualification] });
+  assert.equal(passports.length, 1);
+  assert.equal(passports[0]!.evidence.sample_size, 0);
+  assert.equal(passports[0]!.evidence_class, 'QUALIFICATION_FAILED');
+  assert.equal(passports[0]!.insufficient_data, true);
+  assert.ok(passports[0]!.notes.some(note => note.includes('excluded from qualified routing candidates')));
 });
 
 test('passports persist atomically and survive a re-read', async () => {
