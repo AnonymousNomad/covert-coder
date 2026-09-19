@@ -5,6 +5,7 @@
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
+import { productText } from '../ui/product-text.ts';
 import type { AuditReadResponseT, AuditEventT } from '../../../common/contracts/audit.ts';
 import type { ResidentDecisionsResponseT, ResidentDecisionT } from '../../../common/contracts/resident.ts';
 
@@ -37,7 +38,6 @@ function severityClass(sev: string): string {
 }
 
 function mapAudit(ev: AuditEventT): TimelineEntry | null {
-  if (ev.type === 'subagent.error') return null;
   const rawTimestamp = typeof ev.at === 'string' ? ev.at : typeof ev.ts === 'string' ? ev.ts : null;
   const parsedTimestamp = rawTimestamp === null ? null : Date.parse(rawTimestamp);
   const ts = parsedTimestamp === null || Number.isNaN(parsedTimestamp) ? null : parsedTimestamp;
@@ -56,7 +56,7 @@ function mapDecision(d: ResidentDecisionT): TimelineEntry {
     ts: d.ts,
     severity: d.severity,
     source: 'resident',
-    message: d.message,
+    message: productText(d.message),
     tag: 'decision'
   };
 }
@@ -83,9 +83,11 @@ export function createActivityTimeline(parent: HTMLElement, _store: Store<AppSta
   parent.appendChild(root);
 
   let alive = true;
+  let refreshing = false;
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
+    if (!alive || refreshing) return;
+    refreshing = true;
     let audit: AuditReadResponseT | null = null;
     let decisions: ResidentDecisionsResponseT | null = null;
     try {
@@ -97,12 +99,14 @@ export function createActivityTimeline(parent: HTMLElement, _store: Store<AppSta
       audit = null;
       decisions = null;
     }
+    refreshing = false;
     if (!alive) return;
     paint(audit, decisions);
   }
 
   function paint(audit: AuditReadResponseT | null, decisions: ResidentDecisionsResponseT | null): void {
     timeline.innerHTML = '';
+    if (audit === null || decisions === null) timeline.appendChild(el('li', 'cockpit-activity-empty', `${audit === null ? 'Audit unavailable. ' : ''}${decisions === null ? 'Resident decisions unavailable. ' : ''}Activity may be incomplete.`));
     const entries: TimelineEntry[] = [];
     if (audit !== null) {
       for (const ev of audit.events) {
@@ -114,7 +118,7 @@ export function createActivityTimeline(parent: HTMLElement, _store: Store<AppSta
       for (const d of decisions.decisions) entries.push(mapDecision(d));
     }
     if (entries.length === 0) {
-      const empty = el('div', 'cockpit-activity-empty', 'No recent activity. Audit bus and Resident decisions surface here as events accumulate.');
+      const empty = el('div', 'cockpit-activity-empty', audit === null || decisions === null ? 'No activity evidence retrieved.' : 'No recent activity. Audit bus and Resident decisions surface here as events accumulate.');
       timeline.appendChild(empty);
       return;
     }

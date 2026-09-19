@@ -1,5 +1,8 @@
 import editorWorker from 'monaco-editor/editor/editor.worker?worker';
 import tsWorker from 'monaco-editor/language/typescript/ts.worker?worker';
+import jsonWorker from 'monaco-editor/language/json/json.worker?worker';
+import cssWorker from 'monaco-editor/language/css/css.worker?worker';
+import htmlWorker from 'monaco-editor/language/html/html.worker?worker';
 import 'monaco-editor/editor/editor.main';
 import '../../node_modules/monaco-editor/min/vs/editor/editor.main.css';
 import { Store } from './store/store.ts';
@@ -28,6 +31,9 @@ import { initializeAuthority } from './services/authority.ts';
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string): Worker {
     if (label === 'typescript' || label === 'javascript') return new tsWorker();
+    if (label === 'json') return new jsonWorker();
+    if (label === 'css' || label === 'scss' || label === 'less') return new cssWorker();
+    if (label === 'html' || label === 'handlebars' || label === 'razor') return new htmlWorker();
     return new editorWorker();
   }
 };
@@ -36,21 +42,25 @@ function renderTabBar(tabBar: HTMLElement, groupId: string, host: EditorHost): v
   tabBar.textContent = '';
   const paths = host.tabsIn(groupId);
   for (const relPath of paths) {
+    const item = document.createElement('div');
+    item.className = 'editor-tab-item';
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'tab' + (host.activePath() === relPath ? ' active' : '') + (isDirty(relPath) ? ' dirty' : '');
-    button.textContent = relPath.split('\\').pop() ?? relPath;
+    button.textContent = (relPath.split(/[\\/]/).pop() ?? relPath) + (isDirty(relPath) ? ' •' : '');
     button.title = relPath;
     button.addEventListener('click', () => host.activate(relPath));
-    const close = document.createElement('span');
+    const close = document.createElement('button');
+    close.type = 'button';
     close.className = 'tab-close';
     close.textContent = '\u00d7';
+    close.setAttribute('aria-label', `Close ${relPath}`);
     close.addEventListener('click', (event: MouseEvent) => {
       event.stopPropagation();
       void host.close(relPath);
     });
-    button.appendChild(close);
-    tabBar.appendChild(button);
+    item.append(button, close);
+    tabBar.appendChild(item);
   }
 }
 
@@ -65,6 +75,7 @@ async function boot(): Promise<void> {
   const store = new Store(INITIAL_STATE);
   const shell: CockpitHandles = mountCockpit(app, store);
   const session = new SessionService();
+  session.onError = () => shell.notify('COMMIT_FAILED', 'Editor session was not saved. Open tabs remain available in this window.');
 
   // Editor mounts inside the cockpit center column.
   const groups = createGroups(shell.editorWorkspace, {
@@ -83,10 +94,9 @@ async function boot(): Promise<void> {
     },
     onToast: shell.notify
   }, new ArchLspBridge());
+  groups.setLayout(['g1']);
   registerLspProviders(host);
-  createSearchPanel(shell.searchMount, { host, onToast: shell.notify });
-  shell.setEditorHost(host);
-  shell.bottom.setOpenFile(path => { void host.open(path); });
+  shell.searchMount.textContent = 'Restoring editor session…';
   onDirtyChange(() => renderAllTabs(host));
   groups.onGroupsChange(() => renderAllTabs(host));
 
@@ -131,6 +141,12 @@ async function boot(): Promise<void> {
   }
   renderAllTabs(host);
 
+  shell.searchMount.replaceChildren();
+  createSearchPanel(shell.searchMount, { host, onToast: shell.notify });
+  shell.setEditorHost(host);
+  shell.bottom.setOpenFile(path => { void host.open(path); });
+  app.dataset.editorReady = 'true';
+
   try {
     const workspace = await api.workspaceList();
     store.set(prev => ({ ...prev, workspace }));
@@ -138,22 +154,27 @@ async function boot(): Promise<void> {
     // workspace listing is best-effort
   }
 
-  void wireTopbarToBackends(shell);
+  let statusRefreshing = false;
+  const updateStatus = async (): Promise<void> => {
+    if (statusRefreshing) return;
+    statusRefreshing = true;
+    try { await wireTopbarToBackends(shell); }
+    finally { statusRefreshing = false; }
+  };
+  void updateStatus();
+  const statusTimer = window.setInterval(() => { void updateStatus(); }, 30000);
   void refreshLspStatus(shell, lspStates);
 
   window.addEventListener('pagehide', () => {
+    window.clearInterval(statusTimer);
     session.set(() => host.captureSession());
-    void session.flush();
+    void session.flush().catch(session.onError);
     events.dispose();
   });
 }
 
 async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
-  void refreshEngineChip(shell);
-  void refreshCloudChip(shell);
-  void refreshHarnessChip(shell);
-  void refreshVerificationChip(shell);
-  void refreshModes(shell);
+  await Promise.all([refreshEngineChip(shell), refreshCloudChip(shell), refreshHarnessChip(shell), refreshVerificationChip(shell), refreshModes(shell)]);
 }
 
 async function refreshModes(shell: CockpitHandles): Promise<void> {
@@ -187,7 +208,7 @@ async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
   let res: ModelStatusResponseT;
   try { res = await api.modelsStatus(); }
   catch {
-    shell.topbar.setEngine({ label: 'NO MODEL ACTIVE', ready: false });
+    shell.topbar.setEngine({ label: 'MODEL STATE UNKNOWN', ready: false });
     return;
   }
   const states = res.models.map(model => modelDisplayState(model));
@@ -204,7 +225,7 @@ async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
 async function refreshCloudChip(shell: CockpitHandles): Promise<void> {
   let res: ByokStatusResponseT;
   try { res = await api.byokStatus(); }
-  catch { shell.topbar.setCloud('LOCAL_ONLY'); return; }
+  catch { shell.topbar.setCloud('UNKNOWN'); return; }
   if (!res.consent_enabled) {
     shell.topbar.setCloud('LOCAL_ONLY');
     return;
@@ -240,7 +261,7 @@ async function refreshLspStatus(shell: CockpitHandles, states: Record<string, st
 async function refreshHarnessChip(shell: CockpitHandles): Promise<void> {
   let res: ClosedLoopStatusT;
   try { res = await api.closedLoopStatus(); }
-  catch { shell.topbar.setHarness('STANDBY'); return; }
+  catch { shell.topbar.setHarness('UNKNOWN'); return; }
   if (!res.enabled) {
     shell.topbar.setHarness('STANDBY');
     return;

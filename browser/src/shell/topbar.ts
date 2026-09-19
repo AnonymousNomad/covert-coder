@@ -5,7 +5,6 @@ import type {
   NetworkState,
   HarnessState
 } from '../store/state.ts';
-import { COVERT_VISUAL_ASSET_SLOTS } from '../cockpit/VisualAssetSlots.ts';
 
 export interface TopbarMode {
   private: boolean | null;
@@ -23,13 +22,13 @@ export interface TopbarHandles {
   setModes(modes: TopbarMode): void;
 }
 
-export function createTopbar(parent: HTMLElement, _store: Store<AppState>): TopbarHandles {
+export function createTopbar(parent: HTMLElement, store: Store<AppState>): TopbarHandles {
+  const emblem = new URL('../../../docs/assets/branding/covert-coder-emblem.png', import.meta.url).href;
   parent.innerHTML = `
     <header class="topbar" role="banner">
       <div class="topbar-identity">
-        <span class="topbar-mark" data-asset-slot="${COVERT_VISUAL_ASSET_SLOTS.branding.emblem.relativePath}" data-artwork-state="required" title="Approved Covert emblem asset required" aria-hidden="true">\u25c7</span>
-        <span class="topbar-brand">COVERT</span>
-        <span class="topbar-subbrand">CODER</span>
+        <img class="topbar-mark" src="${emblem}" alt="Covert emblem" width="44" height="52" />
+        <span class="topbar-wordmark"><span class="topbar-brand">COVERT CODER</span><span class="topbar-subbrand">Vibe at the surface. Engineering underneath.</span></span>
       </div>
       <nav class="topbar-modes" aria-label="system mode">
         <span class="topbar-mode" data-mode="private" title="Private: BYOK consent disabled">PRIVATE</span>
@@ -43,26 +42,21 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
         </button>
         <button class="topbar-chip" data-chip="engine" type="button" title="Model readiness (configured + runtime + artifact)" aria-label="Model readiness">
           <span class="topbar-chip-dot" data-chip-dot="engine"></span>
-          <span data-chip-label="engine">NO MODEL READY</span>
+          <span data-chip-label="engine">MODEL STATE UNKNOWN</span>
         </button>
         <button class="topbar-chip" data-chip="verify" type="button" title="Verification state (positive canonical verdict only)" aria-label="Verification state">
           <span data-chip-label="verify">VERIFY: UNVERIFIED</span>
         </button>
-        <button class="topbar-chip" data-chip="harness" type="button" title="Closed-loop harness state" aria-label="Harness state">
-          <span data-chip-label="harness">HARNESS: STANDBY</span>
+        <button class="topbar-chip" data-chip="harness" type="button" title="Closed-loop configuration, not Harness mode or execution state" aria-label="Closed-loop configuration">
+          <span data-chip-label="harness">LOOP: UNKNOWN</span>
         </button>
         <button class="topbar-chip" data-chip="cloud" type="button" title="Network / BYOK configuration state" aria-label="Network state">
           <span class="topbar-chip-dot" data-chip-dot="cloud"></span>
-          <span data-chip-label="cloud">LOCAL ONLY</span>
+          <span data-chip-label="cloud">NETWORK: UNKNOWN</span>
         </button>
       </nav>
       <span class="topbar-spacer"></span>
-      <button class="topbar-hint" type="button" disabled title="Command palette unavailable in this cockpit phase" aria-label="Command palette unavailable">
-        <kbd>Ctrl</kbd><kbd>K</kbd>
-      </button>
-      <button class="topbar-hint" type="button" disabled title="Terminal command palette unavailable; terminal view is read-only" aria-label="Terminal command palette unavailable">
-        <kbd>Ctrl</kbd><kbd>&#96;</kbd>
-      </button>
+      <button class="topbar-hint cockpit-intel-toggle" type="button" aria-controls="cockpit-intel" aria-expanded="false">INTELLIGENCE</button>
     </header>
   `;
 
@@ -74,6 +68,11 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
   const verify = chip(parent, 'verify');
   const harness = chip(parent, 'harness');
   const cloud = chip(parent, 'cloud');
+  const destinations = { daemon: 'security', engine: 'models', verify: 'verification', harness: 'skills', cloud: 'settings' } as const;
+  for (const [name, panel] of Object.entries(destinations)) {
+    const button = root.querySelector<HTMLButtonElement>(`[data-chip="${name}"]`);
+    button?.addEventListener('click', () => store.set(previous => ({ ...previous, panel })));
+  }
 
   function setDataState(el: HTMLElement, state: string | null): void {
     if (state === null) el.removeAttribute('data-state');
@@ -96,12 +95,13 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
   }
 
   function setHarness(state: HarnessState): void {
-    harness.label.textContent = `HARNESS: ${state}`;
+    harness.label.textContent = `LOOP: ${state}`;
     setDataState(harness.root, state === 'ON' ? 'idle' : state === 'ENABLED' ? 'idle-soft' : null);
   }
 
   function setCloud(state: NetworkState): void {
     const labelMap: Record<NetworkState, string> = {
+      UNKNOWN: 'NETWORK: UNKNOWN',
       LOCAL_ONLY: 'LOCAL ONLY',
       CREDENTIAL_MISSING: 'CREDENTIAL MISSING',
       REMOTE_CONFIGURED: 'REMOTE CONFIGURED'

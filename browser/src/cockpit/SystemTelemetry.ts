@@ -71,7 +71,7 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
 
   const header = el('header', 'cockpit-telemetry-header');
   header.appendChild(el('h2', 'cockpit-telemetry-title', 'SYSTEM RESOURCES'));
-  header.appendChild(el('span', 'cockpit-telemetry-subtitle', 'Honest snapshot refresh'));
+  header.appendChild(el('span', 'cockpit-telemetry-subtitle', 'DEVICE SNAPSHOT'));
   root.appendChild(header);
 
   const grid = el('div', 'cockpit-telemetry-grid');
@@ -131,7 +131,7 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
     tierRow.appendChild(el('span', 'cockpit-telemetry-tier', h.tier));
     tierRow.appendChild(el('span', 'cockpit-telemetry-backend', h.backend.toUpperCase()));
     tierCard.appendChild(tierRow);
-    tierCard.appendChild(el('div', 'cockpit-telemetry-card-value', `${h.logicalCpus} cores \u00b7 ${fmtGB(h.totalRamBytes)} RAM`));
+    tierCard.appendChild(el('div', 'cockpit-telemetry-card-value', `${h.logicalCpus} logical processors \u00b7 ${fmtGB(h.totalRamBytes)} RAM`));
     tierCard.appendChild(el('div', 'cockpit-telemetry-card-note', `Source: ${h.vramSource} \u00b7 CPU usage and disk capacity are not exposed by the current hardware contract.`));
     grid.appendChild(tierCard);
   }

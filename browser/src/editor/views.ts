@@ -17,9 +17,25 @@ function key(relPath: string, splitId: string): string {
 }
 
 export function createView(container: HTMLElement, relPath: string, splitId: string, model: monaco.editor.ITextModel): EditorView {
+  const tokens = getComputedStyle(document.documentElement);
+  const color = (name: string): string => tokens.getPropertyValue(name).trim();
+  monaco.editor.defineTheme('covert', {
+    base: 'vs-dark', inherit: true, rules: [],
+    colors: {
+      'editor.background': color('--ck-bg-primary'),
+      'editor.foreground': color('--ck-text'),
+      'editorLineNumber.foreground': color('--ck-text-dim'),
+      'editorLineNumber.activeForeground': color('--ck-cyan'),
+      'editorCursor.foreground': color('--ck-cyan'),
+      'editor.selectionBackground': '#4474ec40',
+      'editor.lineHighlightBackground': color('--ck-bg-panel'),
+      'editorWidget.background': color('--ck-bg-secondary'),
+      'editorWidget.border': color('--ck-line')
+    }
+  });
   const editor = monaco.editor.create(container, {
     model,
-    theme: 'vs-dark',
+    theme: 'covert',
     fontSize: 13,
     fontFamily: "'Cascadia Mono', Consolas, 'Courier New', monospace",
     automaticLayout: true,

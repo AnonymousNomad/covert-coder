@@ -88,6 +88,14 @@ function envelope(data) {
 
 async function fulfillApi(route) {
   const url = new URL(route.request().url());
+  if (url.pathname === '/api/chat/stream') {
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'data: {"delta":"Fixture response: "}\n\ndata: {"delta":"stream rendered."}\n\ndata: {"done":true}\n\n' });
+    return;
+  }
+  if (url.pathname === '/api/chat/history' && route.request().method() === 'POST') {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: envelope({ id: 'fixture-conversation', updatedAt: Date.now() }) });
+    return;
+  }
   if (url.pathname === '/api/authority/pair') {
     await route.fulfill({ status: 200, contentType: 'application/json', body: envelope({ token: 'fixture-token-012345678901234567890123', actor_id: 'fixture-operator', expires_at: Date.now() + 600000 }) });
     return;
@@ -243,6 +251,8 @@ try {
     // The Monaco module graph can keep DOMContentLoaded pending while all
     // resources are healthy. Synchronize on the actual cockpit mount below.
     await page.goto(`${baseUrl}/`, { waitUntil: 'commit', timeout: bootTimeoutMs });
+    await page.locator('#covert-pairing-code').fill('p'.repeat(32));
+    await page.getByRole('button', { name: 'PAIR SESSION', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#app[data-active-panel]') !== null, { timeout: bootTimeoutMs });
     await page.waitForSelector('.cockpit-resident', { state: 'visible', timeout: bootTimeoutMs });
   } catch (error) {
@@ -255,6 +265,8 @@ try {
   assert.equal(await page.locator('#app').getAttribute('data-active-panel'), 'command-center', 'Command Center must be the default landing');
   assert.equal(await page.locator('.cockpit-command-center-mount .command-center-panel').count(), 1, 'Command Center evidence surface is not mounted');
   assert.equal(await page.locator('.cockpit-resident').count(), 1, 'Resident core is not mounted');
+  assert.equal(await page.locator('.cockpit-resident').getAttribute('data-authority'), 'none');
+  await page.locator('.cockpit-appearance-disclosure summary').click();
   assert.equal(await page.locator('.cockpit-operator-identity[data-variant="engineering"]').count(), 1, 'Engineering operator identity is not mounted');
   assert.equal(await page.locator('[aria-label="Resident appearance"]').count(), 1, 'Resident appearance control is missing');
   assert.equal(await page.locator('[aria-label="Resident appearance"] option').count(), 4, 'identity registry must expose four governed profiles');
@@ -284,7 +296,7 @@ try {
   await page.locator('.cockpit-operator-hide').uncheck();
   assert.equal(await page.locator('.cockpit-intel-slot').count(), 3, 'intelligence rail is incomplete');
   assert.equal(await page.locator('.cockpit-strip-tab').count(), 6, 'lower console must expose six approved tabs');
-  await page.waitForFunction(() => document.querySelector('[data-chip-label="engine"]')?.textContent?.includes('1 OF 2 MODELS READY') === true);
+  await page.waitForFunction(() => document.querySelector('[data-chip-label="engine"]')?.textContent?.includes('1 OF 2 MODELS STARTABLE') === true);
   assert.match(await page.locator('[data-chip-label="daemon"]').textContent() ?? '', /DAEMON: ONLINE/, 'daemon reachability chip is not independently live');
   assert.doesNotMatch(await page.locator('[data-chip-label="engine"]').textContent() ?? '', /DAEMON|fixture/i, 'daemon health leaked into model readiness chip');
   await page.waitForFunction(() => document.querySelectorAll('.cockpit-telemetry-card').length >= 5);
@@ -297,6 +309,7 @@ try {
   assert.equal(await page.locator('.cockpit-resident-action[data-maturity="GOVERNED"]').count(), 8, 'Resident quick actions must identify their governed path');
   assert.equal(await page.locator('.cockpit-resident-input[disabled]').count(), 0, 'governed Resident composer must be usable');
   assert.match(await page.locator('.cockpit-resident-composer').innerText(), /GOVERNED RESIDENT COMPOSER[\s\S]*operator approval/i, 'Resident composer must disclose its approval boundary');
+  await page.getByText('Role assignments', { exact: true }).click();
   assert.match(await page.locator('.cockpit-lineup-roles').innerText(), /Coder[\s\S]*UNASSIGNED/, 'unassigned role slots must remain truthful');
   await page.waitForFunction(() => Array.from(document.querySelectorAll('.wf-stage-name')).some(node => node.textContent === 'BUILD'));
   const buildStage = page.locator('.wf-stage').filter({ has: page.locator('.wf-stage-name', { hasText: 'BUILD' }) });
@@ -311,7 +324,7 @@ try {
     return { centerBottom: center.bottom, intelBottom: intel.bottom, bottomTop: bottom.top, centerWidth: center.width };
   });
   assert.ok(wideGeometry.centerBottom <= wideGeometry.bottomTop + 1, 'center overlaps lower console');
-  assert.ok(wideGeometry.intelBottom <= wideGeometry.bottomTop + 1, 'intelligence rail overlaps lower console');
+  assert.ok(wideGeometry.intelBottom <= 1001, 'intelligence rail exceeds viewport');
 
   const destinations = [
     'command-center', 'resident', 'projects', 'editor', 'terminal', 'models', 'skills', 'memory', 'verification', 'security', 'extensions', 'settings'
@@ -347,14 +360,31 @@ try {
   assert.equal(await page.locator('.cockpit-activity-time').first().innerText(), 'TIME UNKNOWN', 'activity invented a timestamp for an untimestamped event');
 
   await clickDestination(page, 'skills');
-  await page.locator('.skills-panel').click();
-  assert.equal(await page.locator('.skills-panel .panel-empty').count(), 1, 'toast path destroyed the Skills surface');
-  assert.equal(await page.locator('.skills-panel .aide-toast').count(), 1, 'dedicated toast was not rendered');
+  assert.match(await page.locator('.skills-panel').innerText(), /one canonical Covert Harness/);
+  assert.match(await page.locator('.skills-panel').innerText(), /selection and activation are unavailable/);
 
   await clickDestination(page, 'editor');
   assert.equal(await page.locator('.cockpit-editor-layout').count(), 1, 'editor workspace was orphaned');
   assert.equal(await page.locator('.cockpit-editor-search').count(), 1, 'Search was orphaned from the editor');
-  assert.equal(await page.locator('.topbar-hint[disabled]').count(), 2, 'inert keyboard affordances are not visibly disabled');
+  await page.locator('[data-chip="engine"]').click();
+  assert.equal(await page.locator('#app').getAttribute('data-active-panel'), 'models', 'model status must navigate to its real surface');
+  await clickDestination(page, 'resident');
+  await page.getByRole('button', { name: 'CONVERSATION', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Message to selected model', exact: true }).fill('Test the stream presentation.');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('.chat-message.assistant .chat-message-body')?.textContent === 'Fixture response: stream rendered.');
+  assert.equal(await page.getByRole('button', { name: 'Send', exact: true }).isEnabled(), false, 'empty composer must not offer a no-op send');
+  assert.equal(await page.locator('.cockpit-resident').getAttribute('data-authority'), 'none');
+  let quickActionWrites = 0;
+  const trackWrite = request => { if (request.method() !== 'GET' && new URL(request.url()).pathname.startsWith('/api/agent')) quickActionWrites++; };
+  page.on('request', trackWrite);
+  await page.getByRole('button', { name: 'Analyze Repository; prepares a task for review', exact: true }).click();
+  assert.equal(await page.locator('.cockpit-resident-input').inputValue(), 'Analyze Repository for the current workspace.');
+  assert.equal(quickActionWrites, 0, 'quick action must prepare, not submit, work');
+  page.off('request', trackWrite);
+  await page.getByRole('button', { name: 'Collapse console', exact: true }).click();
+  assert.equal(await page.locator('.cockpit-strip-body').isVisible(), false);
+  await page.getByRole('button', { name: 'Expand console', exact: true }).click();
 
   await page.setViewportSize({ width: 640, height: 800 });
   await clickDestination(page, 'command-center');
@@ -366,6 +396,12 @@ try {
   assert.ok(narrowGeometry.centerWidth > 280, `narrow center is unusable: ${narrowGeometry.centerWidth}px`);
   assert.ok(narrowGeometry.centerBottom <= narrowGeometry.bottomTop + 1, 'narrow center overlaps lower console');
   assert.equal(narrowGeometry.intelHidden, true, 'narrow layout must collapse the intelligence rail');
+  await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).click();
+  assert.equal(await page.locator('#cockpit-intel').isVisible(), true, 'narrow intelligence drawer must be reachable');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).evaluate(node => node === document.activeElement), true);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).evaluate(node => getComputedStyle(node).transitionDuration), '0s', 'reduced motion must disable control transitions');
 
   assert.deepEqual(pageErrors, [], `browser page exceptions: ${pageErrors.join(' | ')}`);
   assert.deepEqual(consoleErrors, [], `browser console errors: ${consoleErrors.join(' | ')}`);

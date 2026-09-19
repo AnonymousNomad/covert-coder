@@ -20,13 +20,13 @@ function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['pro
   row.className = 'byok-row';
   row.dataset.providerId = provider.id;
   const dot = document.createElement('span');
-  dot.className = provider.key_stored ? 'provider-dot connected' : 'provider-dot disconnected';
+  dot.className = 'provider-dot disconnected';
   const name = document.createElement('span');
   name.className = 'provider-name';
   name.textContent = provider.name;
   const status = document.createElement('span');
   status.className = 'provider-status';
-  status.textContent = provider.key_stored ? 'CONNECTED (key stored — run Test to verify)' : 'NOT CONFIGURED';
+  status.textContent = provider.key_stored ? 'CONFIGURED (key stored — run Test to verify)' : 'NOT CONFIGURED';
   const test = document.createElement('button');
   test.type = 'button';
   test.className = 'provider-action';
@@ -45,7 +45,7 @@ function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['pro
     api
       .byokTest(provider.id)
       .then(result => {
-        status.textContent = result.ok ? `CONNECTED (${result.detail})` : `INVALID CREDENTIAL (${result.detail})`;
+        status.textContent = result.ok ? `CONNECTED (${result.detail})` : `CONNECTION FAILED (${result.detail})`;
         opts.onToast(result.ok ? 'OK' : 'NOT_READY', result.detail);
       })
       .catch((error: unknown) => {
@@ -107,6 +107,10 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
   const modelEl: HTMLInputElement = modelInput;
   const keyEl: HTMLInputElement = keyInput;
   const addEl: HTMLButtonElement = addButton;
+  nameEl.setAttribute('aria-label', 'Provider name');
+  baseEl.setAttribute('aria-label', 'Provider base URL');
+  modelEl.setAttribute('aria-label', 'Provider model ID');
+  keyEl.setAttribute('aria-label', 'Provider API key');
 
   function toast(code: string, message: string): void {
     opts.onToast(code, message);
@@ -122,6 +126,7 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
       label.textContent = role;
       const select = document.createElement('select');
       select.className = 'byok-role-select';
+      select.setAttribute('aria-label', `${role} model routing`);
       select.dataset.role = role;
       const localOption = document.createElement('option');
       localOption.value = 'local';

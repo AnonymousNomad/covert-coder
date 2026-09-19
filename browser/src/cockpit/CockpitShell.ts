@@ -147,6 +147,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
           </div>
         </section>
         <aside class="cockpit-intel" id="cockpit-intel" aria-label="Intelligence column">
+          <button class="cockpit-intel-close" type="button">CLOSE INTELLIGENCE</button>
           <section class="cockpit-intel-slot" id="cockpit-intel-models" aria-label="Model lineup"></section>
           <section class="cockpit-intel-slot" id="cockpit-intel-telemetry" aria-label="System telemetry"></section>
           <section class="cockpit-intel-slot" id="cockpit-intel-activity" aria-label="Recent activity"></section>
@@ -193,6 +194,20 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const walkthrough = createWalkthrough(app, store, { onToast: notify });
   const setup = createSetupSession(app, store, { onToast: notify, onNavigate: (panel) => store.set(prev => ({ ...prev, panel })) });
   const topbar = createTopbar(topbarHost, store);
+  const intel = app.querySelector<HTMLElement>('#cockpit-intel')!;
+  const intelToggle = app.querySelector<HTMLButtonElement>('.cockpit-intel-toggle')!;
+  const closeIntel = (): void => {
+    intel.classList.remove('is-open');
+    intelToggle.setAttribute('aria-expanded', 'false');
+    intelToggle.focus();
+  };
+  intelToggle.addEventListener('click', () => {
+    const open = intel.classList.toggle('is-open');
+    intelToggle.setAttribute('aria-expanded', String(open));
+    if (open) intel.querySelector<HTMLButtonElement>('.cockpit-intel-close')?.focus();
+  });
+  intel.querySelector('.cockpit-intel-close')?.addEventListener('click', closeIntel);
+  intel.addEventListener('keydown', event => { if (event.key === 'Escape') closeIntel(); });
   const navigation = createNavigationRail(navHost, store);
   const resident = createResidentCore(residentMount, store, { onToast: notify });
   const modelLineup = createModelLineup(modelSlot, store);
@@ -269,7 +284,15 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     app.dataset.activePanel = panel;
   }
 
-  const unbindCenter = store.subscribe((state) => applyCenterPanel(state.panel));
+  let currentPanel = store.get().panel;
+  const unbindCenter = store.subscribe((state) => {
+    if (state.panel === currentPanel) return;
+    currentPanel = state.panel;
+    applyCenterPanel(state.panel);
+    const stage = panelRegistry[state.panel].root;
+    stage.classList.remove('cockpit-enter');
+    requestAnimationFrame(() => stage.classList.add('cockpit-enter'));
+  });
   applyCenterPanel(store.get().panel);
 
   window.addEventListener('unload', () => {

@@ -70,6 +70,15 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let activeProvider: TerminalProviderInfoT | null = null;
   let stopButton: HTMLButtonElement | null = null;
   let windowsResizeHandler: (() => void) | null = null;
+  let resizeObserver: ResizeObserver | null = null;
+  let opening = false;
+  function disposeTerminal(): void {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    if (windowsResizeHandler) window.removeEventListener('resize', windowsResizeHandler);
+    windowsResizeHandler = null;
+    xterm?.dispose(); xterm = null; fitAddon = null;
+  }
   const bus = getSharedEvents();
 
   const providerEls = new Map<string, HTMLElement>();
@@ -133,6 +142,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     shellWrap.appendChild(providerSelect);
     shellSelect = document.createElement('select');
     shellSelect.className = 'terminal-select';
+    shellSelect.setAttribute('aria-label', 'Shell');
     for (const s of activeProvider.shells) shellSelect.add(new Option(s.label, s.id));
     shellSelect.value = activeProvider.shells[0]!.id;
     shellWrap.appendChild(shellSelect);
@@ -155,6 +165,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   }
 
   function renderSessionShell(): void {
+    disposeTerminal();
     sessionShell.innerHTML = '';
     if (activeSessionId === null) return;
     const stage = el('div', 'terminal-stage running');
@@ -174,7 +185,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     stage.appendChild(termHost);
     sessionShell.appendChild(stage);
 
-    const refreshedTerm = new XTerm({ cursorBlink: true, fontSize: 13 });
+    const tokens = getComputedStyle(document.documentElement);
+    const refreshedTerm = new XTerm({ cursorBlink: !matchMedia('(prefers-reduced-motion: reduce)').matches, fontSize: 13,
+      fontFamily: 'Cascadia Mono, Consolas, monospace',
+      theme: { background: tokens.getPropertyValue('--ck-bg-deepest').trim(), foreground: tokens.getPropertyValue('--ck-text').trim(), cursor: tokens.getPropertyValue('--ck-cyan').trim() }
+    });
     const addon = new FitAddon();
     refreshedTerm.loadAddon(addon);
     refreshedTerm.open(termHost);
@@ -191,10 +206,15 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       }
     };
     window.addEventListener('resize', windowsResizeHandler);
+    resizeObserver = new ResizeObserver(() => {
+      if (termHost.clientWidth > 0 && termHost.clientHeight > 0) windowsResizeHandler?.();
+    });
+    resizeObserver.observe(termHost);
     refreshedTerm.focus();
   }
 
   function renderSessionEnded(message: string): void {
+    disposeTerminal();
     sessionShell.innerHTML = '';
     const stage = el('div', 'terminal-stage gone');
     stage.appendChild(el('div', 'panel-empty', message));
@@ -224,6 +244,12 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     providerEls.clear();
     for (const p of infos) {
       const card = renderProviderState(p);
+      card.setAttribute('role', 'button');
+      card.tabIndex = 0;
+      card.setAttribute('aria-label', `Select ${p.label}: ${p.state}`);
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); card.click(); }
+      });
       providerEls.set(p.id, card);
       card.addEventListener('click', () => {
         activeProvider = p;
@@ -239,7 +265,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   }
 
   async function openSession(): Promise<void> {
-    if (activeProvider === null) return;
+    if (activeProvider === null || activeSessionId !== null || opening) return;
+    opening = true;
+    openButton.disabled = true;
     const body: { provider: string; shell: string | null; cols: number; rows: number } = {
       provider: providerSelect?.value ?? activeProvider.id,
       shell: shellSelect?.value ?? null,
@@ -258,19 +286,24 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       sessionShell.innerHTML = '';
       sessionShell.appendChild(el('div', 'panel-error', `Session not opened: ${e instanceof Error ? e.message : String(e)}`));
       renderOpenControls();
+    } finally {
+      opening = false;
+      openButton.disabled = activeSessionId !== null;
     }
   }
 
   async function stopSession(): Promise<void> {
     if (activeSessionId === null) return;
     const id = activeSessionId;
-    setBusy('Stopping session\u2026');
+    if (stopButton) { stopButton.disabled = true; stopButton.textContent = 'STOPPING…'; }
     try {
       await api.terminalSessionStop(id);
+      renderSessionEnded('STOPPED · session closed by the operator.');
+      openButton.disabled = false;
+      renderOpenControls();
     } catch (e) {
-      sessionShell.innerHTML = '';
       sessionShell.appendChild(el('div', 'panel-error', `Stop failed: ${e instanceof Error ? e.message : String(e)}`));
-      if (activeSessionId !== null) renderSessionShell();
+      if (stopButton) { stopButton.disabled = false; stopButton.textContent = 'STOP SESSION'; }
     }
   }
 
@@ -284,6 +317,16 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     if (!mine) {
       renderSessionEnded('Session ended. Open a new one from the provider bar.');
       return;
+    }
+    if (mine.state === 'running' && !sessionsInitialized) {
+      sessionsInitialized = true;
+      renderSessionShell();
+    }
+    if (mine.state === 'stopped' || mine.state === 'disposed' || mine.state === 'failed') {
+      if (stopButton) stopButton.disabled = true;
+      activeSessionId = null;
+      openButton.disabled = false;
+      renderOpenControls();
     }
     const stateLab = `${mine.state.toUpperCase()}${mine.exitCode !== null ? ` \u00b7 exit ${mine.exitCode}` : ''}${mine.cleanup !== 'clean' ? ` \u00b7 cleanup=${mine.cleanup}` : ''}`;
     let chip = sessionShell.querySelector('.terminal-session-state');
@@ -308,6 +351,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     } else if (event.kind === 'exit') {
       sessionsInitialized = true;
       if (xterm) xterm.write(`\r\n[session exited ${event.exitCode}; cleanup=${event.cleanup}]\r\n`);
+      void refreshSessions();
     } else if (event.kind === 'error' && xterm) {
       xterm.write(`\r\n[terminal: ${event.message}]\r\n`);
     }
@@ -356,13 +400,13 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
 
   void refreshProviders();
   void refreshHistory();
-  const interval = window.setInterval(() => { void refreshHistory(); }, 5000);
+  const interval = window.setInterval(() => { void refreshHistory(); void refreshSessions(); }, 5000);
 
   return {
     dispose() {
       alive = false;
       window.clearInterval(interval);
-      if (windowsResizeHandler) window.removeEventListener('resize', windowsResizeHandler);
+      disposeTerminal();
       unsubscribe?.();
       if (xterm) {
         try { xterm.dispose(); } catch { /* already disposed */ }

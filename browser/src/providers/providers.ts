@@ -16,7 +16,7 @@ function statusClass(status: ProviderConnectionStatusT): string {
 }
 
 const STATE_LABELS: Record<ProviderConnectionStatusT, string> = {
-  connected: 'CONNECTED',
+  connected: 'CONFIGURED',
   invalid_key: 'INVALID CREDENTIAL',
   not_connected: 'NOT CONFIGURED',
   unreachable: 'UNAVAILABLE',
@@ -173,7 +173,7 @@ export function createProvidersPanel(container: HTMLElement, opts: ProvidersPane
       <div class="provider-list" id="provider-list"></div>
       <h3 class="providers-title">Import chat history</h3>
       <div class="import-row">
-        <input type="file" id="import-file" accept=".json,application/json" class="import-file" />
+        <input type="file" id="import-file" aria-label="Import chat history JSON" accept=".json,application/json" class="import-file" />
         <span class="import-status" id="import-status"></span>
       </div>
       <p class="providers-note">Import a ChatGPT or Claude <code>conversations.json</code> export (JSON, up to 10 MB). Imports are additive and stored locally.</p>
@@ -190,7 +190,7 @@ export function createProvidersPanel(container: HTMLElement, opts: ProvidersPane
     try {
       providers = (await api.providers()).providers;
     } catch {
-      listEl.textContent = '';
+      listEl.textContent = 'Provider configuration unavailable. Reopen Settings after checking the local service.';
       opts.onToast('INTERNAL', 'providers unavailable');
       return;
     }

@@ -29,16 +29,21 @@ export function createCommandCenterPanel(parent: HTMLElement, _store: Store<AppS
   parent.innerHTML = '';
   const root = el('div', 'panel-content command-center-panel');
   const header = el('header', 'panel-header');
-  header.appendChild(el('h2', 'panel-title', 'COMMAND CENTER'));
+  header.appendChild(el('h2', 'panel-title', 'OPERATIONAL EVIDENCE'));
   header.appendChild(el('span', 'panel-maturity', 'AVAILABLE'));
   root.appendChild(header);
-  const intro = el('div', 'panel-intro', 'Operator home. Aggregated, read-only state of the workspace, models, Resident, Git, verification, harness, and recent activity. No execution authority.');
+  const intro = el('div', 'panel-intro', 'Workspace, runtime, and workflow facts. Each source can be unavailable independently.');
   root.appendChild(intro);
   const grid = el('div', 'cc-grid');
-  root.appendChild(grid);
+  const disclosure = document.createElement('details');
+  const summary = document.createElement('summary');
+  summary.textContent = 'Inspect operational sources';
+  disclosure.append(summary, grid);
+  root.appendChild(disclosure);
   parent.appendChild(root);
 
   let alive = true;
+  let refreshing = false;
 
   function clearGrid(): void {
     grid.innerHTML = '';
@@ -77,7 +82,7 @@ export function createCommandCenterPanel(parent: HTMLElement, _store: Store<AppS
     }
     const sec = section([
       kv('Daemon', `v${health.version}`),
-      kv('Workspace', health.workspace),
+      kv('Workspace', health.workspace.split(/[\\/]/).filter(Boolean).pop() ?? 'local workspace'),
       kv('Uptime', `${Math.round(health.uptimeMs / 1000)}s`),
       kv('Free memory', `${health.freeMemoryMB} MB`)
     ]);
@@ -246,7 +251,8 @@ export function createCommandCenterPanel(parent: HTMLElement, _store: Store<AppS
   }
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
+    if (!alive || refreshing) return;
+    refreshing = true;
     let health: HealthResponseT | null = null;
     let models: ModelStatusResponseT | null = null;
     let summary: ResidentSummaryResponseT['summary'] | null = null;
@@ -263,6 +269,7 @@ export function createCommandCenterPanel(parent: HTMLElement, _store: Store<AppS
       api.closedLoopStatus().then(r => (harness = r)).catch(() => {}),
       api.tasksStatus().then(r => (tasks = r)).catch(() => {})
     ]);
+    refreshing = false;
     if (!alive) return;
     clearGrid();
     grid.appendChild(renderProject(health, summary));

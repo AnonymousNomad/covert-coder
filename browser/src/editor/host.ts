@@ -188,6 +188,7 @@ markClean(relPath);
   }
 
   async function closeGroup(): Promise<void> {
+    if (groups.list().length <= 1) return;
     const group = groups.active();
     if (group === null) return;
     const paths = [...tabsOf(group.id)];

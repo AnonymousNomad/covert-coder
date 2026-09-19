@@ -5,6 +5,7 @@
 // truth. Every unavailable endpoint remains independently visible.
 
 import type { Store } from '../store/store.ts';
+import { productText } from '../ui/product-text.ts';
 import type { AppState } from '../store/state.ts';
 import { api, call } from '../services/api.ts';
 import { createChatPanel } from '../chat/chat.ts';
@@ -63,6 +64,7 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
 export function createResidentCore(parent: HTMLElement, _store: Store<AppState>, opts: ResidentCoreOptions = {}): ResidentCoreHandles {
   parent.innerHTML = '';
   const root = el('div', 'cockpit-resident');
+  root.dataset.authority = 'none';
 
   const header = el('header', 'cockpit-resident-header');
   const titleRow = el('div', 'cockpit-resident-title-row');
@@ -79,27 +81,30 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   titleRow.appendChild(presence);
   titleRow.appendChild(stateBadge);
   header.appendChild(titleRow);
-  header.appendChild(el('p', 'cockpit-resident-subtitle', 'Your development partner \u2014 read-only projection. Agent routes exist, but this surface does not grant execution authority.'));
+  header.appendChild(el('p', 'cockpit-resident-subtitle', 'Your persistent development partner. Context, conversation, and governed work.'));
   root.appendChild(header);
 
   const residentWorkspace = el('div', 'cockpit-resident-workspace');
   const operatorMount = el('aside', 'cockpit-resident-operator-mount');
-  const operator: OperatorIdentityHandles = createOperatorIdentity(operatorMount, { titleMount: titleRow });
-  residentWorkspace.appendChild(operatorMount);
+  const operator: OperatorIdentityHandles = createOperatorIdentity(operatorMount);
 
   const conversation = el('div', 'cockpit-resident-conversation');
   conversation.appendChild(el('div', 'cockpit-resident-empty', 'Loading Resident summary, context, workspace verdict, and decisions\u2026'));
 
   const chatMount = el('section', 'cockpit-resident-chat');
   const residentContent = el('div', 'cockpit-resident-content');
-  residentContent.appendChild(conversation);
+  const welcome = el('div', 'cockpit-resident-welcome');
+  welcome.appendChild(el('span', 'cockpit-eyebrow', 'YOUR MODELS. YOUR MACHINE. YOUR WORKFLOW.'));
+  welcome.appendChild(el('h2', '', 'What are we building?'));
+  welcome.appendChild(el('p', '', 'Explore an idea, inspect your workspace, or prepare a task. You review the actions. Covert keeps the evidence.'));
+  residentContent.appendChild(welcome);
   residentContent.appendChild(chatMount);
   residentWorkspace.appendChild(residentContent);
   root.appendChild(residentWorkspace);
 
   const quickActions = el('div', 'cockpit-resident-quick');
-  quickActions.appendChild(el('h2', 'cockpit-resident-section-title', 'QUICK ACTIONS'));
-  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'ADVISORY ONLY \u00b7 actions are visible for the approved cockpit language but are not connected to a lawful Resident composer path.'));
+  quickActions.appendChild(el('h2', 'cockpit-resident-section-title', 'PREPARE A TASK'));
+  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'Choose a starting point, review the task, then submit it. Execution remains subject to operator approval.'));
   const actionsRow = el('div', 'cockpit-resident-actions');
   for (const action of QUICK_ACTIONS) {
     const btn = document.createElement('button');
@@ -121,16 +126,45 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   const input = document.createElement('textarea');
   input.className = 'cockpit-resident-input';
   input.placeholder = 'Describe a task for the governed Resident workflow…';
+  input.setAttribute('aria-label', 'Governed Resident task');
   input.rows = 2;
   composer.appendChild(input);
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
   sendBtn.className = 'cockpit-resident-send';
   sendBtn.textContent = 'START GOVERNED TASK';
+  sendBtn.disabled = true;
   composer.appendChild(sendBtn);
   const agentStatusMount = el('div', 'cockpit-resident-composer-status', 'No governed Resident task is running.');
   composer.appendChild(agentStatusMount);
   root.appendChild(composer);
+
+  const modeBar = el('div', 'cockpit-resident-modes');
+  modeBar.setAttribute('aria-label', 'Resident interaction');
+  const chatMode = el('button', 'cockpit-mode', 'CONVERSATION') as HTMLButtonElement;
+  const taskMode = el('button', 'cockpit-mode', 'GOVERNED TASK') as HTMLButtonElement;
+  chatMode.type = taskMode.type = 'button';
+  const setMode = (task: boolean): void => {
+    chatMount.hidden = task;
+    composer.hidden = !task;
+    chatMode.setAttribute('aria-pressed', String(!task));
+    taskMode.setAttribute('aria-pressed', String(task));
+  };
+  chatMode.addEventListener('click', () => setMode(false));
+  taskMode.addEventListener('click', () => { setMode(true); input.focus(); });
+  modeBar.append(chatMode, taskMode);
+  header.appendChild(modeBar);
+  setMode(false);
+  const contextDisclosure = document.createElement('details');
+  contextDisclosure.className = 'cockpit-context-disclosure';
+  contextDisclosure.appendChild(el('summary', '', 'Workspace context & evidence'));
+  contextDisclosure.appendChild(conversation);
+  root.appendChild(contextDisclosure);
+  const appearanceDisclosure = document.createElement('details');
+  appearanceDisclosure.className = 'cockpit-appearance-disclosure';
+  appearanceDisclosure.appendChild(el('summary', '', 'Appearance preferences · optional artwork unavailable'));
+  appearanceDisclosure.appendChild(operatorMount);
+  root.appendChild(appearanceDisclosure);
 
   parent.appendChild(root);
   createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
@@ -139,6 +173,9 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   let activeSessionId: string | null = null;
   let activeStatus: AgentStatusResponseT | null = null;
   let pollTimer: number | null = null;
+  let starting = false;
+  const taskActive = (): boolean => activeStatus?.state === 'running' || activeStatus?.state === 'awaiting_approval';
+  input.addEventListener('input', () => { sendBtn.disabled = starting || taskActive() || input.value.trim().length === 0; });
 
   function stopAgentPolling(): void {
     if (pollTimer !== null) window.clearTimeout(pollTimer);
@@ -149,6 +186,12 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     agentStatusMount.innerHTML = '';
     if (message !== undefined) {
       agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', message));
+      if (activeSessionId !== null) {
+        const retry = el('button', 'cockpit-mode', 'REFRESH TASK STATE') as HTMLButtonElement;
+        retry.type = 'button';
+        retry.addEventListener('click', () => { retry.disabled = true; stopAgentPolling(); void pollAgent(); });
+        agentStatusMount.appendChild(retry);
+      }
       return;
     }
     if (status === null) {
@@ -161,11 +204,11 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
       const approval = status.pending_approval;
       agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `OPERATOR DECISION REQUIRED · ${approval.tool}`));
       const actions = el('div', 'cockpit-resident-actions');
-      for (const decision of ['approve', 'reject'] as const) {
+      for (const decision of ['approve', 'reject', 'abort'] as const) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'cockpit-resident-action';
-        button.textContent = decision === 'approve' ? 'APPROVE ONCE' : 'REJECT';
+        button.textContent = decision === 'approve' ? 'APPROVE ONCE' : decision === 'abort' ? 'ABORT TASK' : 'REJECT';
         button.addEventListener('click', () => { void decideAgent(approval.approval_id, decision); });
         actions.appendChild(button);
       }
@@ -182,6 +225,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
       const query = AgentStatusQuery.parse({ id: activeSessionId });
       activeStatus = await call('/api/agent/status', { query, schema: AgentStatusResponse });
       paintAgentStatus(activeStatus);
+      sendBtn.disabled = taskActive() || input.value.trim().length === 0;
       if (activeStatus.state === 'running' || activeStatus.state === 'awaiting_approval') {
         pollTimer = window.setTimeout(() => { void pollAgent(); }, 1000);
       } else {
@@ -193,7 +237,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     }
   }
 
-  async function decideAgent(approvalId: string, decision: 'approve' | 'reject'): Promise<void> {
+  async function decideAgent(approvalId: string, decision: 'approve' | 'reject' | 'abort'): Promise<void> {
     if (activeSessionId === null) return;
     try {
       const body = AgentDecisionRequest.parse({ session_id: activeSessionId, approval_id: approvalId, decision });
@@ -206,7 +250,8 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
 
   async function startAgent(task: string): Promise<void> {
     const trimmed = task.trim();
-    if (!alive || trimmed.length === 0) return;
+    if (!alive || starting || trimmed.length === 0 || activeStatus?.state === 'running' || activeStatus?.state === 'awaiting_approval') return;
+    starting = true;
     stopAgentPolling();
     activeSessionId = null;
     activeStatus = null;
@@ -221,7 +266,8 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     } catch (error) {
       paintAgentStatus(null, `Resident task was not started · ${String((error as Error).message ?? error).slice(0, 180)}`);
     } finally {
-      sendBtn.disabled = false;
+      starting = false;
+      sendBtn.disabled = taskActive() || input.value.trim().length === 0;
       input.disabled = false;
     }
   }
@@ -238,9 +284,14 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     const quickButton = action;
     quickButton.disabled = false;
     quickButton.dataset.maturity = 'GOVERNED';
-    quickButton.title = `Start a governed Resident task: ${label}`;
-    quickButton.setAttribute('aria-label', `${label}; starts a governed Resident task`);
-    quickButton.addEventListener('click', () => { void startAgent(`${label} for the current workspace.`); });
+    quickButton.title = `Prepare a task: ${label}`;
+    quickButton.setAttribute('aria-label', `${label}; prepares a task for review`);
+    quickButton.addEventListener('click', () => {
+      setMode(true);
+      input.value = `${label} for the current workspace.`;
+      sendBtn.disabled = starting || taskActive();
+      input.focus();
+    });
   }
 
   async function loadSummary(): Promise<ResidentSummaryResponseT['summary'] | null> {
@@ -295,9 +346,9 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     if (data.summary !== null) {
       const summary = el('section', 'cockpit-resident-summary');
       summary.appendChild(el('h2', 'cockpit-resident-section-title', 'RESIDENT SUMMARY'));
-      summary.appendChild(el('div', 'cockpit-resident-recommendation', data.summary.recommendation));
+      summary.appendChild(el('div', 'cockpit-resident-recommendation', productText(data.summary.recommendation)));
       const details = el('div', 'cockpit-resident-summary-grid');
-      details.appendChild(el('div', 'cockpit-resident-summary-item', `Workspace \u00b7 ${data.summary.workspace}`));
+      details.appendChild(el('div', 'cockpit-resident-summary-item', `Workspace \u00b7 ${data.summary.workspace.split(/[\\/]/).filter(Boolean).pop() ?? 'local workspace'}`));
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Project \u00b7 ${data.summary.projectType}`));
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Git \u00b7 ${data.summary.git.git_repo ? `${data.summary.git.branch ?? 'detached'} \u00b7 ${data.summary.git.clean ? 'clean' : `${data.summary.git.changes} working-tree changes`}` : 'not a repository'}`));
       details.appendChild(el('div', 'cockpit-resident-summary-item', `LSP \u00b7 ${data.summary.lsp.available ? 'available' : 'unavailable'}`));

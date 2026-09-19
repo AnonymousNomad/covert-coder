@@ -4,7 +4,8 @@
 
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
-import { api } from '../services/api.ts';
+import { api, call } from '../services/api.ts';
+import { ModelStartResponse, ModelStopResponse } from '../../../common/contracts/models.ts';
 import type { ModelStatusResponseT } from '../../../common/contracts/models.ts';
 import type { RoutesResponseT } from '../../../common/contracts/routing.ts';
 import { modelDisplayState, modelIsActive } from '../../../common/model-state.ts';
@@ -34,17 +35,23 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   header.appendChild(el('h2', 'panel-title', 'MODELS'));
   header.appendChild(el('span', 'panel-maturity', 'AVAILABLE'));
   root.appendChild(header);
-  const intro = el('div', 'panel-intro', 'Installed models, runtime availability, and role routing. Read-only projection of /api/models/status and /api/models/routes.');
+  const intro = el('div', 'panel-intro', 'Artifact, runtime, and readiness are separate facts. Start and stop require approval for the selected model.');
   root.appendChild(intro);
   const body = el('div', 'models-body');
   root.appendChild(body);
   parent.appendChild(root);
 
   let alive = true;
+  let refreshing = false;
+  let pending = false;
+  const feedback = el('div', 'panel-intro');
+  feedback.setAttribute('role', 'status');
+  root.insertBefore(feedback, body);
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
-    body.innerHTML = '<div class="panel-loading">Loading model status and routes\u2026</div>';
+    if (!alive || refreshing || pending) return;
+    refreshing = true;
+    if (!body.childElementCount) body.innerHTML = '<div class="panel-loading">Loading model status and routes\u2026</div>';
     let status: ModelStatusResponseT;
     let routes: RoutesResponseT;
     try {
@@ -52,11 +59,14 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       status = results[0];
       routes = results[1];
     } catch (e) {
+      refreshing = false;
       body.innerHTML = '';
       const err = el('div', 'panel-error', `Failed to load: ${e instanceof Error ? e.message : String(e)}`);
       body.appendChild(err);
       return;
     }
+    refreshing = false;
+    if (!alive) return;
     body.innerHTML = '';
 
     const runtimeRow = el('div', 'models-runtime');
@@ -67,7 +77,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     body.appendChild(runtimeRow);
 
     if (status.models.length === 0) {
-      body.appendChild(el('div', 'models-empty', 'No models installed.'));
+      body.appendChild(el('div', 'models-empty', 'No models registered.'));
       return;
     }
 
@@ -77,10 +87,10 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     const startableCount = states.filter(state => state === 'STARTABLE').length;
     const totalCount = status.models.length;
     const counts = el('div', 'models-counts');
-    counts.appendChild(el('span', 'models-counts-value', `${activeCount} ACTIVE · ${startableCount} STARTABLE · ${totalCount} INSTALLED`));
+    counts.appendChild(el('span', 'models-counts-value', `${activeCount} ACTIVE · ${startableCount} STARTABLE · ${totalCount} REGISTERED`));
     body.appendChild(counts);
 
-    const listHeader = el('div', 'models-section-header', 'INSTALLED MODELS');
+    const listHeader = el('div', 'models-section-header', 'MODEL INVENTORY');
     body.appendChild(listHeader);
     const list = el('div', 'models-list');
     for (const m of status.models) {
@@ -100,6 +110,27 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
         meta.appendChild(el('span', 'model-card-meta-item model-card-meta-warn', `setup: ${m.setup_message}`));
       }
       card.appendChild(meta);
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'cockpit-mode';
+      const active = state === 'RUNNING' || state === 'READY' || state === 'STARTING';
+      action.textContent = active ? 'STOP MODEL' : 'START MODEL';
+      const canStart = m.runtime_available === true && m.artifact_available === true && ['STARTABLE', 'STOPPED', 'FAILED', 'AVAILABLE'].includes(state);
+      action.disabled = !active && !canStart;
+      action.title = action.disabled ? 'A runnable artifact and runtime are required. Use Adaptive Setup in Settings.' : `Request approval to ${active ? 'stop' : 'start'} ${m.name}`;
+      action.addEventListener('click', () => {
+        if (pending) return;
+        pending = true;
+        action.disabled = true;
+        feedback.textContent = `Approval required to ${active ? 'stop' : 'start'} ${m.name}.`;
+        const request = active
+          ? call('/api/models/stop', { method: 'POST', body: { id: m.id }, schema: ModelStopResponse })
+          : call('/api/models/start', { method: 'POST', body: { id: m.id }, schema: ModelStartResponse });
+        void request.then(result => { feedback.textContent = `${m.name}: ${result.status.toUpperCase()}. Readiness is established by the next runtime probe.`; })
+          .catch(error => { feedback.textContent = `Model operation did not complete: ${error instanceof Error ? error.message : String(error)}`; })
+          .finally(() => { pending = false; if (alive) void refresh(); });
+      });
+      card.appendChild(action);
       if (m.endpoint.length > 0) {
         card.appendChild(el('div', 'model-card-endpoint', m.endpoint));
       }
@@ -116,7 +147,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
         row.appendChild(el('span', 'route-name', r.displayName));
         row.appendChild(el('span', 'route-provider-type', r.providerType));
         row.appendChild(el('span', 'route-roles', `roles: ${r.roles.join(', ') || '\u2014'}`));
-        row.appendChild(el('span', `route-status ${statusClass(r.status)}`, r.status.toUpperCase()));
+        row.appendChild(el('span', `route-status ${statusClass(r.status.toUpperCase())}`, r.status.toUpperCase()));
         routeTable.appendChild(row);
       }
       body.appendChild(routeTable);

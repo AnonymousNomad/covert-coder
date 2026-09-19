@@ -40,6 +40,7 @@ function createGroupElement(id: string, opts: GroupsOptions): EditorGroup {
   const splitVertical = document.createElement('button');
   splitVertical.type = 'button';
   splitVertical.title = 'Split right';
+  splitVertical.setAttribute('aria-label', 'Split editor right');
   splitVertical.textContent = '\u2192';
   splitVertical.addEventListener('click', (event: MouseEvent) => {
     event.stopPropagation();
@@ -48,6 +49,7 @@ function createGroupElement(id: string, opts: GroupsOptions): EditorGroup {
   const splitHorizontal = document.createElement('button');
   splitHorizontal.type = 'button';
   splitHorizontal.title = 'Split below';
+  splitHorizontal.setAttribute('aria-label', 'Split editor below');
   splitHorizontal.textContent = '\u2193';
   splitHorizontal.addEventListener('click', (event: MouseEvent) => {
     event.stopPropagation();
@@ -56,6 +58,7 @@ function createGroupElement(id: string, opts: GroupsOptions): EditorGroup {
   const close = document.createElement('button');
   close.type = 'button';
   close.title = 'Close group';
+  close.setAttribute('aria-label', 'Close editor group');
   close.textContent = '\u00d7';
   close.addEventListener('click', (event: MouseEvent) => {
     event.stopPropagation();
@@ -94,7 +97,10 @@ export function createGroups(root: HTMLElement, opts: GroupsOptions): GroupsMana
   };
 
   const addGroup = (id: string): EditorGroup => {
-    const group = createGroupElement(id, opts);
+    const group = createGroupElement(id, {
+      onSplit(direction) { activateGroup(id); opts.onSplit(direction); },
+      onCloseGroup() { activateGroup(id); opts.onCloseGroup(); }
+    });
     groups.set(id, group);
     group.element.addEventListener('click', () => activateGroup(id));
     return group;
@@ -128,7 +134,8 @@ export function createGroups(root: HTMLElement, opts: GroupsOptions): GroupsMana
       if (groups.size >= GROUP_MAX) return null;
       const current = activeId === null ? null : (groups.get(activeId) ?? null);
       if (current === null) return null;
-      const id = `g${nextGroupId++}`;
+      let id = `g${nextGroupId++}`;
+      while (groups.has(id)) id = `g${nextGroupId++}`;
       const fresh = addGroup(id);
       const wrap = document.createElement('div');
       wrap.className = 'group-pane';
@@ -156,17 +163,17 @@ export function createGroups(root: HTMLElement, opts: GroupsOptions): GroupsMana
       const group = groups.get(id);
       if (group === undefined) return false;
       groups.delete(id);
+      let parent = group.element.parentElement;
       group.element.remove();
       if (activeId === id) {
         const remaining = groups.values().next().value as EditorGroup | undefined;
         activeId = remaining === undefined ? null : remaining.id;
       }
-      let el = group.element;
-      while (el.parentElement !== null && el.parentElement.classList.contains('group-pane') && el.parentElement.children.length === 1) {
-        const parent = el.parentElement;
+      while (parent !== null && parent.classList.contains('group-pane') && parent.children.length === 1) {
         const child = parent.children[0] as HTMLElement;
+        const nextParent = parent.parentElement;
         parent.replaceWith(child);
-        el = child;
+        parent = nextParent;
       }
       for (const remaining of groups.values()) {
         remaining.element.classList.toggle('active', remaining.id === activeId);

@@ -9,5 +9,5 @@ License: SIL Open Font License 1.1 (https://openfontlicense.org).
 Copyright: (c) Microsoft Corporation.
 
 Redistribution and use of this font is permitted under the SIL OFL 1.1.
-The font is distributed WITHOUT ANY WARRANTY; the license text is available
-at the URL above or in the original Cascadia Code repository.
+The font is distributed WITHOUT ANY WARRANTY. The full upstream license is
+included at browser/public/Cascadia-OFL.txt and copied into the frontend build.
