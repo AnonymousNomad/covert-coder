@@ -603,8 +603,39 @@ export class ModelRuntime {
     const declared = Number(this.models.get(id)?.context_tokens);
     return Number.isFinite(declared) && declared > 0 ? declared : null;
   }
-  async refreshServedContext(id: string): Promise<void> {
+  // Exact prompt measurement via the engine's own template + tokenizer
+  // (llama-server /apply-template then /tokenize). Returns null when the
+  // runtime does not expose the endpoints — callers must then label their
+  // measurement ESTIMATED rather than presenting an estimate as exact.
+  async measurePromptTokens(id: string, messages: Array<{ role: string; content: string }>): Promise<number | null> {
     const model = this.models.get(id);
+    if (!model) return null;
+    const base = model.endpoint.replace(/\/v1\/?$/, '');
+    try {
+      const templateResponse = await fetch(`${base}/apply-template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!templateResponse.ok) return null;
+      const templatePayload = await templateResponse.json() as { prompt?: unknown };
+      if (typeof templatePayload.prompt !== 'string') return null;
+      const tokenizeResponse = await fetch(`${base}/tokenize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: templatePayload.prompt }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!tokenizeResponse.ok) return null;
+      const tokenizePayload = await tokenizeResponse.json() as { tokens?: unknown };
+      return Array.isArray(tokenizePayload.tokens) ? tokenizePayload.tokens.length : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async refreshServedContext(id: string): Promise<void> {    const model = this.models.get(id);
     if (!model) return;
     try {
       const base = model.endpoint.replace(/\/v1\/?$/, '');

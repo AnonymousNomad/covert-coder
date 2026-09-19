@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ContextBudget } from './performance.ts';
 
 export const ChatMessage = z
   .object({
@@ -57,6 +58,10 @@ export const HarnessMeta = z
     served_context_tokens: z.number().int().nonnegative().nullable().optional(),
     drift_reinjected: z.boolean().optional(),
     approx_prompt_tokens: z.number().int().nonnegative().optional(),
+    exact_prompt_tokens: z.number().int().nonnegative().nullable().optional(),
+    // Context economics: what consumed the model's finite window, per source,
+    // labeled EXACT or ESTIMATED (Harness Intelligence v1.1).
+    context_budget: ContextBudget.optional(),
     compose_ms: z.number().optional(),
     memory_bytes: z.number().int().nonnegative().optional(),
     // Workspace grounding (aide-context-retrieval-wiring): retrieval outcome
