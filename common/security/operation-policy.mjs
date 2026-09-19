@@ -96,6 +96,12 @@ const HTTP_POLICY = new Map([
   // caller-selected file into the models root / persist an ingested identity).
   ['POST /api/chat', 'capability.execute'], ['POST /api/chat/stream', 'capability.execute'],
   ['POST /api/models/import', 'capability.write'], ['POST /api/models/ingest', 'capability.write'],
+  // Harness Lab evidence surface (ledger queries + derived passports and
+  // recommendations). Pure reads/compute over local files: no durable effect,
+  // no process, no egress, never writes the ledger.
+  ['GET /api/harness-lab/events', 'capability.read'], ['GET /api/harness-lab/passports', 'capability.read'],
+  ['GET /api/harness-lab/passport', 'capability.read'], ['GET /api/harness-lab/modes', 'capability.read'],
+  ['GET /api/harness-lab/mode', 'capability.read'], ['POST /api/harness-lab/recommend', 'capability.read'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/

@@ -57,6 +57,7 @@ import type { TaskEventMeta } from '../../node/src/services/task-service.mjs';
 import type { TaskEventT } from '../../common/contracts/tasks.ts';
 import { createHubService } from '../../node/src/services/modelhub.mjs';
 import { routesForModelHub } from './routes/modelhub.ts';
+import { routesForHarnessLab } from './routes/harness-lab.ts';
 import { routesForOrch } from './routes/orch.ts';
 import { routesForMemory, createMemoryService } from './routes/memory.ts';
 import { routesForWorkbenches, routesForWorktree } from './routes/workbenches.ts';
@@ -574,6 +575,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForChatStream(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders }),
     routeForChatHistory(chatStore),
     routeForChatHistorySave(chatStore, workspace),
+    ...routesForHarnessLab({ workspace }),
     routeForProvidersList(providerService),
     routeForProviderConnect(providerService, workspace),
     routeForProviderDisconnect(providerService, workspace),
