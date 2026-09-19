@@ -6,7 +6,7 @@
 //   cancel   -> capability.execute binding {job_id}; targets only the
 //               service-owned job map entry (no PID/URL/path ever supplied).
 // Deterministic fake fetch only; no live Hugging Face download. The models
-// import route remains migration-waived and is asserted as such.
+// import route is governed (capability.write) and asserted as such.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
@@ -22,6 +22,35 @@ import { pairFixture } from './authority-fixture.ts';
 const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-m-arch-'));
 const modelsDir = path.join(workspace, 'models');
 const PAYLOAD = Buffer.from('M-ARCH-PAYLOAD-BYTES');
+
+// Minimal GGUF v3 fixture (same encoding as tests/arch/gguf.test.ts): a valid
+// header carrying string KV pairs for the header probe.
+function v3FileWithKeys(kv: Array<{ key: string; value: string }>): Buffer {
+  const header = Buffer.alloc(24);
+  header.write('GGUF', 0, 'utf8');
+  header.writeUInt32LE(3, 4);
+  header.writeBigUInt64LE(0n, 8);
+  header.writeBigUInt64LE(BigInt(kv.length), 16);
+  const chunks: Buffer[] = [header];
+  let size = 24;
+  for (const { key, value } of kv) {
+    const keyBuf = Buffer.from(key, 'utf8');
+    const valueBuf = Buffer.from(value, 'utf8');
+    const part = Buffer.alloc(8 + keyBuf.length + 4 + 8 + valueBuf.length);
+    let off = 0;
+    part.writeBigUInt64LE(BigInt(keyBuf.length), off); off += 8;
+    keyBuf.copy(part, off); off += keyBuf.length;
+    part.writeUInt32LE(8, off); off += 4;
+    part.writeBigUInt64LE(BigInt(valueBuf.length), off); off += 8;
+    valueBuf.copy(part, off);
+    chunks.push(part);
+    size += part.length;
+  }
+  const padding = 32 - (size % 32);
+  if (padding < 32) chunks.push(Buffer.alloc(padding));
+  return Buffer.concat(chunks);
+}
+
 let server: ArchServer;
 let httpServer: http.Server;
 let base: string;
@@ -368,7 +397,36 @@ test('downloads list holds shape for the authorized actor', async () => {
   }
 });
 
-test('models import remains migration-waived (fail closed)', async () => {
-  const response = await post('/api/models/import', { path: path.join(workspace, 'outside.gguf') });
-  assert.equal(response.status, 403, 'waived route stays fail-closed until its own wave');
+test('models import is governed; approved import copies a valid GGUF into the models root', async () => {
+  const source = path.join(workspace, 'local-import-source.gguf');
+  await fs.writeFile(source, v3FileWithKeys([
+    { key: 'general.architecture', value: 'llama' },
+    { key: 'general.name', value: 'local-import-test' }
+  ]));
+  const body = { path: source };
+  const anonymous = await anonymousPost('/api/models/import', body);
+  assert.equal(anonymous.status, 403, 'anonymous import rejected');
+  const unapproved = await post('/api/models/import', body);
+  assert.equal(unapproved.status, 409, 'paired without approval fails');
+
+  const headers = await owner.approve('POST', '/api/models/import', body, 'task:import-exact');
+  const changed = await post('/api/models/import', { path: path.join(workspace, 'other.gguf') }, headers);
+  assert.equal(changed.status, 409, 'changed source path cannot reuse the approval');
+  // The mismatched attempt did not consume the operation; the exact body executes.
+  const applied = await post('/api/models/import', body, headers);
+  assert.equal(applied.status, 200, JSON.stringify(applied.body));
+  const copied = path.join(modelsDir, 'local-import-source.gguf');
+  assert.ok((await fs.stat(copied)).size > 0, 'artifact copied into the models root');
+  const manifest = JSON.parse(await fs.readFile(`${copied}.manifest.json`, 'utf8')) as { source: string; filename: string };
+  assert.equal(manifest.source, 'manual');
+  assert.equal(manifest.filename, 'local-import-source.gguf');
+  assert.equal((await post('/api/models/import', body, headers)).status, 409, 'consumed import approval cannot replay');
+
+  const invalid = path.join(workspace, 'not-a-model.gguf');
+  await fs.writeFile(invalid, 'not a gguf');
+  const invalidBody = { path: invalid };
+  const invalidHeaders = await owner.approve('POST', '/api/models/import', invalidBody, 'task:import-invalid');
+  const rejected = await post('/api/models/import', invalidBody, invalidHeaders);
+  assert.equal(rejected.status, 400, 'invalid GGUF rejected truthfully');
+  assert.equal(rejected.body.error?.code, 'BAD_REQUEST');
 });

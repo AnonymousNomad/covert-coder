@@ -83,6 +83,19 @@ const HTTP_POLICY = new Map([
   ['GET /api/models/status', 'capability.read'], ['GET /api/model/ready', 'capability.read'],
   ['GET /api/models/routes', 'capability.read'],
   ['GET /api/chat/history', 'capability.read'],
+  // Local-inference production gate (2026-09-19): generation and local-artifact
+  // intake were the last unreachable core surfaces — with no descriptor and no
+  // central kind, every POST /api/chat, /api/chat/stream, /api/models/import and
+  // /api/models/ingest failed closed with 403 'capability has no authority
+  // policy' (truthful, but the product's core loop could never run). Enrolled
+  // centrally so exactly one owner exists per route (no route-owned descriptor
+  // duplicates the disposition) and the approved operation binds the exact
+  // request body: the prompt/messages for chat, the source path for import, the
+  // artifact path for ingest. Chat is an execution (it runs the engine and may
+  // adopt an externally started one); import and ingest are writes (copy a
+  // caller-selected file into the models root / persist an ingested identity).
+  ['POST /api/chat', 'capability.execute'], ['POST /api/chat/stream', 'capability.execute'],
+  ['POST /api/models/import', 'capability.write'], ['POST /api/models/ingest', 'capability.write'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/
