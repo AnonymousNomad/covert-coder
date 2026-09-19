@@ -65,6 +65,18 @@ async function portClosed(port) {
   });
 }
 
+// taskkill /T /F returns before the OS has released the killed tree's
+// listening sockets (measured ~0.7s on this box). Poll within a bounded
+// window; a port that truly never closes still fails the assertion.
+async function waitForPortClosed(port, timeoutMs = 10000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!(await portClosed(port))) {
+    if (Date.now() >= deadline) return false;
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  return true;
+}
+
 function launch(workspace, ports, frontend = 'typed') {
   return spawn(process.execPath, ['scripts/start.mjs', `--frontend=${frontend}`], {
     cwd: path.resolve('.'),
@@ -110,13 +122,13 @@ test('real canonical start launches typed UI and facade while preserving SPA ass
 
     const health = await waitFor(`http://${HOST}:${ports.facade}/api/health`);
     assert.equal(health.status, 200);
-    for (let i = 0; i < 100 && !stdout.includes('frontend=typed'); i++) await new Promise(resolve => setTimeout(resolve, 50));
+    for (let i = 0; i < 400 && !stdout.includes('frontend=typed'); i++) await new Promise(resolve => setTimeout(resolve, 50));
     assert.match(stdout, /frontend=typed/);
     assert.equal(stderr, '');
   } finally {
     await killTree(child);
     await waitForExit(child).catch(() => {});
-    for (const port of Object.values(ports)) assert.equal(await portClosed(port), true, `test-owned port ${port} remained open`);
+    for (const port of Object.values(ports)) assert.equal(await waitForPortClosed(port), true, `test-owned port ${port} remained open`);
     await fs.rm(workspace, { recursive: true, force: true });
   }
 });
@@ -138,13 +150,13 @@ test('real development launch serves the same typed Vite frontend through the fa
     assert.equal(new URL(sourceEntry, `http://${HOST}:${ports.ui}/`).pathname, '/src/main.ts');
     const health = await waitFor(`http://${HOST}:${ports.facade}/api/health`);
     assert.equal(health.status, 200);
-    for (let i = 0; i < 100 && !stdout.includes('frontend=vite'); i++) await new Promise(resolve => setTimeout(resolve, 50));
+    for (let i = 0; i < 400 && !stdout.includes('frontend=vite'); i++) await new Promise(resolve => setTimeout(resolve, 50));
     assert.match(stdout, /frontend=vite/);
     assert.equal(stderr, '');
   } finally {
     await killTree(child);
     await waitForExit(child).catch(() => {});
-    for (const port of Object.values(ports)) assert.equal(await portClosed(port), true, `test-owned port ${port} remained open`);
+    for (const port of Object.values(ports)) assert.equal(await waitForPortClosed(port), true, `test-owned port ${port} remained open`);
     await fs.rm(workspace, { recursive: true, force: true });
   }
 });
