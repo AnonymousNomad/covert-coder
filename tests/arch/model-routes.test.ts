@@ -37,7 +37,18 @@ after(async () => {
   server.events.close();
   await server.logger.flush();
   await new Promise<void>(resolve => httpServer.close(() => resolve()));
-  await fs.rm(dir, { recursive: true, force: true });
+  // Windows: a just-closed server/log handle can briefly keep the temp dir
+  // non-empty (observed ENOTEMPTY on E: under load). Bounded retry, same
+  // pattern as the other arch suites; a genuinely stuck dir still fails.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      await fs.rm(dir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!['EBUSY', 'ENOTEMPTY', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
 });
 
 test('GET /api/models/status lists the bundled models through the envelope', async t => {
