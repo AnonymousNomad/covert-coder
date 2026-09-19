@@ -15,7 +15,11 @@ function runDpapi(mode, data) {
   const result = spawnSync(
     'powershell.exe',
     ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
-    { encoding: 'utf8', timeout: 15000, windowsHide: true }
+    // 15s was not enough under load: powershell.exe cold start + Add-Type under
+    // disk/CPU contention measured beyond 15s, making stored keys read as null
+    // (fail-closed, but wrong UX). 60s is the measured-safe bound; the call is
+    // normally 3-7s.
+    { encoding: 'utf8', timeout: 60000, windowsHide: true }
   );
   if (result.status !== 0 || !result.stdout) throw new Error(`dpapi ${mode} failed`);
   return result.stdout.trim();
