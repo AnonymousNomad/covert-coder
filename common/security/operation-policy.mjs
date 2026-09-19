@@ -125,7 +125,14 @@ const HTTP_POLICY = new Map([
   // prepare; transitions are operator-approved writes whose deterministic
   // gates are enforced by the workflow service (validators + Veritas lookup).
   ['GET /api/workflow/state', 'workflow.read'],
-  ['POST /api/workflow/transition', 'workflow.transition']
+  ['POST /api/workflow/transition', 'workflow.transition'],
+  // Resident Adaptive Setup (Gate #2): pure configuration reads (profile view,
+  // plan composition, readiness recompute) are centrally enrolled as
+  // capability.read. The mutations (PUT/DELETE /api/setup/profile) carry exact
+  // route-owned capability.write descriptors (node/src/routes/setup.ts) and are
+  // not double-declared here (one declared owner per route).
+  ['GET /api/setup/profile', 'capability.read'], ['GET /api/setup/plan', 'capability.read'],
+  ['GET /api/setup/readiness', 'capability.read']
 ]);
 
 export function httpOperationKind(method, routePath) {

@@ -44,7 +44,8 @@
     "/api/tasks": "ts",
     "/api/terminal": "ts",
     "/api/patch": "ts",
-    "/api/hardware": "ts"
+    "/api/hardware": "ts",
+    "/api/setup": "ts"
   },
   "exact": {
     "/api/file": "ts",

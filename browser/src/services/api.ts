@@ -175,6 +175,19 @@ import {
 } from '../../../common/contracts/hardware.ts';
 import { WorkflowState, type WorkflowStateT } from '../../../common/contracts/workflow.ts';
 import {
+  SetupAnswers,
+  SetupPlanQuery,
+  SetupPlanResponse,
+  SetupProfilePutRequest,
+  SetupProfileResponse,
+  SetupReadinessResponse,
+  type SetupAnswersT,
+  type SetupPlanResponseT,
+  type SetupProfileResponseT,
+  type SetupProfileT,
+  type SetupReadinessResponseT
+} from '../../../common/contracts/setup.ts';
+import {
   TerminalProviderListResponse,
   type TerminalProviderListResponseT,
   TerminalSessionListResponse,
@@ -228,7 +241,7 @@ async function throwResponseError(res: Response): Promise<never> {
   throw new ApiError('BAD_RESPONSE', `daemon returned invalid error envelope status ${res.status}`);
 }
 
-export async function call<T>(path: string, opts: { query?: unknown; body?: unknown; method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; schema: ZodType<T> }): Promise<T> {
+export async function call<T>(path: string, opts: { query?: unknown; body?: unknown; method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; schema: ZodType<T>; timeoutMs?: number }): Promise<T> {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries((opts.query ?? {}) as Record<string, unknown>)) {
     if (value !== undefined) params.append(key, String(value));
@@ -240,6 +253,7 @@ export async function call<T>(path: string, opts: { query?: unknown; body?: unkn
     headers: { 'content-type': 'application/json' }
   };
   if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
+  if (opts.timeoutMs !== undefined) init.signal = AbortSignal.timeout(opts.timeoutMs);
   const res = await apiFetch(url, init);
   let env: unknown;
   try {
@@ -494,6 +508,27 @@ export const api = {
   },
   workflowState(): Promise<WorkflowStateT> {
     return call('/api/workflow/state', { schema: WorkflowState });
+  },
+  setupProfile(): Promise<SetupProfileResponseT> {
+    return call('/api/setup/profile', { schema: SetupProfileResponse });
+  },
+  setupProfilePut(profile: SetupProfileT, expectedUpdatedAt: number | null): Promise<SetupProfileResponseT> {
+    const body = SetupProfilePutRequest.safeParse({ profile, expectedUpdatedAt });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid setup profile');
+    return call('/api/setup/profile', { method: 'PUT', body: body.data, schema: SetupProfileResponse });
+  },
+  setupProfileReset(): Promise<SetupProfileResponseT> {
+    return call('/api/setup/profile', { method: 'DELETE', body: {}, schema: SetupProfileResponse });
+  },
+  setupPlan(answers: SetupAnswersT): Promise<SetupPlanResponseT> {
+    const parsed = SetupAnswers.safeParse(answers);
+    if (!parsed.success) throw new ApiError('BAD_REQUEST', 'invalid setup answers');
+    const query = SetupPlanQuery.safeParse({ answers: JSON.stringify(parsed.data) });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid setup plan query');
+    return call('/api/setup/plan', { query: query.data, schema: SetupPlanResponse, timeoutMs: 30000 });
+  },
+  setupReadiness(): Promise<SetupReadinessResponseT> {
+    return call('/api/setup/readiness', { schema: SetupReadinessResponse, timeoutMs: 30000 });
   },
   workbenchInstall(id: string): Promise<WorkbenchDetailResponseT> {
     const body = WorkbenchInstallRequest.safeParse({ id });

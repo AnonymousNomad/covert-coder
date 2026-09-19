@@ -16418,6 +16418,1397 @@
         }
       }
     },
+    "/api/setup/plan": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "plan": {
+                      "type": "object",
+                      "properties": {
+                        "workflowProfile": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "LOCAL_FIRST",
+                            "HYBRID",
+                            "CLOUD"
+                          ]
+                        },
+                        "modelUse": {
+                          "type": "string",
+                          "enum": [
+                            "Primary driver",
+                            "Assistant / copilot",
+                            "Offline fallback",
+                            "Evaluate only"
+                          ]
+                        },
+                        "executionPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "STRICT",
+                            "BALANCED",
+                            "RELAXED"
+                          ]
+                        },
+                        "providers": {
+                          "maxItems": 12,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "kind": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "status": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "detail": {
+                                "type": "string",
+                                "maxLength": 160
+                              },
+                              "routing_available": {
+                                "type": "boolean"
+                              },
+                              "selected": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "kind",
+                              "status",
+                              "detail",
+                              "routing_available",
+                              "selected"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "localRuntime": {
+                          "type": "object",
+                          "properties": {
+                            "recommendation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "runtime": {
+                              "type": "boolean"
+                            },
+                            "state": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            }
+                          },
+                          "required": [
+                            "recommendation",
+                            "runtime",
+                            "state"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "models": {
+                          "maxItems": 3,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "planner",
+                                  "coder",
+                                  "reviewer"
+                                ]
+                              },
+                              "modelId": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "quant": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "fileBytes": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "contextTokens": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "fit": {
+                                "type": "string",
+                                "enum": [
+                                  "COMFORTABLE",
+                                  "TIGHT",
+                                  "OVER"
+                                ]
+                              },
+                              "onDisk": {
+                                "type": "boolean"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "startable",
+                                  "starting",
+                                  "running",
+                                  "ready",
+                                  "degraded",
+                                  "stopped",
+                                  "failed"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "role",
+                              "modelId",
+                              "name",
+                              "quant",
+                              "fileBytes",
+                              "contextTokens",
+                              "fit",
+                              "onDisk",
+                              "state",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "skillFamilies": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "available": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "label",
+                              "available"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "integrations": {
+                          "maxItems": 4,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "enum": [
+                                  "Telegram",
+                                  "GitHub",
+                                  "Discord"
+                                ]
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "AVAILABLE",
+                                  "CONFIGURABLE",
+                                  "PARTIAL",
+                                  "DEFERRED",
+                                  "UNAVAILABLE"
+                                ]
+                              },
+                              "detail": {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              "connected": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "state",
+                              "detail",
+                              "connected"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "workspace": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "projectLocations": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "importantWorkflows": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "hardware": {
+                          "type": "object",
+                          "properties": {
+                            "totalRamGb": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "logicalCpus": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "vramMb": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "tier": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 24
+                            },
+                            "backend": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 24
+                            },
+                            "scannedAt": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "totalRamGb",
+                            "logicalCpus",
+                            "vramMb",
+                            "tier",
+                            "backend",
+                            "scannedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "generatedAt": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "workflowProfile",
+                        "mode",
+                        "modelUse",
+                        "executionPolicy",
+                        "providers",
+                        "localRuntime",
+                        "models",
+                        "skillFamilies",
+                        "integrations",
+                        "workspace",
+                        "projectLocations",
+                        "importantWorkflows",
+                        "hardware",
+                        "generatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "plan"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "answers",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          }
+        ]
+      }
+    },
+    "/api/setup/profile": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "answers": {
+                              "type": "object",
+                              "properties": {
+                                "workType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Software Engineering",
+                                    "Web Development",
+                                    "Model Training",
+                                    "Research",
+                                    "Security & Audit",
+                                    "Documentation",
+                                    "Creative & Interface",
+                                    "Game Development"
+                                  ]
+                                },
+                                "secondaryWork": {
+                                  "type": "string",
+                                  "enum": [
+                                    "None",
+                                    "Web Development",
+                                    "Documentation",
+                                    "Research",
+                                    "Security & Audit",
+                                    "Creative & Interface"
+                                  ]
+                                },
+                                "mode": {
+                                  "type": "string",
+                                  "enum": [
+                                    "LOCAL_FIRST",
+                                    "HYBRID",
+                                    "CLOUD"
+                                  ]
+                                },
+                                "providers": {
+                                  "maxItems": 8,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "projectLocations": {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                "localModelUse": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Primary driver",
+                                    "Assistant / copilot",
+                                    "Offline fallback",
+                                    "Evaluate only"
+                                  ]
+                                },
+                                "approvalStrictness": {
+                                  "type": "string",
+                                  "enum": [
+                                    "STRICT",
+                                    "BALANCED",
+                                    "RELAXED"
+                                  ]
+                                },
+                                "integrations": {
+                                  "maxItems": 4,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "Telegram",
+                                      "GitHub",
+                                      "Discord"
+                                    ]
+                                  }
+                                },
+                                "importantWorkflows": {
+                                  "type": "string",
+                                  "maxLength": 2000
+                                }
+                              },
+                              "required": [
+                                "workType",
+                                "secondaryWork",
+                                "mode",
+                                "providers",
+                                "projectLocations",
+                                "localModelUse",
+                                "approvalStrictness",
+                                "integrations",
+                                "importantWorkflows"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "skillFamilies": {
+                              "maxItems": 8,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              }
+                            },
+                            "selectedModelId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "roles": {
+                              "type": "object",
+                              "properties": {
+                                "planner": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "coder": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "reviewer": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "hardware": {
+                              "type": "object",
+                              "properties": {
+                                "totalRamGb": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "logicalCpus": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "vramMb": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "tier": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 24
+                                },
+                                "backend": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 24
+                                },
+                                "scannedAt": {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                }
+                              },
+                              "required": [
+                                "totalRamGb",
+                                "logicalCpus",
+                                "vramMb",
+                                "tier",
+                                "backend",
+                                "scannedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "appliedAt": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "updatedAt": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "answers",
+                            "skillFamilies",
+                            "selectedModelId",
+                            "roles",
+                            "hardware",
+                            "appliedAt",
+                            "updatedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "profile"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "answers": {
+                              "type": "object",
+                              "properties": {
+                                "workType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Software Engineering",
+                                    "Web Development",
+                                    "Model Training",
+                                    "Research",
+                                    "Security & Audit",
+                                    "Documentation",
+                                    "Creative & Interface",
+                                    "Game Development"
+                                  ]
+                                },
+                                "secondaryWork": {
+                                  "type": "string",
+                                  "enum": [
+                                    "None",
+                                    "Web Development",
+                                    "Documentation",
+                                    "Research",
+                                    "Security & Audit",
+                                    "Creative & Interface"
+                                  ]
+                                },
+                                "mode": {
+                                  "type": "string",
+                                  "enum": [
+                                    "LOCAL_FIRST",
+                                    "HYBRID",
+                                    "CLOUD"
+                                  ]
+                                },
+                                "providers": {
+                                  "maxItems": 8,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "projectLocations": {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                "localModelUse": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Primary driver",
+                                    "Assistant / copilot",
+                                    "Offline fallback",
+                                    "Evaluate only"
+                                  ]
+                                },
+                                "approvalStrictness": {
+                                  "type": "string",
+                                  "enum": [
+                                    "STRICT",
+                                    "BALANCED",
+                                    "RELAXED"
+                                  ]
+                                },
+                                "integrations": {
+                                  "maxItems": 4,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "Telegram",
+                                      "GitHub",
+                                      "Discord"
+                                    ]
+                                  }
+                                },
+                                "importantWorkflows": {
+                                  "type": "string",
+                                  "maxLength": 2000
+                                }
+                              },
+                              "required": [
+                                "workType",
+                                "secondaryWork",
+                                "mode",
+                                "providers",
+                                "projectLocations",
+                                "localModelUse",
+                                "approvalStrictness",
+                                "integrations",
+                                "importantWorkflows"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "skillFamilies": {
+                              "maxItems": 8,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              }
+                            },
+                            "selectedModelId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "roles": {
+                              "type": "object",
+                              "properties": {
+                                "planner": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "coder": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "reviewer": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "hardware": {
+                              "type": "object",
+                              "properties": {
+                                "totalRamGb": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "logicalCpus": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "vramMb": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "tier": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 24
+                                },
+                                "backend": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 24
+                                },
+                                "scannedAt": {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                }
+                              },
+                              "required": [
+                                "totalRamGb",
+                                "logicalCpus",
+                                "vramMb",
+                                "tier",
+                                "backend",
+                                "scannedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "appliedAt": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "updatedAt": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "answers",
+                            "skillFamilies",
+                            "selectedModelId",
+                            "roles",
+                            "hardware",
+                            "appliedAt",
+                            "updatedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "profile"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "number",
+                        "const": 1
+                      },
+                      "answers": {
+                        "type": "object",
+                        "properties": {
+                          "workType": {
+                            "type": "string",
+                            "enum": [
+                              "Software Engineering",
+                              "Web Development",
+                              "Model Training",
+                              "Research",
+                              "Security & Audit",
+                              "Documentation",
+                              "Creative & Interface",
+                              "Game Development"
+                            ]
+                          },
+                          "secondaryWork": {
+                            "type": "string",
+                            "enum": [
+                              "None",
+                              "Web Development",
+                              "Documentation",
+                              "Research",
+                              "Security & Audit",
+                              "Creative & Interface"
+                            ]
+                          },
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "LOCAL_FIRST",
+                              "HYBRID",
+                              "CLOUD"
+                            ]
+                          },
+                          "providers": {
+                            "maxItems": 8,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "projectLocations": {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "localModelUse": {
+                            "type": "string",
+                            "enum": [
+                              "Primary driver",
+                              "Assistant / copilot",
+                              "Offline fallback",
+                              "Evaluate only"
+                            ]
+                          },
+                          "approvalStrictness": {
+                            "type": "string",
+                            "enum": [
+                              "STRICT",
+                              "BALANCED",
+                              "RELAXED"
+                            ]
+                          },
+                          "integrations": {
+                            "maxItems": 4,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "Telegram",
+                                "GitHub",
+                                "Discord"
+                              ]
+                            }
+                          },
+                          "importantWorkflows": {
+                            "type": "string",
+                            "maxLength": 2000
+                          }
+                        },
+                        "required": [
+                          "workType",
+                          "secondaryWork",
+                          "mode",
+                          "providers",
+                          "projectLocations",
+                          "localModelUse",
+                          "approvalStrictness",
+                          "integrations",
+                          "importantWorkflows"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "skillFamilies": {
+                        "maxItems": 8,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        }
+                      },
+                      "selectedModelId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "roles": {
+                        "type": "object",
+                        "properties": {
+                          "planner": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "coder": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reviewer": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "planner",
+                          "coder",
+                          "reviewer"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "hardware": {
+                        "type": "object",
+                        "properties": {
+                          "totalRamGb": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "logicalCpus": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "vramMb": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "tier": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 24
+                          },
+                          "backend": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 24
+                          },
+                          "scannedAt": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "totalRamGb",
+                          "logicalCpus",
+                          "vramMb",
+                          "tier",
+                          "backend",
+                          "scannedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "appliedAt": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "updatedAt": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "version",
+                      "answers",
+                      "skillFamilies",
+                      "selectedModelId",
+                      "roles",
+                      "hardware",
+                      "appliedAt",
+                      "updatedAt"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "expectedUpdatedAt": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "profile",
+                  "expectedUpdatedAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "answers": {
+                              "type": "object",
+                              "properties": {
+                                "workType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Software Engineering",
+                                    "Web Development",
+                                    "Model Training",
+                                    "Research",
+                                    "Security & Audit",
+                                    "Documentation",
+                                    "Creative & Interface",
+                                    "Game Development"
+                                  ]
+                                },
+                                "secondaryWork": {
+                                  "type": "string",
+                                  "enum": [
+                                    "None",
+                                    "Web Development",
+                                    "Documentation",
+                                    "Research",
+                                    "Security & Audit",
+                                    "Creative & Interface"
+                                  ]
+                                },
+                                "mode": {
+                                  "type": "string",
+                                  "enum": [
+                                    "LOCAL_FIRST",
+                                    "HYBRID",
+                                    "CLOUD"
+                                  ]
+                                },
+                                "providers": {
+                                  "maxItems": 8,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "projectLocations": {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                "localModelUse": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Primary driver",
+                                    "Assistant / copilot",
+                                    "Offline fallback",
+                                    "Evaluate only"
+                                  ]
+                                },
+                                "approvalStrictness": {
+                                  "type": "string",
+                                  "enum": [
+                                    "STRICT",
+                                    "BALANCED",
+                                    "RELAXED"
+                                  ]
+                                },
+                                "integrations": {
+                                  "maxItems": 4,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "Telegram",
+                                      "GitHub",
+                                      "Discord"
+                                    ]
+                                  }
+                                },
+                                "importantWorkflows": {
+                                  "type": "string",
+                                  "maxLength": 2000
+                                }
+                              },
+                              "required": [
+                                "workType",
+                                "secondaryWork",
+                                "mode",
+                                "providers",
+                                "projectLocations",
+                                "localModelUse",
+                                "approvalStrictness",
+                                "integrations",
+                                "importantWorkflows"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "skillFamilies": {
+                              "maxItems": 8,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              }
+                            },
+                            "selectedModelId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "roles": {
+                              "type": "object",
+                              "properties": {
+                                "planner": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "coder": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "reviewer": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "hardware": {
+                              "type": "object",
+                              "properties": {
+                                "totalRamGb": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "logicalCpus": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "vramMb": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "tier": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 24
+                                },
+                                "backend": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 24
+                                },
+                                "scannedAt": {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                }
+                              },
+                              "required": [
+                                "totalRamGb",
+                                "logicalCpus",
+                                "vramMb",
+                                "tier",
+                                "backend",
+                                "scannedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "appliedAt": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "updatedAt": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "answers",
+                            "skillFamilies",
+                            "selectedModelId",
+                            "roles",
+                            "hardware",
+                            "appliedAt",
+                            "updatedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "profile"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/setup/readiness": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "readiness": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "READY",
+                            "DEGRADED",
+                            "ACTION_REQUIRED"
+                          ]
+                        },
+                        "checks": {
+                          "maxItems": 24,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "ok": {
+                                "type": "boolean"
+                              },
+                              "detail": {
+                                "type": "string",
+                                "maxLength": 240
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "label",
+                              "required",
+                              "ok",
+                              "detail"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "profile_applied_at": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "evaluated_at": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "checks",
+                        "profile_applied_at",
+                        "evaluated_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "readiness"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/system-map/snapshot": {
       "get": {
         "responses": {

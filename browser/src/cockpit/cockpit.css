@@ -2014,3 +2014,9 @@ html, body {
 }
 .cockpit-setup-primary { border-color: rgba(34, 255, 136, 0.5); color: #b8ffd9; background: rgba(34, 255, 136, 0.1); }
 .cockpit-setup-btn:disabled { opacity: 0.4; cursor: default; }
+.cockpit-setup-chip { font-size: 10px; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 10px; border: 1px solid; white-space: nowrap; }
+.cockpit-setup-chip.ok { color: #22ff88; border-color: rgba(34, 255, 136, 0.45); background: rgba(34, 255, 136, 0.08); }
+.cockpit-setup-chip.warn { color: #ffb000; border-color: rgba(255, 176, 0, 0.45); background: rgba(255, 176, 0, 0.08); }
+.cockpit-setup-chip.bad { color: #ff5a72; border-color: rgba(255, 90, 114, 0.45); background: rgba(255, 90, 114, 0.08); }
+.cockpit-setup-rec-text { display: flex; flex-direction: column; gap: 1px; }
+.cockpit-setup-resume { margin: 0; font-size: 11px; color: #ffb000; border: 1px solid rgba(255, 176, 0, 0.4); padding: 6px 10px; border-radius: 6px; }

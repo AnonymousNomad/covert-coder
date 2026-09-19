@@ -67,6 +67,9 @@ import { routesForDesktop, createDesktopService } from './routes/desktop.ts';
 import { routesForTelegram, createTelegramBridgeService } from './routes/telegram.ts';
 import { routesForExperts, createExpertsService } from './routes/experts.ts';
 import { routesForHardware } from './routes/hardware.ts';
+import { routesForSetup } from './routes/setup.ts';
+import { createSetupService } from './services/setup-service.ts';
+import type { SetupConnectionProbe, SetupHardwareProbe, SetupModelProbe, SetupRecommendProbe, SetupTelegramProbe } from './services/setup-service.ts';
 import { routesForResident, createResidentService, renderResidentContext, makeResidentWorkflowProbe } from './routes/resident.ts';
 import { createRequire } from 'node:module';
 import { createOrchService } from './services/orch-context.mjs';
@@ -662,6 +665,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
       // guarantees — single source of desktop truth, per the doctrine.
       const req = createRequire(import.meta.url);
       const { createTelegramBrain } = req('./services/telegram-brain.mjs');
+      const { getDeviceProfile, recommendRoles } = req('./services/hardware-profile.mjs');
       const desktopService = createDesktopService(workspace, options.authority);
       const brain = createTelegramBrain({
         authority: options.authority,
@@ -686,11 +690,38 @@ export async function buildRoutes(workspace: string, version: string, options: B
       // The same instance is the only one in the process — grants/panic
       // state stay consistent across every surface that drives the desktop.
       desktopServiceRef = desktopService;
+      // Resident Adaptive Setup (Gate #2): one service per session, wired to the
+      // SAME connections service, model runtime, hardware-probe lane, telegram
+      // bridge and audit spine the rest of the routes use — no second registry
+      // behind the wizard. plan()/readiness() degrade honestly and never throw.
+      const telegramService = createTelegramBridgeService(workspace, input => brain.onCommand(input), options.authority);
+      const setupService = createSetupService({
+        workspace,
+        skillsRoot,
+        probes: {
+          connectionsView: async () => (connectionsService as { list(): unknown }).list() as unknown as SetupConnectionProbe,
+          connectionsGetPreference: async () => (connectionsService as { getPreference(): unknown }).getPreference() as string,
+          hardwareProfile: async () => getDeviceProfile() as unknown as SetupHardwareProbe,
+          recommendRoles: async () => recommendRoles() as unknown as SetupRecommendProbe,
+          modelStatus: async () => modelRuntime.status() as unknown as SetupModelProbe,
+          modelRoutes: async () => (await modelRouter.routes()).map(route => ({ id: route.id, status: route.status })),
+          telegramStatus: async () => (await telegramService.status()) as SetupTelegramProbe,
+          auditReachable: async () => {
+            try {
+              await auditTrail.readEvents({ limit: 1 });
+              return true;
+            } catch {
+              return false;
+            }
+          }
+        }
+      });
       return [
         ...routesForDesktop(desktopService),
-        ...routesForTelegram(createTelegramBridgeService(workspace, input => brain.onCommand(input), options.authority)),
+        ...routesForTelegram(telegramService),
         ...routesForExperts(expertsService),
-        ...routesForHardware()
+        ...routesForHardware(),
+        ...routesForSetup(setupService, workspace)
       ];
     })(),
     // Audit envelope (aide-closed-loop-wiring): read API over the same
