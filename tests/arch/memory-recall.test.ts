@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
 import { promises as fsp } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 import { createMemoryRecall } from '../../node/src/services/memory-recall.mjs';
 
@@ -140,4 +142,123 @@ test('newer validated facts supersede stale facts and failed reads are degraded'
   const degraded = await r.recall('editor theme');
   assert.equal(degraded.degraded, true);
   assert.match(degraded.reason!, /storage read failed/);
+});
+
+test('newest entries remain visible and older entries remain retrievable beyond 500 entries', async function() {
+  const windowDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'aide-mem-window-'));
+  try {
+    const memFile = path.join(windowDir, '.aide', 'memory', 'sessions.jsonl');
+    await fsp.mkdir(path.dirname(memFile), { recursive: true });
+    const lines: string[] = [];
+    lines.push(JSON.stringify(makeEntry(1, { intent: 'filler entry', summary: 'routine maintenance note' })));
+    lines.push(JSON.stringify(makeEntry(2, { intent: 'zebra migration planning', summary: 'zebra-migration-unique completed for the legacy store' })));
+    for (let i = 3; i <= 600; i++) lines.push(JSON.stringify(makeEntry(i, { intent: 'filler entry', summary: 'routine maintenance note' })));
+    lines.push(JSON.stringify(makeEntry(601, { intent: 'quasar deployment task', summary: 'quasar-deploy-unique landed in the release lane' })));
+    await fsp.writeFile(memFile, lines.join('\n') + '\n', 'utf8');
+
+    const r = createMemoryRecall({ workspace: windowDir });
+    const newest = await r.recall('quasar deployment release lane');
+    assert.ok(newest.hits.some(hit => hit.session_id === 's601'), 'the newest entry beyond the old 500-entry window must be retrievable');
+    const older = await r.recall('zebra migration legacy store');
+    assert.ok(older.hits.some(hit => hit.session_id === 's2'), 'an older useful entry must remain retrievable when relevant');
+    assert.ok(older.hits.length <= 5, 'hits stay bounded by topN');
+    const stat = await r.status();
+    assert.equal(stat.count, 601, 'status reports the honest journal total, not a window');
+    assert.equal(stat.lastTs, makeEntry(601).ts, 'status lastTs is the true newest ts');
+  } finally {
+    await fsp.rm(windowDir, { recursive: true, force: true }).catch(() => {});
+  }
+});
+
+test('supersession resolves across the whole journal beyond the first window', async function() {
+  const superDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'aide-mem-supersede-window-'));
+  try {
+    const memFile = path.join(superDir, '.aide', 'memory', 'sessions.jsonl');
+    await fsp.mkdir(path.dirname(memFile), { recursive: true });
+    const lines: string[] = [];
+    lines.push(JSON.stringify(makeEntry(1, { intent: 'filler entry', summary: 'routine maintenance note' })));
+    lines.push(JSON.stringify({ session_id: 's-old', ts: '2026-09-17T01:00:00Z', fact_key: 'editor.theme', intent: 'editor preference', summary: 'Use light theme.' }));
+    lines.push(JSON.stringify({ session_id: 's-target', ts: '2026-09-17T02:00:00Z', intent: 'harbor retire flag', summary: 'harbor-retire-flag tracked for removal' }));
+    for (let i = 4; i <= 600; i++) lines.push(JSON.stringify(makeEntry(i, { intent: 'filler entry', summary: 'routine maintenance note' })));
+    lines.push(JSON.stringify({ session_id: 's-new', ts: '2026-09-18T01:00:00Z', fact_key: 'editor.theme', intent: 'editor preference', summary: 'Use dark theme.' }));
+    lines.push(JSON.stringify({ session_id: 's-claimer', ts: '2026-09-18T02:00:00Z', supersedes: ['s-target'], intent: 'harbor retire flag', summary: 'harbor-retire-flag completed and closed' }));
+    await fsp.writeFile(memFile, lines.join('\n') + '\n', 'utf8');
+
+    const r = createMemoryRecall({ workspace: superDir });
+    const theme = await r.recall('editor theme preference');
+    assert.deepEqual(theme.hits.map(hit => hit.session_id), ['s-new'], 'the validated newer fact must win and the stale fact must not be injected');
+
+    const harbor = await r.recall('harbor retire flag completed');
+    assert.ok(harbor.hits.some(hit => hit.session_id === 's-claimer'), 'the superseding entry remains active');
+    assert.ok(!harbor.hits.some(hit => hit.session_id === 's-target'), 'an explicitly superseded entry is never injected');
+  } finally {
+    await fsp.rm(superDir, { recursive: true, force: true }).catch(() => {});
+  }
+});
+
+test('secret-shaped memory values never persist and never surface', async function() {
+  const secretDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'aide-mem-secrets-'));
+  try {
+    const r = createMemoryRecall({ workspace: secretDir });
+    const memFile = path.join(secretDir, '.aide', 'memory', 'sessions.jsonl');
+    const fixtures = [
+      'AKIA' + 'IOSFODNN7EXAMPLE',
+      'ghp_' + 'abcdefghijklmnopqrstuvwxyz123456',
+      'glpat-' + 'abcdefghijklmnopqrst',
+      'xoxp-' + '123456789012-abcdefabcdefabcdef',
+      'Bearer ' + 'tkn-secret-abcdef123456',
+      'authorization: Bearer ' + 'zzzz-secret-token-0001',
+      'aws_secret_access_key = ' + 'wJalrXUtnFEMI/K7MDENG/' + 'bPxRfiCYEXAMPLEKEY',
+      '-----BEGIN ' + 'RSA PRIVATE KEY' + '-----\nMIIEowIBAAKCAQEA' + '7Xk9\n-----END ' + 'RSA PRIVATE KEY' + '-----',
+      'token: ' + 'prod-token-abcdef'
+    ];
+    for (let index = 0; index < fixtures.length; index++) {
+      await r.remember({
+        session_id: 'sec-' + index,
+        ts: '2026-09-18T0' + (index % 10) + ':00:00Z',
+        intent: 'aurora credential probe ' + index,
+        summary: fixtures[index]!
+      });
+    }
+    const raw = await fsp.readFile(memFile, 'utf8');
+    for (const fixture of fixtures) assert.ok(!raw.includes(fixture), 'raw secret material must never persist: ' + fixture.slice(0, 12));
+    assert.match(raw, /\[REDACTED\]/, 'redaction marker is present in the durable journal');
+
+    const out = await r.recall('aurora credential probe');
+    assert.ok(out.hits.length >= 1, 'redacted entries remain ordinary memory');
+    for (const hit of out.hits) {
+      const text = JSON.stringify(hit);
+      for (const fixture of fixtures) assert.ok(!text.includes(fixture), 'raw secret material must never surface in recall');
+    }
+  } finally {
+    await fsp.rm(secretDir, { recursive: true, force: true }).catch(() => {});
+  }
+});
+
+test('recall stays bounded and survives a real process restart', async function() {
+  const restartDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'aide-mem-restart-'));
+  try {
+    const r = createMemoryRecall({ workspace: restartDir });
+    for (let index = 0; index < 30; index++) {
+      await r.remember(makeEntry(index, { intent: 'chat crash', summary: 'x'.repeat(500) }));
+    }
+    await r.remember({ session_id: 'restart-anchor', ts: '2026-09-18T23:00:00Z', intent: 'compact editor layout', summary: 'Use the compact editor layout.' });
+
+    const bounded = await r.recall('chat crash');
+    assert.ok(bounded.hits.length <= 5, 'topN bounds the hit count');
+    assert.ok((bounded.approxTokens ?? 0) <= 800 + 50, 'token budget bounds the payload');
+
+    const moduleUrl = pathToFileURL(path.resolve('node/src/services/memory-recall.mjs')).href;
+    const script = [
+      'import { createMemoryRecall } from ' + JSON.stringify(moduleUrl) + ';',
+      'const recall = createMemoryRecall({ workspace: process.argv[1] });',
+      'const out = await recall.recall("compact editor layout");',
+      'console.log(JSON.stringify(out.hits.map(hit => hit.session_id)));'
+    ].join('\n');
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', script, restartDir], { encoding: 'utf8', timeout: 60000 });
+    assert.equal(child.status, 0, 'restart child exits cleanly: ' + (child.stderr ?? ''));
+    assert.match(child.stdout, /restart-anchor/, 'a fresh process reads the persisted memory');
+  } finally {
+    await fsp.rm(restartDir, { recursive: true, force: true }).catch(() => {});
+  }
 });

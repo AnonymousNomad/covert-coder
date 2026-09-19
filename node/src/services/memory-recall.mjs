@@ -1,11 +1,24 @@
 // Memory recall for AIDE — the harness-as-intelligence layer (Gap #4).
 //
-// Reads .aide/memory/sessions.jsonl (one line per chat turn summary) and
-// returns the top-N memories most relevant to the current user message.
-// Honest BM25-style scoring on (intent + skills_invoked + files_touched +
-// summary + outcome) so the model sees real prior context without a
-// heavy embedding dependency.
-import { promises as fs } from 'node:fs';
+// Reads .aide/memory/sessions.jsonl (append-only; one line per chat-turn
+// summary). Retrieval is STREAMING and BOUNDED: the journal is scanned
+// line-by-line — never loaded wholesale — supersession state is tracked
+// globally across the whole journal, and only a bounded top-K of scored
+// hits and the term index are ever held in memory. As the journal grows,
+// the newest entries therefore remain visible, supersession stays
+// authoritative, older entries remain retrievable when relevant, and
+// memory use stays proportional to the vocabulary/supersession index
+// rather than to the journal size.
+//
+// Secret exclusion is enforced on write AND on read (defense in depth):
+// secret-shaped values are redacted before persistence so raw values
+// never reach disk, audit, or model context.
+//
+// Retention is intentionally out of scope here: this journal is an
+// append-only continuity log and retention rollups live in the Helix
+// layer (harness/helix-retention.mjs); no independent TTL is invented.
+import { promises as fs, createReadStream } from 'node:fs';
+import readline from 'node:readline';
 import path from 'node:path';
 
 const STOP_WORDS = new Set([
@@ -39,19 +52,30 @@ function termFreq(tokens) {
 
 const MAX_TEXT = 1200;
 const MAX_ITEMS = 16;
+
+// Private-key material is redacted wholesale BEFORE separator-preserving
+// redaction runs (base64 padding inside a block would otherwise be mistaken
+// for a key=value separator and leak the remainder of the block).
+const PRIVATE_KEY_BLOCK = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z0-9 ]*PRIVATE KEY-----|$)/g;
+
 const SECRET_PATTERNS = [
-  /\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|auth(?:orization)?|password|passwd|secret|credential)\s*[:=]\s*[^\s,;]+/gi,
-  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
-  /\b(?:sk|ghp|github_pat|hf|xoxb)-[A-Za-z0-9._-]{8,}/gi,
-  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g
+  /\b(?:AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}\b/g,
+  /\b(?:sk|ghp|gho|ghu|ghs|github_pat|glpat|hf|xoxb|xoxp|xoxa|xoxr)[-_][A-Za-z0-9._-]{8,}\b/g,
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g,
+  /\b(?:authorization|auth)\s*[:=]\s*(?:bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{4,}/gi,
+  /\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|token|password|passwd|secret|client[_-]?secret|aws[_-]?secret[_-]?access[_-]?key)\s*[:=]\s*[^\s,;]+/gi,
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi
 ];
+
+function redact(match) {
+  const separator = match.search(/[:=]/);
+  return separator >= 0 ? `${match.slice(0, separator + 1)} [REDACTED]` : '[REDACTED]';
+}
 
 function scrubText(value) {
   let text = String(value ?? '').slice(0, MAX_TEXT);
-  for (const pattern of SECRET_PATTERNS) text = text.replace(pattern, match => {
-    const separator = match.search(/[:=]/);
-    return separator >= 0 ? `${match.slice(0, separator + 1)} [REDACTED]` : '[REDACTED]';
-  });
+  text = text.replace(PRIVATE_KEY_BLOCK, '[REDACTED]');
+  for (const pattern of SECRET_PATTERNS) text = text.replace(pattern, redact);
   return text;
 }
 
@@ -109,52 +133,67 @@ function scoreMemory(fieldTfs, weights, queryTf, idf) {
 export function createMemoryRecall({ workspace }) {
   const memFile = path.join(workspace, '.aide', 'memory', 'sessions.jsonl');
   const WEIGHTS = { intent: 2.0, skills_invoked: 3.0, files_touched: 2.5, summary: 1.0, outcome: 1.5 };
-  const MAX_MEMORIES = 500;
   const BUDGET_TOKENS = 800;
+  const MAX_TOP_N = 5;
+  const KEEP_FACTOR = 2;
 
-  async function loadMemories() {
-    let raw;
+  async function* iterateEntries() {
+    const stream = createReadStream(memFile, { encoding: 'utf8' });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
     try {
-      raw = await fs.readFile(memFile, 'utf8');
-    } catch (error) {
-      if (error?.code === 'ENOENT') return { memories: [], degraded: true, reason: 'no memories yet' };
-      return { memories: [], degraded: true, reason: 'memory storage read failed' };
+      for await (const line of rl) {
+        const t = line.trim();
+        if (!t) continue;
+        try {
+          const obj = JSON.parse(t);
+          if (obj && obj.session_id && obj.ts && (obj.scope === undefined || obj.scope === 'workspace')) yield normalizeEntry(obj);
+        } catch { /* skip malformed */ }
+      }
+    } finally {
+      rl.close();
+      stream.destroy();
     }
-    const out = [];
-    for (const line of raw.split('\n')) {
-      const t = line.trim();
-      if (!t) continue;
-      try {
-        const obj = JSON.parse(t);
-        if (obj && obj.session_id && obj.ts && (obj.scope === undefined || obj.scope === 'workspace')) out.push(normalizeEntry(obj));
-      } catch { /* skip malformed */ }
-      if (out.length >= MAX_MEMORIES) break;
-    }
-    return { memories: out, degraded: false };
   }
 
-  function activeMemories(memories) {
+  function storageFailure(error) {
+    const reason = error?.code === 'ENOENT' ? 'no memories yet' : 'memory storage read failed';
+    return { hits: [], degraded: true, reason, approxTokens: 0 };
+  }
+
+  // One streaming pass: global supersession index + honest totals.
+  async function buildIndex() {
     const superseded = new Set();
     const latestByFact = new Map();
-    for (const memory of memories) {
-      if (memory.validated === false) continue;
-      if (memory.fact_key) latestByFact.set(memory.fact_key, memory.session_id);
-      for (const target of memory.supersedes ?? []) superseded.add(target);
+    let count = 0;
+    let lastTs = null;
+    for await (const entry of iterateEntries()) {
+      count += 1;
+      lastTs = entry.ts;
+      if (entry.validated !== false && entry.fact_key) latestByFact.set(entry.fact_key, entry.session_id);
+      for (const target of entry.supersedes ?? []) superseded.add(target);
     }
-    return memories.filter(memory => {
-      if (superseded.has(memory.session_id) || (memory.fact_key && superseded.has(memory.fact_key))) return false;
-      if (memory.fact_key && latestByFact.get(memory.fact_key) !== memory.session_id) return false;
-      return memory.validated !== false;
-    });
+    return { superseded, latestByFact, count, lastTs };
   }
 
-  async function buildIdf(memories) {
+  function isActive(memory, index) {
+    if (memory.validated === false) return false;
+    if (index.superseded.has(memory.session_id)) return false;
+    if (memory.fact_key) {
+      if (index.superseded.has(memory.fact_key)) return false;
+      if (index.latestByFact.get(memory.fact_key) !== memory.session_id) return false;
+    }
+    return true;
+  }
+
+  // Second streaming pass: document frequencies over active entries only.
+  async function buildIdf(index) {
     const df = new Map();
-    const N = memories.length;
-    // DF over union of all per-field terms
-    for (const m of memories) {
+    let active = 0;
+    for await (const memory of iterateEntries()) {
+      if (!isActive(memory, index)) continue;
+      active += 1;
       const seen = new Set();
-      for (const fieldTf of memoryFieldTfs(m, WEIGHTS).values()) {
+      for (const fieldTf of memoryFieldTfs(memory, WEIGHTS).values()) {
         for (const term of fieldTf.keys()) {
           if (seen.has(term)) continue;
           seen.add(term);
@@ -163,38 +202,70 @@ export function createMemoryRecall({ workspace }) {
       }
     }
     const idf = new Map();
-    for (const [term, c] of df) {
-      idf.set(term, Math.log(1 + (N - c + 0.5) / (c + 0.5)));
+    for (const [term, c] of df) idf.set(term, Math.log(1 + (active - c + 0.5) / (c + 0.5)));
+    return { idf, active };
+  }
+
+  // Third streaming pass: score, keep only a bounded top-K.
+  async function scoreTop(index, idf, queryTf, keep) {
+    const best = [];
+    for await (const memory of iterateEntries()) {
+      if (!isActive(memory, index)) continue;
+      const fieldTfs = memoryFieldTfs(memory, WEIGHTS);
+      const score = scoreMemory(fieldTfs, WEIGHTS, queryTf, idf);
+      if (score <= 0) continue;
+      if (best.length >= keep && score <= best[best.length - 1].score) continue;
+      let lo = 0;
+      let hi = best.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (best[mid].score >= score) lo = mid + 1;
+        else hi = mid;
+      }
+      best.splice(lo, 0, { memory, score });
+      if (best.length > keep) best.length = keep;
     }
-    return idf;
+    return best;
   }
 
   async function recall(query, opts) {
-    const topN = Math.min(Math.max(Number(opts?.topN ?? 5), 1), 5);
+    const topN = Math.min(Math.max(Number(opts?.topN ?? 5), 1), MAX_TOP_N);
     const budgetTokens = Math.min(Math.max(Number(opts?.budgetTokens ?? BUDGET_TOKENS), 64), BUDGET_TOKENS);
-    const loaded = await loadMemories();
-    const memories = activeMemories(loaded.memories);
-    if (memories.length === 0) return { hits: [], degraded: loaded.degraded, reason: loaded.reason ?? 'no active memories', approxTokens: 0 };
-    const idf = await buildIdf(memories);
+    let index;
+    try {
+      index = await buildIndex();
+    } catch (error) {
+      return storageFailure(error);
+    }
+    if (index.count === 0) return { hits: [], degraded: true, reason: 'no memories yet', approxTokens: 0 };
     const qTokens = tokenize(query);
     if (qTokens.length === 0) return { hits: [], degraded: true, reason: 'empty query', approxTokens: 0 };
+    let idf;
+    let active;
+    try {
+      ({ idf, active } = await buildIdf(index));
+    } catch (error) {
+      return storageFailure(error);
+    }
+    if (active === 0) return { hits: [], degraded: false, reason: 'no active memories', approxTokens: 0 };
     const qTf = termFreq(qTokens);
-    const scored = memories.map(m => {
-      const fieldTfs = memoryFieldTfs(m, WEIGHTS);
-      return { memory: m, score: scoreMemory(fieldTfs, WEIGHTS, qTf, idf) };
-    }).filter(s => s.score > 0);
-    scored.sort((a, b) => b.score - a.score);
-    const top = scored.slice(0, topN);
-    const hits = top.map(s => ({
-      session_id: s.memory.session_id,
-      ts: s.memory.ts,
-      intent: s.memory.intent,
-      summary: s.memory.summary,
-      skills_invoked: s.memory.skills_invoked || [],
-      files_touched: s.memory.files_touched || [],
-      outcome: s.memory.outcome,
-      ...(s.memory.fact_key ? { fact_key: s.memory.fact_key } : {}),
-      score: Math.round(s.score * 100) / 100
+    const keep = Math.max(topN * KEEP_FACTOR, 8);
+    let best;
+    try {
+      best = await scoreTop(index, idf, qTf, keep);
+    } catch (error) {
+      return storageFailure(error);
+    }
+    const hits = best.slice(0, topN).map(({ memory, score }) => ({
+      session_id: memory.session_id,
+      ts: memory.ts,
+      intent: memory.intent,
+      summary: memory.summary,
+      skills_invoked: memory.skills_invoked || [],
+      files_touched: memory.files_touched || [],
+      outcome: memory.outcome,
+      ...(memory.fact_key ? { fact_key: memory.fact_key } : {}),
+      score: Math.round(score * 100) / 100
     }));
     let chars = 0;
     const trimmed = [];
@@ -220,8 +291,13 @@ export function createMemoryRecall({ workspace }) {
   }
 
   async function status() {
-    const loaded = await loadMemories();
-    return { count: loaded.memories.length, file: memFile, lastTs: loaded.memories.length ? loaded.memories[loaded.memories.length - 1].ts : null, degraded: loaded.degraded, reason: loaded.reason };
+    try {
+      const index = await buildIndex();
+      return { count: index.count, file: memFile, lastTs: index.lastTs, degraded: false };
+    } catch (error) {
+      const reason = error?.code === 'ENOENT' ? 'no memories yet' : 'memory storage read failed';
+      return { count: 0, file: memFile, lastTs: null, degraded: true, reason };
+    }
   }
 
   return { recall, remember, status };

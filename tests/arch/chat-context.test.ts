@@ -242,3 +242,86 @@ test('chat routes hand the same bounded memory context to both model transports'
     await fs.rm(workspace, { recursive: true, force: true });
   }
 });
+
+test('the canonical composer surfaces the newest memory beyond 500 entries and keeps supersession authoritative', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-memory-window-'));
+  try {
+    await fs.mkdir(path.join(workspace, '.aide', 'memory'), { recursive: true });
+    const lines: string[] = [];
+    lines.push(JSON.stringify({
+      session_id: 'stale-theme',
+      ts: '2026-08-01T00:00:00Z',
+      scope: 'workspace',
+      fact_key: 'editor.theme',
+      intent: 'editor theme preference continuity',
+      summary: 'Prefer the light editor theme layout.',
+      outcome: 'validated'
+    }));
+    for (let index = 0; index < 600; index++) {
+      lines.push(JSON.stringify({
+        session_id: `filler-${index}`,
+        ts: `2026-08-02T00:${String(index % 60).padStart(2, '0')}:00Z`,
+        scope: 'workspace',
+        intent: 'routine maintenance note',
+        summary: 'Routine maintenance entry for the workspace.',
+        outcome: 'validated'
+      }));
+    }
+    lines.push(JSON.stringify({
+      session_id: 'current-theme',
+      ts: '2026-09-18T12:00:00Z',
+      scope: 'workspace',
+      fact_key: 'editor.theme',
+      intent: 'editor theme preference continuity',
+      summary: 'Prefer the dark editor theme layout.',
+      outcome: 'validated'
+    }));
+    await fs.writeFile(path.join(workspace, '.aide', 'memory', 'sessions.jsonl'), lines.join('\n') + '\n', 'utf8');
+
+    const runtime = { refreshServedContext: async () => {}, getEffectiveContext: () => 8192 };
+    const request: ChatRequestT = {
+      modelId: 'local:test',
+      messages: [{ role: 'user', content: 'Which editor theme layout should this workspace prefer?' }]
+    };
+    const composed = await createChatContextComposer({ workspace, runtime }).compose(request);
+    const joined = composed.messages.map(message => message.content).join('\n');
+
+    assert.ok(Number(composed.harness.memory_recall_hits) >= 1, 'the newest fact beyond the old window must reach the model context');
+    assert.ok(joined.includes('dark editor theme layout'), 'the current fact is injected');
+    assert.ok(!joined.includes('light editor theme layout'), 'the superseded fact is never injected as equally current truth');
+  } finally {
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('the canonical composer never injects secret-shaped memory values', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-memory-secret-'));
+  try {
+    await fs.mkdir(path.join(workspace, '.aide', 'memory'), { recursive: true });
+    const awsKey = 'AKIA' + 'IOSFODNN7EXAMPLE';
+    const bearer = 'Bearer ' + 'tkn-live-secret-abcdef';
+    const { createMemoryRecall } = await import('../../node/src/services/memory-recall.mjs');
+    await createMemoryRecall({ workspace }).remember({
+      session_id: 'secret-entry',
+      ts: '2026-09-18T12:00:00Z',
+      intent: 'credential probe continuity',
+      summary: 'stored credential probe ' + awsKey,
+      outcome: 'provider token ' + bearer
+    });
+
+    const raw = await fs.readFile(path.join(workspace, '.aide', 'memory', 'sessions.jsonl'), 'utf8');
+    assert.ok(!raw.includes(awsKey), 'raw AWS-shaped key never persists');
+    assert.ok(!raw.includes('tkn-live-secret-abcdef'), 'raw bearer token never persists');
+
+    const runtime = { refreshServedContext: async () => {}, getEffectiveContext: () => 8192 };
+    const composed = await createChatContextComposer({ workspace, runtime }).compose({
+      modelId: 'local:test',
+      messages: [{ role: 'user', content: 'What credential probe did we store?' }]
+    });
+    const joined = composed.messages.map(message => message.content).join('\n');
+    assert.ok(!joined.includes(awsKey), 'raw AWS-shaped key never reaches model context');
+    assert.ok(!joined.includes('tkn-live-secret-abcdef'), 'raw bearer token never reaches model context');
+  } finally {
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
