@@ -366,6 +366,10 @@ try {
   await clickDestination(page, 'editor');
   assert.equal(await page.locator('.cockpit-editor-layout').count(), 1, 'editor workspace was orphaned');
   assert.equal(await page.locator('.cockpit-editor-search').count(), 1, 'Search was orphaned from the editor');
+  assert.equal(await page.getByRole('button', { name: 'Close editor group', exact: true }).isDisabled(), true, 'last editor group close must be disabled');
+  for (let count = 1; count < 8; count++) await page.getByRole('button', { name: 'Split editor right', exact: true }).last().click();
+  assert.equal(await page.getByRole('button', { name: 'Split editor right', exact: true }).last().isDisabled(), true, 'group limit must disable splitting');
+  for (let count = 8; count > 1; count--) await page.getByRole('button', { name: 'Close editor group', exact: true }).last().click();
   await page.locator('[data-chip="engine"]').click();
   assert.equal(await page.locator('#app').getAttribute('data-active-panel'), 'models', 'model status must navigate to its real surface');
   await clickDestination(page, 'resident');
@@ -402,6 +406,16 @@ try {
   assert.equal(await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).evaluate(node => node === document.activeElement), true);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).evaluate(node => getComputedStyle(node).transitionDuration), '0s', 'reduced motion must disable control transitions');
+
+  await page.route('**/api/health', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false, error: { code: 'NOT_READY', message: 'Startup health probe unavailable' } }) }));
+  await page.reload({ waitUntil: 'commit', timeout: bootTimeoutMs });
+  await page.locator('#covert-pairing-code').fill('p'.repeat(32));
+  await page.getByRole('button', { name: 'PAIR SESSION', exact: true }).click();
+  await page.locator('#app[data-editor-ready="true"]').waitFor({ timeout: bootTimeoutMs });
+  assert.equal(await page.getByText('Restoring editor session…', { exact: true }).count(), 0, 'failed health observation must not strand editor initialization');
+  assert.equal(await page.locator('.cockpit-resident').getAttribute('data-authority'), 'none', 'recovery must not grant authority');
+  await clickDestination(page, 'projects');
+  assert.equal(await page.getByRole('button', { name: 'package.json', exact: true }).isEnabled(), true, 'available files remain usable after a failed health observation');
 
   assert.deepEqual(pageErrors, [], `browser page exceptions: ${pageErrors.join(' | ')}`);
   assert.deepEqual(consoleErrors, [], `browser console errors: ${consoleErrors.join(' | ')}`);

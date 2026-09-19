@@ -6,6 +6,17 @@ import { startReview } from './cockpit-live-review.mjs';
 const review = await startReview({ approveTerminal: true });
 const { page } = review;
 const evidence = { screenshots: [], checks: [], errors: review.errors, httpFailures: review.httpFailures };
+evidence.requestFailures = [];
+page.on('requestfailed', request => evidence.requestFailures.push({ path: new URL(request.url()).pathname, error: request.failure()?.errorText }));
+await page.evaluate(() => {
+  window.__covertReviewNotifications = [];
+  const seen = new WeakSet();
+  const collect = () => document.querySelectorAll('.aide-toast').forEach(node => {
+    if (!seen.has(node)) { seen.add(node); window.__covertReviewNotifications.push(node.textContent); }
+  });
+  collect();
+  new MutationObserver(collect).observe(document.body, { childList: true, subtree: true });
+});
 const navigate = id => page.locator(`[data-item-id="${id}"]`).click();
 async function capture(name) { await page.waitForTimeout(250); evidence.screenshots.push(await review.capture(name)); }
 try {
@@ -23,6 +34,10 @@ try {
   await navigate('projects');
   await page.locator('#app[data-editor-ready="true"]').waitFor({ timeout: 40000 });
   assert.equal(await page.getByText('Restoring editor session…', { exact: true }).count(), 0);
+  if (await page.getByRole('button', { name: 'package.json', exact: true }).count() === 0) {
+    evidence.checks.push('Initial workspace read unavailable; exercised existing Refresh once before file opening');
+    await page.locator('.cockpit-projects-refresh').click();
+  }
   await page.getByRole('button', { name: 'package.json', exact: true }).click();
   await page.locator('.monaco-editor').first().waitFor({ timeout: 30000 });
   await page.waitForTimeout(1500);
@@ -33,7 +48,7 @@ try {
   await page.getByRole('button', { name: 'Close editor group', exact: true }).last().click();
   assert.equal(await page.locator('.group').count(), 1);
   assert.equal(await page.locator('.group-pane').count(), 0);
-  await page.getByRole('button', { name: 'Close editor group', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Close editor group', exact: true }).isDisabled(), true, 'last group close must explain its unavailable state');
   assert.equal(await page.locator('.monaco-editor').count(), 1, 'last group must keep its open file');
   evidence.checks.push('Real workspace file opens in Monaco; split IDs unique; split collapse; last-group close safe');
   await page.waitForTimeout(8500);
@@ -80,7 +95,12 @@ try {
     evidence.surfaces.push({ id, text: await page.locator('#cockpit-center').innerText(), controls: await page.locator('button:visible, input:visible, select:visible, textarea:visible').evaluateAll(nodes => nodes.map(node => ({ label: node.getAttribute('aria-label') || node.textContent || node.getAttribute('placeholder') || node.getAttribute('title'), disabled: node.matches(':disabled') }))) });
   }
   assert.deepEqual(review.errors, []);
+} catch (error) {
+  evidence.failure = error instanceof Error ? error.message : String(error);
+  await capture('functional-failure');
+  throw error;
 } finally {
+  evidence.notifications = await page.evaluate(() => window.__covertReviewNotifications).catch(() => []);
   evidence.lastSurface = await page.locator('#cockpit-center').innerText().catch(() => 'unavailable');
   await writeFile(new URL('../.aide/ui-review/functional-review.json', import.meta.url), JSON.stringify(evidence, null, 2));
   await review.close();

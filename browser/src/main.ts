@@ -129,7 +129,8 @@ async function boot(): Promise<void> {
   } catch (error) {
     shell.topbar.setDaemon({ label: 'DOWN', reachable: false });
     shell.notify('NOT_READY', error instanceof Error ? error.message : 'daemon unreachable');
-    return;
+    // A failed observation must not permanently strand the editor. Continue
+    // bounded restoration; every file/operation request still enforces authority.
   }
 
   try {

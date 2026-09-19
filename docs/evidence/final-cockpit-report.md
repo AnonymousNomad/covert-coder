@@ -47,8 +47,11 @@ All 12 destinations were traversed in the real browser and their visible control
 | Empty chat/task submission | DISABLED WITH REASON — enter content first; active task/stream prevents duplicate submission |
 | Chat streaming/cancellation and governed decisions | REAL BUT DEGRADED in this checkout — UI stream fixture and route/authority tests pass; no installed model, so no live generation certification |
 | Project file opening, Monaco splits/tab controls | REAL AND WORKING — real `package.json`, distinct split IDs, collapse and last-group preservation |
+| Latest Windows workspace availability | REAL BUT DEGRADED — initial read unavailable; explicit Refresh recovered it and real file opening/splits passed in the latest diagnostic run |
 | Editor session persistence | REAL BUT DEGRADED in capture run — save approvals intentionally denied; explanatory notification, no unhandled rejection; no persistence claim |
-| PTY open/stop | REAL AND WORKING — exact start/stop approval, real shell command; no model-mediated command execution |
+| Last editor-group close / eight-group split limit | DISABLED WITH REASON — explicit unavailable state and explanatory title; browser regression checks exercise both limits |
+| Workspace Refresh | REAL AND WORKING / backend-dependent — pending label and duplicate-request lock; one explicit recovery attempt is allowed by the live review driver |
+| PTY open/stop | Earlier exact start/stop approval and real shell command passed. Latest run REAL BUT DEGRADED: provider probe timed out, OPEN SESSION unavailable; no model-mediated command execution |
 | Model start/stop | REAL BUT DEGRADED / DISABLED WITH REASON — runtime/artifact prerequisites absent; contract tests cover authority/lifecycle; no artifact-to-READY promotion |
 | Skill activation / dynamic Harness Modes | NOT YET AVAILABLE — no fake execution controls |
 | Memory retrieval | REAL BUT GOVERNED — explicit existing route; no automatic write-triggering refresh or invented recall guarantee |
@@ -93,14 +96,32 @@ Final results and release decision are recorded in the accompanying verification
 - Whole-repository ESLint: exit 0, zero errors, 60 existing warnings.
 - Production Vite build: exit 0; existing large-bundle warning remains (Monaco and language workers).
 - Current cockpit acceptance: exit 0, including streamed fixture response, navigation, truth states, geometry, responsive layout and zero browser exceptions.
-- Final real-stack functional review: exit 0, 12 surfaces, four widths, real Monaco and approved PTY; zero page exceptions. Expected HTTP 409 approval challenges/session-save denial retained.
+- Earlier complete real-stack functional review: exit 0, 12 surfaces, four widths, real Monaco and approved PTY; zero page exceptions. Expected HTTP 409 approval challenges/session-save denial retained. Latest follow-up is separately recorded below.
 - Affected integration/architecture selection: 65/65 passed; supplemental UI/session selection 17/17 passed; approval/product-text/toast selection 6/6 passed. These overlap and are not summed as unique tests.
 - Frontend launcher unit tests: 3/3 passed.
 - First full architecture run: 611 passed, 16 timed out, 11 skipped. All six affected files rerun alone: 41/41 passed. A final quiet full run is recorded separately; no timeout thresholds or assertions were weakened.
 - Final quiet full architecture run: **627 passed, 1 failed, 11 skipped**, exit 1, 577.1 seconds. Failure: `tests/arch/closed-loop-mission.test.ts:230`, approved-action mission, `agent should finish done (got null)`. The status polling budget ended without observing done/error/aborted. This is a backend mission boundary, not a browser exception; no causal attribution to resource pressure is claimed without further evidence.
 - That mission file was then run alone, with the unchanged close shim and test timeout: **2 passed, 1 failed**, exit 1, 65.9 seconds. The approved-action mission failed with `TimeoutError: The operation was aborted due to timeout`; rejection and context-injection checks passed. This unresolved backend integration gate is handed to the AgentLoop/closed-loop owner; frontend source changes do not authorize repairing backend completion semantics.
+- A later editor-control follow-up live attempt stopped on Projects with workspace/bundle read timeouts and two HTTP 403 observations (models/routes, audit/events), while recording zero page exceptions. Daemon read durations reached 10–53 seconds. Its failure is preserved in `.aide/ui-review/followup-degraded-review.json`; the driver now permits one existing Refresh action and records recovery explicitly. No read deadline, authority rule or backend behavior was weakened.
+- The recovery attempt restored workspace data but exposed a separate frontend defect: startup returned permanently after an initial failed health observation, before setting editor readiness. Removed that early return; bounded session restoration and independently authorized file access continue without pretending daemon health is good. A browser regression now forces a failed startup health envelope and checks editor readiness, usable file controls and Resident's unchanged authority boundary. The failed pre-fix attempt remains in `.aide/ui-review/followup-functional.log`.
 - Windows review-driver note: node-pty 1.1.0 can emit an intermittent `AttachConsole failed` helper warning while closing its native console. Source inspection identifies asynchronous enumeration racing native close. It is not a browser exception; driver exit and owned process/port cleanup are checked separately. Dependency internals were not patched to conceal it.
 
 Commits, remote CI, final cleanup and ACCEPT/BLOCK decisions must be read from the final handoff and manifest, not inferred from the screenshots.
 
 Final post-build canonical launch and real Edge traversal: **12 surfaces, zero page exceptions, exit 0**. Verified cleanup: `REVIEW_SURVIVORS=0 REVIEW_LISTENERS=0 LAUNCHER_24248=0`. Other lanes' processes were not stopped. Final frontend type/lint, three launcher unit tests, production build and cockpit acceptance (including reduced motion) passed.
+
+That successful freeze preceded the final editor-control/startup follow-up. Subsequent failed workspace/Monaco attempts remain in `repaired-functional.log` and `final-guarded-functional.log`. The **latest instrumented** real-stack run recovered workspace data with one explicit Refresh, opened the real file, exercised split/last-group behavior and passed setup focus checks. It then stopped at Terminal: `Provider probe failed: signal timed out`; `/api/terminal/providers` recorded `net::ERR_ABORTED`, and OPEN SESSION was unavailable. Zero page exceptions. Evidence: `.aide/ui-review/diagnostic-functional.log` and `functional-review.json`. No backend root cause is asserted from the timeout alone. Fresh Command Center, Resident and Editor captures are published from this run; screenshots are not a passing end-to-end gate.
+
+After all follow-up production edits: frontend TypeScript, scoped ESLint, production build and cockpit fixture acceptance passed. The fixture now covers failed-health startup recovery, eight-group split limit and disabled last-group close. UI/session selection: 14/14 passed; launcher unit tests: 3/3 passed. Final process inspection found no owned review Node processes or listeners on 4273/4877/4878/4879.
+
+A final source audit also found overlapping-refresh exposure in the Resident and resource pollers. In-flight guards now prevent either from launching a second refresh while its current request set is pending, matching the existing model/activity guards. This reduces avoidable frontend load; it is not claimed as proof of the underlying backend-latency cause or resolution of the blocked live gate.
+
+## Published revision and release decision
+
+- Cockpit implementation: `c6e00c0249d10c02d88a8c1d9c2b02849e186010`.
+- Public presentation/evidence: `4cffb245863c732f00650da6075b6360352fc3e1`.
+- Both pushed to `origin/feat/final-cockpit-production-ui`; no merge into `covert-production`.
+- [Remote CI run 35448220259](https://github.com/AnonymousNomad/covert-coder/actions/runs/35448220259) **SUCCESS** for `4cffb24`: installation, frontend build, backend/integration tests, types/lint, architecture, Veritas and worktree checks all passed. The editor-control follow-up has separate HEAD checks; consult the final handoff for that exact revision.
+- **FRONTEND PRODUCTION — BLOCK. PUBLIC PRODUCT SURFACE — BLOCK.** Presentation, static checks and controlled browser regressions are delivered, but release acceptance cannot ignore the reproduced Windows closed-loop mission failure and latest terminal-provider availability failure. The frontend startup defect found during this process was repaired and its regression passed; current live acceptance remains blocked. Missing optional telemetry/artifacts are disclosed states, not fabricated release blockers.
+
+The design, responsive/accessibility and repository-publication skills informed token consolidation, keyboard/focus and reduced-motion behavior, and the evidence-backed public capability matrix. They did not authorize changing backend semantics or declaring missing capabilities complete.

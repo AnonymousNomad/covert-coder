@@ -14,6 +14,7 @@
   "production_build": { "exit_code": 0, "warning": "large Monaco/application chunks" },
   "cockpit_fixture_acceptance": { "exit_code": 0, "live_model_generation_proven": false },
   "real_stack_review": {
+    "scope": "Successful review before the final editor-control and health-recovery follow-up",
     "exit_code": 0,
     "surfaces": 12,
     "page_exceptions": 0,
@@ -40,10 +41,15 @@
   "public_paths": { "files": 13, "checked": 85, "broken": 0, "external_urls_bulk_verified": false },
   "screenshots": ["docs/assets/screenshots/covert-command-center.png", "docs/assets/screenshots/covert-resident.png", "docs/assets/screenshots/covert-editor.png"],
   "raw_evidence_directory": ".aide/ui-review",
-  "final_post_build_browser_freeze": { "exit_code": 0, "surfaces": 12, "page_exceptions": 0 },
+  "successful_post_build_browser_freeze_before_followup": { "exit_code": 0, "surfaces": 12, "page_exceptions": 0 },
+  "followup_degraded_attempt": { "exit_code": 1, "page_exceptions": 0, "surface": "projects", "workspace_read": "unavailable", "bundle_read": "timed out", "http_403": ["/api/models/routes", "/api/audit/events"], "evidence": ".aide/ui-review/followup-degraded-review.json" },
+  "followup_startup_defect": { "pre_fix_exit_code": 1, "failure": "editor-ready timeout after failed initial health observation", "repair": "continue bounded editor restoration without granting authority", "regression": "failed health-envelope browser scenario" },
+  "latest_real_stack_followup": { "exit_code": 1, "editor_ready": true, "workspace_refresh_attempted": true, "real_file_open_and_splits": "passed", "setup_focus": "passed", "page_exceptions": 0, "failure": "Terminal provider probe timed out; OPEN SESSION unavailable", "request_failure": "/api/terminal/providers net::ERR_ABORTED", "evidence": ".aide/ui-review/diagnostic-functional.log", "diagnostic_json": ".aide/ui-review/functional-review.json", "further_retries": false },
+  "final_followup_checks": { "frontend_typescript": 0, "frontend_eslint": 0, "production_build": 0, "cockpit_fixture_acceptance": 0, "ui_session_tests_passed": 14, "launcher_unit_tests_passed": 3 },
   "process_hygiene": { "review_survivors": 0, "review_listeners": 0, "launcher_24248_survives": false, "other_lanes_untouched": true },
-  "remote_ci": "NOT YET PUSHED",
+  "published_commits": ["c6e00c0249d10c02d88a8c1d9c2b02849e186010", "4cffb245863c732f00650da6075b6360352fc3e1"],
+  "remote_ci": { "run_id": 35448220259, "head_sha": "4cffb245863c732f00650da6075b6360352fc3e1", "conclusion": "success", "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/35448220259", "scope": "Published cockpit and public-surface commits; subsequent editor-control follow-up must have its own HEAD checks" },
   "production_merge": false,
-  "frontend_production_verdict": "BLOCK - backend closed-loop integration gate and remote CI not green",
-  "public_product_surface_verdict": "BLOCK - release acceptance requires integration/CI resolution; presentation delivered as pre-production"
+  "frontend_production_verdict": "BLOCK - latest Windows terminal-provider availability and closed-loop integration gates",
+  "public_product_surface_verdict": "BLOCK - latest live acceptance is not green; presentation delivered as pre-production"
 }

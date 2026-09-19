@@ -2,6 +2,8 @@
 
 Captured 2026-09-19 from `feat/final-cockpit-production-ui`, based on integrated revision `70bc46ae0a6b71afcb829f6d95a6e706f49fcd75`. The Git commit containing these assets identifies their frontend source revision.
 
+The three publication images were refreshed after the final editor-control/startup-recovery follow-up, at 10:10–10:11 local time. The instrumented real-stack review opened the actual workspace file and passed split/setup checks, then stopped on a timed-out terminal provider probe. The visible unavailable/degraded state is real; these captures must not be mistaken for a passing end-to-end gate.
+
 - [Command Center](covert-command-center.png): Resident, truthful model/resource state, operational intelligence, lower console.
 - [Resident](covert-resident.png): governed-task presentation; no task has been fabricated or submitted for the image.
 - [Editor](covert-editor.png): real repository `package.json` open in Monaco.

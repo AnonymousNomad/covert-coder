@@ -3,6 +3,10 @@
 Project: E:\aide-sovereign-workbench — offline-first IDE (VS Code + GitHub + Android Studio) with 3 pre-installed GGUF models, zero cloud.
 Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor named. This is the project memory.
 
+## 2026-09-19 10:20 — Astra frontend follow-up handoff
+
+Same isolated branch/base as the entry below. Fixed failed-health startup continuation, bounded editor controls, pending workspace refresh and overlapping Resident/resource polls. Frontend types/lint/build/fixture acceptance passed; UI/session 14/14 and launcher 3/3 passed. Latest real browser opened the file and passed split/setup checks, then Terminal provider probe timed out; zero page exceptions. Fresh real captures published. R7 final inspection: no owned review Node processes or review-port listeners; other lanes untouched. Earlier published HEAD 4cffb24 CI run 35448220259 passed; follow-up HEAD CI is reported in the final handoff. Production remains BLOCK on local closed-loop completion and live provider availability. No backend changes or production merge.
+
 ## 2026-09-19 09:14 — Astra isolated frontend review
 
 Worktree `E:\aide-sovereign-workbench-astra-ui`, branch `feat/final-cockpit-production-ui`, base `70bc46ae0a6b71afcb829f6d95a6e706f49fcd75`. Owner worktree untouched. Final 12-surface real-browser freeze: zero page exceptions. R7: browser and launcher 24248 closed; verified `REVIEW_SURVIVORS=0 REVIEW_LISTENERS=0 LAUNCHER_24248=0` on review ports 4273/4877/4878/4879. Earlier node-pty helper teardown warning is documented, not concealed. Full architecture result 627 pass / 1 fail / 11 skip; closed-loop mission isolated 2 pass / 1 timeout. Production acceptance remains blocked on that backend integration gate and CI. See `docs/evidence/final-cockpit-report.md`; no production merge.

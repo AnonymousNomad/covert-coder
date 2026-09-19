@@ -406,13 +406,19 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     }
   }
 
+  let refreshing = false;
   async function refresh(): Promise<void> {
-    if (!alive) return;
-    const [summary, context, push, decisions] = await Promise.all([loadSummary(), loadContext(), loadPush(), loadDecisions()]);
-    if (!alive) return;
-    const data: ResidentData = { summary, context, push, decisions };
-    paintStateBadge(data);
-    paintConversation(data);
+    if (!alive || refreshing) return;
+    refreshing = true;
+    try {
+      const [summary, context, push, decisions] = await Promise.all([loadSummary(), loadContext(), loadPush(), loadDecisions()]);
+      if (!alive) return;
+      const data: ResidentData = { summary, context, push, decisions };
+      paintStateBadge(data);
+      paintConversation(data);
+    } finally {
+      refreshing = false;
+    }
   }
 
   void refresh();

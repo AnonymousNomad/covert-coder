@@ -87,7 +87,9 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
   }
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
+    if (!alive || refreshButton.disabled) return;
+    refreshButton.disabled = true;
+    refreshButton.textContent = 'REFRESHING…';
     try {
       const workspace = await api.workspaceList();
       if (!alive) return;
@@ -95,6 +97,11 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
       renderWorkspace(workspace);
     } catch {
       renderWorkspace(null);
+    } finally {
+      if (alive) {
+        refreshButton.disabled = false;
+        refreshButton.textContent = 'REFRESH';
+      }
     }
   }
 

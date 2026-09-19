@@ -80,12 +80,15 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
   parent.appendChild(root);
 
   let alive = true;
+  let refreshing = false;
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
+    if (!alive || refreshing) return;
+    refreshing = true;
     let hardware: HardwareProfileResponseT | null = null;
     try { hardware = await api.hardwareProfile(); }
     catch { hardware = null; }
+    finally { refreshing = false; }
     if (!alive) return;
     const data: TelemetryData = { hardware };
     paint(data);

@@ -83,6 +83,20 @@ export function createGroups(root: HTMLElement, opts: GroupsOptions): GroupsMana
   const listeners = new Set<() => void>();
 
   const notify = (): void => {
+    for (const group of groups.values()) {
+      const close = group.element.querySelector<HTMLButtonElement>('[aria-label="Close editor group"]');
+      if (close) {
+        close.disabled = groups.size <= 1;
+        close.title = close.disabled ? 'Keep at least one editor group open' : 'Close group';
+      }
+      for (const direction of ['right', 'below']) {
+        const split = group.element.querySelector<HTMLButtonElement>(`[aria-label="Split editor ${direction}"]`);
+        if (split) {
+          split.disabled = groups.size >= GROUP_MAX;
+          split.title = split.disabled ? `Maximum ${GROUP_MAX} editor groups reached` : `Split ${direction}`;
+        }
+      }
+    }
     for (const fn of listeners) fn();
   };
 
