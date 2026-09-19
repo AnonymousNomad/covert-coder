@@ -284,7 +284,10 @@ try {
   await page.locator('.cockpit-operator-hide').uncheck();
   assert.equal(await page.locator('.cockpit-intel-slot').count(), 3, 'intelligence rail is incomplete');
   assert.equal(await page.locator('.cockpit-strip-tab').count(), 6, 'lower console must expose six approved tabs');
-  await page.waitForFunction(() => document.querySelector('[data-chip-label="engine"]')?.textContent?.includes('1 OF 2 MODELS READY') === true);
+  // The engine chip vocabulary is STARTABLE/ACTIVE (common/model-state.ts maps a
+  // status:'ready' artifact to STARTABLE, main.ts renders "N OF M MODELS STARTABLE").
+  // The earlier 'MODELS READY' wording predates that truth-language change.
+  await page.waitForFunction(() => document.querySelector('[data-chip-label="engine"]')?.textContent?.includes('1 OF 2 MODELS STARTABLE') === true);
   assert.match(await page.locator('[data-chip-label="daemon"]').textContent() ?? '', /DAEMON: ONLINE/, 'daemon reachability chip is not independently live');
   assert.doesNotMatch(await page.locator('[data-chip-label="engine"]').textContent() ?? '', /DAEMON|fixture/i, 'daemon health leaked into model readiness chip');
   await page.waitForFunction(() => document.querySelectorAll('.cockpit-telemetry-card').length >= 5);
