@@ -1,0 +1,80 @@
+# Frontend/public-surface change inventory
+
+Base: `70bc46ae0a6b71afcb829f6d95a6e706f49fcd75`.
+Generated from this isolated worktree's tracked diff and untracked source/assets.
+Runtime state, raw captures, dependencies and model artifacts are ignored, not staged.
+
+- `AGENT_NOTES.md` (bounded verification and process-hygiene entry)
+
+- `.github/ISSUE_TEMPLATE/bug_report.md`
+- `.github/workflows/ci.yml`
+- `CHANGELOG.md`
+- `CONTRIBUTING.md`
+- `README.md`
+- `SECURITY.md`
+- `THIRD_PARTY_NOTICES.md`
+- `browser/index.html`
+- `browser/public/Cascadia-OFL.txt`
+- `browser/src/assets/fonts/README.txt`
+- `browser/src/byok/byok.ts`
+- `browser/src/chat/chat.ts`
+- `browser/src/cockpit/ActivityTimeline.ts`
+- `browser/src/cockpit/AmbientEffects.ts`
+- `browser/src/cockpit/BottomStrip.ts`
+- `browser/src/cockpit/CockpitShell.ts`
+- `browser/src/cockpit/ModelLineup.ts`
+- `browser/src/cockpit/NavigationRail.ts`
+- `browser/src/cockpit/ProjectsSurface.ts`
+- `browser/src/cockpit/ResidentCore.ts`
+- `browser/src/cockpit/SetupSession.ts`
+- `browser/src/cockpit/SystemTelemetry.ts`
+- `browser/src/cockpit/Walkthrough.ts`
+- `browser/src/cockpit/cockpit.css`
+- `browser/src/editor/groups.ts`
+- `browser/src/editor/host.ts`
+- `browser/src/editor/views.ts`
+- `browser/src/main.css`
+- `browser/src/main.ts`
+- `browser/src/panels/command-center.ts`
+- `browser/src/panels/memory.ts`
+- `browser/src/panels/models.ts`
+- `browser/src/panels/security.ts`
+- `browser/src/panels/skills.ts`
+- `browser/src/panels/terminal.ts`
+- `browser/src/panels/verification.ts`
+- `browser/src/panels/workflow.ts`
+- `browser/src/providers/providers.ts`
+- `browser/src/services/api.ts`
+- `browser/src/services/authority.ts`
+- `browser/src/services/session.ts`
+- `browser/src/shell/topbar.ts`
+- `browser/src/store/state.ts`
+- `browser/src/ui/approval-description.ts`
+- `browser/src/ui/product-text.ts`
+- `browser/src/ui/toast.ts`
+- `browser/src/workbenches/workbenches.ts`
+- `docs/ARCHITECTURE.md`
+- `docs/GETTING_STARTED.md`
+- `docs/HARNESS_MODES.md`
+- `docs/README.md`
+- `docs/assets/README.md`
+- `docs/assets/branding/README.md`
+- `docs/assets/screenshots/README.md`
+- `docs/assets/screenshots/covert-command-center.png`
+- `docs/assets/screenshots/covert-editor.png`
+- `docs/assets/screenshots/covert-resident.png`
+- `docs/evidence/final-cockpit-baseline.json`
+- `docs/evidence/final-cockpit-design.md`
+- `docs/evidence/final-cockpit-report.md`
+- `docs/evidence/final-cockpit-verification.json`
+- `llms.txt`
+- `package.json`
+- `scripts/cockpit-acceptance.mjs`
+- `scripts/cockpit-functional-review.mjs`
+- `scripts/cockpit-live-review.mjs`
+- `scripts/doctor.mjs`
+- `scripts/public-surface-check.mjs`
+- `tests/arch/approval-description.test.ts`
+- `tests/arch/product-text.test.ts`
+- `tests/arch/toast.test.ts`
+- `docs/evidence/final-cockpit-files.md` (this inventory)

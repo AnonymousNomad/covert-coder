@@ -41,5 +41,5 @@ unsoundness advisory in `VariantStrIter` (glib < 0.20).
 - Re-check procedure: after each Tauri/wry release, run
   `cargo update && cargo tree -i glib`; when glib resolves to >= 0.20, upgrade
   and this section is removed.
-- AIDE does not suppress the Dependabot alert and does not claim the dependency
+- Covert Coder does not suppress the Dependabot alert and does not claim the dependency
   is fixed; it is recorded here as an accepted, upstream-blocked constraint.

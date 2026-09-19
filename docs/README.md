@@ -32,7 +32,9 @@ The dated `AUDIT-*`, `HANDOFF-*`, `WEEK-*`, `phase*/`, and `audit/` materials ar
 
 ## Public assets
 
-The [asset policy and inventory](assets/README.md) defines where accepted screenshots, demos, architecture diagrams, and other publication-safe material belong. No screenshot, demo recording, or canonical Covert emblem is currently included by this documentation pass.
+The [asset policy and inventory](assets/README.md) defines publication-safe assets. The approved emblem and [real cockpit captures](assets/screenshots/README.md) share the application's visual identity. Capture provenance distinguishes UI evidence from backend release acceptance.
+
+See [Harness Modes](HARNESS_MODES.md) for the single-Harness operating-mode direction and its current implementation boundary.
 
 ## Navigation by area
 

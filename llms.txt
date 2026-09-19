@@ -1,23 +1,25 @@
-# Covert Coder — AIDE Sovereign Workbench
+# Covert Coder
 
-> Covert Coder is the product direction for AIDE Sovereign Workbench, an open-source local-first development environment with editor, models, Git, debugging, and verification under operator control.
+> Local-first engineering workbench. Vibe at the surface. Engineering underneath.
 
-- Current status: pre-production; capability labels are conservative and uncommitted work is not release evidence.
-- Product topology: browser frontend (:4173) → product façade (:4777) → canonical TypeScript backend (:4778); legacy backend (:4779) remains migration inventory.
-- Local model execution and local tools are supported; external model-host downloads and online providers are explicit opt-in network boundaries.
-- Resident is advisory; models, plugins, and generated patches do not grant authority or apply changes without operator review.
-- Implemented route families cover workspace, editor, chat, models, providers, BYOK, Git, terminal, tasks, LSP, DAP, Resident, memory, audit, and verification-related services.
-- Veritas/Harness provides evidence gates; verification is not execution permission or effect certainty.
-- Desktop packaging, Helix extensions, dedicated Skills/Security surfaces, and the Covert cockpit remain experimental or unreleased where the feature matrix says so.
-- No test count is asserted here; run the documented checks and retain their evidence for release claims.
+- Status: pre-production; source presence is not production readiness.
+- Frontend: typed DOM cockpit, Monaco editor, real governed PTY.
+- Launch: npm ci, npm run doctor, npm start; browser at http://127.0.0.1:4173/.
+- Pair using the one-use code issued by typing pair in the launch terminal.
+- Resident is advisory and has data-authority="none"; exact operations remain governed.
+- Models distinguish artifact presence, startability, running state, and verified route readiness.
+- Veritas owns verification; historical passes do not verify current work.
+- Memory, Skill Intelligence, providers and extensions have explicit partial/experimental boundaries.
+- Harness Modes: one canonical Harness with domain-specific composition; dynamic mode loading remains planned.
+- Online providers and downloads are explicit network choices.
 
-## Links
+## Documentation
 
-- Repository: https://github.com/AnonymousNomad/covert-coder
-- Documentation index: docs/README.md
+- Front door: README.md
+- Install and pairing: docs/GETTING_STARTED.md
 - Architecture: docs/ARCHITECTURE.md
+- Harness Modes: docs/HARNESS_MODES.md
+- Evidence: docs/evidence/
 - Security: SECURITY.md
 - Contributing: CONTRIBUTING.md
-- Release roadmap: docs/RELEASE_ROADMAP.md
-- Model packs: models/PACKS.md
 - License: LICENSE

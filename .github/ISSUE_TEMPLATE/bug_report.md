@@ -11,7 +11,7 @@ labels: bug
 
 ## Environment
 
-- AIDE version/commit:
+- Covert Coder version/commit:
 - OS and architecture:
 - Runtime/model pack:
 - Offline mode enabled:

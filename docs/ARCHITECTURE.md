@@ -1,6 +1,8 @@
-# AIDE Architecture — Canonical Direction (FROZEN; topology snapshot refreshed 2026-09-15)
+# Covert Coder Architecture — Canonical Direction (FROZEN; topology snapshot refreshed 2026-09-15)
 
-Source of truth for what AIDE's architecture IS, and where every legacy feature goes next.
+Source of truth for Covert Coder's architecture and where every legacy feature goes next. Historical AIDE identifiers below remain migration references. This dated topology snapshot does not certify later integration work.
+
+The intended single-Harness operating-mode composition is described in [Harness Modes](HARNESS_MODES.md). It does not introduce a second Harness or give Resident authority.
 
 ## 1. The Canonical Path (FROZEN)
 

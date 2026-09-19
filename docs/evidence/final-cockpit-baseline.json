@@ -1,0 +1,21 @@
+{
+  "base_sha": "70bc46ae0a6b71afcb829f6d95a6e706f49fcd75",
+  "base_branch": "integration/production-closure",
+  "branch": "feat/final-cockpit-production-ui",
+  "worktree": "E:/aide-sovereign-workbench-astra-ui",
+  "reference": "E:/COVERT UI/file_00000000de6c8206b69e2ac45115fab8.jpg",
+  "reference_inspected": true,
+  "architecture": "Typed DOM components, Vite, Monaco, xterm, single cockpit registry, local product facade",
+  "initial_build_status": "PASS: canonical npm start production build, frontend TypeScript and browser ESLint before redesign; baseline 12-surface real-browser traversal completed with zero page exceptions",
+  "owner_worktree": "dirty; no source edits made",
+  "baseline_source_findings": [
+    "Approved emblem is present but topbar still uses an artwork-required diamond",
+    "Status chips are buttons without navigation handlers",
+    "Resident quick actions are wired but introductory text calls them unavailable",
+    "Resident and command summary split center into competing columns",
+    "Global console consumes at least 240px even on short screens",
+    "Legacy main.css and cockpit.css own separate incompatible tokens",
+    "Default Playwright suite targets the retired shell",
+    "Operator artwork slots are unpopulated; presentation must not invent assets or functionality"
+  ]
+}
