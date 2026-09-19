@@ -16,7 +16,9 @@
 //   AIDE_LAB_MODELS  same as --models
 import { launchSupervisedStack } from '../tests/helpers/supervised-stack.mjs';
 import { loadBattery, evaluateTask } from '../harness/lab/battery.mjs';
+import { veritasOutcomeFor } from '../harness/lab/veritas-outcome.mjs';
 import { createPerformanceLedger } from '../node/src/services/performance-ledger.ts';
+import { createQualificationStore } from '../node/src/services/model-qualification.ts';
 import { derivePassports, writePassports } from '../node/src/services/model-passport.ts';
 import { HARNESS_VERSION } from '../harness/scaffold.mjs';
 import { promises as fs } from 'node:fs';
@@ -89,7 +91,24 @@ async function enginePids(fileName) {
 }
 
 let stack = null;
-async function approvedJson({ method = 'POST', routePath, body, signalMs = 300000 }) {
+
+// Authority sessions expire (30 min TTL). Long benchmark runs must re-pair
+// instead of dying mid-suite: a 403 'authenticated actor required' means the
+// session expired, not that the operation is unsafe.
+async function reauthenticateIfExpired(error) {
+  const message = String(error?.message ?? error);
+  if (!message.includes('HTTP 403')) return false;
+  try {
+    await stack.pair();
+    log('authority session expired mid-run; re-paired');
+    return true;
+  } catch (pairingError) {
+    log(`re-pairing failed: ${String(pairingError?.message ?? pairingError)}`);
+    return false;
+  }
+}
+
+async function approvedOnce({ method = 'POST', routePath, body, signalMs = 300000 }) {
   const operation = await stack.prepare({ method, path: routePath, body });
   await stack.decide(operation.operation_id);
   const response = await stack.request('facade', method, routePath, {
@@ -102,10 +121,25 @@ async function approvedJson({ method = 'POST', routePath, body, signalMs = 30000
   return { status: response.status, body: parsed, operation_id: operation.operation_id };
 }
 
+async function approvedJson(options) {
+  try {
+    return await approvedOnce(options);
+  } catch (error) {
+    if (await reauthenticateIfExpired(error)) return approvedOnce(options);
+    throw error;
+  }
+}
+
 async function waitReady(id, timeoutMs = 240000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const { body } = await stack.json('facade', 'GET', `/api/model/ready?id=${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(60000) });
+    let body = {};
+    try {
+      ({ body } = await stack.json('facade', 'GET', `/api/model/ready?id=${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(60000) }));
+    } catch (error) {
+      if (await reauthenticateIfExpired(error)) continue;
+      throw error;
+    }
     if (body?.data?.ready === true) return true;
     await sleep(1000);
   }
@@ -128,9 +162,10 @@ try {
   const machineId = await hardwareProfileId();
   const runId = `${LABEL}-${VARIANT}-${new Date().toISOString().replace(/[:.]/g, '-')}`;
   const ledger = createPerformanceLedger({ root: LAB_ROOT });
+  const qualificationStore = createQualificationStore({ root: LAB_ROOT });
   log(`battery ${battery.suite_id}@${battery.suite_version}; ${tasks.length} task(s); variant=${VARIANT}; run=${runId}`);
 
-  stack = await launchSupervisedStack({ workspace: BENCH_WORKSPACE });
+  stack = await launchSupervisedStack({ workspace: BENCH_WORKSPACE, env: { AIDE_HARNESS_LAB_ROOT: LAB_ROOT } });
   log('supervised stack up');
 
   for (const candidate of selectedModels()) {
@@ -167,7 +202,30 @@ try {
       continue;
     }
     log(`READY ${candidate.key} (${modelId})`);
-    const modelSummary = { key: candidate.key, status: 'benchmarked', model_id: modelId, artifact_hash: artifactHash, tasks: [] };
+
+    // Qualification is orthogonal to readiness: a served endpoint can still be
+    // a configuration that cannot perform minimally coherent inference. A
+    // failed configuration is recorded, skipped for benchmarking, and excluded
+    // from qualified routing candidates.
+    let qualification = null;
+    try {
+      const qualify = await approvedJson({ routePath: '/api/harness-lab/qualify', body: { model_id: modelId, artifact_hash: artifactHash }, signalMs: 900000 });
+      if (qualify.status === 200 && qualify.body?.data?.record) {
+        qualification = qualify.body.data.record;
+        log(`QUALIFY ${candidate.key}: ${qualification.state}${qualification.failure_class ? ` (${qualification.failure_class})` : ''}`);
+      } else {
+        log(`QUALIFY ${candidate.key}: http ${qualify.status}`);
+      }
+    } catch (error) {
+      log(`QUALIFY ${candidate.key}: failed ${String(error?.message ?? error)}`);
+    }
+    if (qualification !== null && qualification.state === 'QUALIFICATION_FAILED') {
+      summary.models.push({ key: candidate.key, status: 'qualification-failed', model_id: modelId, qualification: { state: qualification.state, failure_class: qualification.failure_class } });
+      await approvedJson({ routePath: '/api/models/stop', body: { id: modelId }, signalMs: 120000 }).catch(() => {});
+      continue;
+    }
+
+    const modelSummary = { key: candidate.key, status: 'benchmarked', model_id: modelId, artifact_hash: artifactHash, qualification: qualification === null ? null : { state: qualification.state, failure_class: qualification.failure_class }, tasks: [] };
 
     for (const task of tasks) {
       const requestBody = {
@@ -200,8 +258,25 @@ try {
       await fs.writeFile(path.join(runDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf8');
       log(`${candidate.key} ${task.id}: ${evaluation.passed ? 'PASS' : 'FAIL'} (${evaluation.checks_passed}/${evaluation.checks.length}, ${durationMs}ms${data?.tokens ? `, ${data.tokens} tok` : ''})`);
 
+      const contextBudget = data?.harness?.context_budget ?? null;
+      const loaded = [];
+      const skillIds = [];
+      if (contextBudget && Array.isArray(contextBudget.sources)) {
+        for (const source of contextBudget.sources) {
+          if (!source || typeof source.tokens !== 'number' || source.tokens <= 0) continue;
+          const kind = source.source === 'SKILL_CONTEXT' ? 'skill'
+            : source.source === 'RESIDENT' ? 'resident'
+              : source.source === 'MEMORY_RECALL' || source.source === 'MEMORY_BLOCKS' ? 'memory'
+                : source.source === 'WORKFLOW' ? 'workflow' : null;
+          if (kind !== null) loaded.push({ kind, id: source.source, tokens: source.tokens });
+          if (source.source === 'SKILL_CONTEXT') skillIds.push('skills-advisory');
+        }
+      }
+      const evidenceRefs = [path.join(runDir, 'meta.json'), path.join(runDir, 'checks.json'), path.join(runDir, 'response.txt'), ledger.file];
+      const veritas = veritasOutcomeFor({ contract: task.veritas_contract ?? null, evaluation, evidenceRefs });
+      const legacyVerdict = veritas.status === 'VERIFIED' ? 'verified' : veritas.status === 'FAILED' ? 'failed' : veritas.status === 'ABSTAINED' ? 'abstain-needs-evidence' : null;
       const event = {
-        schema_version: '1.0',
+        schema_version: '1.1',
         event_id: randomUUID(),
         run: { run_id: runId, task_id: task.id, timestamp: new Date().toISOString(), covert_sha: covertSha, harness_version: HARNESS_VERSION },
         model: {
@@ -215,7 +290,13 @@ try {
         },
         machine: { hardware_profile_id: machineId },
         operating_mode: { mode_id: 'software-engineering' },
-        methodology: { workflow_id: VARIANT === 'harness' ? battery.suite_id : `${battery.suite_id}-no-harness`, workflow_version: battery.suite_version, skill_ids: [], sop_ids: [] },
+        methodology: {
+          workflow_id: VARIANT === 'harness' ? battery.suite_id : `${battery.suite_id}-no-harness`,
+          workflow_version: battery.suite_version,
+          skill_ids: skillIds,
+          sop_ids: [],
+          loaded
+        },
         task: { benchmark_suite: battery.suite_id, benchmark_task_id: task.id, task_class: task.class },
         execution: {
           attempts: 1,
@@ -226,23 +307,25 @@ try {
           authority_requests: response.operation_id === null ? 0 : 1,
           duration_ms: durationMs,
           time_to_first_token_ms: null,
-          input_tokens: null,
+          input_tokens: typeof contextBudget?.input_tokens === 'number' ? contextBudget.input_tokens : null,
           output_tokens: typeof data?.tokens === 'number' ? data.tokens : null,
           peak_ram_mb: null,
-          peak_vram_mb: null
+          peak_vram_mb: null,
+          context_budget: contextBudget
         },
         verification: {
           deterministic_checks: { passed: evaluation.checks_passed, failed: evaluation.checks_failed },
           tests_passed: evaluation.tests_passed,
           tests_failed: evaluation.tests_failed,
-          veritas_verdict: null,
-          evidence_refs: [path.join(runDir, 'meta.json'), path.join(runDir, 'checks.json'), path.join(runDir, 'response.txt'), ledger.file]
+          veritas_verdict: legacyVerdict,
+          veritas,
+          evidence_refs: evidenceRefs
         },
         outcome: { completed: evaluation.passed, first_attempt_success: evaluation.passed, fallback_required: false, failure_class: evaluation.failure_class },
         provenance: { ghost_ref: null }
       };
       await ledger.append(event);
-      modelSummary.tasks.push({ task_id: task.id, passed: evaluation.passed, duration_ms: durationMs, failure_class: evaluation.failure_class });
+      modelSummary.tasks.push({ task_id: task.id, passed: evaluation.passed, duration_ms: durationMs, failure_class: evaluation.failure_class, veritas: veritas.status });
     }
 
     const stopped = await approvedJson({ routePath: '/api/models/stop', body: { id: modelId }, signalMs: 120000 });
@@ -254,7 +337,8 @@ try {
   }
 
   const { events, issues } = await ledger.read();
-  const passports = derivePassports(events);
+  const qualificationRecords = await qualificationStore.read();
+  const passports = derivePassports(events, { qualifications: qualificationRecords });
   const passportsFile = await writePassports(LAB_ROOT, passports);
   const snapshot = {
     label: LABEL,
@@ -281,7 +365,9 @@ try {
     sample_size: passport.evidence.sample_size,
     completed: passport.outcome.completed,
     completion_rate: passport.outcome.completion_rate,
-    median_duration_ms: passport.execution.median_duration_ms
+    median_duration_ms: passport.execution.median_duration_ms,
+    evidence_class: passport.evidence_class,
+    qualification_state: passport.qualification.state
   }));
   console.log('[lab] SUMMARY');
   console.log(JSON.stringify(summary, null, 2));

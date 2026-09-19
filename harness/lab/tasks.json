@@ -34,6 +34,7 @@
       "executor": "chat",
       "max_tokens": 300,
       "prompt": "Fix the defect in stats.mjs.\n\nstats.mjs:\n```js\nexport function average(values) {\n  let total = 0;\n  for (const value of values) total += value;\n  return total / (values.length - 1);\n}\n\nexport function max(values) {\n  let best = values[0];\n  for (const value of values) if (value > best) best = value;\n  return best;\n}\n```\n\nThe project check fails:\n```\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal: 6 !== 4\n```\n\nReturn the COMPLETE corrected stats.mjs (keep both functions). Output exactly this shape and nothing else:\nFIXED-FILE:\n```js\n<complete corrected stats.mjs>\n```",
+      "veritas_contract": { "task_class": "code-change", "label": "bug-repair-fixture", "require_tests": true },
       "checks": [
         { "type": "regex", "pattern": "total\\s*/\\s*values\\.length" },
         { "type": "not_contains", "values": ["values.length - 1"] },
@@ -46,6 +47,7 @@
       "executor": "chat",
       "max_tokens": 300,
       "prompt": "Here is the FIXED module duration.mjs:\n```js\nexport function parseDuration(text) {\n  const match = /^(\\d+)(ms|s|m)$/.exec(String(text).trim());\n  if (!match) throw new Error('invalid duration');\n  const value = Number(match[1]);\n  if (match[2] === 'ms') return value;\n  if (match[2] === 's') return value * 1000;\n  return value * 60000;\n}\n```\n\nA regression was fixed: before the fix, parseDuration('2s') returned 2 instead of 2000 (the seconds branch did not convert to milliseconds).\n\nWrite a test that would have CAUGHT this regression: it must PASS against the fixed module and FAIL against the old buggy module. Use only node:assert/strict. The test file will run as `node test.mjs` and import the module from './duration.mjs'.\n\nOutput exactly this shape and nothing else:\nTEST:\n```js\n<complete test.mjs>\n```",
+      "veritas_contract": { "task_class": "code-change", "label": "regression-test-fixture", "require_tests": true },
       "checks": [
         { "type": "regex", "pattern": "parseDuration" },
         { "type": "exec_regression_test", "marker": "TEST", "language": "js", "fixture_fixed": "regression-test/fixed/duration.mjs", "fixture_buggy": "regression-test/buggy/duration.mjs", "module_name": "duration.mjs", "entry": "test.mjs", "timeout_ms": 20000, "max_bytes": 20000 }

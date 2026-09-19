@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   createPerformanceLedger,
+  chainHash,
   LedgerIntegrityError,
   LedgerSecurityError,
   performanceIdentity
@@ -112,6 +113,39 @@ test('unknown fields (raw prompts, keys, reasoning) are rejected by the strict s
     const badNested = makeEvent();
     (badNested as unknown as Record<string, unknown>).reasoning = 'chain of thought';
     await assert.rejects(() => ledger.append(badNested), /rejected/);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('v1.0 history remains readable and hash-verified beside v1.1 records', async () => {
+  const root = await tempRoot('ledger-legacy');
+  try {
+    const ledger = createPerformanceLedger({ root });
+    await ledger.append(makeEvent({ taskId: 'modern' }));
+    const legacyEvent = {
+      schema_version: '1.0',
+      event_id: 'legacy-1',
+      run: { run_id: 'r', task_id: 'legacy', timestamp: '2026-09-19T10:00:00.000Z', covert_sha: '600b91c', harness_version: '2.1.0' },
+      model: { model_id: 'legacy-model', provider: 'local', runtime: 'llama-server', model_version: 'x', artifact_hash: 'a'.repeat(64), quantization: 'Q8_0', configured_context: 2048 },
+      machine: { hardware_profile_id: 'm' },
+      operating_mode: { mode_id: 'software-engineering' },
+      methodology: { workflow_id: 'harness-baseline-v1', workflow_version: '1.0', skill_ids: [], sop_ids: [] },
+      task: { benchmark_suite: 'harness-baseline-v1', benchmark_task_id: 'legacy', task_class: 'bug-repair' },
+      execution: { attempts: 1, tool_calls: 0, tool_failures: 0, retries: 0, escalations: 0, authority_requests: 1, duration_ms: 10, time_to_first_token_ms: null, input_tokens: null, output_tokens: null, peak_ram_mb: null, peak_vram_mb: null },
+      verification: { deterministic_checks: { passed: 1, failed: 0 }, tests_passed: 0, tests_failed: 0, veritas_verdict: null, evidence_refs: [] },
+      outcome: { completed: true, first_attempt_success: true, fallback_required: false, failure_class: null },
+      provenance: { ghost_ref: null }
+    };
+    const previousHash = (await ledger.read()).events[0]!.chain.hash;
+    const legacyRecord = { ...legacyEvent, chain: { seq: 1, prev_hash: previousHash, hash: chainHash(previousHash, legacyEvent as never) } };
+    await fs.appendFile(ledger.file, `${JSON.stringify(legacyRecord)}\n`, 'utf8');
+
+    const { events, issues } = await ledger.read();
+    assert.deepEqual(issues, []);
+    assert.equal(events.length, 2);
+    assert.equal(events[1]!.schema_version, '1.0');
+    assert.equal(events[0]!.schema_version, '1.1');
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }

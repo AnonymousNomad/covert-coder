@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {
   PerformanceEvent,
   PerformanceRecord,
-  type PerformanceEventT,
+  type AnyPerformanceEventT,
   type PerformanceEventQueryT,
   type PerformanceRecordT
 } from '../../../common/contracts/performance.ts';
@@ -72,7 +72,7 @@ export function stableStringify(value: unknown): string {
   throw new TypeError('unsupported value in ledger event');
 }
 
-export function chainHash(prevHash: string, event: PerformanceEventT): string {
+export function chainHash(prevHash: string, event: AnyPerformanceEventT): string {
   return crypto.createHash('sha256').update(`${prevHash}\n${stableStringify(event)}`).digest('hex');
 }
 
@@ -89,7 +89,7 @@ export interface LedgerReadResult {
 
 export interface PerformanceLedger {
   readonly file: string;
-  append(event: PerformanceEventT): Promise<PerformanceRecordT>;
+  append(event: AnyPerformanceEventT): Promise<PerformanceRecordT>;
   read(): Promise<LedgerReadResult>;
   readStrict(): Promise<PerformanceRecordT[]>;
   query(filter: PerformanceEventQueryT): Promise<{ events: PerformanceRecordT[]; total_matched: number; bounded: boolean; issues: LedgerIntegrityIssue[] }>;
@@ -119,7 +119,7 @@ export function createPerformanceLedger(options: LedgerOptions): PerformanceLedg
     return { last: null };
   }
 
-  async function append(event: PerformanceEventT): Promise<PerformanceRecordT> {
+  async function append(event: AnyPerformanceEventT): Promise<PerformanceRecordT> {
     const parsed = PerformanceEvent.safeParse(event);
     if (!parsed.success) throw new TypeError(`performance event rejected: ${parsed.error.issues[0]?.message ?? 'schema'}`);
     assertNoSecrets(stableStringify(parsed.data));
@@ -127,7 +127,7 @@ export function createPerformanceLedger(options: LedgerOptions): PerformanceLedg
     const seq = last === null ? 0 : last.chain.seq + 1;
     const prevHash = last === null ? GENESIS_HASH : last.chain.hash;
     const chain = { seq, prev_hash: prevHash, hash: chainHash(prevHash, parsed.data) };
-    const record: PerformanceRecordT = { ...parsed.data, chain };
+    const record = { ...parsed.data, chain } as PerformanceRecordT;
     await fs.mkdir(path.dirname(file), { recursive: true });
     const handle = await fs.open(file, 'a');
     try {
@@ -167,7 +167,7 @@ export function createPerformanceLedger(options: LedgerOptions): PerformanceLedg
       const { chain, ...event } = record.data;
       if (chain.seq !== expectedSeq) issues.push({ line: index + 1, kind: 'chain-break', detail: `expected seq ${expectedSeq}, found ${chain.seq}` });
       if (prevHash !== null && chain.prev_hash !== prevHash) issues.push({ line: index + 1, kind: 'chain-break', detail: 'prev_hash does not match previous record' });
-      const expectedHash = chainHash(chain.prev_hash, event as PerformanceEventT);
+      const expectedHash = chainHash(chain.prev_hash, event as AnyPerformanceEventT);
       if (expectedHash !== chain.hash) issues.push({ line: index + 1, kind: 'hash-mismatch', detail: 'record hash does not match content' });
       events.push(record.data);
       expectedSeq = chain.seq + 1;
@@ -206,6 +206,6 @@ export function createPerformanceLedger(options: LedgerOptions): PerformanceLedg
   return Object.freeze({ file, append, read, readStrict, query });
 }
 
-export function performanceIdentity(model: PerformanceEventT['model']): string {
+export function performanceIdentity(model: AnyPerformanceEventT['model']): string {
   return `${model.model_id}@${model.artifact_hash}:${model.configured_context}:${model.runtime}`;
 }
