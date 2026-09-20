@@ -49,9 +49,17 @@ function Get-UninstallEntries {
 function Find-InstalledExe {
   $entries = @(Get-UninstallEntries)
   foreach ($entry in $entries) {
-    if ($entry.InstallLocation) {
-      $candidate = Join-Path $entry.InstallLocation $appExeName
-      if (Test-Path -LiteralPath $candidate) { return [PSCustomObject]@{ Exe = $candidate; Entry = $entry } }
+    try {
+      # Tauri NSIS writes InstallLocation with surrounding quotes; PowerShell
+      # then treats `"C` as a drive name (verified in CI 2026-09-20). Normalize
+      # every registry path before use.
+      $installLocation = ([string]$entry.InstallLocation).Trim().Trim('"')
+      if ($installLocation) {
+        $candidate = Join-Path $installLocation $appExeName
+        if (Test-Path -LiteralPath $candidate) { return [PSCustomObject]@{ Exe = $candidate; Entry = $entry } }
+      }
+    } catch {
+      Write-Host "desktop lifecycle smoke: skipping unusable uninstall entry: $($_.Exception.Message)"
     }
   }
   $roots = @(
