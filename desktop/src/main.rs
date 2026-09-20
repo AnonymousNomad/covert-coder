@@ -98,6 +98,21 @@ fn json_string(value: &str) -> String {
     out
 }
 
+/// Node cannot resolve a `\\?\`-prefixed script path as its main module
+/// (verified crash: EISDIR lstat 'E:' in resolveMainPath). Tauri's
+/// `resource_dir()` returns Windows extended-length paths; normalize them to
+/// plain drive (or UNC) paths for the child invocation.
+fn plain_path(path: &std::path::Path) -> std::path::PathBuf {
+    let text = path.display().to_string();
+    if let Some(rest) = text.strip_prefix("\\\\?\\UNC\\") {
+        return std::path::PathBuf::from(format!("\\\\{rest}"));
+    }
+    if let Some(rest) = text.strip_prefix("\\\\?\\") {
+        return std::path::PathBuf::from(rest);
+    }
+    path.to_path_buf()
+}
+
 /// Resolve one application-owned packaged runtime resource.
 ///
 /// Tauri array-form `bundle.resources` preserves the `resources/` prefix under
@@ -163,7 +178,7 @@ fn main() {
         .manage(PairingProof(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![authority_pairing])
         .setup(|app| {
-            let resource_dir = app.path().resource_dir().map_err(|error| error.to_string())?;
+            let resource_dir = plain_path(&app.path().resource_dir().map_err(|error| error.to_string())?);
             let node_name = if cfg!(windows) { "node.exe" } else { "node" };
             let node = resolve_resource(&resource_dir, &format!("runtime/{node_name}"))?;
             let launcher = resolve_resource(&resource_dir, "stack-launcher.mjs")?;
