@@ -79,6 +79,65 @@ fn terminate_tree(child: &mut Child) {
     let _ = child.wait();
 }
 
+/// Resolve one application-owned packaged runtime resource.
+///
+/// Tauri array-form `bundle.resources` preserves the `resources/` prefix under
+/// the resource dir, while object-map staging places files directly beneath it.
+/// Probe both deterministic layouts and fail with every probed location (P1 fix
+/// for the packaged backend that never spawned: 4777 never bound).
+///
+/// Only constant, application-owned relative paths are accepted here; no
+/// user-controlled input reaches this resolver.
+fn resolve_resource(resource_dir: &std::path::Path, relative: &str) -> Result<std::path::PathBuf, String> {
+    let candidates = [
+        resource_dir.join(relative),
+        resource_dir.join("resources").join(relative),
+    ];
+    for candidate in &candidates {
+        if candidate.exists() {
+            return Ok(candidate.clone());
+        }
+    }
+    Err(format!(
+        "required desktop runtime resource '{relative}' not found; probed: {}",
+        candidates
+            .iter()
+            .map(|candidate| candidate.display().to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))
+}
+
+#[cfg(test)]
+mod resource_resolution_tests {
+    use super::resolve_resource;
+
+    #[test]
+    fn resolves_nested_tauri_layout() {
+        let root = std::env::temp_dir().join(format!("covert-res-rs-{}", std::process::id()));
+        let nested = root.join("resources").join("runtime");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("node.exe"), b"stub").unwrap();
+        let resolved = resolve_resource(&root, "runtime/node.exe").unwrap();
+        assert_eq!(resolved, nested.join("node.exe"));
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn resolves_direct_layout_and_fails_deterministically_when_absent() {
+        let root = std::env::temp_dir().join(format!("covert-res-direct-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("runtime")).unwrap();
+        std::fs::write(root.join("stack-launcher.mjs"), b"stub").unwrap();
+        assert_eq!(
+            resolve_resource(&root, "stack-launcher.mjs").unwrap(),
+            root.join("stack-launcher.mjs")
+        );
+        let error = resolve_resource(&root, "runtime/node.exe").unwrap_err();
+        assert!(error.contains("probed:"), "error must name the probed locations: {error}");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(DaemonProcess(Mutex::new(None)))
@@ -87,9 +146,9 @@ fn main() {
         .setup(|app| {
             let resource_dir = app.path().resource_dir().map_err(|error| error.to_string())?;
             let node_name = if cfg!(windows) { "node.exe" } else { "node" };
-            let node = resource_dir.join("runtime").join(node_name);
-            let launcher = resource_dir.join("stack-launcher.mjs");
-            if node.exists() && launcher.exists() {
+            let node = resolve_resource(&resource_dir, &format!("runtime/{node_name}"))?;
+            let launcher = resolve_resource(&resource_dir, "stack-launcher.mjs")?;
+            {
                 let origin = if cfg!(debug_assertions) { "http://127.0.0.1:5173" }
                     else if cfg!(windows) { "http://tauri.localhost" } else { "tauri://localhost" };
                 let mut child = Command::new(node)
@@ -118,8 +177,6 @@ fn main() {
                 let state = app.state::<DaemonProcess>();
                 *state.0.lock().map_err(|error| error.to_string())? = Some(child);
                 *app.state::<PairingProof>().0.lock().map_err(|_| "bootstrap lock unavailable")? = Some((proof, origin.to_string()));
-            } else {
-                return Err("required desktop runtime resources are missing".into());
             }
             Ok(())
         })
