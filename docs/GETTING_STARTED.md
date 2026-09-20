@@ -17,6 +17,20 @@ For the unmerged frontend candidate, select `feat/final-cockpit-production-ui` i
 
 The doctor is diagnostic: warnings about missing models, llama.cpp, or debugpy are not proof that those capabilities work. It does not install them. Local chat requires a compatible local runtime and model artifact; see [operations](OPERATIONS.md).
 
+## Release status (v0.1)
+
+The **supported install path today is the source install above** (`npm ci` → `npm run doctor` → `npm start`). It is verified end-to-end by two release harnesses you can run yourself:
+
+```bash
+node scripts/release-install-check.mjs   # prerequisites, lockfile, fresh state, doctor truth
+node scripts/release-first-run-check.mjs # literal npm start, ports, pairing, onboarding,
+                                         # model truth, governed terminal, restart, teardown
+```
+
+What they prove: the documented commands work on a clean checkout with no pre-existing application state; the shell and backend become reachable on 4173/4777/4778/4779; protected routes stay protected until pairing; model entries without artifacts are never reported RUNNING or falsely READY; a governed terminal session opens; onboarding state survives a full restart; and shutdown leaves no owned listeners or runtime processes.
+
+Desktop packaging: the Tauri staging + verification pipeline runs without Rust (`npm run desktop:verify`); producing installers requires the Rust toolchain (the `desktop.yml` workflow). Published `v0.1.0-rc.1` installers predate the current cockpit and do not certify it — treat desktop releases as experimental until a packaging run is verified against the release candidate you actually downloaded.
+
 ## Pair the browser
 
 1. Type `pair` in the terminal running `npm start`.
