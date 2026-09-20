@@ -12,7 +12,7 @@ export declare class AgentSessionError extends Error {
 }
 
 export interface AgentLoopService {
-  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null }): { session_id: string };
+  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; handoffContext?: string | null }): { session_id: string };
   decide(sessionId: string, approvalId: string, decision: 'approve' | 'reject' | 'abort', execution?: ExecutionHandle): Promise<{ ok: boolean }>;
   status(sessionId: string): AgentStatusResponseT;
   list(): AgentStatusResponseT[];

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WorkerDescriptor } from './worker-handoff.ts';
 
 export const AgentMode = z.enum(['plan', 'act']);
 
@@ -8,6 +9,12 @@ export const AgentStartRequest = z.object({
   task: z.string().min(1).max(8000),
   mode: AgentMode.optional(),
   chat_source: z.enum(['local', 'provider']).optional(),
+  // Governed worker-handoff reception (live worker switch): when present the
+  // route binds the handoff to this session's actual destination worker,
+  // accepts it, injects the bounded receiving context into the session, and
+  // consumes it at the first destination model invocation.
+  handoff_id: z.string().uuid().optional(),
+  worker: WorkerDescriptor.optional(),
   // Architect/Editor pattern (aide-architect-editor-pattern): opt-in
   // two-call decomposition per session. When true, each turn first
   // runs the architect pass (## Plan, no tool calls) and then the

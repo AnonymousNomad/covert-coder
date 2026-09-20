@@ -1337,6 +1337,49 @@
                       "provider"
                     ]
                   },
+                  "handoff_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "worker": {
+                    "type": "object",
+                    "properties": {
+                      "worker": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "plan",
+                          "act",
+                          "utility",
+                          "planner",
+                          "coder",
+                          "reviewer"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "worker",
+                      "provider",
+                      "model",
+                      "role"
+                    ],
+                    "additionalProperties": false
+                  },
                   "architectEditor": {
                     "type": "boolean"
                   },

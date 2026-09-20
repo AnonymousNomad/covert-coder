@@ -739,6 +739,38 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // this route only reports.
     ...routesForClosedLoop(workspace),
     ...routesForAgent(agentLoop, {
+      // Live worker-switch reception (Wave 4): the SAME accepted handoff
+      // service; binding/accept/context/consume all ride the existing
+      // contract. Consumption fires at the first destination model call.
+      workerHandoff: {
+        get: (id: string) => workerHandoffService.get(id),
+        accept: (id: string, to) => workerHandoffService.accept(id, to),
+        contextBlock: (id: string) => workerHandoffService.contextBlock(id),
+        consume: (id: string) => workerHandoffService.consume(id)
+      },
+      // The destination session's actual chat functions, resolved HERE so the
+      // route can bind the handoff against the real destination and pin the
+      // exact execution boundary. Mirrors the loop's default chat path.
+      resolveLocalChatFn: async () => {
+        const selection = await modelRouter.routeForRole('chat');
+        return async (messages: Array<{ role: string; content: string }>) => {
+          const result = await modelRouter.chat(selection.modelId, messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })), {});
+          return result.text;
+        };
+      },
+      providerTargetFor: role => {
+        try {
+          const routing = ((byokService.status() as { routing?: Record<string, unknown> } | undefined)?.routing) ?? {};
+          const target = routing[role];
+          if (target === undefined || target === 'local' || typeof target !== 'object' || target === null) return null;
+          return {
+            provider: String((target as { provider_id?: unknown }).provider_id ?? ''),
+            model: String((target as { model_id?: unknown }).model_id ?? '')
+          };
+        } catch {
+          return null;
+        }
+      },
       resolveProviderChatFn: role => {
         if (!byokService.getConsent()) throw Object.assign(new Error('BYOK egress consent is disabled'), { code: 'FORBIDDEN' });
         // Unified routing preference (Unified Provider Connections): 'local-only'

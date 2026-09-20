@@ -21,6 +21,7 @@ import { RouterError } from '../services/model-router.ts';
 import { AuthorityError } from '../services/execution-authority.mjs';
 import type { AgentLoopService as CanonicalAgentLoop } from '../services/agent-loop.mjs';
 import type { ErrorCode } from '../../../common/errors.ts';
+import type { WorkerHandoffEnvelopeT, WorkerDescriptorT } from '../../../common/contracts/worker-handoff.ts';
 
 type AgentLoopService = {
   start: CanonicalAgentLoop['start'];
@@ -64,6 +65,16 @@ function wrap(handler: (ctx: RouteContext) => Promise<unknown> | unknown): (ctx:
 
 export function routesForAgent(service: AgentLoopService, options: {
   resolveProviderChatFn?: (role: 'plan' | 'act') => ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null;
+  // Live worker-switch wiring (Wave 4): governed handoff reception + the
+  // exact destination chat functions used for binding and one-shot consume.
+  workerHandoff?: {
+    get(id: string): Promise<WorkerHandoffEnvelopeT>;
+    accept(id: string, to: WorkerDescriptorT): Promise<WorkerHandoffEnvelopeT>;
+    contextBlock(id: string): Promise<{ context_block: string; approx_tokens: number }>;
+    consume(id: string): Promise<WorkerHandoffEnvelopeT>;
+  };
+  resolveLocalChatFn?: () => Promise<(messages: Array<{ role: string; content: string }>) => Promise<string>>;
+  providerTargetFor?: (role: 'plan' | 'act') => { provider: string; model: string } | null;
   dispatchTool?: (name: string, args: Record<string, string>, opts: { sandbox?: string }) => Promise<{ ok: boolean; output: string; terminal?: boolean }>;
   // Expert advisory: when set, the route layer consults this micro-expert
   // (e.g. task-router) BEFORE the main model call and prepends the result
@@ -96,6 +107,74 @@ export function routesForAgent(service: AgentLoopService, options: {
         }
         if (!resolved) throw new RouteError('NOT_READY', `no provider chat available for role ${role}`);
         chatFnOverride = resolved;
+      }
+      // Governed worker-handoff reception (live worker switch). Binding is
+      // verified against the session's ACTUAL destination worker before any
+      // state changes; consumption happens exactly at the first destination
+      // model invocation (wrapped below), never merely because a session
+      // object exists.
+      let handoffContext: string | undefined;
+      const handoffId = (request as { handoff_id?: string }).handoff_id;
+      if (handoffId !== undefined) {
+        const wh = options.workerHandoff;
+        if (!wh) throw new RouteError('NOT_READY', 'no worker handoff resolver wired');
+        const role: 'plan' | 'act' = request.mode === 'plan' ? 'plan' : 'act';
+        let envelope: WorkerHandoffEnvelopeT;
+        try {
+          envelope = await wh.get(handoffId);
+        } catch (error) {
+          const code = String((error as { code?: string }).code ?? '');
+          throw new RouteError(code === 'NOT_FOUND' ? 'NOT_FOUND' : 'CONFLICT', String((error as Error).message).slice(0, 300));
+        }
+        let actual: WorkerDescriptorT;
+        if (request.chat_source === 'provider') {
+          const target = options.providerTargetFor ? options.providerTargetFor(role) : null;
+          if (target === null) throw new RouteError('NOT_READY', 'no provider route is configured for this role');
+          actual = { worker: `cloud:${target.provider}:${target.model}`, provider: target.provider, model: target.model, role };
+        } else {
+          const requested = (request as { worker?: WorkerDescriptorT }).worker;
+          const model = requested?.model ?? 'auto';
+          actual = { worker: `local:${model}`, provider: 'local', model, role };
+        }
+        // Role-family binding: the handoff's role vocabulary (planner/coder/
+        // reviewer) maps deterministically onto the session's execution mode
+        // (plan/act); exact matches always bind. Role change never grants
+        // authority — the session's own approvals still gate every action.
+        const roleMatches = envelope.to.role === actual.role
+          || ((envelope.to.role === 'coder' || envelope.to.role === 'reviewer') && actual.role === 'act')
+          || (envelope.to.role === 'planner' && actual.role === 'plan');
+        const bindingOk = envelope.to.provider === actual.provider
+          && roleMatches
+          && (envelope.to.model === actual.model || (actual.provider === 'local' && envelope.to.model === 'auto'));
+        if (!bindingOk) {
+          throw new RouteError('CONFLICT', 'handoff destination does not match this worker');
+        }
+        try {
+          await wh.accept(handoffId, envelope.to);
+          const reconstructed = await wh.contextBlock(handoffId);
+          handoffContext = reconstructed.context_block;
+        } catch (error) {
+          throw new RouteError('CONFLICT', String((error as Error).message).slice(0, 300));
+        }
+        if (request.chat_source !== 'provider') {
+          if (!options.resolveLocalChatFn) throw new RouteError('NOT_READY', 'no local chat resolver wired');
+          try {
+            chatFnOverride = await options.resolveLocalChatFn();
+          } catch (error) {
+            throw new RouteError('NOT_READY', String((error as Error)?.message ?? error).slice(0, 300));
+          }
+        }
+        const inner = chatFnOverride ?? null;
+        if (inner !== null) {
+          let consumed = false;
+          chatFnOverride = async messages => {
+            if (!consumed) {
+              consumed = true;
+              await wh.consume(handoffId).catch(() => undefined);
+            }
+            return inner(messages);
+          };
+        }
       }
       // Expert advisory (aide-micro-expert-collective skill, audit Week 1
       // item #7): when expertAdvisory:true AND the chat_source is 'local'
@@ -144,6 +223,7 @@ export function routesForAgent(service: AgentLoopService, options: {
       return service.start(request.task, request.mode ?? 'act', chatFnOverride, {
         execution, request: body,
         architectEditor: request.architectEditor === true,
+        ...(handoffContext !== undefined ? { handoffContext } : {}),
         ...(options.resolveEffectiveContext ? { effectiveContextTokens: (await options.resolveEffectiveContext()) ?? null } : {})
       });
     }) },
