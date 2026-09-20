@@ -119,6 +119,7 @@ try {
 
   const voice = createCipherVoiceService({ bridge });
   check('Cipher hotword truth', voice.capabilities().custom_hotword_available === false, JSON.stringify(voice.capabilities()));
+  check('Cipher invocation truth', voice.capabilities().supported_invocations.length === 1 && voice.capabilities().supported_invocations[0] === 'in-app-push-to-talk', JSON.stringify(voice.capabilities()));
   const voiceRead = await voice.command({ transcript: "Cipher, what's Covert doing?" });
   check('Cipher read command', voiceRead.accepted === true && voiceRead.category === 'read', JSON.stringify(voiceRead));
   const voiceMutate = await voice.command({ transcript: 'pause that workflow' });

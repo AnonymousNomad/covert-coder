@@ -1,6 +1,6 @@
 {
   "test": "mobile-platform-battery",
-  "generated_at": "2026-09-20T17:36:25.218Z",
+  "generated_at": "2026-09-20T17:43:39.351Z",
   "checks": [
     {
       "name": "plugin metadata",
@@ -115,12 +115,17 @@
     {
       "name": "Cipher hotword truth",
       "passed": true,
-      "detail": "{\"input_available\":true,\"push_to_talk_available\":true,\"custom_hotword_available\":false,\"assistant_role_available\":false,\"supported_invocations\":[\"in-app-push-to-talk\",\"widget\",\"quick-action\",\"assistant-role\",\"app-intent\",\"siri\"],\"limitations\":[\"Speech capture and platform invocation remain client responsibilities.\",\"Custom hotword is not implemented; voice input is not an always-listening authority path.\"]}"
+      "detail": "{\"input_available\":true,\"push_to_talk_available\":true,\"custom_hotword_available\":false,\"assistant_role_available\":false,\"supported_invocations\":[\"in-app-push-to-talk\"],\"limitations\":[\"Speech capture remains a client responsibility.\",\"Widget, quick-action, assistant-role, App Intent, and Siri adapters are not implemented in this slice.\",\"Custom hotword is not implemented; voice input is not an always-listening authority path.\"]}"
+    },
+    {
+      "name": "Cipher invocation truth",
+      "passed": true,
+      "detail": "{\"input_available\":true,\"push_to_talk_available\":true,\"custom_hotword_available\":false,\"assistant_role_available\":false,\"supported_invocations\":[\"in-app-push-to-talk\"],\"limitations\":[\"Speech capture remains a client responsibility.\",\"Widget, quick-action, assistant-role, App Intent, and Siri adapters are not implemented in this slice.\",\"Custom hotword is not implemented; voice input is not an always-listening authority path.\"]}"
     },
     {
       "name": "Cipher read command",
       "passed": true,
-      "detail": "{\"accepted\":true,\"category\":\"read\",\"requires_confirmation\":false,\"response_text\":\"Covert status is available in the authenticated command center.\",\"snapshot\":{\"generated_at\":1700000000000,\"workstation\":{\"id\":\"ws-c05f438770fda0c0\",\"name\":\"covert-mobile-MEDtjO\",\"version\":null},\"connection\":{\"state\":\"local-only\",\"transport\":\"loopback\",\"authenticated\":true,\"last_seen\":1700000000000,\"detail\":\"Bounded projection from the authenticated Workstation control plane.\"},\"current_project\":{\"name\":\"covert-mobile-MEDtjO\",\"reference\":\"workspace:ws-c05f438770fda0c0\",\"source_sha\":null},\"workflow\":null,\"jobs\":[],\"workers\":[],\"approvals\":[],\"verification\":{\"status\":\"OBSERVED\",\"summary\":\"Resident observed.\",\"evidence_refs\":[]},\"activity\":[],\"notifications\":[],\"resident\":{\"message\":\"Resident observed.\",\"generated_at\":1700000000000}}}"
+      "detail": "{\"accepted\":true,\"category\":\"read\",\"requires_confirmation\":false,\"response_text\":\"Covert status is available in the authenticated command center.\",\"snapshot\":{\"generated_at\":1700000000000,\"workstation\":{\"id\":\"ws-d31528c2e62349be\",\"name\":\"covert-mobile-TqVaF7\",\"version\":null},\"connection\":{\"state\":\"local-only\",\"transport\":\"loopback\",\"authenticated\":true,\"last_seen\":1700000000000,\"detail\":\"Bounded projection from the authenticated Workstation control plane.\"},\"current_project\":{\"name\":\"covert-mobile-TqVaF7\",\"reference\":\"workspace:ws-d31528c2e62349be\",\"source_sha\":null},\"workflow\":null,\"jobs\":[],\"workers\":[],\"approvals\":[],\"verification\":{\"status\":\"OBSERVED\",\"summary\":\"Resident observed.\",\"evidence_refs\":[]},\"activity\":[],\"notifications\":[],\"resident\":{\"message\":\"Resident observed.\",\"generated_at\":1700000000000}}}"
     },
     {
       "name": "Cipher mutation confirmation",
@@ -174,7 +179,7 @@
     "fixture_install": "UNAVAILABLE",
     "apple_environment": {
       "host_os": "windows",
-      "checked_at": 1789925795863,
+      "checked_at": 1789926228000,
       "components": {
         "swift": {
           "status": "MISSING",
@@ -235,7 +240,7 @@
     "edge_pairing": "NOT_RUN_IN_HERMETIC_SERVICE_TEST",
     "android_environment": {
       "host_os": "windows",
-      "checked_at": 1789925790307,
+      "checked_at": 1789926223501,
       "sdk_root": "C:\\Users\\Grey_\\AppData\\Local\\Android\\Sdk",
       "components": {
         "jdk": {
@@ -315,7 +320,7 @@
     },
     "android_devices": {
       "devices": [],
-      "checked_at": 1789925795358
+      "checked_at": 1789926227522
     }
   }
 }

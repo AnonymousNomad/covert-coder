@@ -20,8 +20,8 @@ export function createCipherVoiceService({ bridge } = {}) {
       push_to_talk_available: true,
       custom_hotword_available: false,
       assistant_role_available: false,
-      supported_invocations: ['in-app-push-to-talk', 'widget', 'quick-action', 'assistant-role', 'app-intent', 'siri'],
-      limitations: ['Speech capture and platform invocation remain client responsibilities.', 'Custom hotword is not implemented; voice input is not an always-listening authority path.']
+      supported_invocations: ['in-app-push-to-talk'],
+      limitations: ['Speech capture remains a client responsibility.', 'Widget, quick-action, assistant-role, App Intent, and Siri adapters are not implemented in this slice.', 'Custom hotword is not implemented; voice input is not an always-listening authority path.']
     };
   }
 
