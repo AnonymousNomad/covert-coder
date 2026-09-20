@@ -107,7 +107,7 @@ import { KeybindingService } from './services/keybinding-service.mjs';
 import { SettingsService } from './services/settings-service.mjs';
 import { RgService } from './services/rg-service.mjs';
 import { ModelRouter } from './services/model-router.ts';
-import { ProviderService } from './services/providers.ts';
+import { ProviderService, BUILTIN_PROVIDERS } from './services/providers.ts';
 import { CredentialStore } from './services/credentials.ts';
 import { SessionStore } from './services/session-store.ts';
 import { WorkspaceService } from './services/workspace.ts';
@@ -739,10 +739,36 @@ export async function buildRoutes(workspace: string, version: string, options: B
       resolveProviderChatFn: role => {
         if (!byokService.getConsent()) throw Object.assign(new Error('BYOK egress consent is disabled'), { code: 'FORBIDDEN' });
         // Unified routing preference (Unified Provider Connections): 'local-only'
-        // pins every role to the local runtime regardless of byok routing.
+        // pins every role to the local runtime regardless of routing.
         const preference = (connectionsService as { getPreference(): string }).getPreference();
         if (preference === 'local-only') return null;
-        return byokService.resolveChatFn(role);
+        // Custom BYOK providers first (unchanged contract).
+        const byokFn = byokService.resolveChatFn(role);
+        if (byokFn) return byokFn;
+        // Builtin catalog providers through the SAME governed role routing: the
+        // routing target's provider_id may name a builtin (openai, anthropic,
+        // google, mistral, groq, openrouter); execution rides the existing
+        // ProviderService.chat transport — no provider-specific orchestration
+        // is added here. Missing keys fail truthfully at call time (the
+        // resolver is synchronous and cannot probe the vault).
+        let routing: Record<string, unknown> = {};
+        try {
+          routing = ((byokService.status() as { routing?: Record<string, unknown> } | undefined)?.routing) ?? {};
+        } catch {
+          routing = {};
+        }
+        const target = routing[role];
+        if (target === undefined || target === 'local' || typeof target !== 'object' || target === null) return null;
+        const providerId = String((target as { provider_id?: unknown }).provider_id ?? '');
+        const modelId = String((target as { model_id?: unknown }).model_id ?? '');
+        const builtin = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
+        if (builtin === undefined || modelId.length === 0) return null;
+        return async messages => {
+          // Egress journaling parity with the BYOK worker path.
+          logEgress(workspace, { action: 'builtin-chat', url: `https://${builtin.egressHost}/`, provider_id: builtin.id, role });
+          const result = await providerService.chat(builtin.id, modelId, messages);
+          return result.text;
+        };
       },
       // Expert advisory wire-in (aide-micro-expert-collective skill, audit
       // Week 1 item #7). When the agent is started with `expertAdvisory:true`,
