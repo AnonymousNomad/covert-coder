@@ -25,8 +25,12 @@ $nsis = $bundleFiles | Where-Object {
 } | Select-Object -First 1
 if (-not $msi -and -not $nsis) { throw "no Windows installer found under $bundleRoot; bundle files: $($bundleFiles.Name -join ', ')" }
 
-$installer = if ($msi) { $msi.FullName } else { $nsis.FullName }
-$installerKind = if ($msi) { 'msi' } else { 'nsis' }
+# NSIS is the canonical CI target: per-user install, no elevation, deterministic
+# silent flags. The historical MSI-first preference failed on non-elevated
+# runners (msiexec /qn did nothing, then installed-executable discovery threw);
+# MSI remains supported as the fallback when it is the only artifact present.
+$installer = if ($nsis) { $nsis.FullName } else { $msi.FullName }
+$installerKind = if ($nsis) { 'nsis' } else { 'msi' }
 $productName = 'AIDE Sovereign Workbench'
 $appExeName = "$productName.exe"
 $installLog = Join-Path $env:TEMP 'aide-desktop-msi-install.log'
