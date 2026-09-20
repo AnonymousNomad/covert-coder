@@ -46,6 +46,26 @@ function Get-UninstallEntries {
   }
 }
 
+function Find-AppExe {
+  param([string]$Directory)
+  if (-not $Directory -or -not (Test-Path -LiteralPath $Directory)) { return $null }
+  # Tauri names the installed binary from the Cargo package
+  # ("aide-sovereign-workbench"), NOT from productName. Accept the productName
+  # form first, then the real binary names, then any non-uninstaller exe
+  # (verified root cause of the repeated "executable was not found" failures).
+  foreach ($candidate in @(
+    (Join-Path $Directory $appExeName),
+    (Join-Path $Directory 'aide-sovereign-workbench.exe'),
+    (Join-Path $Directory 'covert-coder.exe')
+  )) {
+    if (Test-Path -LiteralPath $candidate) { return $candidate }
+  }
+  $any = Get-ChildItem -LiteralPath $Directory -Filter '*.exe' -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notmatch '(?i)^uninstall' } | Select-Object -First 1
+  if ($any) { return $any.FullName }
+  return $null
+}
+
 function Find-InstalledExe {
   $entries = @(Get-UninstallEntries)
   foreach ($entry in $entries) {
@@ -55,8 +75,8 @@ function Find-InstalledExe {
       # every registry path before use.
       $installLocation = ([string]$entry.InstallLocation).Trim().Trim('"')
       if ($installLocation) {
-        $candidate = Join-Path $installLocation $appExeName
-        if (Test-Path -LiteralPath $candidate) { return [PSCustomObject]@{ Exe = $candidate; Entry = $entry } }
+        $found = Find-AppExe -Directory $installLocation
+        if ($found) { return [PSCustomObject]@{ Exe = $found; Entry = $entry } }
       }
     } catch {
       Write-Host "desktop lifecycle smoke: skipping unusable uninstall entry: $($_.Exception.Message)"
@@ -70,8 +90,8 @@ function Find-InstalledExe {
   ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
   foreach ($root in $roots) {
     foreach ($directory in @($root, (Join-Path $root $productName), (Join-Path $root 'AIDE Sovereign Workbench'))) {
-      $candidate = Join-Path $directory $appExeName
-      if (Test-Path -LiteralPath $candidate) { return [PSCustomObject]@{ Exe = $candidate; Entry = ($entries | Select-Object -First 1) } }
+      $found = Find-AppExe -Directory $directory
+      if ($found) { return [PSCustomObject]@{ Exe = $found; Entry = ($entries | Select-Object -First 1) } }
     }
   }
   return $null
