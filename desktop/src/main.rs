@@ -79,6 +79,25 @@ fn terminate_tree(child: &mut Child) {
     let _ = child.wait();
 }
 
+/// Minimal JSON string escaping for the spawn record (no external crates).
+fn json_string(value: &str) -> String {
+    let mut out = String::with_capacity(value.len() + 2);
+    out.push('"');
+    for character in value.chars() {
+        match character {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            control if (control as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", control as u32)),
+            other => out.push(other),
+        }
+    }
+    out.push('"');
+    out
+}
+
 /// Resolve one application-owned packaged runtime resource.
 ///
 /// Tauri array-form `bundle.resources` preserves the `resources/` prefix under
@@ -151,12 +170,33 @@ fn main() {
             {
                 let origin = if cfg!(debug_assertions) { "http://127.0.0.1:5173" }
                     else if cfg!(windows) { "http://tauri.localhost" } else { "tauri://localhost" };
+                // Ghost-compatible spawn record + bounded stderr capture. The
+                // windows-subsystem shell has no valid stderr handle; leaving
+                // stderr inherited let the child die silently (first
+                // divergence vs the known-good manual run). The record stores
+                // only allowlisted AIDE_* values — never the full environment.
+                let log_dir = resource_dir.join(".aide").join("logs");
+                let _ = std::fs::create_dir_all(&log_dir);
+                let spawn_record = format!(
+                    "{{\n  \"executable\": {},\n  \"argv\": [{}, \"--native-bootstrap\", \"--pair-origin={}\"],\n  \"cwd\": {},\n  \"env_allowlist\": {{\"AIDE_WORKSPACE\": {}, \"AIDE_MODEL_DIR\": {}, \"AIDE_ARCH_PORT\": \"4778\", \"AIDE_LEGACY_PORT\": \"4779\", \"AIDE_FACADE_PORT\": \"4777\", \"AIDE_LLAMA_SERVER\": {}}},\n  \"spawned_at_unix_ms\": {}\n}}\n",
+                    json_string(&node.display().to_string()),
+                    json_string(&launcher.display().to_string()),
+                    origin,
+                    json_string(&resource_dir.display().to_string()),
+                    json_string(&resource_dir.display().to_string()),
+                    json_string(&resource_dir.join("models").display().to_string()),
+                    json_string(&resource_dir.join("runtime").join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" }).display().to_string()),
+                    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+                );
+                let _ = std::fs::write(log_dir.join("desktop-launcher.spawn.json"), spawn_record);
+                let stderr_handle = std::fs::File::create(log_dir.join("desktop-launcher.err.log")).ok().map(Stdio::from).unwrap_or_else(Stdio::null);
                 let mut child = Command::new(node)
                     .arg(&launcher)
                     .arg("--native-bootstrap")
                     .arg(format!("--pair-origin={origin}"))
                     .stdin(Stdio::null())
                     .stdout(Stdio::piped())
+                    .stderr(stderr_handle)
                     .current_dir(&resource_dir)
                     .env("AIDE_WORKSPACE", &resource_dir)
                     .env("AIDE_MODEL_DIR", resource_dir.join("models"))
