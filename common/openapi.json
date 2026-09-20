@@ -988,6 +988,772 @@
         ]
       }
     },
+    "/api/agent/continuation": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chain_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "decision": {
+                      "type": "string",
+                      "enum": [
+                        "retry",
+                        "switch",
+                        "terminal"
+                      ]
+                    },
+                    "failure_class": {
+                      "type": "string",
+                      "enum": [
+                        "TRANSPORT_FAILURE",
+                        "PROVIDER_UNAVAILABLE",
+                        "LOCAL_RUNTIME_UNAVAILABLE",
+                        "TIMEOUT",
+                        "WORKER_REFUSAL",
+                        "INVALID_OUTPUT",
+                        "CONTEXT_FAILURE",
+                        "HANDOFF_FAILURE",
+                        "VERIFICATION_FAILURE",
+                        "AUTHORITY_DENIED",
+                        "CANCELLED",
+                        "OPERATOR_STOP",
+                        "INTERNAL_ERROR"
+                      ]
+                    },
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "replacements_remaining": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "retry_eligible": {
+                      "type": "boolean"
+                    },
+                    "handoff_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "replacement": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "maxLength": 400
+                    }
+                  },
+                  "required": [
+                    "chain_id",
+                    "decision",
+                    "failure_class",
+                    "attempt",
+                    "replacements_remaining",
+                    "retry_eligible",
+                    "handoff_id",
+                    "replacement",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "failed_session_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "failed_worker": {
+                    "type": "object",
+                    "properties": {
+                      "worker": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "plan",
+                          "act",
+                          "utility",
+                          "planner",
+                          "coder",
+                          "reviewer"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "worker",
+                      "provider",
+                      "model",
+                      "role"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "replacement": {
+                    "type": "object",
+                    "properties": {
+                      "worker": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "plan",
+                          "act",
+                          "utility",
+                          "planner",
+                          "coder",
+                          "reviewer"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "worker",
+                      "provider",
+                      "model",
+                      "role"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "chain_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "failed_session_id",
+                  "replacement"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chains": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "chain_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "root_task_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "continued",
+                              "terminal"
+                            ]
+                          },
+                          "attempts": {
+                            "maxItems": 8,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "attempt": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "session_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "worker": {
+                                  "type": "object",
+                                  "properties": {
+                                    "worker": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "provider": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "model": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "role": {
+                                      "type": "string",
+                                      "enum": [
+                                        "plan",
+                                        "act",
+                                        "utility",
+                                        "planner",
+                                        "coder",
+                                        "reviewer"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "worker",
+                                    "provider",
+                                    "model",
+                                    "role"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "failure_class": {
+                                  "type": "string",
+                                  "enum": [
+                                    "TRANSPORT_FAILURE",
+                                    "PROVIDER_UNAVAILABLE",
+                                    "LOCAL_RUNTIME_UNAVAILABLE",
+                                    "TIMEOUT",
+                                    "WORKER_REFUSAL",
+                                    "INVALID_OUTPUT",
+                                    "CONTEXT_FAILURE",
+                                    "HANDOFF_FAILURE",
+                                    "VERIFICATION_FAILURE",
+                                    "AUTHORITY_DENIED",
+                                    "CANCELLED",
+                                    "OPERATOR_STOP",
+                                    "INTERNAL_ERROR"
+                                  ]
+                                },
+                                "error_summary": {
+                                  "type": "string",
+                                  "maxLength": 400
+                                },
+                                "failed_at": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "attempt",
+                                "session_id",
+                                "worker",
+                                "failure_class",
+                                "error_summary",
+                                "failed_at"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "retry_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "replacement_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "last_replacement": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "worker": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "provider": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "model": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "role": {
+                                    "type": "string",
+                                    "enum": [
+                                      "plan",
+                                      "act",
+                                      "utility",
+                                      "planner",
+                                      "coder",
+                                      "reviewer"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "worker",
+                                  "provider",
+                                  "model",
+                                  "role"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pending_handoff_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "last_decision": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "retry",
+                                  "switch",
+                                  "terminal"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "terminal_reason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 400
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chain_id",
+                          "root_task_id",
+                          "state",
+                          "attempts",
+                          "retry_count",
+                          "replacement_count",
+                          "last_replacement",
+                          "pending_handoff_id",
+                          "last_decision",
+                          "terminal_reason",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "chains"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chain_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/agent/continuations": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chains": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "chain_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "root_task_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "continued",
+                              "terminal"
+                            ]
+                          },
+                          "attempts": {
+                            "maxItems": 8,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "attempt": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "session_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "worker": {
+                                  "type": "object",
+                                  "properties": {
+                                    "worker": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "provider": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "model": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "role": {
+                                      "type": "string",
+                                      "enum": [
+                                        "plan",
+                                        "act",
+                                        "utility",
+                                        "planner",
+                                        "coder",
+                                        "reviewer"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "worker",
+                                    "provider",
+                                    "model",
+                                    "role"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "failure_class": {
+                                  "type": "string",
+                                  "enum": [
+                                    "TRANSPORT_FAILURE",
+                                    "PROVIDER_UNAVAILABLE",
+                                    "LOCAL_RUNTIME_UNAVAILABLE",
+                                    "TIMEOUT",
+                                    "WORKER_REFUSAL",
+                                    "INVALID_OUTPUT",
+                                    "CONTEXT_FAILURE",
+                                    "HANDOFF_FAILURE",
+                                    "VERIFICATION_FAILURE",
+                                    "AUTHORITY_DENIED",
+                                    "CANCELLED",
+                                    "OPERATOR_STOP",
+                                    "INTERNAL_ERROR"
+                                  ]
+                                },
+                                "error_summary": {
+                                  "type": "string",
+                                  "maxLength": 400
+                                },
+                                "failed_at": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "attempt",
+                                "session_id",
+                                "worker",
+                                "failure_class",
+                                "error_summary",
+                                "failed_at"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "retry_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "replacement_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "last_replacement": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "worker": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "provider": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "model": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "role": {
+                                    "type": "string",
+                                    "enum": [
+                                      "plan",
+                                      "act",
+                                      "utility",
+                                      "planner",
+                                      "coder",
+                                      "reviewer"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "worker",
+                                  "provider",
+                                  "model",
+                                  "role"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pending_handoff_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "last_decision": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "retry",
+                                  "switch",
+                                  "terminal"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "terminal_reason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 400
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chain_id",
+                          "root_task_id",
+                          "state",
+                          "attempts",
+                          "retry_count",
+                          "replacement_count",
+                          "last_replacement",
+                          "pending_handoff_id",
+                          "last_decision",
+                          "terminal_reason",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "chains"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
     "/api/agent/decision": {
       "post": {
         "responses": {

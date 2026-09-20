@@ -110,6 +110,9 @@ const HTTP_POLICY = new Map([
   // computes readiness and persists its own pending clarification records; it
   // never executes work or touches authority.
   ['POST /api/resident/intent', 'capability.read'], ['GET /api/resident/intents', 'capability.read'],
+  // Failure continuation (Wave 6): planning is descriptor-enrolled (routes/
+  // continuation.ts); the chain views are centrally declared reads.
+  ['GET /api/agent/continuations', 'capability.read'], ['GET /api/agent/continuation', 'capability.read'],
   ['GET /api/learner/state', 'capability.read'], ['GET /api/learner/reviews', 'capability.read'],
   ['GET /api/training/datasets', 'capability.read'], ['GET /api/training/datasets/read', 'capability.read'],
   ['GET /api/training/presets', 'capability.read'], ['GET /api/training/status', 'capability.read'],
