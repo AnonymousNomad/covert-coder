@@ -49,11 +49,13 @@ type Stack = { server: ArchServer; http: import('node:http').Server; owner: Awai
 async function buildProductionStack(target: string, options: Record<string, unknown> = {}): Promise<Stack> {
   const arch = new ArchServer(target, path.join(target, `arch-admission-${randomUUID().slice(0, 8)}.log`));
   const { buildRoutes } = await import('../../node/src/openapi.ts');
-  // version !== 'test' => production readiness enforcement is ON by default.
+  // Mirrors the production composition root: enforcement is opted in exactly
+  // like node/src/server.ts opts in.
   const routes = await buildRoutes(target, 'production-test', {
     authority: arch.authority,
     events: arch.events,
     modelRuntime: stubRuntime(),
+    requireIntentReadiness: true,
     agentChatFn: async () => lanes.scripted[Math.min(lanes.index++, lanes.scripted.length - 1)] ?? '',
     ...options
   });

@@ -367,7 +367,10 @@ export async function main(): Promise<void> {
   server.addShutdownHook(async () => terminalSessions.stopAll());
   const routes = await buildRoutes(workspace, version, {
     authority: server.authority, events: server.events, logger: server.logger,
-    lspManager: manager, dapManager, modelRuntime, terminalSessions, watchIndex: true
+    lspManager: manager, dapManager, modelRuntime, terminalSessions, watchIndex: true,
+    // Wave 5A: the real daemon enforces intent readiness at agent admission —
+    // no new task starts without a READY record bound to the exact request.
+    requireIntentReadiness: true
   });
   for (const route of routes) server.route(route);
   const listener = await server.listen(port);

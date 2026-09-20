@@ -744,11 +744,12 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // this route only reports.
     ...routesForClosedLoop(workspace),
     ...routesForAgent(agentLoop, {
-      // Wave 5A: production stacks enforce readiness at admission; the test
-      // harness (version 'test') keeps direct starts for fixture coverage and
-      // can opt in explicitly with requireIntentReadiness.
+      // Wave 5A: authoritative readiness admission is enabled EXPLICITLY at the
+      // production composition root (node/src/server.ts). Test harnesses and
+      // tooling keep direct starts unless they opt in, so fixture coverage is
+      // unaffected while the real daemon can never admit an unevaluated task.
       intentReadiness: residentIntentService,
-      requireIntentReadiness: options.requireIntentReadiness ?? version !== 'test',
+      requireIntentReadiness: options.requireIntentReadiness === true,
       // Live worker-switch reception (Wave 4): the SAME accepted handoff
       // service; binding/accept/context/consume all ride the existing
       // contract. Consumption fires at the first destination model call.
