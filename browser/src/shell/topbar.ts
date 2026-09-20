@@ -5,6 +5,7 @@ import type {
   NetworkState,
   HarnessState
 } from '../store/state.ts';
+import { createWorldMap } from '../cockpit/CovertWorldMap.ts';
 
 export interface TopbarMode {
   private: boolean | null;
@@ -28,8 +29,17 @@ export function createTopbar(parent: HTMLElement, store: Store<AppState>): Topba
     <header class="topbar" role="banner">
       <div class="topbar-identity">
         <img class="topbar-mark" src="${emblem}" alt="Covert emblem" width="44" height="52" />
-        <span class="topbar-wordmark"><span class="topbar-brand">COVERT CODER</span><span class="topbar-subbrand">Vibe at the surface. Engineering underneath.</span></span>
+        <span class="topbar-wordmark">
+          <span class="topbar-brand">COVERT CODER</span>
+          <span class="topbar-subbrand">SOVEREIGN DEVELOPMENT ENVIRONMENT</span>
+          <span class="topbar-doctrine"><span class="topbar-doctrine-private">PRIVATE MINDS</span><b>&gt;</b><span class="topbar-doctrine-work">REAL WORK</span><b>&gt;</b><span class="topbar-doctrine-free">ZERO COMPROMISE</span></span>
+        </span>
       </div>
+      <div class="topbar-command-band" aria-label="Covert operating sequence">
+        <div class="topbar-command-phases"><span>CODE</span><span>ANALYZE</span><span>BUILD</span><span>VERIFY</span><span>DEPLOY</span></div>
+        <span class="topbar-discipline">DISCIPLINE IS A FORCE MULTIPLIER</span>
+      </div>
+      <div class="topbar-map-wrap" aria-hidden="true"></div>
       <nav class="topbar-modes" aria-label="system mode">
         <span class="topbar-mode" data-mode="private" title="Private: BYOK consent disabled">PRIVATE</span>
         <span class="topbar-mode" data-mode="local" title="Local: daemon reachable on 127.0.0.1">LOCAL</span>
@@ -55,8 +65,14 @@ export function createTopbar(parent: HTMLElement, store: Store<AppState>): Topba
           <span data-chip-label="cloud">NETWORK: UNKNOWN</span>
         </button>
       </nav>
+      <div class="topbar-doctrine-right">
+        <span>INFORMATION<br />WANTS TO BE FREE.</span>
+        <strong>INTELLIGENCE<br />DEMANDS CONTROL.</strong>
+        <small class="topbar-operational-status" data-operational-status="unknown">OFFLINE READY · LOCAL FIRST · YOU CONTROL IT</small>
+      </div>
       <span class="topbar-spacer"></span>
       <button class="topbar-hint cockpit-intel-toggle" type="button" aria-controls="cockpit-intel" aria-expanded="false">INTELLIGENCE</button>
+      <span class="topbar-window-boundary" title="Window controls are provided by the host shell" aria-label="Host shell window controls">— □ ×</span>
     </header>
   `;
 
@@ -68,6 +84,9 @@ export function createTopbar(parent: HTMLElement, store: Store<AppState>): Topba
   const verify = chip(parent, 'verify');
   const harness = chip(parent, 'harness');
   const cloud = chip(parent, 'cloud');
+  const mapHost = root.querySelector<HTMLElement>('.topbar-map-wrap');
+  const operationalStatus = root.querySelector<HTMLElement>('[data-operational-status]');
+  if (mapHost !== null) mapHost.appendChild(createWorldMap('covert-world-map covert-world-map-header'));
   const destinations = { daemon: 'security', engine: 'models', verify: 'verification', harness: 'skills', cloud: 'settings' } as const;
   for (const [name, panel] of Object.entries(destinations)) {
     const button = root.querySelector<HTMLButtonElement>(`[data-chip="${name}"]`);
@@ -108,6 +127,14 @@ export function createTopbar(parent: HTMLElement, store: Store<AppState>): Topba
     };
     cloud.label.textContent = labelMap[state];
     setDataState(cloud.root, state === 'CREDENTIAL_MISSING' ? 'warn' : null);
+    if (operationalStatus !== null) {
+      operationalStatus.textContent = state === 'REMOTE_CONFIGURED'
+        ? 'REMOTE CONFIGURED · LOCAL FIRST · YOU CONTROL IT'
+        : state === 'UNKNOWN'
+          ? 'STATUS UNKNOWN · LOCAL FIRST · YOU CONTROL IT'
+          : 'OFFLINE READY · LOCAL FIRST · YOU CONTROL IT';
+      operationalStatus.dataset.operationalStatus = state.toLowerCase();
+    }
   }
 
   function setModes(modes: TopbarMode): void {

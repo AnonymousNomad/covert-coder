@@ -13,6 +13,7 @@ import type { ResidentSummaryResponseT, ResidentPushSummaryT } from '../../../co
 import type { ByokStatusResponseT } from '../../../common/contracts/byok.ts';
 import type { ClosedLoopStatusT } from '../../../common/contracts/closed-loop.ts';
 import type { TaskStatusResponseT } from '../../../common/contracts/tasks.ts';
+import { createWorldMap } from '../cockpit/CovertWorldMap.ts';
 
 export interface PanelHandles {
   dispose(): void;
@@ -28,6 +29,23 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
 export function createCommandCenterPanel(parent: HTMLElement, _store: Store<AppState>): PanelHandles {
   parent.innerHTML = '';
   const root = el('div', 'panel-content command-center-panel');
+  const brand = el('section', 'cc-brand-banner');
+  const brandCopy = el('div', 'cc-brand-copy');
+  brandCopy.appendChild(el('span', 'cc-brand-kicker', 'LOCAL / VERIFIABLE / PERMISSIONED'));
+  brandCopy.appendChild(el('h1', 'cc-brand-title', 'COVERT CODER'));
+  brandCopy.appendChild(el('p', 'cc-brand-subtitle', 'SOVEREIGN DEVELOPMENT ENVIRONMENT'));
+  const badges = el('div', 'cc-brand-badges');
+  for (const label of ['LOCAL-FIRST', 'MODEL-AGNOSTIC', 'VERIFIABLE', 'PERMISSIONED', 'EXTENSIBLE', 'YOURS']) badges.appendChild(el('span', 'cc-brand-badge', `+ ${label}`));
+  brandCopy.appendChild(badges);
+  brandCopy.appendChild(el('strong', 'cc-brand-tagline', 'BUILT FOR THOSE WHO BUILD DIFFERENT.'));
+  const phases = el('div', 'cc-brand-phases');
+  for (const phase of ['RECON', 'PLAN', 'BUILD', 'VERIFY', 'REPEAT']) phases.appendChild(el('span', 'cc-brand-phase', phase));
+  brandCopy.appendChild(phases);
+  brand.appendChild(brandCopy);
+  const brandMap = el('div', 'cc-brand-map');
+  brandMap.appendChild(createWorldMap('covert-world-map covert-world-map-banner'));
+  brand.appendChild(brandMap);
+  root.appendChild(brand);
   const header = el('header', 'panel-header');
   header.appendChild(el('h2', 'panel-title', 'OPERATIONAL EVIDENCE'));
   header.appendChild(el('span', 'panel-maturity', 'AVAILABLE'));

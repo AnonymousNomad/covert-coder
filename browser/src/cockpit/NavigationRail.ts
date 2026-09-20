@@ -13,21 +13,22 @@ interface NavItem {
   icon: string;
   label: string;
   description: string;
+  accent: string;
 }
 
 const ITEMS: NavItem[] = [
-  { id: 'command-center', icon: '\u25ce', label: 'COMMAND CENTER', description: 'Operator overview' },
-  { id: 'resident', icon: '\u29bf', label: 'RESIDENT', description: 'Persistent intelligence' },
-  { id: 'projects', icon: '\u25a4', label: 'PROJECTS', description: 'Workbenches' },
-  { id: 'editor', icon: '\u2261', label: 'EDITOR', description: 'Source surface' },
-  { id: 'terminal', icon: '>_', label: 'TERMINAL', description: 'Governed sessions' },
-  { id: 'models', icon: '\u25c8', label: 'MODELS', description: 'Loaded lineup' },
-  { id: 'skills', icon: '\u2756', label: 'SKILLS', description: 'Methods / workflows' },
-  { id: 'memory', icon: '\u29c7', label: 'MEMORY', description: 'Helix state' },
-  { id: 'verification', icon: '\u2713', label: 'VERIFICATION', description: 'Gate evidence' },
-  { id: 'security', icon: '\u25cb', label: 'SECURITY', description: 'Capability state' },
-  { id: 'extensions', icon: '\u29c9', label: 'EXTENSIONS', description: 'Local add-ons' },
-  { id: 'settings', icon: '\u2699', label: 'SETTINGS', description: 'Operator config' }
+  { id: 'command-center', icon: '\u25ce', label: 'COMMAND CENTER', description: 'Operator overview', accent: 'cyan' },
+  { id: 'resident', icon: '\u29bf', label: 'RESIDENT', description: 'Persistent intelligence', accent: 'magenta' },
+  { id: 'projects', icon: '\u25a4', label: 'PROJECTS', description: 'Workbenches', accent: 'violet' },
+  { id: 'editor', icon: '\u2261', label: 'EDITOR', description: 'Source surface', accent: 'cyan' },
+  { id: 'terminal', icon: '>_', label: 'TERMINAL', description: 'Governed sessions', accent: 'blue' },
+  { id: 'models', icon: '\u25c8', label: 'MODELS', description: 'Loaded lineup', accent: 'gold' },
+  { id: 'skills', icon: '\u2756', label: 'SKILLS', description: 'Methods / workflows', accent: 'purple' },
+  { id: 'memory', icon: '\u29c7', label: 'MEMORY', description: 'Helix state', accent: 'cyan' },
+  { id: 'verification', icon: '\u2713', label: 'VERIFICATION', description: 'Gate evidence', accent: 'green' },
+  { id: 'security', icon: '\u25cb', label: 'SECURITY', description: 'Capability state', accent: 'blue' },
+  { id: 'extensions', icon: '\u29c9', label: 'EXTENSIONS', description: 'Local add-ons', accent: 'violet' },
+  { id: 'settings', icon: '\u2699', label: 'SETTINGS', description: 'Operator config', accent: 'gold' }
 ];
 
 export function createNavigationRail(parent: HTMLElement, store: Store<AppState>): NavigationRailHandles {
@@ -41,11 +42,13 @@ export function createNavigationRail(parent: HTMLElement, store: Store<AppState>
     btn.type = 'button';
     btn.className = 'cockpit-rail-item';
     btn.dataset.itemId = item.id;
+    btn.dataset.accent = item.accent;
     btn.title = `${item.label} \u2014 ${item.description}`;
     btn.setAttribute('aria-label', `${item.label}: ${item.description}`);
 
     const icon = document.createElement('span');
     icon.className = 'cockpit-rail-icon';
+    icon.dataset.emblem = item.id;
     icon.setAttribute('aria-hidden', 'true');
     icon.textContent = item.icon;
 

@@ -14,6 +14,7 @@ import { createModelLineup, type ModelLineupHandles } from './ModelLineup.ts';
 import { createSystemTelemetry, type SystemTelemetryHandles } from './SystemTelemetry.ts';
 import { createActivityTimeline, type ActivityTimelineHandles } from './ActivityTimeline.ts';
 import { createBottomStrip, type BottomStripHandles } from './BottomStrip.ts';
+import { createResidentFigure, type ResidentFigureHandles } from './ResidentFigure.ts';
 import { createAmbientEffects } from './AmbientEffects.ts';
 import { createCommandCenterPanel } from '../panels/command-center.ts';
 import { createModelsPanel } from '../panels/models.ts';
@@ -47,6 +48,7 @@ export interface CockpitHandles {
   modelLineup: ModelLineupHandles;
   telemetry: SystemTelemetryHandles;
   activity: ActivityTimelineHandles;
+  residentFigure: ResidentFigureHandles;
   bottom: BottomStripHandles;
   editorMount: HTMLElement;
   editorWorkspace: HTMLElement;
@@ -120,9 +122,19 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
       <header class="cockpit-topbar" id="cockpit-topbar"></header>
       <main class="cockpit-main">
         <nav class="cockpit-nav" id="cockpit-nav" aria-label="Workspace navigation"></nav>
+        <aside class="cockpit-figure-column" id="cockpit-figure-column" aria-label="Resident visual presence"></aside>
         <section class="cockpit-center" id="cockpit-center" aria-label="Cockpit workspace">
           <div class="cockpit-center-surface" id="cockpit-center-surface">
             <section class="cockpit-panel-stage cockpit-command-stage" id="cockpit-command-stage" data-panel="command-center">
+              <nav class="cockpit-command-tabs" aria-label="Resident workspace surfaces" role="tablist">
+                <button type="button" class="cockpit-command-tab active" data-command-tab="chat" aria-selected="true">CHAT</button>
+                <button type="button" class="cockpit-command-tab" data-command-tab="plan" aria-selected="false">PLAN</button>
+                <button type="button" class="cockpit-command-tab" data-command-tab="code" aria-selected="false">CODE</button>
+                <button type="button" class="cockpit-command-tab" data-command-tab="review" aria-selected="false">REVIEW</button>
+                <button type="button" class="cockpit-command-tab" data-command-tab="terminal" aria-selected="false">TERMINAL</button>
+                <button type="button" class="cockpit-command-tab" data-command-tab="browser" aria-selected="false" disabled title="Browser surface is not integrated in this phase">BROWSER</button>
+                <button type="button" class="cockpit-command-tab cockpit-command-tab-add" aria-label="Additional surfaces are not active in this phase" disabled>+</button>
+              </nav>
               <div class="cockpit-command-layout">
                 <div class="cockpit-resident-mount" id="cockpit-resident-mount"></div>
                 <div class="cockpit-command-center-mount" id="cockpit-command-center-mount"></div>
@@ -153,7 +165,15 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
           <section class="cockpit-intel-slot" id="cockpit-intel-activity" aria-label="Recent activity"></section>
         </aside>
       </main>
-      <footer class="cockpit-bottom" id="cockpit-bottom"></footer>
+      <footer class="cockpit-bottom" id="cockpit-bottom">
+        <div class="cockpit-bottom-identity" aria-label="Covert identity">
+          <div class="cockpit-bottom-motto"><strong>OWN YOUR STACK</strong><span>OWN YOUR INTELLIGENCE</span><span>OWN YOUR FREEDOM</span></div>
+          <div class="cockpit-bottom-version"><span id="cockpit-bottom-version">VERSION · UNKNOWN</span><span id="cockpit-bottom-prompt">&gt; covert@workbench: UNKNOWN</span></div>
+          <div class="cockpit-bottom-thesis"><strong>A MORE PRIVATE INTERNET</strong><span>A MORE CAPABLE YOU</span></div>
+          <div class="cockpit-bottom-signoff"><span>FREEDOM IN CODE.</span><span>SECURITY IN MIND.</span><span>PROGRESS ON YOUR TERMS.</span></div>
+        </div>
+        <div class="cockpit-bottom-console" id="cockpit-bottom-console"></div>
+      </footer>
       <div class="cockpit-status-mount" id="cockpit-status" aria-live="polite">
         <span id="cockpit-lsp-status">LSP: UNKNOWN</span>
       </div>
@@ -162,6 +182,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
 
   const topbarHost = app.querySelector<HTMLElement>('#cockpit-topbar');
   const navHost = app.querySelector<HTMLElement>('#cockpit-nav');
+  const figureHost = app.querySelector<HTMLElement>('#cockpit-figure-column');
   const commandStage = app.querySelector<HTMLElement>('#cockpit-command-stage');
   const residentMount = app.querySelector<HTMLElement>('#cockpit-resident-mount');
   const commandCenterMount = app.querySelector<HTMLElement>('#cockpit-command-center-mount');
@@ -182,11 +203,14 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const telemetrySlot = app.querySelector<HTMLElement>('#cockpit-intel-telemetry');
   const activitySlot = app.querySelector<HTMLElement>('#cockpit-intel-activity');
   const bottomHost = app.querySelector<HTMLElement>('#cockpit-bottom');
+  const bottomConsole = app.querySelector<HTMLElement>('#cockpit-bottom-console');
+  const bottomVersion = app.querySelector<HTMLElement>('#cockpit-bottom-version');
+  const bottomPrompt = app.querySelector<HTMLElement>('#cockpit-bottom-prompt');
   const statusRoot = app.querySelector<HTMLElement>('#cockpit-status');
   const lspStatus = app.querySelector<HTMLElement>('#cockpit-lsp-status');
   const ambientHost = app.querySelector<HTMLElement>('.cockpit-ambient');
 
-  if (!topbarHost || !navHost || !commandStage || !residentMount || !commandCenterMount || !workflowMount || !projectsStage || !terminalStage || !modelsStage || !skillsStage || !memoryStage || !verificationStage || !securityStage || !extensionsStage || !settingsStage || !editorMount || !editorWorkspace || !searchMount || !modelSlot || !telemetrySlot || !activitySlot || !bottomHost || !statusRoot || !lspStatus || !ambientHost) {
+  if (!topbarHost || !navHost || !figureHost || !commandStage || !residentMount || !commandCenterMount || !workflowMount || !projectsStage || !terminalStage || !modelsStage || !skillsStage || !memoryStage || !verificationStage || !securityStage || !extensionsStage || !settingsStage || !editorMount || !editorWorkspace || !searchMount || !modelSlot || !telemetrySlot || !activitySlot || !bottomHost || !bottomConsole || !bottomVersion || !bottomPrompt || !statusRoot || !lspStatus || !ambientHost) {
     throw new Error('cockpit shell mounts failed');
   }
 
@@ -209,12 +233,46 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   intel.querySelector('.cockpit-intel-close')?.addEventListener('click', closeIntel);
   intel.addEventListener('keydown', event => { if (event.key === 'Escape') closeIntel(); });
   const navigation = createNavigationRail(navHost, store);
+  const residentFigure = createResidentFigure(figureHost, store);
   const resident = createResidentCore(residentMount, store, { onToast: notify });
   const modelLineup = createModelLineup(modelSlot, store);
   const telemetry = createSystemTelemetry(telemetrySlot, store);
   const activity = createActivityTimeline(activitySlot, store);
-  const bottom = createBottomStrip(bottomHost, store);
+  const bottom = createBottomStrip(bottomConsole, store);
   createAmbientEffects(ambientHost);
+
+  const commandTabTargets: Record<string, Panel | null> = {
+    chat: 'command-center',
+    plan: 'command-center',
+    code: 'editor',
+    review: 'verification',
+    terminal: 'terminal',
+    browser: null
+  };
+  const commandTabs = Array.from(app.querySelectorAll<HTMLButtonElement>('[data-command-tab]'));
+  const paintCommandTabs = (panel: Panel): void => {
+    const active = panel === 'editor' ? 'code' : panel === 'verification' ? 'review' : panel === 'terminal' ? 'terminal' : 'chat';
+    for (const tab of commandTabs) {
+      const selected = tab.dataset.commandTab === active;
+      tab.classList.toggle('active', selected);
+      tab.setAttribute('aria-selected', String(selected));
+    }
+  };
+  for (const tab of commandTabs) {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.commandTab === undefined ? null : commandTabTargets[tab.dataset.commandTab] ?? null;
+      if (target !== null) store.set(previous => ({ ...previous, panel: target }));
+    });
+  }
+  const unbindCommandTabs = store.subscribe((state) => paintCommandTabs(state.panel));
+  paintCommandTabs(store.get().panel);
+  const paintVersion = (state: AppState): void => {
+    bottomVersion.textContent = state.health === null ? 'VERSION · UNKNOWN' : `VERSION · v${state.health.version}`;
+    const workspace = state.health?.workspace.split(/[\\/]/).filter(Boolean).pop();
+    bottomPrompt.textContent = `> covert@workbench: ${workspace === undefined ? 'UNKNOWN' : workspace}`;
+  };
+  const unbindVersion = store.subscribe(paintVersion);
+  paintVersion(store.get());
 
   let projects: ProjectsSurfaceHandles | null = null;
   let editorHost: EditorHost | null = null;
@@ -301,7 +359,10 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     modelLineup.dispose();
     telemetry.dispose();
     activity.dispose();
+    residentFigure.dispose();
     bottom.dispose();
+    unbindCommandTabs();
+    unbindVersion();
     for (const panelId of PANEL_IDS) panelRegistry[panelId].dispose();
   });
 
@@ -312,6 +373,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     modelLineup,
     telemetry,
     activity,
+    residentFigure,
     bottom,
     editorMount,
     editorWorkspace,
