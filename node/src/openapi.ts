@@ -95,6 +95,8 @@ import { createProviderConnectionsService } from '../../node/src/services/provid
 import { routesForConnections } from './routes/connections.ts';
 import { createWorkerHandoffService } from './services/worker-handoff.ts';
 import { routesForWorkerHandoff } from './routes/worker-handoff.ts';
+import { createResidentIntentService } from './services/resident-intent.ts';
+import { routesForResidentIntent } from './routes/resident-intent.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
 import { ExerciseEngine } from '../../academy/exercise-engine.mjs';
@@ -533,6 +535,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   }
   const handoffService = createHandoffService({ workspace, agentLoop });
   const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
+  const residentIntentService = createResidentIntentService({ workspace, workflowService });
   const secretStore = options.byokSecretStore ?? createSecretStore({ secretsPath: path.join(os.homedir(), '.aide', 'secrets.json') });
   const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch, onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
   const connectionsService = options.connectionsService ?? createProviderConnectionsService({
@@ -862,6 +865,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForHandoff(handoffService),
     ...routesForByok(byokService, workspace),
     ...routesForWorkerHandoff(workerHandoffService, workspace),
+    ...routesForResidentIntent(residentIntentService),
     ...routesForConnections(connectionsService as any, workspace),
     routeForLspStatus(manager),
     routeForLspStart(manager),

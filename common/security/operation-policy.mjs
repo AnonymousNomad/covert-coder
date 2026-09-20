@@ -106,6 +106,10 @@ const HTTP_POLICY = new Map([
   // descriptor (node/src/routes/worker-handoff.ts).
   ['GET /api/worker-handoff/list', 'capability.read'], ['GET /api/worker-handoff/get', 'capability.read'],
   ['GET /api/worker-handoff/context', 'capability.read'],
+  // Resident intent readiness (Wave 5): read-class by design — the gate only
+  // computes readiness and persists its own pending clarification records; it
+  // never executes work or touches authority.
+  ['POST /api/resident/intent', 'capability.read'], ['GET /api/resident/intents', 'capability.read'],
   ['GET /api/learner/state', 'capability.read'], ['GET /api/learner/reviews', 'capability.read'],
   ['GET /api/training/datasets', 'capability.read'], ['GET /api/training/datasets/read', 'capability.read'],
   ['GET /api/training/presets', 'capability.read'], ['GET /api/training/status', 'capability.read'],
