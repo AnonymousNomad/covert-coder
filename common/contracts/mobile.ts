@@ -437,6 +437,7 @@ export const ConciergeResolveResponse = z
 
 export type EdgeSnapshotT = z.infer<typeof EdgeSnapshot>;
 export type EdgeCommandRequestT = z.infer<typeof EdgeCommandRequest>;
+export type EdgePairResponseT = z.infer<typeof EdgePairResponse>;
 export type VoiceCommandRequestT = z.infer<typeof VoiceCommandRequest>;
 export type ReleaseManifestT = z.infer<typeof ReleaseManifest>;
 export type ReleaseArtifactT = z.infer<typeof ReleaseArtifact>;

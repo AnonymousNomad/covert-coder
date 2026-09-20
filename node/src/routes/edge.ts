@@ -49,7 +49,7 @@ function isReadCommand(command: string): boolean {
   return ['status.read', 'resident.read', 'verification.read', 'notifications.read', 'workers.read'].includes(command);
 }
 
-export function routesForEdge({ workspace, bridge, voice, authority }: { workspace: string; bridge: RemoteBridgeService; voice: CipherVoiceService; authority?: ExecutionAuthority }): Route[] {
+export function routesForEdge({ workspace, bridge, voice, authority }: { workspace: string; bridge: RemoteBridgeService; voice: CipherVoiceService; authority?: ExecutionAuthority | undefined }): Route[] {
   return [
     {
       method: 'GET',

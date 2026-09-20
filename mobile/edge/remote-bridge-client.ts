@@ -11,6 +11,7 @@ import {
 } from '../../common/contracts/mobile.ts';
 import type {
   EdgeCommandResponseT,
+  EdgePairResponseT,
   EdgeStatusResponseT,
   VoiceCapabilitiesResponseT,
   VoiceCommandResponseT
@@ -58,7 +59,7 @@ export class RemoteBridgeClient {
     this.token = null;
   }
 
-  async pair(proof: string): Promise<EdgePairResponse> {
+  async pair(proof: string): Promise<EdgePairResponseT> {
     const body = EdgePairRequest.parse({ proof });
     const response = await this.request('/api/edge/pair', { method: 'POST', body, authenticated: false });
     const parsed = EdgePairResponse.safeParse(response);

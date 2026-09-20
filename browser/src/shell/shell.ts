@@ -33,6 +33,7 @@ const PANEL_STAGES: Panel[] = [
   'skills',
   'memory',
   'security',
+  'mobile-production',
   'extensions',
   'settings'
 ];
@@ -62,6 +63,7 @@ export function createShell(app: HTMLElement, store: Store<AppState>): Shell {
                 <section class="panel-stage" data-panel="skills" id="stage-skills"></section>
                 <section class="panel-stage" data-panel="memory" id="stage-memory"></section>
                 <section class="panel-stage" data-panel="security" id="stage-security"></section>
+                <section class="panel-stage" data-panel="mobile-production" id="stage-mobile-production"></section>
               </section>
             </div>
           </main>
@@ -105,6 +107,7 @@ export function createShell(app: HTMLElement, store: Store<AppState>): Shell {
     'skills': document.getElementById('stage-skills'),
     'memory': document.getElementById('stage-memory'),
     'security': document.getElementById('stage-security'),
+    'mobile-production': document.getElementById('stage-mobile-production'),
     'extensions': null,
     'settings': null
   };
