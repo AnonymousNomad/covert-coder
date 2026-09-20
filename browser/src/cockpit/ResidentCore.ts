@@ -249,7 +249,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     }
   }
 
-  async function startAgent(task: string): Promise<void> {
+  async function startAgent(task: string, readinessId?: string): Promise<void> {
     const trimmed = task.trim();
     if (!alive || starting || trimmed.length === 0 || activeStatus?.state === 'running' || activeStatus?.state === 'awaiting_approval') return;
     starting = true;
@@ -260,7 +260,10 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     input.disabled = true;
     paintAgentStatus(null, 'Preparing governed Resident task · operator approval may be requested…');
     try {
-      const body = AgentStartRequest.parse({ task: trimmed, mode: 'act', chat_source: 'local' });
+      const body = AgentStartRequest.parse({
+        task: trimmed, mode: 'act', chat_source: 'local',
+        ...(readinessId !== undefined ? { readiness_id: readinessId } : {})
+      });
       const started = await call('/api/agent/start', { method: 'POST', body, schema: AgentStartResponse });
       activeSessionId = started.session_id;
       await pollAgent();
@@ -320,7 +323,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     try {
       const next = await api.residentIntent({ pending_id: pendingId, answers });
       if (next.status === 'READY') {
-        await startAgent(next.task);
+        await startAgent(next.task, next.readiness_id);
         return;
       }
       if (next.status === 'BLOCKED') {
@@ -346,11 +349,12 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
         renderClarification(readiness);
         return;
       }
-    } catch {
-      // Readiness unavailable in this environment: proceed through the
-      // existing governed start; every action still requires approval.
+      await startAgent(trimmed, readiness.readiness_id);
+    } catch (error) {
+      // Fail-closed (Wave 5A): no readiness record means no start. The server
+      // enforces the same rule for any caller that bypasses this composer.
+      paintAgentStatus(null, `Readiness unavailable \u00b7 task not started \u00b7 ${String((error as Error).message ?? error).slice(0, 150)}`);
     }
-    await startAgent(trimmed);
   }
 
   composer.addEventListener('submit', event => {

@@ -131,6 +131,8 @@ export interface BuildRoutesOptions {
   lspManager?: LspManager;
   dapManager?: DapManager;
   modelRuntime?: ModelRuntime;
+  residentIntentService?: ReturnType<typeof createResidentIntentService>;
+  requireIntentReadiness?: boolean;
   providerService?: ProviderService;
   // Optional interactive terminal session service. When provided, the PTY
   // routes are registered; when absent (tests/CLI), no PTY code path exists.
@@ -535,7 +537,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   }
   const handoffService = createHandoffService({ workspace, agentLoop });
   const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
-  const residentIntentService = createResidentIntentService({ workspace, workflowService });
+  const residentIntentService = options.residentIntentService ?? createResidentIntentService({ workspace, workflowService });
   const secretStore = options.byokSecretStore ?? createSecretStore({ secretsPath: path.join(os.homedir(), '.aide', 'secrets.json') });
   const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch, onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
   const connectionsService = options.connectionsService ?? createProviderConnectionsService({
@@ -742,6 +744,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // this route only reports.
     ...routesForClosedLoop(workspace),
     ...routesForAgent(agentLoop, {
+      // Wave 5A: production stacks enforce readiness at admission; the test
+      // harness (version 'test') keeps direct starts for fixture coverage and
+      // can opt in explicitly with requireIntentReadiness.
+      intentReadiness: residentIntentService,
+      requireIntentReadiness: options.requireIntentReadiness ?? version !== 'test',
       // Live worker-switch reception (Wave 4): the SAME accepted handoff
       // service; binding/accept/context/consume all ride the existing
       // contract. Consumption fires at the first destination model call.

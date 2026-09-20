@@ -76,20 +76,53 @@ export function createResidentIntentService(options: ResidentIntentServiceOption
     await fs.rename(temp, target);
   }
 
-  async function listPending(): Promise<PendingRecord[]> {
+  async function readAll(): Promise<PendingRecord[]> {
     const entries = await fs.readdir(dir).catch(() => [] as string[]);
     const records: PendingRecord[] = [];
     for (const entry of entries) {
       if (!entry.endsWith('.json')) continue;
       try {
-        const record = await readRecord(entry.slice(0, -'.json'.length));
-        if (record.status === 'NEEDS_CLARIFICATION') records.push(record);
+        records.push(await readRecord(entry.slice(0, -'.json'.length)));
       } catch {
         // Corrupt pending records are ignored here; direct lookups report them.
       }
     }
     records.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
     return records;
+  }
+
+  async function listPending(): Promise<PendingRecord[]> {
+    return (await readAll()).filter(record => record.status === 'NEEDS_CLARIFICATION');
+  }
+
+  // Authoritative admission check (Wave 5A): a READY record admits exactly the
+  // task text it was evaluated for, in this workspace, and only until it is
+  // superseded or invalidated. Fail-closed on any storage problem.
+  async function assertReadyForTask(readinessId: string, task: string): Promise<{ ok: true } | { ok: false; code: 'INTENT_MISMATCH' | 'INTENT_MISSING'; reason: string }> {
+    let record: PendingRecord;
+    try {
+      record = await readRecord(readinessId);
+    } catch {
+      return { ok: false, code: 'INTENT_MISSING', reason: 'no readiness record exists for this id; evaluate intent first' };
+    }
+    const normalized = task.trim();
+    if (record.task !== normalized) {
+      return { ok: false, code: 'INTENT_MISMATCH', reason: 'readiness was evaluated for a different request' };
+    }
+    if (record.status !== 'READY') {
+      return { ok: false, code: 'INTENT_MISMATCH', reason: `readiness is ${record.status}, not READY` };
+    }
+    let all: PendingRecord[];
+    try {
+      all = await readAll();
+    } catch {
+      return { ok: false, code: 'INTENT_MISSING', reason: 'readiness store is unreadable' };
+    }
+    const superseded = all.find(other => other.task === normalized && other.readiness_id !== readinessId && other.created_at > record.created_at);
+    if (superseded !== undefined) {
+      return { ok: false, code: 'INTENT_MISMATCH', reason: 'readiness was superseded by a newer evaluation' };
+    }
+    return { ok: true };
   }
 
   function readAutonomy(): 'supervised' | 'bounded' {
@@ -327,5 +360,5 @@ export function createResidentIntentService(options: ResidentIntentServiceOption
     };
   }
 
-  return Object.freeze({ assess, listPending });
+  return Object.freeze({ assess, listPending, assertReadyForTask });
 }

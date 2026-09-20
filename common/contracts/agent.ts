@@ -15,6 +15,10 @@ export const AgentStartRequest = z.object({
   // consumes it at the first destination model invocation.
   handoff_id: z.string().uuid().optional(),
   worker: WorkerDescriptor.optional(),
+  // Authoritative intent readiness (Wave 5A): production stacks require the
+  // READY record that admitted THIS request text; handoff continuations are
+  // exempt because they continue an already-admitted task.
+  readiness_id: z.string().uuid().optional(),
   // Architect/Editor pattern (aide-architect-editor-pattern): opt-in
   // two-call decomposition per session. When true, each turn first
   // runs the architect pass (## Plan, no tool calls) and then the

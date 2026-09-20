@@ -75,6 +75,14 @@ export function routesForAgent(service: AgentLoopService, options: {
   };
   resolveLocalChatFn?: () => Promise<(messages: Array<{ role: string; content: string }>) => Promise<string>>;
   providerTargetFor?: (role: 'plan' | 'act') => { provider: string; model: string } | null;
+  // Wave 5A: authoritative server-side readiness admission. Production stacks
+  // require a READY record bound to the exact request text before any session,
+  // model call, provider egress, or filesystem effect. Handoff continuations
+  // are exempt (they continue an already-admitted task with its own binding).
+  intentReadiness?: {
+    assertReadyForTask(readinessId: string, task: string): Promise<{ ok: true } | { ok: false; code: string; reason: string }>;
+  };
+  requireIntentReadiness?: boolean;
   dispatchTool?: (name: string, args: Record<string, string>, opts: { sandbox?: string }) => Promise<{ ok: boolean; output: string; terminal?: boolean }>;
   // Expert advisory: when set, the route layer consults this micro-expert
   // (e.g. task-router) BEFORE the main model call and prepends the result
@@ -92,7 +100,28 @@ export function routesForAgent(service: AgentLoopService, options: {
 } = {}): Route[] {
   return [
     { method: 'POST', path: '/api/agent/start', body: AgentStartRequest, response: AgentStartResponse, handler: wrap(async ({ body, execution }) => {
-      const request = body as { task: string; mode?: 'plan' | 'act'; chat_source?: 'local' | 'provider'; architectEditor?: boolean; expertAdvisory?: boolean };
+      const request = body as { task: string; mode?: 'plan' | 'act'; chat_source?: 'local' | 'provider'; handoff_id?: string; readiness_id?: string; architectEditor?: boolean; expertAdvisory?: boolean };
+      // Authoritative readiness admission (Wave 5A). Runs BEFORE any side
+      // effect: no session, no model, no egress, no filesystem, no authority
+      // consumption. Fail-closed on every validation error.
+      if (options.requireIntentReadiness === true && request.handoff_id === undefined) {
+        if (request.readiness_id === undefined) {
+          throw new RouteError('NOT_READY', 'READINESS_REQUIRED: material intent confirmation is required before starting a task');
+        }
+        const gate = options.intentReadiness;
+        if (gate === undefined) {
+          throw new RouteError('NOT_READY', 'READINESS_UNAVAILABLE: readiness validation is not wired on this stack');
+        }
+        let verdict: { ok: true } | { ok: false; code: string; reason: string };
+        try {
+          verdict = await gate.assertReadyForTask(request.readiness_id, request.task);
+        } catch {
+          throw new RouteError('NOT_READY', 'READINESS_UNAVAILABLE: readiness validation failed');
+        }
+        if (!verdict.ok) {
+          throw new RouteError('CONFLICT', `INTENT_MISMATCH: ${verdict.reason}`);
+        }
+      }
       let chatFnOverride: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | undefined;
       if (request.chat_source === 'provider') {
         if (!options.resolveProviderChatFn) throw new RouteError('NOT_READY', 'no provider resolver wired');
