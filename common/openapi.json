@@ -22344,6 +22344,2901 @@
         }
       }
     },
+    "/api/worker-handoff/accept": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "handoff": {
+                      "type": "object",
+                      "properties": {
+                        "handoff_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "CREATED",
+                            "ACCEPTED",
+                            "CONSUMED",
+                            "FAILED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "workspace_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "project_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "task_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "workflow_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stage_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "from": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "to": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "objective": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "current_state": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "worker_claims": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "verified_facts": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "decisions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "assumptions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "constraints": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "open_questions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "next_action": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "artifacts": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "artifact_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "type": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "path": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "stage": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            },
+                            "required": [
+                              "artifact_id",
+                              "type",
+                              "path",
+                              "sha256",
+                              "stage"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "files_or_components": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "evidence_refs": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "verification_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "memory_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "failure_context": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "classification": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "last_successful_stage": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "side_effects": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "partial",
+                                    "unknown",
+                                    "complete"
+                                  ]
+                                },
+                                "retryable": {
+                                  "type": "boolean"
+                                },
+                                "recommended_continuation": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "classification",
+                                "last_successful_stage",
+                                "side_effects",
+                                "retryable",
+                                "recommended_continuation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "accepted_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "consumed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supersedes": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "related": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "handoff_id",
+                        "state",
+                        "workspace_id",
+                        "project_id",
+                        "task_id",
+                        "workflow_id",
+                        "stage_id",
+                        "from",
+                        "to",
+                        "objective",
+                        "current_state",
+                        "worker_claims",
+                        "verified_facts",
+                        "decisions",
+                        "assumptions",
+                        "constraints",
+                        "open_questions",
+                        "next_action",
+                        "artifacts",
+                        "files_or_components",
+                        "evidence_refs",
+                        "verification_refs",
+                        "memory_refs",
+                        "failure_context",
+                        "created_at",
+                        "accepted_at",
+                        "consumed_at",
+                        "supersedes",
+                        "related"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "handoff"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "handoff_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "to": {
+                    "type": "object",
+                    "properties": {
+                      "worker": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "plan",
+                          "act",
+                          "utility",
+                          "planner",
+                          "coder",
+                          "reviewer"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "worker",
+                      "provider",
+                      "model",
+                      "role"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "handoff_id",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker-handoff/cancel": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "handoff": {
+                      "type": "object",
+                      "properties": {
+                        "handoff_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "CREATED",
+                            "ACCEPTED",
+                            "CONSUMED",
+                            "FAILED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "workspace_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "project_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "task_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "workflow_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stage_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "from": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "to": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "objective": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "current_state": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "worker_claims": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "verified_facts": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "decisions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "assumptions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "constraints": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "open_questions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "next_action": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "artifacts": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "artifact_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "type": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "path": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "stage": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            },
+                            "required": [
+                              "artifact_id",
+                              "type",
+                              "path",
+                              "sha256",
+                              "stage"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "files_or_components": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "evidence_refs": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "verification_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "memory_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "failure_context": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "classification": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "last_successful_stage": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "side_effects": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "partial",
+                                    "unknown",
+                                    "complete"
+                                  ]
+                                },
+                                "retryable": {
+                                  "type": "boolean"
+                                },
+                                "recommended_continuation": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "classification",
+                                "last_successful_stage",
+                                "side_effects",
+                                "retryable",
+                                "recommended_continuation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "accepted_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "consumed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supersedes": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "related": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "handoff_id",
+                        "state",
+                        "workspace_id",
+                        "project_id",
+                        "task_id",
+                        "workflow_id",
+                        "stage_id",
+                        "from",
+                        "to",
+                        "objective",
+                        "current_state",
+                        "worker_claims",
+                        "verified_facts",
+                        "decisions",
+                        "assumptions",
+                        "constraints",
+                        "open_questions",
+                        "next_action",
+                        "artifacts",
+                        "files_or_components",
+                        "evidence_refs",
+                        "verification_refs",
+                        "memory_refs",
+                        "failure_context",
+                        "created_at",
+                        "accepted_at",
+                        "consumed_at",
+                        "supersedes",
+                        "related"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "handoff"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "handoff_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "handoff_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker-handoff/consume": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "handoff": {
+                      "type": "object",
+                      "properties": {
+                        "handoff_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "CREATED",
+                            "ACCEPTED",
+                            "CONSUMED",
+                            "FAILED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "workspace_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "project_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "task_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "workflow_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stage_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "from": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "to": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "objective": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "current_state": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "worker_claims": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "verified_facts": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "decisions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "assumptions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "constraints": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "open_questions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "next_action": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "artifacts": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "artifact_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "type": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "path": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "stage": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            },
+                            "required": [
+                              "artifact_id",
+                              "type",
+                              "path",
+                              "sha256",
+                              "stage"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "files_or_components": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "evidence_refs": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "verification_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "memory_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "failure_context": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "classification": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "last_successful_stage": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "side_effects": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "partial",
+                                    "unknown",
+                                    "complete"
+                                  ]
+                                },
+                                "retryable": {
+                                  "type": "boolean"
+                                },
+                                "recommended_continuation": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "classification",
+                                "last_successful_stage",
+                                "side_effects",
+                                "retryable",
+                                "recommended_continuation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "accepted_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "consumed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supersedes": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "related": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "handoff_id",
+                        "state",
+                        "workspace_id",
+                        "project_id",
+                        "task_id",
+                        "workflow_id",
+                        "stage_id",
+                        "from",
+                        "to",
+                        "objective",
+                        "current_state",
+                        "worker_claims",
+                        "verified_facts",
+                        "decisions",
+                        "assumptions",
+                        "constraints",
+                        "open_questions",
+                        "next_action",
+                        "artifacts",
+                        "files_or_components",
+                        "evidence_refs",
+                        "verification_refs",
+                        "memory_refs",
+                        "failure_context",
+                        "created_at",
+                        "accepted_at",
+                        "consumed_at",
+                        "supersedes",
+                        "related"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "handoff"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "handoff_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "handoff_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker-handoff/context": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "handoff_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "context_block": {
+                      "type": "string",
+                      "maxLength": 12000
+                    },
+                    "approx_tokens": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "handoff_id",
+                    "context_block",
+                    "approx_tokens"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/worker-handoff/create": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "handoff": {
+                      "type": "object",
+                      "properties": {
+                        "handoff_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "CREATED",
+                            "ACCEPTED",
+                            "CONSUMED",
+                            "FAILED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "workspace_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "project_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "task_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "workflow_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stage_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "from": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "to": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "objective": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "current_state": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "worker_claims": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "verified_facts": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "decisions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "assumptions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "constraints": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "open_questions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "next_action": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "artifacts": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "artifact_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "type": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "path": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "stage": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            },
+                            "required": [
+                              "artifact_id",
+                              "type",
+                              "path",
+                              "sha256",
+                              "stage"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "files_or_components": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "evidence_refs": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "verification_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "memory_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "failure_context": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "classification": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "last_successful_stage": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "side_effects": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "partial",
+                                    "unknown",
+                                    "complete"
+                                  ]
+                                },
+                                "retryable": {
+                                  "type": "boolean"
+                                },
+                                "recommended_continuation": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "classification",
+                                "last_successful_stage",
+                                "side_effects",
+                                "retryable",
+                                "recommended_continuation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "accepted_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "consumed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supersedes": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "related": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "handoff_id",
+                        "state",
+                        "workspace_id",
+                        "project_id",
+                        "task_id",
+                        "workflow_id",
+                        "stage_id",
+                        "from",
+                        "to",
+                        "objective",
+                        "current_state",
+                        "worker_claims",
+                        "verified_facts",
+                        "decisions",
+                        "assumptions",
+                        "constraints",
+                        "open_questions",
+                        "next_action",
+                        "artifacts",
+                        "files_or_components",
+                        "evidence_refs",
+                        "verification_refs",
+                        "memory_refs",
+                        "failure_context",
+                        "created_at",
+                        "accepted_at",
+                        "consumed_at",
+                        "supersedes",
+                        "related"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "handoff"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "from": {
+                    "type": "object",
+                    "properties": {
+                      "worker": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "plan",
+                          "act",
+                          "utility",
+                          "planner",
+                          "coder",
+                          "reviewer"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "worker",
+                      "provider",
+                      "model",
+                      "role"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "to": {
+                    "type": "object",
+                    "properties": {
+                      "worker": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "plan",
+                          "act",
+                          "utility",
+                          "planner",
+                          "coder",
+                          "reviewer"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "worker",
+                      "provider",
+                      "model",
+                      "role"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "objective": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "next_action": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "current_state": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "decisions": {
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 600
+                    }
+                  },
+                  "assumptions": {
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 600
+                    }
+                  },
+                  "constraints": {
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 600
+                    }
+                  },
+                  "open_questions": {
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 600
+                    }
+                  },
+                  "failure_context": {
+                    "type": "object",
+                    "properties": {
+                      "classification": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "last_successful_stage": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "side_effects": {
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "partial",
+                          "unknown",
+                          "complete"
+                        ]
+                      },
+                      "retryable": {
+                        "type": "boolean"
+                      },
+                      "recommended_continuation": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "classification",
+                      "last_successful_stage",
+                      "side_effects",
+                      "retryable",
+                      "recommended_continuation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "supersedes": {
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "related": {
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  }
+                },
+                "required": [
+                  "task_id",
+                  "from",
+                  "to",
+                  "objective",
+                  "next_action"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/worker-handoff/get": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "handoff": {
+                      "type": "object",
+                      "properties": {
+                        "handoff_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "CREATED",
+                            "ACCEPTED",
+                            "CONSUMED",
+                            "FAILED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "workspace_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "project_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "task_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "workflow_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stage_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "from": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "to": {
+                          "type": "object",
+                          "properties": {
+                            "worker": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "plan",
+                                "act",
+                                "utility",
+                                "planner",
+                                "coder",
+                                "reviewer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "worker",
+                            "provider",
+                            "model",
+                            "role"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "objective": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "current_state": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "worker_claims": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "verified_facts": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "decisions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "assumptions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "constraints": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "open_questions": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 600
+                          }
+                        },
+                        "next_action": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "artifacts": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "artifact_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "type": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "path": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "stage": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            },
+                            "required": [
+                              "artifact_id",
+                              "type",
+                              "path",
+                              "sha256",
+                              "stage"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "files_or_components": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "evidence_refs": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "verification_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "memory_refs": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        },
+                        "failure_context": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "classification": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "last_successful_stage": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "side_effects": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "partial",
+                                    "unknown",
+                                    "complete"
+                                  ]
+                                },
+                                "retryable": {
+                                  "type": "boolean"
+                                },
+                                "recommended_continuation": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "classification",
+                                "last_successful_stage",
+                                "side_effects",
+                                "retryable",
+                                "recommended_continuation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "accepted_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "consumed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supersedes": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "related": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "handoff_id",
+                        "state",
+                        "workspace_id",
+                        "project_id",
+                        "task_id",
+                        "workflow_id",
+                        "stage_id",
+                        "from",
+                        "to",
+                        "objective",
+                        "current_state",
+                        "worker_claims",
+                        "verified_facts",
+                        "decisions",
+                        "assumptions",
+                        "constraints",
+                        "open_questions",
+                        "next_action",
+                        "artifacts",
+                        "files_or_components",
+                        "evidence_refs",
+                        "verification_refs",
+                        "memory_refs",
+                        "failure_context",
+                        "created_at",
+                        "accepted_at",
+                        "consumed_at",
+                        "supersedes",
+                        "related"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "handoff"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/worker-handoff/list": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "handoffs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "handoff_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "CREATED",
+                              "ACCEPTED",
+                              "CONSUMED",
+                              "FAILED",
+                              "CANCELLED"
+                            ]
+                          },
+                          "workspace_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "project_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "task_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "workflow_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "stage_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "from": {
+                            "type": "object",
+                            "properties": {
+                              "worker": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "provider": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "model": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "plan",
+                                  "act",
+                                  "utility",
+                                  "planner",
+                                  "coder",
+                                  "reviewer"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "worker",
+                              "provider",
+                              "model",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "to": {
+                            "type": "object",
+                            "properties": {
+                              "worker": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "provider": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "model": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "plan",
+                                  "act",
+                                  "utility",
+                                  "planner",
+                                  "coder",
+                                  "reviewer"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "worker",
+                              "provider",
+                              "model",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "objective": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                          },
+                          "current_state": {
+                            "type": "string",
+                            "maxLength": 2000
+                          },
+                          "worker_claims": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 600
+                            }
+                          },
+                          "verified_facts": {
+                            "maxItems": 32,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 600
+                            }
+                          },
+                          "decisions": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 600
+                            }
+                          },
+                          "assumptions": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 600
+                            }
+                          },
+                          "constraints": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 600
+                            }
+                          },
+                          "open_questions": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 600
+                            }
+                          },
+                          "next_action": {
+                            "type": "string",
+                            "maxLength": 1000
+                          },
+                          "artifacts": {
+                            "maxItems": 64,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "artifact_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "maxLength": 80
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "maxLength": 128
+                                },
+                                "stage": {
+                                  "type": "string",
+                                  "maxLength": 80
+                                }
+                              },
+                              "required": [
+                                "artifact_id",
+                                "type",
+                                "path",
+                                "sha256",
+                                "stage"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "files_or_components": {
+                            "maxItems": 64,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 300
+                            }
+                          },
+                          "evidence_refs": {
+                            "maxItems": 32,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 300
+                            }
+                          },
+                          "verification_refs": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 300
+                            }
+                          },
+                          "memory_refs": {
+                            "maxItems": 16,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 300
+                            }
+                          },
+                          "failure_context": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "classification": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "last_successful_stage": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 200
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "side_effects": {
+                                    "type": "string",
+                                    "enum": [
+                                      "none",
+                                      "partial",
+                                      "unknown",
+                                      "complete"
+                                    ]
+                                  },
+                                  "retryable": {
+                                    "type": "boolean"
+                                  },
+                                  "recommended_continuation": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "classification",
+                                  "last_successful_stage",
+                                  "side_effects",
+                                  "retryable",
+                                  "recommended_continuation"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "accepted_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "consumed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "supersedes": {
+                            "maxItems": 8,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            }
+                          },
+                          "related": {
+                            "maxItems": 8,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            }
+                          }
+                        },
+                        "required": [
+                          "handoff_id",
+                          "state",
+                          "workspace_id",
+                          "project_id",
+                          "task_id",
+                          "workflow_id",
+                          "stage_id",
+                          "from",
+                          "to",
+                          "objective",
+                          "current_state",
+                          "worker_claims",
+                          "verified_facts",
+                          "decisions",
+                          "assumptions",
+                          "constraints",
+                          "open_questions",
+                          "next_action",
+                          "artifacts",
+                          "files_or_components",
+                          "evidence_refs",
+                          "verification_refs",
+                          "memory_refs",
+                          "failure_context",
+                          "created_at",
+                          "accepted_at",
+                          "consumed_at",
+                          "supersedes",
+                          "related"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "handoffs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
     "/api/workflow/state": {
       "get": {
         "responses": {

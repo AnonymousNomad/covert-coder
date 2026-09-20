@@ -101,6 +101,11 @@ const HTTP_POLICY = new Map([
   // Its mutations/executions carry exact route-owned descriptors (routes/
   // connections.ts); a central read must not double-declare them.
   ['GET /api/connections', 'capability.read'],
+  // Worker handoffs (governed continuity between abstract workers): reads are
+  // centrally declared; every mutation carries a route-owned capability.write
+  // descriptor (node/src/routes/worker-handoff.ts).
+  ['GET /api/worker-handoff/list', 'capability.read'], ['GET /api/worker-handoff/get', 'capability.read'],
+  ['GET /api/worker-handoff/context', 'capability.read'],
   ['GET /api/learner/state', 'capability.read'], ['GET /api/learner/reviews', 'capability.read'],
   ['GET /api/training/datasets', 'capability.read'], ['GET /api/training/datasets/read', 'capability.read'],
   ['GET /api/training/presets', 'capability.read'], ['GET /api/training/status', 'capability.read'],
