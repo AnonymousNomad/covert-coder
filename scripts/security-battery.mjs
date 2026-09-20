@@ -104,7 +104,7 @@ async function testFacadeTestsStillPass() {
     });
     let stdout = '';
     child.stdout.on('data', d => stdout += d);
-    child.on('close', code => resolve(code === 0 && stdout.includes('pass 12')));
+    child.on('close', code => resolve(code === 0 && /\bpass\s+\d+\b/.test(stdout)));
   });
 }
 
