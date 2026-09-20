@@ -22,6 +22,7 @@ import { createVerificationPanel } from '../panels/verification.ts';
 import { createSkillsPanel } from '../panels/skills.ts';
 import { createMemoryPanel } from '../panels/memory.ts';
 import { createSecurityPanel } from '../panels/security.ts';
+import { createMobileProductionPanel } from '../panels/mobile-production.ts';
 import { renderWorkflowStrip } from '../panels/workflow.ts';
 import { createProjectsSurface, type ProjectsSurfaceHandles } from './ProjectsSurface.ts';
 import { createSettingsSurface } from './SettingsSurface.ts';
@@ -70,6 +71,7 @@ const PANEL_IDS: Panel[] = [
   'memory',
   'verification',
   'security',
+  'mobile-production',
   'extensions',
   'settings'
 ];
@@ -136,6 +138,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
             <section class="cockpit-panel-stage" id="cockpit-memory-stage" data-panel="memory"></section>
             <section class="cockpit-panel-stage" id="cockpit-verification-stage" data-panel="verification"></section>
             <section class="cockpit-panel-stage" id="cockpit-security-stage" data-panel="security"></section>
+            <section class="cockpit-panel-stage" id="cockpit-mobile-production-stage" data-panel="mobile-production"></section>
             <section class="cockpit-panel-stage" id="cockpit-extensions-stage" data-panel="extensions"></section>
             <section class="cockpit-panel-stage" id="cockpit-settings-stage" data-panel="settings"></section>
             <section class="cockpit-editor-mount" id="cockpit-editor-mount" data-panel="editor" hidden>
@@ -173,6 +176,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const memoryStage = app.querySelector<HTMLElement>('#cockpit-memory-stage');
   const verificationStage = app.querySelector<HTMLElement>('#cockpit-verification-stage');
   const securityStage = app.querySelector<HTMLElement>('#cockpit-security-stage');
+  const mobileProductionStage = app.querySelector<HTMLElement>('#cockpit-mobile-production-stage');
   const extensionsStage = app.querySelector<HTMLElement>('#cockpit-extensions-stage');
   const settingsStage = app.querySelector<HTMLElement>('#cockpit-settings-stage');
   const editorMount = app.querySelector<HTMLElement>('#cockpit-editor-mount');
@@ -186,7 +190,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const lspStatus = app.querySelector<HTMLElement>('#cockpit-lsp-status');
   const ambientHost = app.querySelector<HTMLElement>('.cockpit-ambient');
 
-  if (!topbarHost || !navHost || !commandStage || !residentMount || !commandCenterMount || !workflowMount || !projectsStage || !terminalStage || !modelsStage || !skillsStage || !memoryStage || !verificationStage || !securityStage || !extensionsStage || !settingsStage || !editorMount || !editorWorkspace || !searchMount || !modelSlot || !telemetrySlot || !activitySlot || !bottomHost || !statusRoot || !lspStatus || !ambientHost) {
+  if (!topbarHost || !navHost || !commandStage || !residentMount || !commandCenterMount || !workflowMount || !projectsStage || !terminalStage || !modelsStage || !skillsStage || !memoryStage || !verificationStage || !securityStage || !mobileProductionStage || !extensionsStage || !settingsStage || !editorMount || !editorWorkspace || !searchMount || !modelSlot || !telemetrySlot || !activitySlot || !bottomHost || !statusRoot || !lspStatus || !ambientHost) {
     throw new Error('cockpit shell mounts failed');
   }
 
@@ -232,6 +236,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const memory = lazyPanel(memoryStage, () => createMemoryPanel(memoryStage, store));
   const verification = lazyPanel(verificationStage, () => createVerificationPanel(verificationStage, store));
   const security = lazyPanel(securityStage, () => createSecurityPanel(securityStage, store));
+  const mobileProduction = lazyPanel(mobileProductionStage, () => createMobileProductionPanel(mobileProductionStage, store));
   const extensions = lazyPanel(extensionsStage, () => phaseGatedPanel(extensionsStage, 'EXTENSIONS', 'DISABLED', 'The extension host is not integrated into this cockpit phase. No extension capability or authority is implied.'));
   const settings = lazyPanel(settingsStage, () => createSettingsSurface(settingsStage, store, { onToast: notify, onReopenWalkthrough: () => walkthrough.open(), onRunSetup: () => setup.open() }));
 
@@ -269,6 +274,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     memory,
     verification,
     security,
+    'mobile-production': mobileProduction,
     extensions,
     settings
   };

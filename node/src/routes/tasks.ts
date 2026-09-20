@@ -36,8 +36,8 @@ function wrap(handler: (ctx: RouteContext) => Promise<unknown> | unknown): (ctx:
   };
 }
 
-export function routesForTasks(workspaceRoot: string, options: { onEvent?: (body: TaskEventT) => void; authority?: ExecutionAuthority | undefined } = {}): Route[] {
-  const tasks = new TaskService({
+export function routesForTasks(workspaceRoot: string, options: { onEvent?: (body: TaskEventT) => void; authority?: ExecutionAuthority | undefined; service?: TaskService } = {}): Route[] {
+  const tasks = options.service ?? new TaskService({
     workspace: workspaceRoot,
     authority: options.authority,
     ...(options.onEvent ? { onEvent: options.onEvent } : {})

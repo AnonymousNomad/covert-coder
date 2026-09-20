@@ -18,7 +18,8 @@ export const PANELS: PanelSpec[] = [
   { id: 'skills', label: 'SKILLS', glyph: '\u2756', maturity: 'DEGRADED' },
   { id: 'memory', label: 'MEMORY', glyph: '\u29c7', maturity: 'EXPERIMENTAL' },
   { id: 'verification', label: 'VERIFY', glyph: '\u2713', maturity: 'DEGRADED' },
-  { id: 'security', label: 'SECURITY', glyph: '\u2756', maturity: 'EXPERIMENTAL' }
+  { id: 'security', label: 'SECURITY', glyph: '\u2756', maturity: 'EXPERIMENTAL' },
+  { id: 'mobile-production', label: 'MOBILE', glyph: '\u25c8', maturity: 'EXPERIMENTAL' }
 ];
 
 export interface ActivityBarHandles {

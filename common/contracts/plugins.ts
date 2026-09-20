@@ -14,6 +14,20 @@ export const PluginPublic = z
     contributes: z.record(z.string(), z.unknown()).optional(),
     status: z.string().optional(),
     entry: z.string().nullable().optional(),
+    publisher: z.string().optional(),
+    platform_requirements: z.array(z.string().min(1)).optional(),
+    operating_modes: z.array(z.string().min(1)).optional(),
+    workflows: z.array(z.string().min(1)).optional(),
+    skills: z.array(z.string().min(1)).optional(),
+    tool_adapters: z.array(z.string().min(1)).optional(),
+    ui_contributions: z.array(z.string().min(1)).optional(),
+    verification_contracts: z.array(z.string().min(1)).optional(),
+    adapters: z.array(z.object({
+      id: z.string().min(1),
+      platform: z.enum(['android', 'apple']),
+      status: z.string().min(1),
+      limitation: z.string().min(1).nullable()
+    }).strict()).optional(),
     folder: z.string().optional(),
     trusted: z.boolean(),
     enabled: z.boolean(),
@@ -31,6 +45,20 @@ export const PresetPublic = z
     name: z.string().min(1),
     description: z.string().optional(),
     capabilities: z.array(PluginCapability),
+    publisher: z.string().optional(),
+    platform_requirements: z.array(z.string().min(1)).optional(),
+    operating_modes: z.array(z.string().min(1)).optional(),
+    workflows: z.array(z.string().min(1)).optional(),
+    skills: z.array(z.string().min(1)).optional(),
+    tool_adapters: z.array(z.string().min(1)).optional(),
+    ui_contributions: z.array(z.string().min(1)).optional(),
+    verification_contracts: z.array(z.string().min(1)).optional(),
+    adapters: z.array(z.object({
+      id: z.string().min(1),
+      platform: z.enum(['android', 'apple']),
+      status: z.string().min(1),
+      limitation: z.string().min(1).nullable()
+    }).strict()).optional(),
     installed: z.boolean()
   })
   .strict();

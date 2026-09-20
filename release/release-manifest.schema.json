@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "source_sha", "artifacts"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source_sha": { "type": "string", "pattern": "^[0-9a-fA-F]{7,64}$" },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["product", "version", "platform", "architecture", "artifact_type", "filename", "size_bytes", "sha256", "signing_state", "certification_state", "minimum_requirements", "reference", "limitations"],
+        "properties": {
+          "product": { "enum": ["COVERT WORKSTATION", "COVERT EDGE"] },
+          "version": { "type": "string", "minLength": 1 },
+          "platform": { "type": "string", "minLength": 1 },
+          "architecture": { "type": "string", "minLength": 1 },
+          "artifact_type": { "type": "string", "minLength": 1 },
+          "filename": { "type": "string", "minLength": 1 },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+          "signing_state": { "enum": ["unsigned", "signed", "unknown"] },
+          "certification_state": { "enum": ["certified", "uncertified", "pending"] },
+          "minimum_requirements": { "type": "array", "items": { "type": "string" } },
+          "reference": { "type": "string", "minLength": 1 },
+          "limitations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

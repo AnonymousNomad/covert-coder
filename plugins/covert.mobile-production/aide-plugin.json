@@ -1,0 +1,27 @@
+{
+  "id": "covert.mobile-production",
+  "name": "Mobile Production",
+  "publisher": "Covert",
+  "version": "0.1.0",
+  "api_version": "1",
+  "description": "First-party bounded Android and Apple production adapters for Covert Edge and mobile application projects.",
+  "capabilities": ["ui.view", "command.register"],
+  "activation_events": ["onStartupFinished", "onCommand:mobile-production.inspect"],
+  "contributes": {
+    "commands": ["mobile-production.inspect", "mobile-production.environment"],
+    "views": ["android-production"]
+  },
+  "status": "EXPERIMENTAL",
+  "entry": null,
+  "platform_requirements": ["One governed Harness", "Execution Authority for mutations", "Android SDK for Android builds", "macOS/Xcode executor for Apple builds"],
+  "operating_modes": ["inspect", "build", "verify", "install", "run"],
+  "workflows": ["mobile.project-inspect", "mobile.android-build-verify", "mobile.apple-build-request"],
+  "skills": ["android-production", "apple-production", "mobile-artifact-verification"],
+  "tool_adapters": ["android.environment_status", "android.inspect_project", "android.device_list", "android.build_debug_apk", "android.artifact_inspect", "android.install_apk", "android.launch_app", "android.stop_app", "android.logcat_bounded", "apple.environment_status", "apple.inspect_project", "apple.build_request"],
+  "ui_contributions": ["android-production"],
+  "verification_contracts": ["mobile.artifact", "mobile.device-install", "mobile.runtime-evidence"],
+  "adapters": [
+    { "id": "android-production", "platform": "android", "status": "EXPERIMENTAL", "limitation": "Requires a real Android project, local Gradle/toolchain, and an available device for live installation proof." },
+    { "id": "apple-production", "platform": "apple", "status": "EXPERIMENTAL", "limitation": "MACOS_EXECUTOR_REQUIRED for Xcode-dependent operations." }
+  ]
+}

@@ -182,6 +182,23 @@ summary:hover { color: var(--ck-text); }
   opacity: 0.10;
 }
 
+.mobile-production-panel { overflow: auto; }
+.mobile-production-body { display: grid; gap: 12px; max-width: 900px; }
+.mobile-card { border: 1px solid var(--ck-line); border-radius: var(--ck-radius); background: var(--ck-bg-secondary); padding: 14px; }
+.mobile-card-title { margin: 0 0 10px; color: var(--ck-cyan); font: 11px var(--ck-font-mono); letter-spacing: .12em; }
+.mobile-kv, .mobile-note, .mobile-footer-note { color: var(--ck-text-muted); font-size: 12px; line-height: 1.5; }
+.mobile-note { margin: 10px 0 0; }
+.mobile-result { color: var(--ck-amber); font-family: var(--ck-font-mono); }
+.mobile-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 12px; }
+.mobile-status-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--ck-line-soft); padding: 6px 0; }
+.mobile-status-name { color: var(--ck-text-dim); font: 10px var(--ck-font-mono); }
+.mobile-status-pill { font: 10px var(--ck-font-mono); }
+.mobile-status-ok { color: var(--ck-green); }
+.mobile-status-warn { color: var(--ck-amber); }
+.mobile-status-dim { color: var(--ck-text-dim); }
+.mobile-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mobile-footer-note { border-top: 1px solid var(--ck-line-soft); padding-top: 10px; font-family: var(--ck-font-mono); }
+
 /* === Topbar === */
 .cockpit-topbar {
   grid-area: topbar;

@@ -15,6 +15,7 @@ export type Panel =
   | 'memory'
   | 'verification'
   | 'security'
+  | 'mobile-production'
   | 'extensions'
   | 'settings';
 

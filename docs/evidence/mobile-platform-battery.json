@@ -1,0 +1,321 @@
+{
+  "test": "mobile-platform-battery",
+  "generated_at": "2026-09-20T17:36:25.218Z",
+  "checks": [
+    {
+      "name": "plugin metadata",
+      "passed": true,
+      "detail": "first-party plugin metadata is truthful and declarative"
+    },
+    {
+      "name": "plugin has no executable entry",
+      "passed": true,
+      "detail": "service metadata does not create an independent plugin runtime"
+    },
+    {
+      "name": "native Android project detection",
+      "passed": true,
+      "detail": "{\"project_path\":\".\",\"kind\":\"native-android-gradle\",\"supported\":true,\"application_id\":\"com.covert.edge\",\"package_name\":\"com.covert.edge\",\"min_sdk\":26,\"target_sdk\":35,\"variants\":[\"debug\",\"release\"],\"gradle_wrapper\":\"gradlew.bat\",\"manifest_path\":\"app/src/main/AndroidManifest.xml\",\"output_locations\":[\"app/build/outputs/apk\",\"build/outputs/apk\",\"src-tauri/gen/android/app/build/outputs/apk\"],\"source_sha\":\"abc1234\",\"limitations\":[]}"
+    },
+    {
+      "name": "Android SDK bounds are project independent",
+      "passed": true,
+      "detail": "project inspection has no secret fields"
+    },
+    {
+      "name": "Tauri v2 Android project detection",
+      "passed": true,
+      "detail": "{\"project_path\":\"tauri-edge\",\"kind\":\"tauri-v2-android\",\"supported\":true,\"application_id\":null,\"package_name\":null,\"min_sdk\":null,\"target_sdk\":null,\"variants\":[\"debug\",\"release\"],\"gradle_wrapper\":null,\"manifest_path\":\"tauri-edge/app/src/main/AndroidManifest.xml\",\"output_locations\":[\"tauri-edge/app/build/outputs/apk\",\"tauri-edge/build/outputs/apk\",\"tauri-edge/src-tauri/gen/android/app/build/outputs/apk\"],\"source_sha\":\"abc1234\",\"limitations\":[\"Application ID/package name was not safely derived from Gradle or the manifest.\",\"No project Gradle wrapper was found.\"]}"
+    },
+    {
+      "name": "debug APK build result",
+      "passed": true,
+      "detail": "{\"status\":\"BUILD_PASSED\",\"project\":{\"project_path\":\".\",\"kind\":\"native-android-gradle\",\"supported\":true,\"application_id\":\"com.covert.edge\",\"package_name\":\"com.covert.edge\",\"min_sdk\":26,\"target_sdk\":35,\"variants\":[\"debug\",\"release\"],\"gradle_wrapper\":\"gradlew.bat\",\"manifest_path\":\"app/src/main/AndroidManifest.xml\",\"output_locations\":[\"app/build/outputs/apk\",\"build/outputs/apk\",\"src-tauri/gen/android/app/build/outputs/apk\"],\"source_sha\":\"abc1234\",\"limitations\":[]},\"artifact\":{\"artifact_type\":\"apk\",\"package_id\":\"com.covert.edge\",\"bundle_id\":null,\"version\":null,\"build_number\":null,\"source_sha\":\"abc1234\",\"target_platform\":\"android\",\"architectures\":[],\"build_mode\":\"debug\",\"artifact_path\":\"app/build/outputs/apk/debug/covert-edge-debug.apk\",\"artifact_reference\":\"app/build/outputs/apk/debug/covert-edge-debug.apk\",\"size_bytes\":21,\"sha256\":\"89b52403a086b8fa08e3a47635f8599bebf3ae5e4576cc014f8220099dea4c7e\",\"signing_status\":\"unknown\",\"signing_profile_ref\":null,\"verification_status\":\"PARTIAL\",\"device_install_status\":\"NOT_ATTEMPTED\",\"evidence_refs\":[],\"verification_stages\":[{\"stage\":\"BUILD_PASSED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"Gradle assembleDebug completed successfully.\",\"evidence_refs\":[]},{\"stage\":\"ARTIFACT_FOUND\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK located under the project output tree.\",\"evidence_refs\":[]},{\"stage\":\"HASHED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK SHA-256 calculated locally.\",\"evidence_refs\":[]}]},\"stages\":[{\"stage\":\"BUILD_PASSED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"Gradle assembleDebug completed successfully.\",\"evidence_refs\":[]},{\"stage\":\"ARTIFACT_FOUND\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK located under the project output tree.\",\"evidence_refs\":[]},{\"stage\":\"HASHED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK SHA-256 calculated locally.\",\"evidence_refs\":[]}],\"limitation\":\"Install, launch, and runtime evidence are separate gates.\"}"
+    },
+    {
+      "name": "artifact hash",
+      "passed": true,
+      "detail": "hash stage is explicit"
+    },
+    {
+      "name": "build does not imply runtime proof",
+      "passed": true,
+      "detail": "runtime stages remain unclaimed"
+    },
+    {
+      "name": "Apple archive artifact contract",
+      "passed": true,
+      "detail": "{\"artifact_type\":\"xcarchive\",\"package_id\":null,\"bundle_id\":null,\"version\":null,\"build_number\":null,\"source_sha\":null,\"target_platform\":\"apple\",\"architectures\":[],\"build_mode\":\"unknown\",\"artifact_path\":\"CovertEdge.xcarchive\",\"artifact_reference\":\"CovertEdge.xcarchive\",\"size_bytes\":15,\"sha256\":\"8786c996b8a8ebf3e3c08920d9fd76a81ba4c9be3923c5f315693a79c6cae2a6\",\"signing_status\":\"unknown\",\"signing_profile_ref\":\"profile-reference-only\",\"verification_status\":\"PARTIAL\",\"device_install_status\":\"NOT_ATTEMPTED\",\"evidence_refs\":[],\"verification_stages\":[{\"stage\":\"ARTIFACT_FOUND\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"Artifact found inside the workspace.\",\"evidence_refs\":[]},{\"stage\":\"HASHED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"SHA-256 calculated locally.\",\"evidence_refs\":[]}]}"
+    },
+    {
+      "name": "signing secret exclusion",
+      "passed": true,
+      "detail": "artifact metadata contains only a non-secret profile reference"
+    },
+    {
+      "name": "Swift Package project inspection",
+      "passed": true,
+      "detail": "{\"project_path\":\"swift-package\",\"kind\":\"swift-package\",\"supported\":true,\"bundle_id\":null,\"deployment_target\":null,\"schemes\":[],\"configurations\":[\"Debug\"],\"source_sha\":\"abc1234\",\"limitations\":[]}"
+    },
+    {
+      "name": "SwiftUI source inspection",
+      "passed": true,
+      "detail": "{\"project_path\":\"swiftui-source\",\"kind\":\"swiftui-source\",\"supported\":true,\"bundle_id\":null,\"deployment_target\":null,\"schemes\":[],\"configurations\":[\"Debug\",\"Release\"],\"source_sha\":\"abc1234\",\"limitations\":[]}"
+    },
+    {
+      "name": "Windows Gradle wrapper shim",
+      "passed": true,
+      "detail": "{\"status\":\"BUILD_PASSED\",\"project\":{\"project_path\":\".\",\"kind\":\"native-android-gradle\",\"supported\":true,\"application_id\":\"com.covert.edge\",\"package_name\":\"com.covert.edge\",\"min_sdk\":26,\"target_sdk\":35,\"variants\":[\"debug\",\"release\"],\"gradle_wrapper\":\"gradlew.bat\",\"manifest_path\":\"app/src/main/AndroidManifest.xml\",\"output_locations\":[\"app/build/outputs/apk\",\"build/outputs/apk\",\"src-tauri/gen/android/app/build/outputs/apk\"],\"source_sha\":null,\"limitations\":[]},\"artifact\":{\"artifact_type\":\"apk\",\"package_id\":\"com.covert.edge\",\"bundle_id\":null,\"version\":null,\"build_number\":null,\"source_sha\":null,\"target_platform\":\"android\",\"architectures\":[],\"build_mode\":\"debug\",\"artifact_path\":\"app/build/outputs/apk/debug/covert-edge-debug.apk\",\"artifact_reference\":\"app/build/outputs/apk/debug/covert-edge-debug.apk\",\"size_bytes\":21,\"sha256\":\"89b52403a086b8fa08e3a47635f8599bebf3ae5e4576cc014f8220099dea4c7e\",\"signing_status\":\"unknown\",\"signing_profile_ref\":null,\"verification_status\":\"PARTIAL\",\"device_install_status\":\"NOT_ATTEMPTED\",\"evidence_refs\":[],\"verification_stages\":[{\"stage\":\"BUILD_PASSED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"Gradle assembleDebug completed successfully.\",\"evidence_refs\":[]},{\"stage\":\"ARTIFACT_FOUND\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK located under the project output tree.\",\"evidence_refs\":[]},{\"stage\":\"HASHED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK SHA-256 calculated locally.\",\"evidence_refs\":[]}]},\"stages\":[{\"stage\":\"BUILD_PASSED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"Gradle assembleDebug completed successfully.\",\"evidence_refs\":[]},{\"stage\":\"ARTIFACT_FOUND\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK located under the project output tree.\",\"evidence_refs\":[]},{\"stage\":\"HASHED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"APK SHA-256 calculated locally.\",\"evidence_refs\":[]}],\"limitation\":\"Install, launch, and runtime evidence are separate gates.\"}"
+    },
+    {
+      "name": "install fails closed without adb/device",
+      "passed": true,
+      "detail": "{\"status\":\"UNAVAILABLE\",\"artifact\":{\"artifact_type\":\"apk\",\"package_id\":null,\"bundle_id\":null,\"version\":null,\"build_number\":null,\"source_sha\":null,\"target_platform\":\"android\",\"architectures\":[],\"build_mode\":\"unknown\",\"artifact_path\":\"app/build/outputs/apk/debug/covert-edge-debug.apk\",\"artifact_reference\":\"app/build/outputs/apk/debug/covert-edge-debug.apk\",\"size_bytes\":21,\"sha256\":\"89b52403a086b8fa08e3a47635f8599bebf3ae5e4576cc014f8220099dea4c7e\",\"signing_status\":\"unknown\",\"signing_profile_ref\":null,\"verification_status\":\"PARTIAL\",\"device_install_status\":\"NOT_ATTEMPTED\",\"evidence_refs\":[],\"verification_stages\":[{\"stage\":\"ARTIFACT_FOUND\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"Artifact found inside the workspace.\",\"evidence_refs\":[]},{\"stage\":\"HASHED\",\"passed\":true,\"observed_at\":1700000000000,\"detail\":\"SHA-256 calculated locally.\",\"evidence_refs\":[]}]},\"device\":null,\"detail\":\"no online Android device is connected\",\"stage\":{\"stage\":\"INSTALL_PASSED\",\"passed\":false,\"observed_at\":1700000000000,\"detail\":\"no online Android device is connected\",\"evidence_refs\":[]}}"
+    },
+    {
+      "name": "no arbitrary Android shell adapter",
+      "passed": true,
+      "detail": "only fixed bounded adb subcommands are used"
+    },
+    {
+      "name": "Apple Xcode boundary",
+      "passed": true,
+      "detail": "{\"host_os\":\"windows\",\"checked_at\":1700000000000,\"components\":{\"swift\":{\"status\":\"MISSING\",\"detail\":\"Swift executable not detected.\",\"path\":null,\"version\":null},\"swift_package_manager\":{\"status\":\"MISSING\",\"detail\":\"Swift Package Manager is not available.\",\"path\":null,\"version\":null},\"xcode\":{\"status\":\"UNAVAILABLE\",\"detail\":\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"path\":null,\"version\":null},\"xcodebuild\":{\"status\":\"UNAVAILABLE\",\"detail\":\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"path\":null,\"version\":null},\"simctl\":{\"status\":\"UNAVAILABLE\",\"detail\":\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"path\":null,\"version\":null},\"simulator_runtimes\":{\"status\":\"UNAVAILABLE\",\"detail\":\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"path\":null,\"version\":null},\"signing\":{\"status\":\"UNAVAILABLE\",\"detail\":\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"path\":null,\"version\":null},\"provisioning\":{\"status\":\"UNAVAILABLE\",\"detail\":\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"path\":null,\"version\":null}},\"executor_backends\":[],\"limitations\":[\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"A configured paired macOS, GitHub Actions macOS runner, or future Xcode Cloud adapter is required for Apple builds.\"]}"
+    },
+    {
+      "name": "Apple build unavailable truth",
+      "passed": true,
+      "detail": "{\"status\":\"UNAVAILABLE\",\"executor_id\":null,\"artifact\":null,\"limitation\":\"UNAVAILABLE — MACOS/XCODE REQUIRED\",\"evidence_refs\":[]}"
+    },
+    {
+      "name": "Remote Bridge projection",
+      "passed": true,
+      "detail": "Edge projection contains bounded references, not raw workspace paths"
+    },
+    {
+      "name": "Remote Bridge mutation confirmation",
+      "passed": true,
+      "detail": "{\"accepted\":false,\"requires_confirmation\":true,\"risk\":\"medium\",\"reason\":\"Mutating command requires the normal operator confirmation and Execution Authority path.\",\"snapshot\":null}"
+    },
+    {
+      "name": "Remote Bridge has no raw authority",
+      "passed": true,
+      "detail": "bridge surface is a projection/command contract"
+    },
+    {
+      "name": "pairing reuses existing authority primitive",
+      "passed": true,
+      "detail": "one-use pairing exchanged for an in-memory operator actor"
+    },
+    {
+      "name": "pairing is one-use and origin-bound",
+      "passed": true,
+      "detail": "replay and origin mismatch were rejected"
+    },
+    {
+      "name": "Cipher hotword truth",
+      "passed": true,
+      "detail": "{\"input_available\":true,\"push_to_talk_available\":true,\"custom_hotword_available\":false,\"assistant_role_available\":false,\"supported_invocations\":[\"in-app-push-to-talk\",\"widget\",\"quick-action\",\"assistant-role\",\"app-intent\",\"siri\"],\"limitations\":[\"Speech capture and platform invocation remain client responsibilities.\",\"Custom hotword is not implemented; voice input is not an always-listening authority path.\"]}"
+    },
+    {
+      "name": "Cipher read command",
+      "passed": true,
+      "detail": "{\"accepted\":true,\"category\":\"read\",\"requires_confirmation\":false,\"response_text\":\"Covert status is available in the authenticated command center.\",\"snapshot\":{\"generated_at\":1700000000000,\"workstation\":{\"id\":\"ws-c05f438770fda0c0\",\"name\":\"covert-mobile-MEDtjO\",\"version\":null},\"connection\":{\"state\":\"local-only\",\"transport\":\"loopback\",\"authenticated\":true,\"last_seen\":1700000000000,\"detail\":\"Bounded projection from the authenticated Workstation control plane.\"},\"current_project\":{\"name\":\"covert-mobile-MEDtjO\",\"reference\":\"workspace:ws-c05f438770fda0c0\",\"source_sha\":null},\"workflow\":null,\"jobs\":[],\"workers\":[],\"approvals\":[],\"verification\":{\"status\":\"OBSERVED\",\"summary\":\"Resident observed.\",\"evidence_refs\":[]},\"activity\":[],\"notifications\":[],\"resident\":{\"message\":\"Resident observed.\",\"generated_at\":1700000000000}}}"
+    },
+    {
+      "name": "Cipher mutation confirmation",
+      "passed": true,
+      "detail": "{\"accepted\":false,\"category\":\"mutate\",\"requires_confirmation\":true,\"response_text\":\"This command requires explicit confirmation through the normal authority policy.\",\"snapshot\":null}"
+    },
+    {
+      "name": "Concierge rejects uncertified package",
+      "passed": true,
+      "detail": "{\"matched\":false,\"reason\":\"No certified artifact in the machine-readable manifest matches this product, platform, and architecture.\",\"artifacts\":[],\"limitations\":[\"Only artifacts with explicit certification_state=certified are returned.\",\"The manifest is generated from actual artifacts; no package is invented when one is absent.\"]}"
+    },
+    {
+      "name": "Concierge deterministic certified match",
+      "passed": true,
+      "detail": "{\"matched\":true,\"reason\":\"Deterministic certified artifact match.\",\"artifacts\":[{\"product\":\"COVERT WORKSTATION\",\"version\":\"0.1.0\",\"platform\":\"windows\",\"architecture\":\"x64\",\"artifact_type\":\"NSIS\",\"filename\":\"Covert.exe\",\"size_bytes\":4,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"signing_state\":\"unknown\",\"certification_state\":\"certified\",\"minimum_requirements\":[],\"reference\":\"Covert.exe\",\"limitations\":[]}],\"limitations\":[]}"
+    },
+    {
+      "name": "Concierge exposes checksum only",
+      "passed": true,
+      "detail": "manifest response contains package evidence, not credentials"
+    }
+  ],
+  "live": {
+    "host_os": "win32",
+    "fixture_project": {
+      "project_path": ".",
+      "kind": "native-android-gradle",
+      "supported": true,
+      "application_id": "com.covert.edge",
+      "package_name": "com.covert.edge",
+      "min_sdk": 26,
+      "target_sdk": 35,
+      "variants": [
+        "debug",
+        "release"
+      ],
+      "gradle_wrapper": "gradlew.bat",
+      "manifest_path": "app/src/main/AndroidManifest.xml",
+      "output_locations": [
+        "app/build/outputs/apk",
+        "build/outputs/apk",
+        "src-tauri/gen/android/app/build/outputs/apk"
+      ],
+      "source_sha": "abc1234",
+      "limitations": []
+    },
+    "fixture_build": {
+      "status": "BUILD_PASSED",
+      "artifact_sha256": "89b52403a086b8fa08e3a47635f8599bebf3ae5e4576cc014f8220099dea4c7e"
+    },
+    "fixture_install": "UNAVAILABLE",
+    "apple_environment": {
+      "host_os": "windows",
+      "checked_at": 1789925795863,
+      "components": {
+        "swift": {
+          "status": "MISSING",
+          "detail": "Swift executable not detected.",
+          "path": null,
+          "version": null
+        },
+        "swift_package_manager": {
+          "status": "MISSING",
+          "detail": "Swift Package Manager is not available.",
+          "path": null,
+          "version": null
+        },
+        "xcode": {
+          "status": "UNAVAILABLE",
+          "detail": "UNAVAILABLE — MACOS/XCODE REQUIRED",
+          "path": null,
+          "version": null
+        },
+        "xcodebuild": {
+          "status": "UNAVAILABLE",
+          "detail": "UNAVAILABLE — MACOS/XCODE REQUIRED",
+          "path": null,
+          "version": null
+        },
+        "simctl": {
+          "status": "UNAVAILABLE",
+          "detail": "UNAVAILABLE — MACOS/XCODE REQUIRED",
+          "path": null,
+          "version": null
+        },
+        "simulator_runtimes": {
+          "status": "UNAVAILABLE",
+          "detail": "UNAVAILABLE — MACOS/XCODE REQUIRED",
+          "path": null,
+          "version": null
+        },
+        "signing": {
+          "status": "UNAVAILABLE",
+          "detail": "UNAVAILABLE — MACOS/XCODE REQUIRED",
+          "path": null,
+          "version": null
+        },
+        "provisioning": {
+          "status": "UNAVAILABLE",
+          "detail": "UNAVAILABLE — MACOS/XCODE REQUIRED",
+          "path": null,
+          "version": null
+        }
+      },
+      "executor_backends": [],
+      "limitations": [
+        "UNAVAILABLE — MACOS/XCODE REQUIRED",
+        "A configured paired macOS, GitHub Actions macOS runner, or future Xcode Cloud adapter is required for Apple builds."
+      ]
+    },
+    "physical_device": "NOT_PROVEN_BY_FIXTURE",
+    "edge_pairing": "NOT_RUN_IN_HERMETIC_SERVICE_TEST",
+    "android_environment": {
+      "host_os": "windows",
+      "checked_at": 1789925790307,
+      "sdk_root": "C:\\Users\\Grey_\\AppData\\Local\\Android\\Sdk",
+      "components": {
+        "jdk": {
+          "status": "MISSING",
+          "detail": "Java executable not detected.",
+          "path": null,
+          "version": null
+        },
+        "java_home": {
+          "status": "MISSING",
+          "detail": "JAVA_HOME is not set.",
+          "path": null,
+          "version": null
+        },
+        "android_sdk": {
+          "status": "AVAILABLE",
+          "detail": "Android SDK root detected.",
+          "path": "C:\\Users\\Grey_\\AppData\\Local\\Android\\Sdk",
+          "version": null
+        },
+        "platform_tools": {
+          "status": "MISSING",
+          "detail": "platform-tools directory probe.",
+          "path": "C:\\Users\\Grey_\\AppData\\Local\\Android\\Sdk\\platform-tools",
+          "version": null
+        },
+        "adb": {
+          "status": "MISSING",
+          "detail": "adb executable not detected.",
+          "path": null,
+          "version": null
+        },
+        "build_tools": {
+          "status": "MISSING",
+          "detail": "No build-tools version detected.",
+          "path": "C:\\Users\\Grey_\\AppData\\Local\\Android\\Sdk\\build-tools",
+          "version": null
+        },
+        "android_platforms": {
+          "status": "MISSING",
+          "detail": "No Android platform detected.",
+          "path": "C:\\Users\\Grey_\\AppData\\Local\\Android\\Sdk\\platforms",
+          "version": null
+        },
+        "gradle": {
+          "status": "MISSING",
+          "detail": "Global Gradle not detected.",
+          "path": null,
+          "version": null
+        },
+        "gradle_wrapper": {
+          "status": "UNKNOWN",
+          "detail": "Gradle wrapper status is project-specific; inspect a project to resolve it.",
+          "path": null,
+          "version": null
+        },
+        "android_studio": {
+          "status": "MISSING",
+          "detail": "Android Studio executable not detected.",
+          "path": null,
+          "version": null
+        },
+        "tauri_android": {
+          "status": "MISCONFIGURED",
+          "detail": "Tauri Android capability is project-specific and was not fully detected.",
+          "path": "E:\\aide-sovereign-workbench-mobile\\node_modules\\.bin\\tauri.cmd",
+          "version": "2.11.4"
+        }
+      },
+      "limitations": [
+        "JDK is not available; Gradle Android builds cannot be proven locally.",
+        "adb is not available; device install and runtime proof are unavailable.",
+        "No Android build-tools package was found.",
+        "No Android platform package was found.",
+        "Global Gradle is not available; project Gradle wrappers are checked during project inspection."
+      ]
+    },
+    "android_devices": {
+      "devices": [],
+      "checked_at": 1789925795358
+    }
+  }
+}

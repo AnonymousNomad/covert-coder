@@ -53,7 +53,7 @@ import { routesForProblems } from './routes/problems.ts';
 import { routesForNotifications } from './routes/notifications.ts';
 import { NotificationService } from '../../node/src/services/notification-service.mjs';
 import { HookExecutor } from '../../node/src/services/hook-executor.mjs';
-import type { TaskEventMeta } from '../../node/src/services/task-service.mjs';
+import { TaskService, type TaskEventMeta } from '../../node/src/services/task-service.mjs';
 import type { TaskEventT } from '../../common/contracts/tasks.ts';
 import { createHubService } from '../../node/src/services/modelhub.mjs';
 import { routesForModelHub } from './routes/modelhub.ts';
@@ -117,6 +117,13 @@ import { ModelRuntime } from './services/model-runtime.ts';
 import type { Logger } from './services/logger.ts';
 import type { EventHub } from './events.ts';
 import type { Route } from './server.ts';
+import { routesForMobileProduction } from './routes/mobile.ts';
+import { routesForEdge } from './routes/edge.ts';
+import { createMobileProductionService } from './services/mobile-production.mjs';
+import { createRemoteBridgeService } from './services/remote-bridge.mjs';
+import { createCipherVoiceService } from './services/cipher-voice.mjs';
+import { routesForConcierge } from './routes/concierge.ts';
+import { createConciergeService } from './services/concierge.mjs';
 
 type SchemaObject = Record<string, unknown>;
 
@@ -549,6 +556,18 @@ export async function buildRoutes(workspace: string, version: string, options: B
     resident: async () => renderResidentContext(await residentService.context()),
     skills: (task: string) => skillProvider(task)
   };
+  const notificationWiring = await buildNotificationWiredRoutes(workspace, { ...options, modelHubAuthorization: huggingfaceAuthorization });
+  const mobileProductionService = createMobileProductionService({ workspace });
+  const remoteBridge = createRemoteBridgeService({
+    workspace,
+    resident: residentService,
+    workflow: workflowService,
+    tasks: notificationWiring.tasks,
+    notifications: notificationWiring.notifications,
+    modelRuntime
+  });
+  const cipherVoice = createCipherVoiceService({ bridge: remoteBridge });
+  const conciergeService = createConciergeService({ repoRoot });
   const core: Route[] = [
     ...routesForAuthority(),
     makeHealthRoute(workspace, version),
@@ -616,7 +635,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForRgSearch(rgService),
     routeForEditorOptions(settingsService),
     ...routesForGit(workspace),
-    ...await buildNotificationWiredRoutes(workspace, { ...options, modelHubAuthorization: huggingfaceAuthorization }),
+    ...notificationWiring.routes,
+    ...routesForMobileProduction(mobileProductionService, workspace),
+    ...routesForEdge({ workspace, bridge: remoteBridge, voice: cipherVoice, authority: options.authority }),
+    ...routesForConcierge(conciergeService, workspace),
     ...routesForProblems(workspace),
     ...routesForOrch(createOrchService({ workspace: workspace, runtime: modelRuntime })),
     ...routesForMemory(memoryService),
@@ -831,7 +853,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   return [...core, makeOpenApiRoute(doc)];
 }
 
-async function buildNotificationWiredRoutes(workspace: string, options: BuildRoutesOptions): Promise<Route[]> {
+async function buildNotificationWiredRoutes(workspace: string, options: BuildRoutesOptions): Promise<{ routes: Route[]; notifications: NotificationService; tasks: TaskService }> {
   const notifications = new NotificationService({
     workspace,
     authority: options.authority,
@@ -839,27 +861,33 @@ async function buildNotificationWiredRoutes(workspace: string, options: BuildRou
   });
   await notifications.loadHooks().catch(() => {});
   const hookExecutor = options.authority ? new HookExecutor({ authority: options.authority, notifications }) : null;
+  const tasks = new TaskService({
+    workspace,
+    authority: options.authority,
+    onEvent: (body: TaskEventT, meta?: TaskEventMeta) => {
+      options.events?.publish('tasks', body);
+      // Observation is unconditional: task events always become descriptive
+      // notifications. Execution-capable hooks still require a fresh,
+      // operator-approved capability.execute handle via HookExecutor.
+      notifications.ingestTaskEvent(body as Parameters<NotificationService['ingestTaskEvent']>[0]);
+      hookExecutor?.onTaskEvent(body, meta);
+    }
+  });
   const hub = createHubService({
     workspace,
     modelsDir: path.join(workspace, 'models'),
     onEvent: event => options.events?.publish('modelhub', event),
     ...(options.modelHubAuthorization ? { authorization: options.modelHubAuthorization } : {})
   });
-  return [
-    ...routesForNotifications(notifications),
-    ...routesForTasks(workspace, {
-      authority: options.authority,
-      onEvent: (body: TaskEventT, meta?: TaskEventMeta) => {
-        options.events?.publish('tasks', body);
-        // Observation is unconditional: task events always become descriptive
-        // notifications. Execution-capable hooks still require a fresh,
-        // operator-approved capability.execute handle via HookExecutor.
-        notifications.ingestTaskEvent(body as Parameters<NotificationService['ingestTaskEvent']>[0]);
-        hookExecutor?.onTaskEvent(body, meta);
-      }
-    }),
-    ...routesForModelHub(hub as any)
-  ];
+  return {
+    routes: [
+      ...routesForNotifications(notifications),
+      ...routesForTasks(workspace, { authority: options.authority, service: tasks }),
+      ...routesForModelHub(hub as any)
+    ],
+    notifications,
+    tasks
+  };
 }
 
 function makeHealthRoute(workspace: string, version: string): Route {  return {

@@ -199,6 +199,23 @@ import {
   type TerminalSessionStopResponseT,
   TerminalSessionStopResponse
 } from '../../../common/contracts/terminal.ts';
+import {
+  AndroidBuildRequest,
+  AndroidBuildResponse,
+  AndroidDeviceListResponse,
+  AndroidEnvironmentResponse,
+  AndroidProjectQuery,
+  AndroidProjectResponse,
+  EdgeStatusResponse,
+  MobilePluginResponseEnvelope
+} from '../../../common/contracts/mobile.ts';
+import type {
+  AndroidBuildResponseT,
+  AndroidDeviceListResponseT,
+  AndroidProjectResponseT,
+  MobilePluginResponseT,
+  AndroidEnvironmentT
+} from '../../../common/contracts/mobile.ts';
 
 export const API_FORMAT_HEADER = 'X-AIDE-API-Format';
 export const API_FORMAT = 'envelope-v1';
@@ -352,6 +369,28 @@ export const api = {
   },
   hardwareProfile(): Promise<HardwareProfileResponseT> {
     return call('/api/hardware/profile', { schema: HardwareProfileResponse });
+  },
+  mobilePlugin(): Promise<MobilePluginResponseT> {
+    return call('/api/mobile/plugin', { schema: MobilePluginResponseEnvelope }).then(response => response.plugin);
+  },
+  androidEnvironment(): Promise<AndroidEnvironmentT> {
+    return call('/api/mobile/android/environment', { schema: AndroidEnvironmentResponse }).then(response => response.environment);
+  },
+  androidProject(projectPath: string): Promise<AndroidProjectResponseT> {
+    const query = AndroidProjectQuery.safeParse({ project_path: projectPath });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid Android project path');
+    return call('/api/mobile/android/project', { query: query.data, schema: AndroidProjectResponse });
+  },
+  androidDevices(): Promise<AndroidDeviceListResponseT> {
+    return call('/api/mobile/android/devices', { schema: AndroidDeviceListResponse });
+  },
+  androidBuildDebug(projectPath: string): Promise<AndroidBuildResponseT> {
+    const body = AndroidBuildRequest.safeParse({ project_path: projectPath });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid Android build request');
+    return call('/api/mobile/android/build-debug', { method: 'POST', body: body.data, schema: AndroidBuildResponse });
+  },
+  edgeStatus(): Promise<z.infer<typeof EdgeStatusResponse>> {
+    return call('/api/edge/status', { schema: EdgeStatusResponse });
   },
   tasksList(): Promise<TaskListResponseT> {
     return call('/api/tasks', { schema: TaskListResponse });
