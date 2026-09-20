@@ -3,6 +3,18 @@
 Project: E:\aide-sovereign-workbench — offline-first IDE (VS Code + GitHub + Android Studio) with 3 pre-installed GGUF models, zero cloud.
 Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor named. This is the project memory.
 
+## 2026-09-20 12:05 — Desktop packaging lane: truth, repairs, and current-workflow evidence run (actor: opencode)
+
+Worktree `E:\aide-sovereign-workbench-desktop-release`, branch `release/desktop-artifact-v0.1`, base `f225434` (accepted release-readiness tip; other lanes untouched). **Type:** audit/fix. **Status:** in-progress.
+
+TOOLCHAIN TRUTH: no Rust (`rustc`/`cargo` absent), no Tauri CLI binary, no MSVC `cl.exe` (vswhere present, no C++ tools on PATH) → **local installer compilation is BLOCKED**; decision recorded: CI-side packaging is the build path, no machine-destabilizing toolchain install. `npm ci` in the lane 483s exit 0.
+
+HISTORICAL CI ROOT CAUSE (latest failed desktop run 31937957943, Aug 16, v0.1.0-preflight.8): macOS and ubuntu Tauri builds SUCCEEDED; Windows failed at `scripts/desktop-lifecycle-smoke.ps1:92` — "installed AIDE Sovereign Workbench executable was not found". Mechanism: the smoke preferred the MSI, and `msiexec /i /qn` on a non-elevated runner returned in ~0.8s without installing; executable discovery then threw. Same class as the packaging-offline SOP's "MSI discovery flaky — NSIS is the canonical CI target".
+
+REPAIRS (bounded, evidence-aligned, no framework change): (1) `scripts/desktop-lifecycle-smoke.ps1` now prefers the NSIS installer (`/S`, per-user, no elevation) with MSI as the documented fallback — assertions unchanged; (2) `desktop/tauri.conf.json` gains `bundle.windows.webviewInstallMode: offlineInstaller` so packaged installs can complete with no internet (previously the default bootstrapper required network at install time); `targets: "all"` retained (MSI not removed). (3) NEW `scripts/release-artifact-check.mjs` — desktop artifact acceptance: installer presence, forbidden-content scan (weights/.env/.aide/.git/logs/caches/keys), version consistency across package.json + tauri.conf + filenames, staged-resource completeness, SHA256+size manifest, JSON output.
+
+EVIDENCE RUN: dispatched the CURRENT `desktop.yml` (workflow_dispatch) on the pushed lane tip f225434 → run **35508399558** (pre-repair config, deliberate baseline). RC GATE: `release/v0.1-rc` NOT PUBLISHED as of 12:05 (convergence tip 761cfc5), polling continues per the preemption rule — RC validation outranks packaging.
+
 ## 2026-09-19 21:05 — External-user release readiness: first-run acceptance GREEN (actor: opencode)
 
 Worktree `E:\aide-sovereign-workbench-release-readiness`, branch `release/external-user-readiness-v0.1`, base `69152fe` (accepted cockpit tip; all other lanes untouched). **Type:** audit/event. **Status:** done (PENDING COMBINED RC for the integrated re-run).
