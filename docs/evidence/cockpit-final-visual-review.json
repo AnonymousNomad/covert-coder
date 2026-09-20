@@ -131,8 +131,14 @@
     "rcIntegration": "HOLD"
   },
   "ci": {
-    "status": "PENDING_PUSH",
+    "status": "PASS",
     "branch": "feat/cockpit-reference-fidelity-luna",
-    "releaseRcTouched": false
+    "runId": 35540439840,
+    "runUrl": "https://github.com/AnonymousNomad/covert-coder/actions/runs/35540439840",
+    "headSha": "181214f516642e9af7cef5384a61893de11b8a18",
+    "job": "verify",
+    "jobConclusion": "success",
+    "releaseRcTouched": false,
+    "note": "The run covered the implementation and evidence commit at headSha; later metadata-only closure edits do not change cockpit source behavior."
   }
 }
