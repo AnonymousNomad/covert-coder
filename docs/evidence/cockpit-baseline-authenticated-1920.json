@@ -1,0 +1,18 @@
+{
+  "skipped": false,
+  "info": {
+    "title": "Covert Coder",
+    "activePanel": "command-center",
+    "bodyRect": {
+      "width": 1920,
+      "height": 1080
+    },
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "visibleText": "RESIDENT\n◈\nADVISORY · UNKNOWN\nUNKNOWN\n\nYour persistent development partner. Context, conversation, and governed work.\n\nCONVERSATION\nGOVERNED TASK\nYOUR MODELS. YOUR MACHINE. YOUR WORKFLOW.\nWhat are we building?\n\nExplore an idea, inspect your workspace, or prepare a task. You review the actions. Covert keeps the evidence.\n\nModel\nCipher v1 (DEPRECATED — replaced by north-mini-code-1.0) · local · UNVERIFIED\nNorth-Mini-Code 1.0 (Cohere Labs 30B-A3B MoE, Q2_K_XL) · local · UNVERIFIED\nNorth-Mini-Code-1.0-UD-Q2_K_XL · local · UNVERIFIED\nQwen2.5-Coder 0.5B Instruct · local · UNVERIFIED\nQwen2.5-Coder 1.5B Instruct · local · UNVERIFIED\nQwen3-4B-MiniMax-M2.1-Coder.q4_k_m · local · UNVERIFIED\nSmolLM2 360M Instruct · local · UNVERIFIED\nAnthropic · claude-3-5-haiku-latest · cloud · DOWN\nAnthropic · claude-3-5-sonnet-latest · cloud · DOWN\nGoogle Gemini · gemini-2.0-flash · cloud · DOWN\nGroq · llama-3.3-70b-versatile · cloud · DOWN\nIBM Granite 3.3 2B Instruct · local · DOWN\nMicrosoft Phi-3.5 Mini Instruct · local · DOWN\nMistral · mistral-small-latest · cloud · DOWN\nOpenAI · gpt-4o · cloud · DOWN\nOpenAI · gpt-4o-mini · cloud · DOWN\nOpenRouter · openrouter/auto · cloud · DOWN\nSmolLM2 1.7B Instruct · local · DOWN\nRefresh\nSend\nPREPARE A TASK\n\nChoose a starting point, review the task, then submit it. Execution remains subject to operator approval.\n\nAnalyze Repository\nImplement Feature\nDebug Issue\nImprove Tests\nExplain Code\nSecurity Review\nOptimize Performance\nAdd To Memory\nWorkspace context & evidence\nAppearance preferences · optional artwork unavailable\nOPERATIONAL EVIDENCE\nAVAILABLE\nWorkspace, runtime, and workflow facts. Each source can be unavailable independently.\nInspect operational sources"
+  },
+  "errors": [],
+  "httpFailures": []
+}\n
