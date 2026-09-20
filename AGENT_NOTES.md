@@ -3,6 +3,16 @@
 Project: E:\aide-sovereign-workbench — offline-first IDE (VS Code + GitHub + Android Studio) with 3 pre-installed GGUF models, zero cloud.
 Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor named. This is the project memory.
 
+## 2026-09-20 18:20 — PARKING CHECKPOINT: Windows packaged-runtime P1 closed (actor: opencode)
+
+**Type:** checkpoint. **Status:** parked, safe.
+
+Lane `release/desktop-artifact-v0.1` @ `79f80c9` (pushed). Windows packaged runtime **ACCEPT** for install/launch/backend-health — proven in CI (run 35526822560: Windows reaches "daemon healthy at http://127.0.0.1:4777/api/health" + same-build reinstall probe) and locally on the exact post-fix NSIS (`AIDE Sovereign Workbench_0.1.0_x64-setup.exe`, SHA256 `019fcfe7e0d576692203ed64dede2c1b73da3e80bbc4edaabb0d15b63aac157e`, UNSIGNED): install 0, app alive, launcher stderr 0 bytes, 4777/4778/4779 bound, one intended stack.
+
+CLOSED DEFECTS (do not reopen): (1) Tauri array-form resource nesting vs launcher resolution — `d877069` (dual-layout `resolve_resource`, compile-checked Rust regression); (2) opaque spawn diagnostics — `12ac01a` (Ghost-compatible spawn record with allowlisted AIDE_* env + bounded launcher stderr); (3) `\\?\` extended-path Node EISDIR crash — `79f80c9` (`plain_path` normalization). Ghost dogfood successful: known-good vs Tauri spawn diff exposed the `\\?\` divergence as the FIRST meaningful difference; sanitized evidence committed under `docs/evidence/desktop-p1/` (failing spawn record + 659 B stderr crash + known-good record; secret-scan clean).
+
+REMAINING (resume order): P2 uninstall/teardown after forced kill leaves the application because an owned child tree retains the install dir — repair = terminate ONLY install-scoped/owned Covert processes before uninstall acceptance, then rerun the full Windows lifecycle smoke → green; then certify the exact artifact (install/launch/health/teardown/restart); then P2 `AIDE_WORKSPACE` mutable-state investigation (separate); P3 unsigned (expected); P3 30 s arch window under extreme disk saturation (environmental/configurable). Frozen RC `ddcba2f` untouched; RC-derived convergence (`release/v0.1-rc-desktop`) and the Helix gate remain CLOSED until the Windows lifecycle CI is fully green and the exact artifact is certified.
+
 ## 2026-09-20 12:05 — Desktop packaging lane: truth, repairs, and current-workflow evidence run (actor: opencode)
 
 Worktree `E:\aide-sovereign-workbench-desktop-release`, branch `release/desktop-artifact-v0.1`, base `f225434` (accepted release-readiness tip; other lanes untouched). **Type:** audit/fix. **Status:** in-progress.

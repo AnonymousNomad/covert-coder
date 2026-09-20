@@ -1,0 +1,7 @@
+{
+  "executable": "E:\\pip_temp\\opencode\\covert-install-p4\\resources\\runtime/node.exe",
+  "argv": ["E:\\pip_temp\\opencode\\covert-install-p4\\resources\\stack-launcher.mjs", "--native-bootstrap", "--pair-origin=http://tauri.localhost"],
+  "cwd": "E:\\pip_temp\\opencode\\covert-install-p4",
+  "env_allowlist": {"AIDE_WORKSPACE": "E:\\pip_temp\\opencode\\covert-install-p4", "AIDE_MODEL_DIR": "E:\\pip_temp\\opencode\\covert-install-p4\\models", "AIDE_ARCH_PORT": "4778", "AIDE_LEGACY_PORT": "4779", "AIDE_FACADE_PORT": "4777", "AIDE_LLAMA_SERVER": "E:\\pip_temp\\opencode\\covert-install-p4\\runtime\\llama-server.exe"},
+  "spawned_at_unix_ms": 1789927457243
+}
