@@ -128,7 +128,26 @@ $app = Start-Process -FilePath $installed.Exe -PassThru
 Start-Sleep -Seconds 5
 if ($app.HasExited) { throw "installed application exited during launch with code $($app.ExitCode)" }
 Write-Host 'desktop lifecycle smoke: checking daemon health'
-$health = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:4777/health' -TimeoutSec 15
+# The packaged stack (launcher -> arch + legacy + facade) needs a bounded
+# window to become ready; a single probe 5s after launch refused the connection
+# (verified CI 2026-09-20). Poll both the legacy /health and facade /api/health
+# paths for up to 180s and fail loudly only if readiness never arrives.
+$healthUrl = $null
+$health = $null
+$healthDeadline = (Get-Date).AddSeconds(180)
+$lastHealthError = 'no probe executed'
+while ((Get-Date) -lt $healthDeadline -and $null -eq $healthUrl) {
+  foreach ($candidate in @('http://127.0.0.1:4777/health', 'http://127.0.0.1:4777/api/health')) {
+    try {
+      $probe = Invoke-WebRequest -UseBasicParsing $candidate -TimeoutSec 5
+      if ($probe.StatusCode -eq 200) { $health = $probe; $healthUrl = $candidate; break }
+      $lastHealthError = "HTTP $($probe.StatusCode) from $candidate"
+    } catch { $lastHealthError = $_.Exception.Message }
+  }
+  if ($null -eq $healthUrl) { Start-Sleep -Seconds 3 }
+}
+if ($null -eq $healthUrl) { throw "installed daemon health never became ready within 180s (last error: $lastHealthError)" }
+Write-Host "desktop lifecycle smoke: daemon healthy at $healthUrl"
 if ($health.StatusCode -ne 200) { throw "installed daemon health returned HTTP $($health.StatusCode)" }
 if (-not $app.CloseMainWindow()) { $app.Kill() }
 if (-not $app.WaitForExit(15000)) { $app.Kill(); $app.WaitForExit() }
