@@ -147,6 +147,11 @@ import {
   type ResidentDecisionsResponseT
 } from '../../../common/contracts/resident.ts';
 import {
+  ResidentIntentResponse,
+  type ResidentIntentRequestT,
+  type ResidentIntentResponseT
+} from '../../../common/contracts/resident-intent.ts';
+import {
   WorkbenchListResponse,
   WorkbenchDetailResponse,
   WorkbenchUninstallResponse,
@@ -491,6 +496,9 @@ export const api = {
     const params = new URLSearchParams();
     params.append('limit', String(limit));
     return call(`/api/resident/decisions?${params.toString()}`, { schema: ResidentDecisionsResponse });
+  },
+  residentIntent(body: ResidentIntentRequestT): Promise<ResidentIntentResponseT> {
+    return call('/api/resident/intent', { method: 'POST', body, schema: ResidentIntentResponse });
   },
   workbenches(): Promise<WorkbenchListResponseT> {
     return call('/api/workbenches', { schema: WorkbenchListResponse });

@@ -9,6 +9,7 @@ import { productText } from '../ui/product-text.ts';
 import type { AppState } from '../store/state.ts';
 import { api, call } from '../services/api.ts';
 import { createChatPanel } from '../chat/chat.ts';
+import type { ResidentIntentResponseT } from '../../../common/contracts/resident-intent.ts';
 import { createOperatorIdentity, type OperatorIdentityHandles, type OperatorPresenceState } from './OperatorIdentity.ts';
 import {
   AgentDecisionRequest,
@@ -272,9 +273,89 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     }
   }
 
+  // Wave 5: deterministic intent readiness. The governed composer asks the
+  // minimum clarification only when the request is materially underspecified;
+  // a failing readiness call falls through to the existing governed start
+  // (server authority still gates every action). Clarification grants no
+  // permission — approvals remain independent.
+  function renderClarification(readiness: ResidentIntentResponseT): void {
+    agentStatusMount.innerHTML = '';
+    const answers: Record<string, string> = {};
+    const answerAndContinue = (questionId: string, value: string): void => {
+      if (value.trim().length === 0) return;
+      answers[questionId] = value.trim();
+      void continueClarification(readiness.readiness_id, answers);
+    };
+    for (const question of readiness.clarification_questions) {
+      agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', question.question));
+      const row = el('div', 'cockpit-resident-actions');
+      if (question.options.length > 0) {
+        for (const option of question.options) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'cockpit-resident-action';
+          button.textContent = option;
+          button.addEventListener('click', () => { answerAndContinue(question.id, option); });
+          row.appendChild(button);
+        }
+      } else {
+        const free = document.createElement('input');
+        free.type = 'text';
+        free.className = 'cockpit-resident-input';
+        free.placeholder = 'Your answer\u2026';
+        free.setAttribute('aria-label', question.question);
+        const submit = document.createElement('button');
+        submit.type = 'button';
+        submit.className = 'cockpit-resident-action';
+        submit.textContent = 'SUBMIT ANSWER';
+        submit.addEventListener('click', () => { answerAndContinue(question.id, free.value); });
+        row.appendChild(free);
+        row.appendChild(submit);
+      }
+      agentStatusMount.appendChild(row);
+    }
+  }
+
+  async function continueClarification(pendingId: string, answers: Record<string, string>): Promise<void> {
+    try {
+      const next = await api.residentIntent({ pending_id: pendingId, answers });
+      if (next.status === 'READY') {
+        await startAgent(next.task);
+        return;
+      }
+      if (next.status === 'BLOCKED') {
+        paintAgentStatus(null, `Cannot start \u00b7 ${next.missing_requirements.join('; ') || 'unsupported request'}`);
+        return;
+      }
+      renderClarification(next);
+    } catch (error) {
+      paintAgentStatus(null, `Clarification unavailable \u00b7 ${String((error as Error).message ?? error).slice(0, 180)}`);
+    }
+  }
+
+  async function gatedStart(task: string): Promise<void> {
+    const trimmed = task.trim();
+    if (trimmed.length === 0) return;
+    try {
+      const readiness = await api.residentIntent({ task: trimmed });
+      if (readiness.status === 'BLOCKED') {
+        paintAgentStatus(null, `Cannot start \u00b7 ${readiness.missing_requirements.join('; ') || 'unsupported request'}`);
+        return;
+      }
+      if (readiness.status === 'NEEDS_CLARIFICATION' && readiness.clarification_questions.length > 0) {
+        renderClarification(readiness);
+        return;
+      }
+    } catch {
+      // Readiness unavailable in this environment: proceed through the
+      // existing governed start; every action still requires approval.
+    }
+    await startAgent(trimmed);
+  }
+
   composer.addEventListener('submit', event => {
     event.preventDefault();
-    void startAgent(input.value);
+    void gatedStart(input.value);
   });
 
   for (const [button, action] of actionsRow.querySelectorAll<HTMLButtonElement>('button').entries()) {

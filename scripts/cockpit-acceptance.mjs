@@ -88,6 +88,34 @@ function envelope(data) {
 
 async function fulfillApi(route) {
   const url = new URL(route.request().url());
+  if (url.pathname === '/api/resident/intent' && route.request().method() === 'POST') {
+    // Wave 5 intent readiness: the governed composer gates through this
+    // deterministic route before any start. The fixture workspace state is
+    // fully specified, so readiness is READY with zero questions.
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: envelope({
+        readiness_id: '00000000-0000-4000-8000-00000000f1d0',
+        status: 'READY',
+        task: 'fixture task',
+        task_class: 'software-engineering',
+        known_requirements: ['active workspace'],
+        missing_requirements: [],
+        safe_assumptions: ['worker mode: act (governed approvals still required)'],
+        unsafe_assumptions: [],
+        clarification_questions: [],
+        workflow_hint: { project_id: null, stage: null },
+        risk_class: 'low',
+        authority_relevance: 'No authority implications from readiness; normal governed approvals apply to execution.',
+        autonomy: 'supervised',
+        resolution: 'none',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+    });
+    return;
+  }
   if (url.pathname === '/api/chat/stream') {
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'data: {"delta":"Fixture response: "}\n\ndata: {"delta":"stream rendered."}\n\ndata: {"done":true}\n\n' });
     return;
