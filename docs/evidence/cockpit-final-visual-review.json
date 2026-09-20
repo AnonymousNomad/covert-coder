@@ -1,0 +1,138 @@
+{
+  "mission": "Covert cockpit reference-fidelity takeover",
+  "reference": {
+    "path": "E:\\COVERT UI\\file_00000000de6c8206b69e2ac45115fab8.jpg",
+    "width": 960,
+    "height": 1536,
+    "bytes": 207101,
+    "sha256": "f53f2ef7a5939911c2ff3413292a01bed0309a50a608b2cfd36fffc2fd791d2f"
+  },
+  "repository": {
+    "path": "E:\\aide-sovereign-workbench",
+    "worktree": "E:\\aide-sovereign-workbench-ui-luna",
+    "branch": "feat/cockpit-reference-fidelity-luna",
+    "startingSha": "ddcba2fb34d3b34d93d036a9b2b921cafee3d812",
+    "rcModified": false,
+    "mobileBranchModified": false
+  },
+  "assets": {
+    "highResolutionResidentAssetFound": false,
+    "residentAssetUsed": "docs/assets/screenshots/covert-resident-reference-crop.jpg",
+    "residentAssetSourceRect": "x=130,y=528,width=138,height=548",
+    "residentAssetSha256": "fdbc92429c43b38372113979fa2093902902cf3e620f8dabc60e92eb3eec8b3a",
+    "worldMap": "inline decorative SVG; no telemetry meaning"
+  },
+  "screenshots": {
+    "baselineAuthenticated": "docs/evidence/cockpit-baseline-authenticated-1920.png",
+    "baselineClean": "docs/evidence/cockpit-baseline-clean-1920.png",
+    "final1920": {
+      "path": "docs/evidence/cockpit-final-1920.png",
+      "sha256": "ae927faa6a7cdd5b3c1198db1deb92bbb36a7eb2423baaaa0450fdb5df8d6d91"
+    },
+    "final1366": {
+      "path": "docs/evidence/cockpit-final-1366.png",
+      "sha256": "12df4a2b3b571b21662849d6929153b83dc6618d2b36a485569d8e2c9c2af6f2"
+    },
+    "final1024": {
+      "path": "docs/evidence/cockpit-final-1024.png",
+      "sha256": "8575ad990dbe0e75bb61e5b0e33be32c177afa981428fe328c2ec7444b0d0117"
+    },
+    "final640": {
+      "path": "docs/evidence/cockpit-final-640.png",
+      "sha256": "8b38e72b98d42149673a02e9d1bee51f9f220b09010bcbed29e3e80b59d0e392"
+    },
+    "comparison": {
+      "normalizedReference": "docs/evidence/reference-normalized.png",
+      "referenceVsCurrent": "docs/evidence/cockpit-reference-vs-current-1920.png",
+      "method": "qualitative side-by-side review; portrait reference versus 1920x1080 desktop render"
+    }
+  },
+  "visualReview": {
+    "header": "PARTIAL",
+    "navigation": "MATCH",
+    "emblems": "MATCH",
+    "residentCharacter": "MATCH",
+    "residentStateBehavior": "PARTIAL",
+    "colorSystem": "MATCH",
+    "mainResidentPanel": "PARTIAL",
+    "quickActions": "MATCH",
+    "composer": "MATCH",
+    "modelLineup": "PARTIAL",
+    "resources": "MATCH",
+    "activity": "PARTIAL",
+    "lowerWorkspace": "PARTIAL",
+    "terminal": "MATCH",
+    "worldMap": "MATCH",
+    "footer": "MATCH",
+    "typography": "PARTIAL",
+    "panelGeometry": "MATCH",
+    "density": "PARTIAL",
+    "overallIdentity": "MATCH",
+    "remainingGaps": [
+      "approved high-resolution Resident artwork is unavailable; temporary reference crop remains in use",
+      "host window controls are a labeled browser/host boundary, not application-owned controls",
+      "Browser and plus command tabs remain disabled because those surfaces are not integrated",
+      "backend suggestion conditions are limited to the existing Resident push contract",
+      "backend-unavailable model, activity, and telemetry surfaces remain sparse by truth policy"
+    ]
+  },
+  "liveReview": {
+    "stack": "existing governed local cockpit review driver",
+    "authenticatedCapture": "PASS",
+    "pageErrors": 0,
+    "httpFailures": 0,
+    "toastOverlays": 0,
+    "horizontalOverflow": false,
+    "sizes": ["1920x1080", "1366x768", "1024x768", "640x900"],
+    "knownTeardownNote": "upstream node-pty AttachConsole warning observed; owned processes and review listeners were verified absent"
+  },
+  "verification": {
+    "browserTypeScript": "PASS: npx --no-install tsc -p browser/tsconfig.browser.json --pretty false",
+    "nodeTypeScript": "PASS: npx --no-install tsc -p tsconfig.node.json --pretty false",
+    "frontendBuild": "PASS: npm run build:frontend",
+    "uiAudit": "PASS: UI contract audit passed (132 ids, 126 referenced)",
+    "fixtureBrowserAcceptance": "PASS: shell, registry, truth surfaces, toast isolation, editor/search, geometry, responsive layout, and no browser errors",
+    "gitDiffCheck": "PASS",
+    "changedSourceSecretScan": "PASS: no credential assignment matches in changed cockpit source",
+    "eslint": {
+      "status": "BLOCKED_ENVIRONMENTAL",
+      "disposition": "pre-existing local ESLint 10/parser/config-module-loading spin; no source/config repair made",
+      "evidence": [
+        "full eslint . exceeded bounded observation",
+        "new ResidentFigure.ts and pre-existing browser/src/store/state.ts both stalled when focused",
+        "eslint --print-config also stalled",
+        "direct @typescript-eslint/parser.parse completed in 19.798ms",
+        "eslint.config.mjs is unchanged from the frozen base"
+      ],
+      "remoteCiRequired": true
+    },
+    "architectureBattery": {
+      "status": "PARTIAL_BLOCKED",
+      "runner": "node scripts/run-arch.mjs",
+      "result": "shared suites progressed, but the full battery did not complete",
+      "failureClusters": [
+        "academy exercise routes",
+        "export/handoff and central reads/import authority",
+        "model start/download/search/import",
+        "notifications/hooks",
+        "onboarding authority",
+        "runtime battery stalled in onboarding-runtime.test.ts"
+      ],
+      "classification": "outside this visual diff and not promoted to UI success"
+    }
+  },
+  "disposition": {
+    "referenceVisualFidelity": "PARTIAL",
+    "residentVisualPresence": "PARTIAL",
+    "residentStateIntegration": "PARTIAL",
+    "functionalRegressionScopedUi": "ACCEPT",
+    "fullSharedArchitectureRegression": "BLOCKED",
+    "readyForIndependentVisualReview": "YES",
+    "rcIntegration": "HOLD"
+  },
+  "ci": {
+    "status": "PENDING_PUSH",
+    "branch": "feat/cockpit-reference-fidelity-luna",
+    "releaseRcTouched": false
+  }
+}

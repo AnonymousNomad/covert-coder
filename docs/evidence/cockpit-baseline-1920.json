@@ -1,0 +1,29 @@
+{
+  "url": "http://127.0.0.1:5173/",
+  "status": 200,
+  "info": {
+    "title": "Covert Coder",
+    "bodyText": "YOUR MACHINE. YOUR WORKFLOW.\nCOVERT CODER\n\nVibe at the surface. Engineering underneath.\n\nConnect this workbench\n\nIn the terminal running npm start, type pair. Enter the one-use code below. It expires after five minutes.\n\nOne-use pairing code\nPAIR SESSION\n\nLocal by default. Connected by choice. Pairing does not approve individual operations.",
+    "bodyRect": {
+      "width": 1920,
+      "height": 1080
+    },
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "activePanel": null
+  },
+  "consoleMessages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    }
+  ],
+  "pageErrors": [],
+  "requestFailures": []
+}\n
