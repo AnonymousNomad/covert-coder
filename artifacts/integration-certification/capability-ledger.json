@@ -1,0 +1,416 @@
+{
+  "ledger_version": "1.0",
+  "generated_at": "2026-09-22T07:10:00Z",
+  "generated_by": "opencode/deepseek-v4.1-flash — wiring-audit lane",
+  "production_ref": {
+    "branch": "covert-production",
+    "sha": "8ea6c8b36857f3136996a4cc149f1fafeb57e7eb",
+    "note": "Ghost, provider bridge (moonshot/kimi/opencode), and subscription transports beyond codex/claude exist ONLY on release branches (feat/ghost-real-task-certification-v1, release/subscription-provider-certification, release/ghost-provider-closure-overnight); they are NOT merged into covert-production and therefore are NOT_IMPLEMENTED in production."
+  },
+  "phases": ["DEFINED", "REGISTERED", "DISCOVERABLE", "SELECTABLE", "ROUTED", "INVOKED", "OBSERVABLE", "VERIFIED", "RECOVERABLE", "UI_TRUTHFUL"],
+  "capabilities": [
+    {
+      "id": "micro-experts.registry",
+      "name": "Micro-expert registry (tiny advisory experts)",
+      "subsystem": "micro-experts",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": false, "INVOKED": "partial", "OBSERVABLE": "partial", "VERIFIED": "partial", "RECOVERABLE": "partial", "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["harness/micro-experts.mjs:96", "harness/micro-experts.mjs:347", "node/src/routes/experts.ts:201", "node/src/openapi.ts:68,514,733", ".aide/experts/{task-router,diff-risk-gate,request-intent-classifier}.json"],
+      "notes": "Real code, routed, test-covered. No production code branches on expert output: advisory text only (agent.ts:124-139) or a UI chip (app.js:180)."
+    },
+    {
+      "id": "micro-experts.in-loop-advisory",
+      "name": "Expert advisory consumed inside the agent loop",
+      "subsystem": "micro-experts",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": "partial", "INVOKED": "partial", "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/routes/agent.ts:107-143", "node/src/openapi.ts:749-772", "browser/src/cockpit/ResidentCore.ts:217"],
+      "notes": "Gated on expertAdvisory && chatFnOverride; chatFnOverride is set only for chat_source='provider' (agent.ts:86-99). The sovereign UI sends chat_source='local' — the in-loop advisory is bypassed on the primary UI path. Debt already recorded at docs/phase0/RISK_REGISTER.md:17."
+    },
+    {
+      "id": "micro-experts.diff-risk",
+      "name": "diff-risk-gate expert",
+      "subsystem": "micro-experts",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": "test-only", "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "ORPHANED",
+      "evidence": ["node/src/routes/experts.ts:81", "tests/arch/expert-serve-wirein.test.ts:94,101"],
+      "notes": "Zero production consumers; only a test calls it."
+    },
+    {
+      "id": "micro-experts.intent-classifier",
+      "name": "request-intent-classifier expert",
+      "subsystem": "micro-experts",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": false, "INVOKED": "legacy", "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": false, "UI_TRUTHFUL": "partial" },
+      "classification": "ORPHANED",
+      "evidence": ["node/src/routes/experts.ts:67", "app.js:177-181"],
+      "notes": "Invoked only by the legacy shell UI; no TS production consumer."
+    },
+    {
+      "id": "skills.registry-loader",
+      "name": "Skills registry + bounded loader + prompt injection",
+      "subsystem": "skills",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": "partial", "VERIFIED": "partial", "RECOVERABLE": false, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/skills-loader.mjs:10-21,76-119", "skills/registry.json (294 skills)", "node/src/services/chat-context.ts:170-174", "node/src/services/agent-loop.mjs:291-298"],
+      "notes": "Injected into chat scaffold and agent-loop second system message. Token bound: 1200 chars x <=3 skills. No per-skill outcome feedback exists."
+    },
+    {
+      "id": "skills.stage-routing",
+      "name": "Stage-aware skill selection",
+      "subsystem": "skills",
+      "phases": { "DEFINED": true, "REGISTERED": false, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "SHADOWED",
+      "evidence": ["node/src/services/skills-loader.mjs:100", "node/src/openapi.ts:478,561", "node/src/services/agent-loop.mjs:293"],
+      "notes": "Loader reads a stage field no caller supplies and the registry does not contain (0 skills with stage). Stage-aware selection is unreachable."
+    },
+    {
+      "id": "skills.outcome-feedback",
+      "name": "Skill utility feedback loop",
+      "subsystem": "skills",
+      "phases": { "DEFINED": false, "REGISTERED": false, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "NOT_IMPLEMENTED",
+      "evidence": [],
+      "notes": "Task failure never re-scores skills; registry is static."
+    },
+    {
+      "id": "workflow.stage-machine",
+      "name": "Workflow stage machine + evidence gates",
+      "subsystem": "workflow",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": "partial", "INVOKED": "partial", "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["common/contracts/workflow.ts:28,105", "node/src/services/workflow-service.ts:103-115,351,399-423", "node/src/routes/workflow.ts:67-123"],
+      "notes": "State can be read and gated but never CREATED in production: create() has zero production callers; .aide/workflow/state.json does not exist. No agent/chat/model code branches on stage (status label + resident facts only). rebuildFromAudit exists, never called."
+    },
+    {
+      "id": "workflow.release-evidence-gate",
+      "name": "RELEASE_EVIDENCE verification gate",
+      "subsystem": "workflow",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": true, "UI_TRUTHFUL": false },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/workflow-service.ts:275-279", "node/src/services/workflow-validators.ts:217-236"],
+      "notes": "P0 integrity gap: gate blocks only explicit failure markers; verification.state=abstain/incomplete (or a fabricated record with matching session_id) passes. Verification files are unauthenticated JSON; .aide writes are approval-only risk flags (agent-tools.mjs:9,83-88)."
+    },
+    {
+      "id": "resident.routes-advisory",
+      "name": "Resident routes + advisory injection into chat",
+      "subsystem": "resident",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": "partial", "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/routes/resident.ts:245,640-666", "node/src/services/chat-context.ts:164-169", "node/src/openapi.ts:670"]
+    },
+    {
+      "id": "resident.awareness-envelope",
+      "name": "Awareness envelope (constitution + continuity + SOPs)",
+      "subsystem": "resident",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": "partial", "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/resident-envelope.mjs:186-267", "node/src/services/resident-awareness-provider.mjs:232-241", "node/src/services/chat-context.ts:177-185"],
+      "notes": "Live on /api/chat and /api/chat/stream. Its own 'not wired' comment (resident-envelope.mjs:265) is stale. In-memory journal only (not restart-recoverable)."
+    },
+    {
+      "id": "resident.worker-bridge",
+      "name": "Resident worker bridge (planner/coder/reviewer)",
+      "subsystem": "resident",
+      "phases": { "DEFINED": true, "REGISTERED": false, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "EXPERIMENT_ONLY",
+      "evidence": ["node/src/services/resident-worker-bridge.mjs:71-90", "experiments/resident-awareness/09-worker-loop.mjs:18,98-144"]
+    },
+    {
+      "id": "resident.readiness-gate",
+      "name": "Readiness verdict as an execution gate",
+      "subsystem": "resident",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "UI_ONLY",
+      "evidence": ["node/src/routes/resident.ts:415-417,530-584", "node/src/routes/resident.ts:41"],
+      "notes": "Advisory/UI only; no gate consumes the verdict in production (readiness_id gate exists on lane branches, not production)."
+    },
+    {
+      "id": "resident.decisions-buffer",
+      "name": "Resident decisions buffer",
+      "subsystem": "resident",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": false, "UI_TRUTHFUL": true },
+      "classification": "BACKEND_ONLY",
+      "evidence": ["node/src/routes/resident.ts:66,247,585-587,660-665"]
+    },
+    {
+      "id": "context.chat-composer",
+      "name": "Canonical chat context composer",
+      "subsystem": "context",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/chat-context.ts:106-219", "node/src/routes/chat.ts:84,161", "node/src/openapi.ts:588-589"]
+    },
+    {
+      "id": "context.agent-loop",
+      "name": "Agent-loop context (second composer)",
+      "subsystem": "context",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": false, "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/agent-loop.mjs:106-174,286-298", "node/src/openapi.ts:477"],
+      "notes": "Integration gap: the only path that plans/codes/verifies receives raw resident context + skills, but NOT the awareness envelope, memory recall, day digests, or workspace RAG that chat receives. Two disconnected cognition systems."
+    },
+    {
+      "id": "context.handoff-receiving",
+      "name": "Handoff receiving-context compilation",
+      "subsystem": "context",
+      "phases": { "DEFINED": false, "REGISTERED": false, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "DEAD",
+      "evidence": ["node/src/services/handoff-service.mjs:287-298", "node/src/routes/handoff.ts:76-79"],
+      "notes": "Bundles are written and readable via API only; no code reads them into a prompt. UI has zero handoff calls."
+    },
+    {
+      "id": "context.restart-compile",
+      "name": "Restart/resume context compilation",
+      "subsystem": "context",
+      "phases": { "DEFINED": false, "REGISTERED": false, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "NOT_IMPLEMENTED",
+      "evidence": ["node/src/services/agent-loop.mjs:234,752"]
+    },
+    {
+      "id": "memory.chat-history",
+      "name": "Chat history store",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/chat-store.ts:21-33,43-70", "node/src/routes/chat.ts:274-281"]
+    },
+    {
+      "id": "memory.recall",
+      "name": "Chat-turn memory recall (sessions.jsonl)",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/memory-recall.mjs:115-133,210-220", "node/src/services/chat-context.ts:154-161", "tests/arch/memory-recall.test.ts:119-120"]
+    },
+    {
+      "id": "memory.blocks",
+      "name": "Memory blocks (.aide/memory/blocks)",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": "partial", "VERIFIED": "partial", "RECOVERABLE": true, "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["harness/memory-blocks.mjs:36-50", "node/src/services/chat-context.ts:133-143"],
+      "notes": "Reader is live in chat; zero production writers (writer only used by tests/unit/test-memory-blocks.mjs). On-disk blocks are hand-written."
+    },
+    {
+      "id": "memory.day-digests",
+      "name": "Day digests",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/memory-spine.mjs:103-104", "node/src/routes/memory.ts:63,78", "node/src/services/chat-context.ts:138-142"]
+    },
+    {
+      "id": "memory.patterns-rollups",
+      "name": "Patterns + months/years rollups",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "BACKEND_ONLY",
+      "evidence": ["node/src/services/helix-join.mjs:21,44", "node/src/services/helix-retention.mjs:126-166", "node/src/services/system-map.mjs:110"],
+      "notes": "Produced and surfaced in system-map only; never consumed by a model prompt."
+    },
+    {
+      "id": "memory.audit-bus",
+      "name": "Audit bus / memory spine (.aide/cipher-state.jsonl)",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/audit-trail.mjs:38,92,349", "node/src/services/memory-spine.mjs:8,34", "node/src/services/chat-context.ts:126-128"]
+    },
+    {
+      "id": "memory.trajectories",
+      "name": "Agent trajectories (.aide/trajectories)",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": "partial", "SELECTABLE": false, "ROUTED": false, "INVOKED": "write-only", "OBSERVABLE": true, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "BACKEND_ONLY",
+      "evidence": ["node/src/services/agent-loop.mjs:582-590", "scripts/harvest-trajectories.mjs:6"],
+      "notes": "Written per session; consumed only by the offline training harvest. The directory does not exist in this checkout (no sessions ran)."
+    },
+    {
+      "id": "memory.verifications",
+      "name": "Verification records (.aide/verifications)",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": true, "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/agent-loop.mjs:628-638", "node/src/services/workflow-service.ts:275-279"],
+      "notes": "Live loop forces passed:false and labels artifacts/tests unavailable; the workflow gate consumes records but accepts abstain (see workflow.release-evidence-gate)."
+    },
+    {
+      "id": "memory.handoff-bundles",
+      "name": "Handoff bundles (.aide/handoff, imported)",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": true, "INVOKED": "write-only", "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": "storage-only", "UI_TRUTHFUL": true },
+      "classification": "ORPHANED",
+      "evidence": ["node/src/services/handoff-service.mjs:231-239,287-298", "node/src/routes/handoff.ts:41-91"],
+      "notes": "Accepted and stored; never consumed into any context or execution path."
+    },
+    {
+      "id": "memory.agent-loop-sessions-store",
+      "name": ".aide/agent-loop-sessions store",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": false, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": true, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "ORPHANED",
+      "evidence": ["node/src/services/system-map.mjs:57-59,110-118"],
+      "notes": "16 files on disk; no production writer and no reader beyond a status card. Docs claim routes/agent.ts writes it — it does not."
+    },
+    {
+      "id": "memory.checkpoints",
+      "name": "Checkpoint snapshot/restore",
+      "subsystem": "memory",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": "partial", "ROUTED": "snapshot-only", "INVOKED": "snapshot-only", "OBSERVABLE": true, "VERIFIED": "tests-only", "RECOVERABLE": true, "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/agent-checkpoints.mjs:19,101-141,180-187", "node/src/services/agent-loop.mjs:428-437"],
+      "notes": "Snapshots are taken before mutations; restore exists and is authority-governed but has no production caller."
+    },
+    {
+      "id": "restart.workflow-recovery",
+      "name": "Workflow state recovery",
+      "subsystem": "restart",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/workflow-service.ts:191-215,392-423"]
+    },
+    {
+      "id": "restart.agent-sessions",
+      "name": "Agent session / pending approval recovery",
+      "subsystem": "restart",
+      "phases": { "DEFINED": false, "REGISTERED": false, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "NOT_IMPLEMENTED",
+      "evidence": ["node/src/services/agent-loop.mjs:234,706-752,803-838"],
+      "notes": "Sessions, transcripts, pending approvals, and awaiting_approval state are in-memory Map only; lost on restart."
+    },
+    {
+      "id": "orchestrator.harness",
+      "name": "harness/orchestrator.mjs (reason→build→repair→verify→apply)",
+      "subsystem": "orchestrator",
+      "phases": { "DEFINED": true, "REGISTERED": false, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": "test-only", "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "ORPHANED",
+      "evidence": ["harness/orchestrator.mjs:36,105-107", "harness/test-orchestrator.mjs:12,20"],
+      "notes": "Not imported by the daemon; apply() throws by design."
+    },
+    {
+      "id": "authority.execution",
+      "name": "Execution Authority + operation policy",
+      "subsystem": "authority",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/execution-authority.mjs:16,226-316", "common/security/operation-policy.mjs:4-147", "node/src/server.ts:160-168,223-225"]
+    },
+    {
+      "id": "authority.selfimprove-runner",
+      "name": "Detached self-improve runner",
+      "subsystem": "authority",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": true, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "P0",
+      "evidence": ["node/src/server.ts:382-399", "scripts/selfimprove.mjs:121-156,184-196"],
+      "notes": "P0: spawned at boot and every 6h with stdio ignore + unref; mutates workspace signal/journal files with NO authority operation and NO audit."
+    },
+    {
+      "id": "authority.agent-tool-direct",
+      "name": "/api/agent/tool direct dispatcher",
+      "subsystem": "authority",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": false, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "SHADOWED",
+      "evidence": ["node/src/openapi.ts:788-808"],
+      "notes": "createAgentTools built without authority; safety depends entirely on readOnly labels + requiresToolApproval. Produces no trajectory/verification evidence."
+    },
+    {
+      "id": "authority.fail-closed-waivers",
+      "name": "DAP / LSP-mutations / training / model-import (unenrolled, denied)",
+      "subsystem": "authority",
+      "phases": { "DEFINED": true, "REGISTERED": false, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": "denials", "VERIFIED": "waivers", "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "DEAD",
+      "evidence": ["node/src/server.ts:224", "tests/arch/route-authority-coverage.test.ts:32-55"]
+    },
+    {
+      "id": "harness.agent-loop",
+      "name": "Agent loop harness (start/decision/tool)",
+      "subsystem": "harness",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": false, "UI_TRUTHFUL": "partial" },
+      "classification": "FULLY_WIRED",
+      "evidence": ["node/src/services/agent-loop.mjs:230,435-457,582-638", "node/src/routes/agent.ts:83-153"]
+    },
+    {
+      "id": "veritas.cli-battery",
+      "name": "Veritas CLI battery (harness/checks.mjs)",
+      "subsystem": "veritas",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": false, "ROUTED": false, "INVOKED": "operator-only", "OBSERVABLE": true, "VERIFIED": true, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "BACKEND_ONLY",
+      "evidence": ["harness/checks.mjs:9-27,61-89", "package.json:16-17", "harness/run-veritas.mjs:87"],
+      "notes": "Deterministic checks (path-boundary, secret-scan, manifest, compile, tests, git-diff) exist but are never invoked by the live loop or the workflow gate."
+    },
+    {
+      "id": "veritas.live-loop",
+      "name": "Live-loop verification (agent session end)",
+      "subsystem": "veritas",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": false, "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/agent-loop.mjs:598-638"],
+      "notes": "buildExecution forces passed:false; artifacts/tests marked unavailable; command success explicitly refused as test evidence."
+    },
+    {
+      "id": "routing.model-router",
+      "name": "Model router (role-based)",
+      "subsystem": "routing",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": true, "INVOKED": true, "OBSERVABLE": "status-only", "VERIFIED": true, "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/model-router.ts:66,129-141,145-164,172-186,232-251", "node/src/openapi.ts:750-757"],
+      "notes": "Real inputs: role, manifest roles, engine liveness, caller modelId, BYOK/cloud key presence, local-only preference, hardware probe, RAM/VRAM fit at ingest/start. Absent: task/content awareness, capability metadata (capabilities arrays empty), policy, hardware fit inside the router, connectivity probe."
+    },
+    {
+      "id": "routing.hardware-profile",
+      "name": "Hardware profile → recommendation",
+      "subsystem": "routing",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": true, "ROUTED": "start/ingest-only", "INVOKED": "partial", "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": true, "UI_TRUTHFUL": true },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/hardware.ts:32-58", "node/src/services/hardware-profile.mjs:84-131", "node/src/services/model-runtime.ts:420-446,816-817"],
+      "notes": "Hardware is real at model spawn/ingest fit and static-manifest recommendation; the router itself does not import the hardware profile."
+    },
+    {
+      "id": "routing.hf-discovery",
+      "name": "Hugging Face discovery",
+      "subsystem": "routing",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": "catalog-only", "ROUTED": false, "INVOKED": true, "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": true, "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/modelhub.mjs:74-87,176-179,248,255-257"],
+      "notes": "Plain HF search (filter=gguf, downloads sort); not task-aware; architecture check only after download; no sha256 verification of downloads (manifest sha256:null)."
+    },
+    {
+      "id": "routing.subscription-providers",
+      "name": "Subscription provider routing (codex/claude transports)",
+      "subsystem": "routing",
+      "phases": { "DEFINED": true, "REGISTERED": true, "DISCOVERABLE": true, "SELECTABLE": "partial", "ROUTED": "provider-only", "INVOKED": "provider-only", "OBSERVABLE": true, "VERIFIED": "partial", "RECOVERABLE": true, "UI_TRUTHFUL": "partial" },
+      "classification": "PARTIALLY_WIRED",
+      "evidence": ["node/src/services/subscription-transports.ts:102-191", "node/src/services/provider-connections.mjs:149-172"],
+      "notes": "Codex/Claude transports exist in production; connection rows are presence-based and routing_available:false (no governed role routing to subscriptions in production). Kimi/OpenCode/moonshot + Ghost exist only on release branches (not merged)."
+    },
+    {
+      "id": "ghost.projection",
+      "name": "Ghost Code (episode projection + certification)",
+      "subsystem": "ghost",
+      "phases": { "DEFINED": "lane-only", "REGISTERED": false, "DISCOVERABLE": false, "SELECTABLE": false, "ROUTED": false, "INVOKED": false, "OBSERVABLE": false, "VERIFIED": "lane-only", "RECOVERABLE": false, "UI_TRUTHFUL": false },
+      "classification": "NOT_IMPLEMENTED",
+      "evidence": ["git worktree list: feat/ghost-real-task-certification-v1, release/ghost-provider-closure-overnight, release/subscription-provider-certification"],
+      "notes": "Absent from covert-production. Exists and is verified on release branches (9/9 real-task battery on the overnight lane). Production wiring requires a merge decision."
+    }
+  ],
+  "p0_list": [
+    { "id": "authority.selfimprove-runner", "summary": "Detached self-improve runner mutates workspace with no authority or audit (server.ts:382-399)." },
+    { "id": "workflow.release-evidence-gate", "summary": "Release gate accepts abstained/fabricated verification records; records are unauthenticated JSON (workflow-service.ts:275-279)." },
+    { "id": "authority.egress-read", "summary": "External egress auto-approved as capability.read (chat cloud path; HF search with token) — no operator decision binds external transmission (operation-policy.mjs:86-92)." },
+    { "id": "authority.agent-tool-direct", "summary": "Shadowed direct tool dispatcher without authority or evidence (openapi.ts:788-808)." }
+  ],
+  "overall": {
+    "overall_production_wiring": "PARTIALLY_WIRED",
+    "offline_core_capability": "UNKNOWN (Part 19 pending)",
+    "micro_expert_integration": "PARTIALLY_WIRED",
+    "context_integration": "PARTIALLY_WIRED (two disconnected composers)",
+    "workflow_integration": "PARTIALLY_WIRED (backend-only lifecycle)",
+    "worker_routing": "PARTIALLY_WIRED",
+    "model_routing": "PARTIALLY_WIRED",
+    "provider_handoff": "NOT_IMPLEMENTED in production (lane-proven)",
+    "authority_integration": "PARTIALLY_WIRED (4 P0 gaps)",
+    "harness_integration": "PARTIALLY_WIRED",
+    "verification_integration": "PARTIALLY_WIRED",
+    "recovery_integration": "PARTIALLY_WIRED (agent sessions lost)"
+  }
+}
