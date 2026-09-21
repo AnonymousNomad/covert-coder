@@ -61,6 +61,15 @@ export const BUILTIN_PROVIDERS: ProviderDefinition[] = [
     egressHost: 'api.groq.com'
   },
   {
+    id: 'moonshot',
+    name: 'Moonshot (Kimi)',
+    kind: 'openai-compatible',
+    baseUrl: 'https://api.moonshot.ai/v1',
+    models: ['kimi-k2.6', 'kimi-k2.7-code', 'kimi-k3'],
+    contextLength: 256000,
+    egressHost: 'api.moonshot.ai'
+  },
+  {
     id: 'openrouter',
     name: 'OpenRouter',
     kind: 'openai-compatible',
