@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createOpenCodeBridge } from '../../node/src/services/opencode-bridge.ts';
+import { createOpenCodeBridge, parseOpenCodeModelRef } from '../../node/src/services/opencode-bridge.ts';
 
 const fixture = `#!/usr/bin/env node
 import http from 'node:http';
@@ -56,6 +56,13 @@ async function fixtureBridge(dir: string, mode?: string, pidFile?: string) {
     })) as unknown as typeof spawn
   });
 }
+
+test('model references parse as provider/model without inferring identity', () => {
+  assert.deepEqual(parseOpenCodeModelRef('opencode/big-pickle'), { providerID: 'opencode', modelID: 'big-pickle' });
+  assert.deepEqual(parseOpenCodeModelRef('bare-model'), { providerID: undefined, modelID: 'bare-model' });
+  assert.deepEqual(parseOpenCodeModelRef(''), { providerID: undefined, modelID: undefined });
+  assert.deepEqual(parseOpenCodeModelRef('/leading'), { providerID: undefined, modelID: '/leading' });
+});
 
 test('status reports readiness from the documented server API', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-oc-'));

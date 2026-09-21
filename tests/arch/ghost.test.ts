@@ -54,6 +54,7 @@ before(async () => {
   ]);
   await writeJsonl(path.join(aide, 'egress', 'journal.jsonl'), [
     { ts: '2026-01-01T00:02:00.000Z', action: 'codex-cli', provider_id: 'codex-cli', role: 'act' },
+    { ts: '2026-01-01T00:02:30.000Z', action: 'opencode', provider_id: 'opencode', role: 'act', delegated_provider: 'opencode', delegated_model: 'sk-delegated1234567890abcdef' },
     { ts: '2026-01-01T01:00:00.000Z', action: 'codex-cli', provider_id: 'codex-cli', role: 'act' }
   ]);
   await fs.mkdir(path.join(aide, 'worker-handoffs'), { recursive: true });
@@ -95,7 +96,10 @@ test('assembler projects canonical events from every store', () => {
   for (const expected of ['session.started', 'tool.result', 'tool.failed', 'session.error', 'verification.produced', 'verification.failed', 'worker.started', 'authority.granted', 'handoff.created', 'handoff.accepted', 'handoff.consumed', 'failure.classified', 'continuation.decided', 'egress.observed']) {
     assert.ok(kinds.includes(expected as (typeof kinds)[number]), `missing event kind ${expected}`);
   }
-  assert.equal(episode.egress.length, 1, 'only in-window egress is attributed');
+  assert.equal(episode.egress.length, 2, 'only in-window egress is attributed');
+  const delegated = episode.egress.find(entry => entry.action === 'opencode');
+  assert.equal(delegated?.delegated_provider, 'opencode');
+  assert.equal(delegated?.delegated_model, '[REDACTED]', 'token-shaped delegated values are redacted at the projection boundary');
   assert.ok(episode.files.includes('src/fix.mjs'), 'write_file effect surfaces as a file');
   assert.equal(episode.artifacts[0]?.ref, 'src/fix.mjs');
   assert.equal(episode.artifacts[0]?.sha256, 'a'.repeat(64));

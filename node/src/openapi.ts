@@ -100,7 +100,7 @@ import { createContinuationManager } from './services/continuation-manager.ts';
 import { routesForContinuation } from './routes/continuation.ts';
 import { createSubscriptionTransports } from './services/subscription-transports.ts';
 import { createKimiTransport } from './services/kimi-transport.ts';
-import { createOpenCodeBridge } from './services/opencode-bridge.ts';
+import { createOpenCodeBridge, parseOpenCodeModelRef } from './services/opencode-bridge.ts';
 import { routesForResidentIntent } from './routes/resident-intent.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
@@ -887,14 +887,12 @@ export async function buildRoutes(workspace: string, version: string, options: B
             // Routing model_id convention for the OpenCode bridge:
             // "<providerID>/<modelID>" selects the delegated provider/model
             // explicitly; a bare model id leaves provider selection to OpenCode.
-            const slash = modelId.indexOf('/');
-            const delegatedProvider = slash > 0 ? modelId.slice(0, slash) : undefined;
-            const delegatedModel = slash > 0 ? modelId.slice(slash + 1) : (modelId.length > 0 ? modelId : undefined);
+            const modelRef = parseOpenCodeModelRef(modelId);
             const result = await opencodeBridge.runTask({
               workspace,
               prompt,
-              providerID: delegatedProvider,
-              modelID: delegatedModel,
+              providerID: modelRef.providerID,
+              modelID: modelRef.modelID,
               timeoutMs: 300000
             });
             logEgress(workspace, {

@@ -76,6 +76,15 @@ function defaultFindExecutable(name: 'opencode'): Promise<string | null> {
   });
 }
 
+// Routing model_id convention for the OpenCode bridge: "<providerID>/<modelID>"
+// selects the delegated provider/model explicitly; a bare model id leaves
+// provider selection to OpenCode. Never infer identity from the model name.
+export function parseOpenCodeModelRef(modelId: string): { providerID: string | undefined; modelID: string | undefined } {
+  const slash = modelId.indexOf('/');
+  if (slash > 0) return { providerID: modelId.slice(0, slash), modelID: modelId.slice(slash + 1) };
+  return { providerID: undefined, modelID: modelId.length > 0 ? modelId : undefined };
+}
+
 export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
   const findExecutable = options.findExecutable ?? defaultFindExecutable;
   const spawnFn = options.spawnFn ?? spawn;

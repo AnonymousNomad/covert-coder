@@ -279,8 +279,8 @@ export async function assembleEpisode(options: { workspace: string; episodeId: s
         const action = String(row.action ?? 'unknown');
         const provider = typeof row.provider_id === 'string' ? row.provider_id : null;
         const role = typeof row.role === 'string' ? row.role : null;
-        const delegatedProvider = typeof row.delegated_provider === 'string' ? row.delegated_provider : null;
-        const delegatedModel = typeof row.delegated_model === 'string' ? row.delegated_model : null;
+        const delegatedProvider = typeof row.delegated_provider === 'string' ? redactGhostText(row.delegated_provider, 120) : null;
+        const delegatedModel = typeof row.delegated_model === 'string' ? redactGhostText(row.delegated_model, 200) : null;
         egressEntries.push({ action, provider_id: provider, role, at, delegated_provider: delegatedProvider, delegated_model: delegatedModel });
         push('egress.observed', 'egress', at, `egress: ${action}${provider ? ` (${provider})` : ''}`, {
           action,
