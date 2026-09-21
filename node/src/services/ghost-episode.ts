@@ -194,7 +194,10 @@ export async function assembleEpisode(options: { workspace: string; episodeId: s
 
   // --- Audit bus: worker start + authority rows correlated by session id ---
   const auditRows = await readJsonl(path.join(aide, 'cipher-state.jsonl'));
-  const sessionRows = auditRows.filter(row => row.session_id === episodeId || row.sessionId === episodeId || (row.extra as Record<string, unknown> | undefined)?.session_id === episodeId);
+  // Session-scoped authority rows carry the session id in `task_id` (tool and
+  // read operations), while approval rows carry it in `session_id`. Both are
+  // canonical correlations for this episode.
+  const sessionRows = auditRows.filter(row => row.session_id === episodeId || row.sessionId === episodeId || row.task_id === episodeId || (row.extra as Record<string, unknown> | undefined)?.session_id === episodeId);
   for (const row of sessionRows.slice(0, 400)) {
     const type = String(row.type ?? '');
     const at = String(row.ts ?? row.at ?? '');
@@ -205,6 +208,9 @@ export async function assembleEpisode(options: { workspace: string; episodeId: s
       push('worker.started', 'audit', at, `worker started (${chatSource})`, { chat_source: chatSource, mode: row.mode ?? null });
     } else if (type === 'approval' || type === 'authority') {
       const decision = String((row.decision ?? (row.extra as Record<string, unknown> | undefined)?.decision ?? 'requested'));
+      // Lifecycle completions (execution-succeeded) are not authority state
+      // transitions; they are skipped rather than mislabeled.
+      if (decision === 'execution-succeeded') continue;
       const kind: GhostEventKindT = decision === 'approved' || decision === 'approve' ? 'authority.granted'
         : decision === 'denied' || decision === 'reject' ? 'authority.denied'
           : decision === 'consumed' ? 'authority.consumed' : 'authority.requested';

@@ -1,9 +1,10 @@
 // Ghost scenario certification (Wave 8). Separation of concerns:
-//   GHOST   — what happened (the episode, assembled from canonical stores)
-//   SCENARIO — what should happen (expected checks, not prose)
-//   HARNESS — canonical post-execution verification performed by the runner
-//             (e.g. actually running the fixture tests after a worker ran)
-//   RESULT  — machine-readable PASS/FAIL/BLOCKED + FIRST DIVERGENCE
+//   GHOST    — what happened (the episode, assembled from canonical stores)
+//   SCENARIO — what should happen (expected checks + declared expected status)
+//   HARNESS  — canonical post-execution verification performed by the runner
+//              (running the fixture tests, comparing answers, replay attempts,
+//              restart persistence, artifact hashing) — never a worker claim
+//   RESULT   — machine-readable PASS/FAIL/BLOCKED + agreement + FIRST DIVERGENCE
 // Workers can never self-certify: PASS derives from episode evidence plus the
 // harness's own canonical execution, never from a worker's claim.
 import {
@@ -16,11 +17,13 @@ import {
 } from '../../../common/contracts/ghost.ts';
 
 export type GhostHarnessEvidence = {
-  tests_passed: boolean | null;
-  tests_detail: string | null;
+  // Boolean outcomes the harness itself established (canonical verification).
+  flags: Record<string, boolean>;
+  // Human-readable detail per flag (bounded).
+  details: Record<string, string>;
+  // Files that actually changed on disk during the run (hash-diffed by the harness).
   changed_files: string[];
-  answer_matches: boolean | null;
-  answer_detail: string | null;
+  // References to persisted harness evidence artifacts.
   evidence_refs: string[];
 };
 
@@ -33,6 +36,7 @@ export const GHOST_SCENARIOS: GhostScenarioT[] = [
     checks: [
       { kind: 'required_event', target: 'tool.result', description: 'the write tool succeeded' },
       { kind: 'required_event', target: 'session.done', description: 'the worker session completed (done)' },
+      { kind: 'harness_evidence', target: 'tests_failed_before', description: 'the fixture test genuinely failed before the fix' },
       { kind: 'harness_evidence', target: 'tests_passed', description: 'fixture tests actually pass after the worker ran' },
       { kind: 'harness_evidence', target: 'changed_files_present', description: 'the worker actually changed fixture files' }
     ],
@@ -80,6 +84,78 @@ export const GHOST_SCENARIOS: GhostScenarioT[] = [
     ],
     expected_status: 'FAIL',
     limitations: ['process-level events are not yet captured; divergence lands at the tool boundary']
+  },
+  {
+    scenario_id: 'local-only',
+    version: 1,
+    description: 'A real local task under the local-only preference: zero remote egress journaled, proven by the episode and the harness egress-delta check.',
+    tags: ['local-only', 'egress', 'policy'],
+    checks: [
+      { kind: 'required_event', target: 'session.done', description: 'the local session completed' },
+      { kind: 'forbidden_egress', target: 'any', description: 'zero egress captured in the episode' },
+      { kind: 'harness_evidence', target: 'no_remote_egress_delta', description: 'no remote invocation was journaled during the run' }
+    ],
+    expected_status: 'PASS',
+    limitations: ['remote-process proof uses the canonical egress journal plus a codex/claude image-count snapshot']
+  },
+  {
+    scenario_id: 'authority-replay',
+    version: 1,
+    description: 'Protected operation: approval -> consume -> effect -> replay attempt denied. Ghost captures the causality chain without authority tokens.',
+    tags: ['authority', 'replay', 'security'],
+    checks: [
+      { kind: 'required_event', target: 'authority.granted', description: 'the operation was approved' },
+      { kind: 'required_event', target: 'authority.consumed', description: 'the approval was consumed exactly once' },
+      { kind: 'required_event', target: 'tool.result', description: 'the approved effect actually ran' },
+      { kind: 'harness_evidence', target: 'replay_denied', description: 'the replayed approval was refused' },
+      { kind: 'harness_evidence', target: 'effect_applied', description: 'the approved effect actually landed on disk' }
+    ],
+    expected_status: 'PASS',
+    limitations: ['the episode carries operation digests as audit references but no tokens or credentials']
+  },
+  {
+    scenario_id: 'continuation-handoff',
+    version: 1,
+    description: 'Worker A fails deterministically; Wave 6 classification issues a governed handoff; Worker B completes the same task identity. Ghost shows both workers, the failure, and the handoff.',
+    tags: ['continuation', 'handoff', 'failure'],
+    checks: [
+      { kind: 'required_event', target: 'failure.classified', description: 'the failure was classified' },
+      { kind: 'required_event', target: 'handoff.created', description: 'a governed handoff was created' },
+      { kind: 'required_event', target: 'handoff.consumed', description: 'the handoff was consumed by the replacement' },
+      { kind: 'harness_evidence', target: 'continuation_completed', description: 'the replacement completed the same task' }
+    ],
+    expected_status: 'PASS',
+    limitations: ['the episode keys on the failed session; the replacement session is verified by the harness']
+  },
+  {
+    scenario_id: 'restart-continuity',
+    version: 1,
+    description: 'A meaningful task is interrupted by a controlled stack restart; the continuation chain persists; the replacement completes; no duplicate effect; verification passes.',
+    tags: ['restart', 'persistence', 'continuation'],
+    checks: [
+      { kind: 'required_event', target: 'failure.classified', description: 'the pre-restart failure was classified' },
+      { kind: 'harness_evidence', target: 'restart_persisted', description: 'the continuation chain survived the restart' },
+      { kind: 'harness_evidence', target: 'no_duplicate_effect', description: 'the completed effect happened exactly once' },
+      { kind: 'harness_evidence', target: 'continuation_completed', description: 'the replacement completed after the restart' }
+    ],
+    expected_status: 'PASS',
+    limitations: ['in-memory agent sessions do not survive restart by design; continuity rides the persisted chain + handoff']
+  },
+  {
+    scenario_id: 'artifact-production',
+    version: 1,
+    description: 'A task genuinely produces an artifact; certification verifies existence, producing task linkage, size/hash, and the artifact verification test.',
+    tags: ['artifact', 'verification'],
+    checks: [
+      { kind: 'required_file', target: 'dist/report.txt', description: 'the artifact exists as a file effect' },
+      { kind: 'harness_evidence', target: 'artifact_verified', description: 'artifact exists with expected size/hash and correct producing task' },
+      { kind: 'harness_evidence', target: 'tests_passed', description: 'the artifact verification test passed' }
+    ],
+    expected_status: 'PASS',
+    limitations: [
+      'the artifact is produced by the scripted worker through Covert write_file; hash/size are computed by the harness',
+      'the dist/ output directory is pre-created by the harness (write_file requires an existing parent directory)'
+    ]
   }
 ];
 
@@ -118,16 +194,13 @@ function evaluateCheck(
     case 'artifact_required':
       return episode.artifacts.length > 0 ? pass(`${episode.artifacts.length} artifact ref(s)`) : fail('no artifact refs');
     case 'harness_evidence': {
-      if (check.target === 'tests_passed') {
-        return harness.tests_passed === true ? pass(`tests passed (${harness.tests_detail ?? ''})`.slice(0, 380)) : fail(`tests did not pass (${harness.tests_detail ?? 'no result'})`.slice(0, 380));
-      }
       if (check.target === 'changed_files_present') {
         return harness.changed_files.length > 0 ? pass(`${harness.changed_files.length} changed file(s)`) : fail('no changed files');
       }
-      if (check.target === 'answer_matches') {
-        return harness.answer_matches === true ? pass(`answer matches ground truth (${harness.answer_detail ?? ''})`.slice(0, 380)) : fail(`answer did not match ground truth (${harness.answer_detail ?? 'no answer captured'})`.slice(0, 380));
-      }
-      return fail(`unknown harness evidence target ${check.target}`);
+      const flag = harness.flags[check.target];
+      if (flag === undefined) return fail(`unknown harness evidence target ${check.target}`);
+      const detail = harness.details[check.target] ?? `${check.target}=${String(flag)}`;
+      return flag === true ? pass(detail.slice(0, 380)) : fail(detail.slice(0, 380));
     }
     default:
       return fail(`unknown check kind`);
@@ -195,7 +268,12 @@ const AFFECTED_RULES: AffectedRule[] = [
   { pattern: /resident-intent|resident-intent-admission/, scenarios: ['missing-compiler'], reason: 'admission/readiness changes affect task execution entry' },
   { pattern: /subscription-transports|provider-connections|providers\.ts|model-router|byok/, scenarios: ['codex-bugfix', 'codex-analysis'], reason: 'worker/provider transport changes affect remote worker scenarios' },
   { pattern: /agent-loop|agent-tools|agent-parser|server\.ts|openapi\.ts|routes\/agent/, scenarios: ['missing-compiler', 'scripted-bugfix', 'codex-bugfix'], reason: 'execution core changes affect every real-task scenario' },
-  { pattern: /worker-handoff|continuation|failure/, scenarios: ['missing-compiler'], reason: 'continuity changes affect failure localization' }
+  { pattern: /worker-handoff|continuation|failure/, scenarios: ['missing-compiler', 'continuation-handoff', 'restart-continuity'], reason: 'continuity changes affect failure localization and handoff scenarios' },
+  { pattern: /authority|operation-policy/, scenarios: ['authority-replay', 'missing-compiler'], reason: 'authority changes affect approval/consume/replay integrity' },
+  { pattern: /connections|preference/, scenarios: ['local-only'], reason: 'preference changes affect local-only egress guarantees' },
+  { pattern: /egress|journal/, scenarios: ['local-only', 'codex-analysis', 'codex-bugfix'], reason: 'egress journaling changes affect every egress-proof scenario' },
+  { pattern: /verification|veritas/, scenarios: ['scripted-bugfix', 'artifact-production'], reason: 'verification changes affect outcome-proof scenarios' },
+  { pattern: /task-service|task-runner/, scenarios: ['artifact-production'], reason: 'task execution changes affect artifact production' }
 ];
 
 export function affectedScenarios(changedFiles: string[]): { selected: string[]; reasons: string[]; conservative: boolean } {
