@@ -1,0 +1,37 @@
+{
+  "captured_at": "2026-09-21T12:04:00-05:00",
+  "worktree": "E:\\aide-sovereign-workbench-model-bootstrap",
+  "branch": "feat/first-run-model-bootstrap-luna",
+  "head": "3d411f1266d0c44cc640b96c11b1f774b2721442",
+  "working_tree": "dirty_by_lane_changes_only",
+  "staged_files": [],
+  "running_lane_services": [],
+  "expected_lane_ports": {
+    "ui": 4273,
+    "facade": 4877,
+    "architecture": 4878,
+    "legacy": 4879,
+    "model_proof": 8093
+  },
+  "node": "v26.4.0",
+  "npm": "11.17.0",
+  "powershell": "7.6.6",
+  "os": "Microsoft Windows NT 10.0.26220.0",
+  "hardware": {
+    "ram_bytes": 17099075584,
+    "gpu": "NVIDIA GeForce GTX 1060",
+    "gpu_memory_reported_bytes": 4293918720,
+    "cpu": "ASUSTeK Strix GL703GM_GL703GM"
+  },
+  "baseline_checks": {
+    "model_hub_unit": "7/7",
+    "modelhub_containment": "15/15",
+    "model_router": "14/14",
+    "gguf_and_fit": "11 pass, 1 skip",
+    "node_typescript": "pass",
+    "browser_typescript": "pass",
+    "frontend_build": "pass",
+    "eslint": "environmental_spin_observed_before_bounded_rerun",
+    "diff_check": "pass_before_latest_driver_patch"
+  }
+}

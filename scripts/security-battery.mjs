@@ -104,7 +104,10 @@ async function testFacadeTestsStillPass() {
     });
     let stdout = '';
     child.stdout.on('data', d => stdout += d);
-    child.on('close', code => resolve(code === 0 && stdout.includes('pass 12')));
+    // The facade suite is allowed to grow. Pinning this diagnostic to an old
+    // test count caused a false red result after new facade coverage was added.
+    // Require the real test runner summary and a zero exit instead.
+    child.on('close', code => resolve(code === 0 && /ℹ pass \d+/.test(stdout)));
   });
 }
 
