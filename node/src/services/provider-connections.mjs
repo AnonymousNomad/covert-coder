@@ -150,6 +150,31 @@ export function createProviderConnectionsService(options) {
   }
 
   async function subscriptionConnections() {
+    // Wave 7: when the governed subscription transports are wired, their real
+    // detection (binary + official login artifact presence + bounded version
+    // probe) drives the cards. Credentials are never read.
+    if (options.subscriptionTransports) {
+      const rows = [];
+      for (const [id, runtime] of Object.entries(SUBSCRIPTION_RUNTIMES)) {
+        const providerId = id === 'codex' ? 'codex-cli' : 'claude-code-cli';
+        const detection = await options.subscriptionTransports.detect(providerId);
+        rows.push({
+          id: `subscription:${id}`,
+          provider_id: id,
+          name: `${runtime.display} subscription`,
+          kind: 'subscription',
+          status: detection.status === 'AVAILABLE' ? 'connected'
+            : detection.status === 'AUTH_REQUIRED' ? 'sign_in_required'
+              : detection.status === 'DEGRADED' ? 'connected'
+                : 'unavailable',
+          detail: `transport ${detection.transport} \u00b7 ${detection.auth_class}${detection.version ? ` \u00b7 ${detection.version}` : ''} \u00b7 ${detection.detail}`.slice(0, 300),
+          capabilities: ['chat'],
+          routing_available: detection.status === 'AVAILABLE',
+          account_label: 'official CLI'
+        });
+      }
+      return rows;
+    }
     const result = [];
     for (const [id, runtime] of Object.entries(SUBSCRIPTION_RUNTIMES)) {
       const exePath = await findExecutable(runtime.exec);

@@ -32,6 +32,19 @@ export interface ProviderConnectionsServiceOptions {
   };
   findExecutable?: (name: string) => Promise<string | null>;
   preferencePath?: string;
+  // Wave 7: governed subscription CLI transports (official Codex / Claude Code).
+  subscriptionTransports?: {
+    detect(provider: 'codex-cli' | 'claude-code-cli'): Promise<{
+      provider: 'codex-cli' | 'claude-code-cli';
+      provider_family: 'openai' | 'anthropic';
+      transport: 'codex-cli' | 'claude-code-cli';
+      auth_class: 'chatgpt_subscription' | 'claude_subscription';
+      status: 'UNAVAILABLE' | 'AUTH_REQUIRED' | 'AVAILABLE' | 'DEGRADED';
+      binary_path: string | null;
+      version: string | null;
+      detail: string;
+    }>;
+  };
 }
 
 export function createProviderConnectionsService(options: ProviderConnectionsServiceOptions): ProviderConnectionsService;

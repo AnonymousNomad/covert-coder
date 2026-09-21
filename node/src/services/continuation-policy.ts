@@ -25,7 +25,7 @@ export function classifyFailure(evidence: FailureEvidence): FailureClassT {
   if (/handoff/i.test(error)) return 'HANDOFF_FAILURE';
   if (/context/i.test(error) && /fail|unavailable|error/i.test(error)) return 'CONTEXT_FAILURE';
   if (/refus(e|al|ed)|cannot comply|won'?t comply|will not comply/i.test(error)) return 'WORKER_REFUSAL';
-  if (/not connected|provider .*HTTP\s*(4|5)|unreachable|ECONN|fetch failed|network/i.test(error)) return 'PROVIDER_UNAVAILABLE';
+  if (/not connected|provider .*HTTP\s*(4|5)|unreachable|ECONN|fetch failed|network|exited with code|process (failure|died)/i.test(error)) return 'PROVIDER_UNAVAILABLE';
   if (/no tool call|malformed steps|invalid response|empty response|unparseable/i.test(error)) return 'INVALID_OUTPUT';
   if (/engine|llama|runtime|no model is ready|route .*(is )?(down|unavailable)/i.test(error)) return 'LOCAL_RUNTIME_UNAVAILABLE';
   if (/transport|socket|stream/i.test(error)) return 'TRANSPORT_FAILURE';

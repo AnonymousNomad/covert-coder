@@ -98,6 +98,7 @@ import { routesForWorkerHandoff } from './routes/worker-handoff.ts';
 import { createResidentIntentService } from './services/resident-intent.ts';
 import { createContinuationManager } from './services/continuation-manager.ts';
 import { routesForContinuation } from './routes/continuation.ts';
+import { createSubscriptionTransports } from './services/subscription-transports.ts';
 import { routesForResidentIntent } from './routes/resident-intent.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
@@ -135,6 +136,7 @@ export interface BuildRoutesOptions {
   modelRuntime?: ModelRuntime;
   residentIntentService?: ReturnType<typeof createResidentIntentService>;
   requireIntentReadiness?: boolean;
+  subscriptionTransports?: ReturnType<typeof createSubscriptionTransports>;
   providerService?: ProviderService;
   // Optional interactive terminal session service. When provided, the PTY
   // routes are registered; when absent (tests/CLI), no PTY code path exists.
@@ -360,6 +362,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
       logger: options.logger
     });
   const modelRouter = new ModelRouter(modelRuntime, providerService);
+  // Subscription CLI transports (Wave 7): official Codex / Claude Code CLIs.
+  // Detection + bounded invocation only; credentials stay with the CLIs.
+  const subscriptionTransports = options.subscriptionTransports ?? createSubscriptionTransports();
   const learnerState = new LearnerState({ statePath: path.join(workspace, '.aide', 'learner-state.json') });
   await learnerState.load();
   const tutorManager = new TutorManager({
@@ -555,7 +560,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     providerService,
     byokService,
     modelRuntime,
-    secretStore
+    secretStore,
+    subscriptionTransports
   });
   const huggingfaceAuthorization =
     options.modelHubAuthorization ??
@@ -818,13 +824,35 @@ export async function buildRoutes(workspace: string, version: string, options: B
         const providerId = String((target as { provider_id?: unknown }).provider_id ?? '');
         const modelId = String((target as { model_id?: unknown }).model_id ?? '');
         const builtin = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
-        if (builtin === undefined || modelId.length === 0) return null;
-        return async messages => {
-          // Egress journaling parity with the BYOK worker path.
-          logEgress(workspace, { action: 'builtin-chat', url: `https://${builtin.egressHost}/`, provider_id: builtin.id, role });
-          const result = await providerService.chat(builtin.id, modelId, messages);
-          return result.text;
-        };
+        if (builtin !== undefined && modelId.length > 0) {
+          return async messages => {
+            // Egress journaling parity with the BYOK worker path.
+            logEgress(workspace, { action: 'builtin-chat', url: `https://${builtin.egressHost}/`, provider_id: builtin.id, role });
+            const result = await providerService.chat(builtin.id, modelId, messages);
+            return result.text;
+          };
+        }
+        // Subscription CLI transports (Wave 7): official Codex / Claude Code
+        // CLIs. The consent + local-only gates above already applied — a locally
+        // installed binary does NOT make inference local, so these are remote
+        // egress workers and are journaled as such.
+        if (providerId === 'codex-cli' || providerId === 'claude-code-cli') {
+          const subscriptionProvider = providerId as 'codex-cli' | 'claude-code-cli';
+          return async messages => {
+            logEgress(workspace, { action: subscriptionProvider, url: `cli://${subscriptionProvider}`, provider_id: subscriptionProvider, role });
+            const prompt = messages
+              .map(message => `${message.role.toUpperCase()}: ${message.content}`)
+              .join('\n\n');
+            const result = await subscriptionTransports.invoke(subscriptionProvider, {
+              prompt,
+              workspace,
+              ...(modelId.length > 0 ? { model: modelId } : {}),
+              timeoutMs: 300000
+            });
+            return result.text;
+          };
+        }
+        return null;
       },
       // Expert advisory wire-in (aide-micro-expert-collective skill, audit
       // Week 1 item #7). When the agent is started with `expertAdvisory:true`,
