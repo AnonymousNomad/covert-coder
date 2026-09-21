@@ -28,8 +28,13 @@
     "zero_model_evidence": ".aide/model-bootstrap-review/result.json",
     "starter_choices": [
       "bartowski/SmolLM2-360M-Instruct-GGUF",
-      "bartowski/Llama-3.2-1B-Instruct-GGUF",
+      "MaziyarPanahi/Llama-3.2-1B-Instruct-GGUF",
       "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF"
+    ],
+    "starter_artifacts": [
+      "SmolLM2-360M-Instruct-Q4_K_M.gguf",
+      "Llama-3.2-1B-Instruct.Q4_K_M.gguf",
+      "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
     ],
     "proof_repository": "bartowski/SmolLM2-360M-Instruct-GGUF",
     "proof_artifact": "SmolLM2-360M-Instruct-Q4_K_M.gguf",
