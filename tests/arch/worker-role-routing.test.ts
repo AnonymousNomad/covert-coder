@@ -148,6 +148,29 @@ test('builtin role routing executes a governed stage through the provider transp
   assert.match(journal, /"role":"act"/);
 });
 
+test('moonshot (Kimi) rides the same governed builtin path with a distinct identity', async () => {
+  builtinKeys.set('moonshot', 'ms-routing-test-key');
+  assert.equal((await approved('PUT', '/api/byok/consent', { enabled: true }, 'task:wr-ms-consent')).status, 200);
+  assert.equal((await approved('PUT', '/api/byok/routing', {
+    routing: { plan: 'local', act: { provider_id: 'moonshot', model_id: 'kimi-k2.6' }, utility: 'local' }
+  }, 'task:wr-ms-routing')).status, 200);
+  const started = await approved<{ session_id: string }>('POST', '/api/agent/start', {
+    task: 'moonshot routed stage', mode: 'act', chat_source: 'provider'
+  }, 'task:wr-ms-start');
+  assert.equal(started.status, 200, JSON.stringify(started.body).slice(0, 300));
+  const final = await waitForTerminal(started.body.data!.session_id);
+  assert.equal(final.state, 'done', JSON.stringify(final).slice(0, 300));
+  const call = builtinCalls[builtinCalls.length - 1]!;
+  assert.equal(call.url, 'https://api.moonshot.ai/v1/chat/completions', 'the moonshot transport carried the request');
+  assert.equal(call.authorization, 'Bearer ms-routing-test-key', 'the vaulted moonshot credential was attached');
+  assert.equal(call.model, 'kimi-k2.6', 'the routed Kimi model was honored');
+  const journal = await fs.readFile(path.join(workspace, '.aide', 'egress', 'journal.jsonl'), 'utf8');
+  assert.match(journal, /"provider_id":"moonshot"/, 'moonshot egress is journaled under its own identity');
+  await approved('PUT', '/api/byok/routing', {
+    routing: { plan: 'local', act: { provider_id: 'openai', model_id: 'gpt-4o' }, utility: 'local' }
+  }, 'task:wr-ms-restore');
+});
+
 test('local-only preference pin refuses builtin targets with zero transport calls', async () => {
   assert.equal((await approved('PUT', '/api/connections/preference', { preference: 'local-only' }, 'task:wr-pin')).status, 200);
   const before = builtinCalls.length;

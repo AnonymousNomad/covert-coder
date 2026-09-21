@@ -31,7 +31,7 @@ function makeService(dir: string, fetchFn: typeof fetch): { service: ProviderSer
 }
 
 test('built-in provider registry is well-formed', () => {
-  assert.equal(BUILTIN_PROVIDERS.length, 6);
+  assert.equal(BUILTIN_PROVIDERS.length, 7);
   const ids = new Set<string>();
   for (const provider of BUILTIN_PROVIDERS) {
     assert.ok(!ids.has(provider.id), `duplicate provider id ${provider.id}`);
@@ -45,6 +45,12 @@ test('built-in provider registry is well-formed', () => {
       assert.fail(`${provider.id} baseUrl must be a valid URL`);
     }
   }
+  const moonshot = BUILTIN_PROVIDERS.find(provider => provider.id === 'moonshot');
+  assert.ok(moonshot, 'moonshot (Kimi) is a first-class builtin provider');
+  assert.equal(moonshot.baseUrl, 'https://api.moonshot.ai/v1');
+  assert.equal(moonshot.egressHost, 'api.moonshot.ai');
+  assert.ok(moonshot.models.includes('kimi-k2.6'));
+  assert.ok(moonshot.models.includes('kimi-k2.7-code'));
 });
 
 test('list reports not_connected before any credential exists', async () => {
@@ -52,7 +58,7 @@ test('list reports not_connected before any credential exists', async () => {
   try {
     const { service } = makeService(dir, (() => Promise.resolve(new Response(null, { status: 200 }))) as typeof fetch);
     const providers = await service.list();
-    assert.equal(providers.length, 6);
+    assert.equal(providers.length, 7);
     assert.ok(providers.every(provider => provider.status === 'not_connected'));
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
