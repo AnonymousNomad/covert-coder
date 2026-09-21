@@ -884,7 +884,19 @@ export async function buildRoutes(workspace: string, version: string, options: B
             const prompt = messages
               .map(message => `${message.role.toUpperCase()}: ${message.content}`)
               .join('\n\n');
-            const result = await opencodeBridge.runTask({ workspace, prompt, timeoutMs: 300000 });
+            // Routing model_id convention for the OpenCode bridge:
+            // "<providerID>/<modelID>" selects the delegated provider/model
+            // explicitly; a bare model id leaves provider selection to OpenCode.
+            const slash = modelId.indexOf('/');
+            const delegatedProvider = slash > 0 ? modelId.slice(0, slash) : undefined;
+            const delegatedModel = slash > 0 ? modelId.slice(slash + 1) : (modelId.length > 0 ? modelId : undefined);
+            const result = await opencodeBridge.runTask({
+              workspace,
+              prompt,
+              providerID: delegatedProvider,
+              modelID: delegatedModel,
+              timeoutMs: 300000
+            });
             logEgress(workspace, {
               action: 'opencode',
               url: `${result.server_url}/`,
