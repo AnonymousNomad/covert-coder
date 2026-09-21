@@ -5535,7 +5535,8 @@
                               "subscription",
                               "api-key",
                               "local-runtime",
-                              "catalog-token"
+                              "catalog-token",
+                              "bridge"
                             ]
                           },
                           "status": {
@@ -5571,6 +5572,62 @@
                           "account_label": {
                             "type": "string",
                             "maxLength": 120
+                          },
+                          "connection_mode": {
+                            "type": "string",
+                            "enum": [
+                              "direct_api",
+                              "subscription_client"
+                            ]
+                          },
+                          "auth_source": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "auth_capabilities": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "authenticated": {
+                                    "type": "boolean"
+                                  },
+                                  "analysis_executable": {
+                                    "type": "boolean"
+                                  },
+                                  "mutation_executable": {
+                                    "type": [
+                                      "boolean",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "authenticated",
+                                  "analysis_executable",
+                                  "mutation_executable"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "connection_methods": {
+                            "maxItems": 8,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 40
+                            }
                           }
                         },
                         "required": [
