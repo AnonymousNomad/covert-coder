@@ -179,6 +179,22 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
       const timer = setTimeout(() => resolve(), 5000);
       ref.child.once('close', () => { clearTimeout(timer); resolve(); });
     });
+    // The real opencode server can outlive the launcher (it self-detaches), so
+    // tree-kill on the tracked child is not sufficient. Sweep the exact port we
+    // announced: any listener on it is our server and must die (R7).
+    try {
+      const port = new URL(ref.url).port;
+      if (port.length > 0 && process.platform === 'win32') {
+        const sweep = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+          `$p = (Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess); if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }`
+        ], { windowsHide: true, stdio: 'ignore' });
+        await new Promise<void>(resolve => {
+          const timer = setTimeout(() => resolve(), 8000);
+          sweep.once('close', () => { clearTimeout(timer); resolve(); });
+          sweep.once('error', () => { clearTimeout(timer); resolve(); });
+        });
+      }
+    } catch { /* best-effort sweep; the tracked kill already ran */ }
   }
 
   async function fetchJson(url: string, init: RequestInit = {}, timeoutMs = 60000): Promise<{ status: number; body: unknown }> {
