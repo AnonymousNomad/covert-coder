@@ -38,10 +38,37 @@ export interface ProviderConnectionsServiceOptions {
       provider: 'codex-cli' | 'claude-code-cli';
       provider_family: 'openai' | 'anthropic';
       transport: 'codex-cli' | 'claude-code-cli';
+      connection_mode: 'subscription_client';
       auth_class: 'chatgpt_subscription' | 'claude_subscription';
+      auth_source: 'chatgpt' | 'claude' | null;
+      capabilities: { authenticated: boolean; analysis_executable: boolean; mutation_executable: boolean | null };
       status: 'UNAVAILABLE' | 'AUTH_REQUIRED' | 'AVAILABLE' | 'DEGRADED';
       binary_path: string | null;
       version: string | null;
+      detail: string;
+    }>;
+  };
+  // Subscription bridge Phase 2: official Kimi Code CLI transport.
+  kimiTransport?: {
+    detect(): Promise<{
+      provider: 'kimi-code';
+      transport: 'kimi-code-cli';
+      auth_class: 'kimi_code_subscription';
+      status: 'UNAVAILABLE' | 'AUTH_REQUIRED' | 'AVAILABLE' | 'DEGRADED';
+      binary_path: string | null;
+      version: string | null;
+      authenticated: boolean | null;
+      detail: string;
+    }>;
+    probe(): Promise<{ authenticated: boolean; detail: string }>;
+  };
+  // Subscription bridge Phase 3: documented OpenCode headless server bridge.
+  opencodeBridge?: {
+    detect(): Promise<{ bin: string; prefix: string[]; version: string | null } | null>;
+    status(): Promise<{
+      status: string;
+      version: string | null;
+      connected_providers: string[];
       detail: string;
     }>;
   };

@@ -99,6 +99,8 @@ import { createResidentIntentService } from './services/resident-intent.ts';
 import { createContinuationManager } from './services/continuation-manager.ts';
 import { routesForContinuation } from './routes/continuation.ts';
 import { createSubscriptionTransports } from './services/subscription-transports.ts';
+import { createKimiTransport } from './services/kimi-transport.ts';
+import { createOpenCodeBridge } from './services/opencode-bridge.ts';
 import { routesForResidentIntent } from './routes/resident-intent.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
@@ -137,6 +139,8 @@ export interface BuildRoutesOptions {
   residentIntentService?: ReturnType<typeof createResidentIntentService>;
   requireIntentReadiness?: boolean;
   subscriptionTransports?: ReturnType<typeof createSubscriptionTransports>;
+  kimiTransport?: ReturnType<typeof createKimiTransport>;
+  opencodeBridge?: ReturnType<typeof createOpenCodeBridge>;
   providerService?: ProviderService;
   // Optional interactive terminal session service. When provided, the PTY
   // routes are registered; when absent (tests/CLI), no PTY code path exists.
@@ -365,6 +369,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // Subscription CLI transports (Wave 7): official Codex / Claude Code CLIs.
   // Detection + bounded invocation only; credentials stay with the CLIs.
   const subscriptionTransports = options.subscriptionTransports ?? createSubscriptionTransports();
+  // Subscription bridge (Phases 2-3): official Kimi Code CLI + the documented
+  // OpenCode headless server. Both keep authentication ownership with the
+  // vendor client; Covert only observes readiness through supported surfaces.
+  const kimiTransport = options.kimiTransport ?? createKimiTransport();
+  const opencodeBridge = options.opencodeBridge ?? createOpenCodeBridge();
   const learnerState = new LearnerState({ statePath: path.join(workspace, '.aide', 'learner-state.json') });
   await learnerState.load();
   const tutorManager = new TutorManager({
@@ -561,7 +570,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
     byokService,
     modelRuntime,
     secretStore,
-    subscriptionTransports
+    subscriptionTransports,
+    kimiTransport,
+    opencodeBridge
   });
   const huggingfaceAuthorization =
     options.modelHubAuthorization ??
@@ -848,6 +859,39 @@ export async function buildRoutes(workspace: string, version: string, options: B
               workspace,
               ...(modelId.length > 0 ? { model: modelId } : {}),
               timeoutMs: 300000
+            });
+            return result.text;
+          };
+        }
+        // Kimi Code subscription transport (Phase 2): official CLI print mode
+        // with plan mode (read-only tools). Authentication stays owned by the
+        // CLI (`kimi login`); we never read its credentials.
+        if (providerId === 'kimi-code') {
+          return async messages => {
+            logEgress(workspace, { action: 'kimi-code', url: 'cli://kimi-code', provider_id: 'kimi-code', role });
+            const prompt = messages
+              .map(message => `${message.role.toUpperCase()}: ${message.content}`)
+              .join('\n\n');
+            const result = await kimiTransport.invoke({ prompt, workspace, timeoutMs: 300000 });
+            return result.text;
+          };
+        }
+        // OpenCode bridge (Phase 3): documented headless server API. The
+        // delegated provider/model identity is recorded only when OpenCode
+        // returns it authoritatively in the message payload.
+        if (providerId === 'opencode') {
+          return async messages => {
+            const prompt = messages
+              .map(message => `${message.role.toUpperCase()}: ${message.content}`)
+              .join('\n\n');
+            const result = await opencodeBridge.runTask({ workspace, prompt, timeoutMs: 300000 });
+            logEgress(workspace, {
+              action: 'opencode',
+              url: `${result.server_url}/`,
+              provider_id: 'opencode',
+              role,
+              ...(result.delegated_provider !== null ? { delegated_provider: result.delegated_provider } : {}),
+              ...(result.delegated_model !== null ? { delegated_model: result.delegated_model } : {})
             });
             return result.text;
           };

@@ -108,7 +108,7 @@ export async function assembleEpisode(options: { workspace: string; episodeId: s
   const claims: string[] = [];
   const verifiedFacts: string[] = [];
   const failures: Array<{ classification: string; summary: string; at: string }> = [];
-  const egressEntries: Array<{ action: string; provider_id: string | null; role: string | null; at: string }> = [];
+  const egressEntries: Array<{ action: string; provider_id: string | null; role: string | null; at: string; delegated_provider?: string | null; delegated_model?: string | null }> = [];
 
   const trajectory = await readJson<Trajectory>(path.join(aide, 'trajectories', `${episodeId}.traj.json`));
   const verification = await readJson<Verification>(path.join(aide, 'verifications', `${episodeId}.verification.json`));
@@ -279,8 +279,16 @@ export async function assembleEpisode(options: { workspace: string; episodeId: s
         const action = String(row.action ?? 'unknown');
         const provider = typeof row.provider_id === 'string' ? row.provider_id : null;
         const role = typeof row.role === 'string' ? row.role : null;
-        egressEntries.push({ action, provider_id: provider, role, at });
-        push('egress.observed', 'egress', at, `egress: ${action}${provider ? ` (${provider})` : ''}`, { action, provider_id: provider, role });
+        const delegatedProvider = typeof row.delegated_provider === 'string' ? row.delegated_provider : null;
+        const delegatedModel = typeof row.delegated_model === 'string' ? row.delegated_model : null;
+        egressEntries.push({ action, provider_id: provider, role, at, delegated_provider: delegatedProvider, delegated_model: delegatedModel });
+        push('egress.observed', 'egress', at, `egress: ${action}${provider ? ` (${provider})` : ''}`, {
+          action,
+          provider_id: provider,
+          role,
+          ...(delegatedProvider !== null ? { delegated_provider: delegatedProvider } : {}),
+          ...(delegatedModel !== null ? { delegated_model: delegatedModel } : {})
+        });
       }
       limitations.push('egress entries are time-window correlated, not causally linked');
     }

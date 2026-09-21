@@ -16,11 +16,25 @@ import path from 'node:path';
 export type SubscriptionProviderId = 'codex-cli' | 'claude-code-cli';
 export type SubscriptionStatus = 'UNAVAILABLE' | 'AUTH_REQUIRED' | 'AVAILABLE' | 'DEGRADED';
 
+// SUBSCRIPTION LOGIN != API KEY. Readiness describes the actual executable
+// path: what is authenticated, and what the client can actually do.
+export type SubscriptionCapabilities = {
+  authenticated: boolean;
+  // analysis/read execution proven or claimed from authenticated executable
+  analysis_executable: boolean;
+  // workspace mutation: null = unproven (never guessed); set only from a real
+  // recorded invocation outcome (sandbox denial/timeout => false; exit 0 => true)
+  mutation_executable: boolean | null;
+};
+
 export type SubscriptionDetection = {
   provider: SubscriptionProviderId;
   provider_family: 'openai' | 'anthropic';
   transport: SubscriptionProviderId;
+  connection_mode: 'subscription_client';
   auth_class: 'chatgpt_subscription' | 'claude_subscription';
+  auth_source: 'chatgpt' | 'claude' | null;
+  capabilities: SubscriptionCapabilities;
   status: SubscriptionStatus;
   binary_path: string | null;
   version: string | null;
@@ -58,6 +72,8 @@ export interface SubscriptionTransportOptions {
   findExecutable?: (name: 'codex' | 'claude') => Promise<string | null>;
   executableOverride?: Partial<Record<SubscriptionProviderId, Executable>> | undefined;
   authArtifactExists?: Partial<Record<SubscriptionProviderId, boolean>> | undefined;
+  // Test/probe override for the recorded mutation outcome per provider.
+  mutationOutcomeOverride?: Partial<Record<SubscriptionProviderId, boolean | null>> | undefined;
   homeDir?: string | undefined;
   spawnFn?: typeof spawn;
   now?: () => number;
@@ -105,13 +121,53 @@ export function createSubscriptionTransports(options: SubscriptionTransportOptio
   const home = options.homeDir ?? os.homedir();
   const clock = options.now ?? (() => Date.now());
 
-  const authProbe = (provider: SubscriptionProviderId): boolean => {
-    const override = options.authArtifactExists?.[provider];
-    if (override !== undefined) return override;
+  const mutationOutcomes = new Map<SubscriptionProviderId, boolean>();
+
+  const artifactPresence = (provider: SubscriptionProviderId): boolean => {
     if (provider === 'codex-cli') return fs.existsSync(path.join(home, '.codex', 'auth.json'));
     // Claude Code official login artifacts (variants across versions); presence only.
     return fs.existsSync(path.join(home, '.claude', '.credentials.json')) || fs.existsSync(path.join(home, '.claude.json'));
   };
+
+  // Supported login-status probe: the CLI reports its own auth state (e.g.
+  // `codex login status` -> "Logged in using ChatGPT"). Credential artifacts
+  // are never parsed; when the supported probe is unavailable we fall back to
+  // artifact PRESENCE and say so in the detail.
+  function probeLoginStatus(provider: SubscriptionProviderId, executable: { bin: string; prefix: string[] }): Promise<{ authenticated: boolean; source: 'chatgpt' | 'claude' | null } | null> {
+    if (provider !== 'codex-cli') return Promise.resolve(null);
+    return new Promise(resolve => {
+      const needsShell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(executable.bin);
+      const child = spawnFn(executable.bin, [...executable.prefix, 'login', 'status'], {
+        windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], shell: needsShell, env: buildEnv()
+      }) as ChildProcess;
+      let out = '';
+      let settled = false;
+      const settle = (value: { authenticated: boolean; source: 'chatgpt' | 'claude' | null } | null): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      };
+      const timer = setTimeout(() => { child.kill('SIGKILL'); settle(null); }, VERSION_PROBE_TIMEOUT_MS);
+      child.stdout?.on('data', chunk => { out += String(chunk); });
+      child.once('error', () => settle(null));
+      child.once('close', () => {
+        const text = out.toLowerCase();
+        // Negative patterns must be checked before the generic positive one:
+        // "not logged in" contains "logged in".
+        if (/not logged in|not authenticated|no credentials|login required/.test(text)) return settle({ authenticated: false, source: null });
+        if (/logged in using chatgpt/.test(text)) return settle({ authenticated: true, source: 'chatgpt' });
+        if (/logged in/.test(text)) return settle({ authenticated: true, source: null });
+        settle(null); // unrecognized (older CLI) -> presence fallback
+      });
+    });
+  }
+
+  function recordSandboxOutcome(provider: SubscriptionProviderId, sandbox: string, message: string | null): void {
+    if (sandbox !== 'workspace-write') return;
+    if (message === null) { mutationOutcomes.set(provider, true); return; }
+    if (/sandbox|acl|denied|timed out|process failure/i.test(message)) mutationOutcomes.set(provider, false);
+  }
 
   const versionCache = new Map<SubscriptionProviderId, { version: string | null; at: number }>();
 
@@ -164,28 +220,57 @@ export function createSubscriptionTransports(options: SubscriptionTransportOptio
   async function detect(provider: SubscriptionProviderId): Promise<SubscriptionDetection> {
     const family = provider === 'codex-cli' ? 'openai' as const : 'anthropic' as const;
     const authClass = provider === 'codex-cli' ? 'chatgpt_subscription' as const : 'claude_subscription' as const;
+    const connectionMode = 'subscription_client' as const;
     const executable = await resolveExecutable(provider);
     if (executable === null) {
       return {
-        provider, provider_family: family, transport: provider, auth_class: authClass,
+        provider, provider_family: family, transport: provider, connection_mode: connectionMode, auth_class: authClass,
+        auth_source: null,
+        capabilities: { authenticated: false, analysis_executable: false, mutation_executable: null },
         status: 'UNAVAILABLE', binary_path: null, version: null,
         detail: `${provider === 'codex-cli' ? 'codex' : 'claude'} CLI not detected on PATH`
       };
     }
-    const authenticated = authProbe(provider);
+    let authenticated: boolean;
+    let authSource: 'chatgpt' | 'claude' | null = null;
+    let authEvidence: string;
+    const override = options.authArtifactExists?.[provider];
+    if (override !== undefined) {
+      authenticated = override;
+      authEvidence = 'fixture override';
+    } else {
+      const probed = await probeLoginStatus(provider, executable);
+      if (probed !== null) {
+        authenticated = probed.authenticated;
+        authSource = probed.source;
+        authEvidence = 'supported login status';
+      } else {
+        authenticated = artifactPresence(provider);
+        authEvidence = 'credential artifact presence (supported login status unavailable)';
+      }
+    }
+    const capabilities: SubscriptionCapabilities = {
+      authenticated,
+      analysis_executable: authenticated && executable.version !== null,
+      mutation_executable: options.mutationOutcomeOverride?.[provider] ?? mutationOutcomes.get(provider) ?? null
+    };
     if (!authenticated) {
       return {
-        provider, provider_family: family, transport: provider, auth_class: authClass,
+        provider, provider_family: family, transport: provider, connection_mode: connectionMode, auth_class: authClass,
+        auth_source: authSource, capabilities,
         status: 'AUTH_REQUIRED', binary_path: executable.bin, version: executable.version,
-        detail: `${provider === 'codex-cli' ? 'codex' : 'claude'} CLI present; official sign-in required`
+        detail: `${provider === 'codex-cli' ? 'codex' : 'claude'} CLI present; official sign-in required (${authEvidence})`
       };
     }
     const status: SubscriptionStatus = executable.version === null ? 'DEGRADED' : 'AVAILABLE';
+    const mutationNote = capabilities.mutation_executable === null ? 'mutation capability unproven'
+      : capabilities.mutation_executable ? 'workspace mutation proven' : 'workspace mutation blocked (environment)';
     return {
-      provider, provider_family: family, transport: provider, auth_class: authClass,
+      provider, provider_family: family, transport: provider, connection_mode: connectionMode, auth_class: authClass,
+      auth_source: authSource, capabilities,
       status, binary_path: executable.bin, version: executable.version,
       detail: status === 'AVAILABLE'
-        ? `${provider} ready (official login detected; version ${executable.version})`
+        ? `${provider} ready (${authEvidence}; version ${executable.version}; ${mutationNote})`
         : `${provider} authenticated but its version probe failed`
     };
   }
@@ -297,6 +382,7 @@ export function createSubscriptionTransports(options: SubscriptionTransportOptio
       const finish = (fn: () => void): void => { if (!settled) { settled = true; clearTimeout(timer); fn(); } };
       const timer = setTimeout(() => {
         killTree(child);
+        recordSandboxOutcome(provider, sandbox, `timed out after ${timeoutMs}ms`);
         finish(() => reject(Object.assign(new Error(`provider ${provider} timed out after ${timeoutMs}ms`), { code: 'CHILD_FAILED' })));
       }, timeoutMs);
       const onAbort = (): void => {
@@ -314,11 +400,13 @@ export function createSubscriptionTransports(options: SubscriptionTransportOptio
         if (stderr.length < MAX_STDERR_BYTES) stderr += String(chunk);
       });
       child.once('error', error => {
+        recordSandboxOutcome(provider, sandbox, `process failure: ${error.message}`);
         finish(() => reject(Object.assign(new Error(`provider ${provider} process failure: ${error.message}`), { code: 'CHILD_FAILED' })));
       });
       child.once('close', code => {
         finish(() => {
           if (code !== 0) {
+            recordSandboxOutcome(provider, sandbox, `exited with code ${String(code)}${stderr.trim().length > 0 ? `: ${stderr.trim().slice(0, 200)}` : ''}`);
             reject(Object.assign(new Error(`provider ${provider} exited with code ${String(code)}${stderr.trim().length > 0 ? `: ${stderr.trim().slice(0, 200)}` : ''}`), { code: 'CHILD_FAILED' }));
             return;
           }
@@ -328,6 +416,7 @@ export function createSubscriptionTransports(options: SubscriptionTransportOptio
             reject(Object.assign(new Error(`provider ${provider} returned an empty response (no structured result)`), { code: 'CHILD_FAILED' }));
             return;
           }
+          recordSandboxOutcome(provider, sandbox, null);
           resolve({
             provider,
             text,

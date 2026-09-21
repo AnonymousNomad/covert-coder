@@ -57,7 +57,11 @@ export const GhostEpisode = z.strictObject({
     action: z.string().max(80),
     provider_id: z.string().max(120).nullable(),
     role: z.string().max(40).nullable(),
-    at: z.string().max(40)
+    at: z.string().max(40),
+    // Recorded only when the bridge authoritatively returns the delegated
+    // provider/model (e.g. OpenCode message payload). Never inferred.
+    delegated_provider: z.string().max(120).nullable().optional(),
+    delegated_model: z.string().max(200).nullable().optional()
   })).max(200),
   files: z.array(z.string().max(500)).max(200),
   artifacts: z.array(z.strictObject({ ref: z.string().max(500), sha256: z.string().max(128).nullable() })).max(64),

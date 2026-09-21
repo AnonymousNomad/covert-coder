@@ -7,13 +7,24 @@
 import { z } from 'zod';
 import { RoleRouting } from './byok.ts';
 
-export const ConnectionKind = z.enum(['subscription', 'api-key', 'local-runtime', 'catalog-token']);
+export const ConnectionKind = z.enum(['subscription', 'api-key', 'local-runtime', 'catalog-token', 'bridge']);
 export type ConnectionKindT = z.infer<typeof ConnectionKind>;
 
 export const ConnectionStatus = z.enum(['not_configured', 'sign_in_required', 'connected', 'invalid_key', 'unreachable', 'unavailable']);
 export type ConnectionStatusT = z.infer<typeof ConnectionStatus>;
 
 export const ConnectionCapability = z.enum(['chat', 'act', 'utility', 'catalog']);
+
+// SUBSCRIPTION LOGIN != API KEY: every row describes its actual connection
+// class, its auth source, and (for subscription clients) the three-way
+// capability truth. All fields are additive/optional so existing rows and
+// consumers stay valid.
+export const ConnectionMode = z.enum(['direct_api', 'subscription_client']);
+export const AuthCapabilities = z.strictObject({
+  authenticated: z.boolean(),
+  analysis_executable: z.boolean(),
+  mutation_executable: z.boolean().nullable()
+});
 
 export const ProviderConnection = z.strictObject({
   id: z.string().min(1).max(64),
@@ -25,6 +36,10 @@ export const ProviderConnection = z.strictObject({
   capabilities: z.array(ConnectionCapability),
   routing_available: z.boolean(),
   account_label: z.string().max(120),
+  connection_mode: ConnectionMode.optional(),
+  auth_source: z.string().max(40).nullable().optional(),
+  auth_capabilities: AuthCapabilities.nullable().optional(),
+  connection_methods: z.array(z.string().max(40)).max(8).optional()
 });
 export type ProviderConnectionT = z.infer<typeof ProviderConnection>;
 

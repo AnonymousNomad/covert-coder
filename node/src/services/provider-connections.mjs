@@ -139,6 +139,7 @@ export function createProviderConnectionsService(options) {
         provider_id: provider.id,
         name: String(provider.name || provider.id),
         kind: 'api-key',
+        connection_mode: 'direct_api',
         status: state === 'connected' ? 'connected' : state === 'invalid_key' ? 'invalid_key' : state === 'unreachable' ? 'unreachable' : 'not_configured',
         detail: state === 'connected' ? 'live probe passed' : state === 'invalid_key' ? 'stored key rejected by the provider' : state === 'unreachable' ? 'provider unreachable' : 'no key configured',
         capabilities: ['chat', 'act', 'utility'],
@@ -163,6 +164,9 @@ export function createProviderConnectionsService(options) {
           provider_id: id,
           name: `${runtime.display} subscription`,
           kind: 'subscription',
+          connection_mode: detection.connection_mode,
+          auth_source: detection.auth_source,
+          auth_capabilities: detection.capabilities,
           status: detection.status === 'AVAILABLE' ? 'connected'
             : detection.status === 'AUTH_REQUIRED' ? 'sign_in_required'
               : detection.status === 'DEGRADED' ? 'connected'
@@ -170,7 +174,33 @@ export function createProviderConnectionsService(options) {
           detail: `transport ${detection.transport} \u00b7 ${detection.auth_class}${detection.version ? ` \u00b7 ${detection.version}` : ''} \u00b7 ${detection.detail}`.slice(0, 300),
           capabilities: ['chat'],
           routing_available: detection.status === 'AVAILABLE',
-          account_label: 'official CLI'
+          account_label: 'official CLI',
+          connection_methods: ['sign_in']
+        });
+      }
+      if (options.kimiTransport) {
+        const kimi = await options.kimiTransport.detect();
+        rows.push({
+          id: 'subscription:kimi',
+          provider_id: 'kimi-code',
+          name: 'Kimi Code subscription',
+          kind: 'subscription',
+          connection_mode: 'subscription_client',
+          auth_source: kimi.authenticated === true ? 'kimi' : null,
+          auth_capabilities: {
+            authenticated: kimi.authenticated === true,
+            analysis_executable: kimi.authenticated === true,
+            mutation_executable: null
+          },
+          status: kimi.status === 'AVAILABLE' ? 'connected'
+            : kimi.status === 'AUTH_REQUIRED' ? 'sign_in_required'
+              : kimi.status === 'DEGRADED' ? 'connected'
+                : 'unavailable',
+          detail: `transport ${kimi.transport} \u00b7 ${kimi.auth_class}${kimi.version ? ` \u00b7 ${kimi.version}` : ''} \u00b7 ${kimi.detail}`.slice(0, 300),
+          capabilities: ['chat'],
+          routing_available: kimi.status === 'AVAILABLE',
+          account_label: 'official CLI',
+          connection_methods: ['sign_in']
         });
       }
       return rows;
@@ -191,6 +221,7 @@ export function createProviderConnectionsService(options) {
         provider_id: id,
         name: `${runtime.display} subscription`,
         kind: 'subscription',
+        connection_mode: 'subscription_client',
         status: !exePath ? 'unavailable' : authenticated ? 'connected' : 'sign_in_required',
         detail: !exePath ? `${runtime.exec} CLI not detected on PATH` : authenticated ? `authenticated with the official ${runtime.exec} runtime` : 'run the official sign-in, then refresh',
         capabilities: ['chat'],
@@ -222,14 +253,43 @@ export function createProviderConnectionsService(options) {
     };
   }
 
+  async function bridgeConnections() {
+    // OpenCode bridge: cheap detection only (binary + version). The documented
+    // server API is queried by the explicit Test action (it starts a loopback
+    // server), never by a passive list render.
+    if (!options.opencodeBridge) return [];
+    let executable = null;
+    try {
+      executable = await options.opencodeBridge.detect();
+    } catch {
+      executable = null;
+    }
+    return [{
+      id: 'bridge:opencode',
+      provider_id: 'opencode',
+      name: 'OpenCode (external agent bridge)',
+      kind: 'bridge',
+      connection_mode: 'subscription_client',
+      status: executable === null ? 'unavailable' : 'not_configured',
+      detail: executable === null
+        ? 'opencode CLI not detected on PATH'
+        : `opencode detected (${String(executable.version)}); provider connections are managed inside OpenCode \u2014 run Test to query the documented server API`,
+      capabilities: ['chat'],
+      routing_available: executable !== null,
+      account_label: 'external client',
+      connection_methods: ['link_opencode']
+    }];
+  }
+
   async function list() {
-    const [local, api, subscription, catalog] = await Promise.all([
+    const [local, api, subscription, bridges, catalog] = await Promise.all([
       localConnection(),
       apiConnections(),
       subscriptionConnections(),
+      bridgeConnections(),
       catalogConnection()
     ]);
-    const all = [...subscription, ...api, local, catalog];
+    const all = [...subscription, ...bridges, ...api, local, catalog];
     const parts = [];
     if (all.some((entry) => entry.kind === 'api-key' && entry.status === 'connected')) parts.push('api-keys');
     if (all.some((entry) => entry.kind === 'subscription' && entry.status === 'connected')) parts.push('subscription');
@@ -283,6 +343,20 @@ export function createProviderConnectionsService(options) {
     }
     if (connectionId === 'hf-token') {
       return { ok: false, detail: 'Hugging Face access is exercised by modelhub search/download operations; no synthetic probe exists' };
+    }
+    if (connectionId === 'bridge:opencode' && options.opencodeBridge) {
+      try {
+        const status = await options.opencodeBridge.status();
+        const connected = Array.isArray(status.connected_providers) ? status.connected_providers : [];
+        const detail = `opencode ${String(status.version ?? '?')}: ${connected.length} connected provider(s)${connected.length > 0 ? `: ${connected.slice(0, 6).join(', ')}` : ''}`;
+        return { ok: status.status === 'READY', detail: detail.slice(0, 260) };
+      } catch (error) {
+        return { ok: false, detail: `opencode probe failed: ${String((error && error.message) ?? error).slice(0, 200)}` };
+      }
+    }
+    if (connectionId === 'subscription:kimi' && options.kimiTransport) {
+      const probed = await options.kimiTransport.probe();
+      return { ok: probed.authenticated === true, detail: String(probed.detail).slice(0, 260) };
     }
     if (connectionId.startsWith('subscription:')) {
       return { ok: false, detail: 'state is derived from the official runtime; no synthetic probe exists' };
