@@ -168,7 +168,12 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   root.appendChild(appearanceDisclosure);
 
   parent.appendChild(root);
-  createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
+  // The chat panel can be mounted before a user starts a local model from the
+  // Models surface. Keep its route snapshot synchronized with the Resident
+  // refresh lifecycle so returning to chat does not require a hidden/manual
+  // refresh before Send becomes usable. This only refreshes presentation
+  // data; authority and READY evidence remain backend-owned.
+  const chatPanel = createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
 
   let alive = true;
   let activeSessionId: string | null = null;
@@ -496,6 +501,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     if (!alive || refreshing) return;
     refreshing = true;
     try {
+      await chatPanel.refreshModels();
       const [summary, context, push, decisions] = await Promise.all([loadSummary(), loadContext(), loadPush(), loadDecisions()]);
       if (!alive) return;
       const data: ResidentData = { summary, context, push, decisions };

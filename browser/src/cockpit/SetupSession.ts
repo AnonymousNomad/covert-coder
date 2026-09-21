@@ -20,6 +20,7 @@ import type { Store } from '../store/store.ts';
 import type { AppState, Panel } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { SetupAnswersT, SetupPlanT, SetupProfileT, SetupReadinessT } from '../../../common/contracts/setup.ts';
+import type { TaskJobT, TaskListResponseT } from '../../../common/contracts/tasks.ts';
 
 export interface SetupSessionHandles {
   open(): void;
@@ -124,6 +125,13 @@ export function createSetupSession(
   let chosenFamilies: string[] = [];
   let readiness: SetupReadinessT | null = null;
   let readinessBusy = false;
+  let buildTasks: TaskListResponseT | null = null;
+  let buildTasksBusy = false;
+  let buildTaskError: string | null = null;
+  let buildRunError: string | null = null;
+  let buildTaskLabel: string | null = null;
+  let buildJob: TaskJobT | null = null;
+  let buildRunBusy = false;
 
   function renderField(labelText: string, control: HTMLElement): HTMLElement {
     const field = el('label', 'cockpit-setup-field');
@@ -190,7 +198,13 @@ export function createSetupSession(
     back.disabled = stage === 0;
     next.hidden = stage === STAGES.length - 1;
     next.disabled = stage === 2 && (planBusy || (plan === null && planError === null));
-    next.textContent = stage === 2 ? 'COMPILE PLAN' : stage === 3 ? 'APPROVE AND APPLY' : stage === 6 ? 'CONFIRM SELECTION' : stage === 7 ? 'CONFIRM ROLES' : 'CONTINUE';
+    next.textContent = stage === 2
+      ? planBusy
+        ? 'COMPILING PLAN…'
+        : plan === null
+          ? 'COMPILE PLAN'
+          : 'CONTINUE TO APPROVAL'
+      : stage === 3 ? 'APPROVE AND APPLY' : stage === 6 ? 'CONFIRM SELECTION' : stage === 7 ? 'CONFIRM ROLES' : 'CONTINUE';
     if (appliedProfile !== null && stage > 0) {
       body.appendChild(el('p', 'cockpit-setup-note', `RESUMING — profile applied ${new Date(appliedProfile.appliedAt).toISOString()}; changes below re-approve through the same gate.`));
     }
@@ -400,6 +414,43 @@ export function createSetupSession(
       if (status !== 'READY') {
         body.appendChild(el('p', 'cockpit-setup-detail', 'Answer the required checks (marker) before claiming readiness; DEGRADED is honest, READY is earned.'));
       }
+      const buildSection = el('section', 'cockpit-setup-plan');
+      buildSection.appendChild(el('span', 'cockpit-setup-k', 'BUILD / COMPILE · REAL TASK EVIDENCE'));
+      if (buildTasks === null && !buildTasksBusy) {
+        void fetchBuildTasks();
+        buildSection.appendChild(el('p', 'cockpit-setup-detail', 'READING THE REAL WORKSPACE TASK GRAPH…'));
+      } else if (buildTasksBusy) {
+        buildSection.appendChild(el('p', 'cockpit-setup-detail', 'READING THE REAL WORKSPACE TASK GRAPH…'));
+      } else if (buildTaskError !== null) {
+        buildSection.appendChild(el('p', 'cockpit-setup-note', `BUILD TASK DISCOVERY UNAVAILABLE — ${buildTaskError}`));
+      } else {
+        const candidates = (buildTasks?.tasks ?? []).filter(task => {
+          const label = task.label.toLowerCase();
+          return task.groupKind === 'build' || label.includes('build') || label.includes('compile');
+        });
+        if (candidates.length === 0) {
+          buildSection.appendChild(el('p', 'cockpit-setup-note', 'NO BUILD TASK DISCOVERED — no compile/build operation is claimed. Define a governed task in the workspace, then reopen setup.'));
+        } else {
+          buildSection.appendChild(el('p', 'cockpit-setup-detail', 'Choose a discovered build task. The request enters the existing TaskService and approval gate; a clean process exit is reported separately from artifact verification.'));
+          for (const task of candidates.slice(0, 8)) {
+            const row = el('div', 'cockpit-setup-kv');
+            const details = el('span', 'cockpit-setup-v', `${task.label} · ${task.command}${task.args && task.args.length > 0 ? ` ${task.args.join(' ')}` : ''}`);
+            const run = el('button', 'cockpit-setup-btn', buildTaskLabel === task.label && buildRunBusy ? 'BUILDING…' : 'RUN BUILD') as HTMLButtonElement;
+            run.type = 'button';
+            run.disabled = buildRunBusy;
+            run.addEventListener('click', () => { void runBuildTask(task.label); });
+            row.append(details, run);
+            buildSection.appendChild(row);
+          }
+        }
+      }
+      if (buildJob !== null) {
+        const result = buildJob.status === 'exited' && buildJob.exitCode === 0 ? 'BUILD PASSED · process exited 0' : `BUILD ${buildJob.status.toUpperCase()} · exit ${buildJob.exitCode ?? 'unknown'}`;
+        buildSection.appendChild(el('p', buildJob.status === 'exited' && buildJob.exitCode === 0 ? 'cockpit-setup-ready' : 'cockpit-setup-note', `${result} · ${buildJob.label} · job ${buildJob.job_id}`));
+        buildSection.appendChild(el('p', 'cockpit-setup-detail', 'Process evidence is confirmed by TaskService. Artifact verification remains project-specific and is never inferred from exit code alone.'));
+      }
+      if (buildRunError !== null) buildSection.appendChild(el('p', 'cockpit-setup-note', `BUILD REQUEST FAILED — ${buildRunError}`));
+      body.appendChild(buildSection);
       body.appendChild(el('p', 'cockpit-setup-detail', 'Talk to Resident to begin.'));
       const actions = el('div', 'cockpit-setup-actions');
       const makeAction = (label: string, panel: Panel): HTMLElement => {
@@ -501,6 +552,61 @@ export function createSetupSession(
       opts.onToast('BAD_REQUEST', `Reset needs approval or failed (${String((error as Error).message).slice(0, 90)}).`);
     }
     renderStage();
+  }
+
+  async function fetchBuildTasks(): Promise<void> {
+    buildTasksBusy = true;
+    buildTaskError = null;
+    renderStage();
+    try {
+      buildTasks = await api.tasksList();
+    } catch (error) {
+      buildTasks = null;
+      buildTaskError = String((error as Error).message ?? error).slice(0, 180);
+    } finally {
+      buildTasksBusy = false;
+      renderStage();
+    }
+  }
+
+  async function runBuildTask(label: string): Promise<void> {
+    if (buildRunBusy) return;
+    buildRunBusy = true;
+    buildTaskLabel = label;
+    buildJob = null;
+    buildRunError = null;
+    renderStage();
+    try {
+      const started = await api.tasksRun(label);
+      const deadline = Date.now() + 180000;
+      const promptedOperations = new Set<string>();
+      while (Date.now() < deadline) {
+        const status = await api.tasksStatus();
+        const job = status.jobs.find(entry => entry.job_id === started.job_id);
+        const pending = job?.authority_state;
+        if (job !== undefined && pending?.phase === 'command' && pending.state === 'pending' && pending.operation_id !== null && !promptedOperations.has(pending.operation_id)) {
+          promptedOperations.add(pending.operation_id);
+          const command = `${job.command}${job.args.length > 0 ? ` ${job.args.join(' ')}` : ''}`;
+          const allowed = window.confirm(`Approve this build command once?\n${command}`);
+          await api.authorityDecision(pending.operation_id, allowed ? 'approve' : 'reject');
+          if (!allowed) {
+            buildJob = job;
+            return;
+          }
+        }
+        if (job !== undefined && job.status !== 'running') {
+          buildJob = job;
+          return;
+        }
+        await new Promise(resolve => window.setTimeout(resolve, 500));
+      }
+      throw new Error('build task did not finish within 180 seconds');
+    } catch (error) {
+      buildRunError = String((error as Error).message ?? error).slice(0, 180);
+    } finally {
+      buildRunBusy = false;
+      renderStage();
+    }
   }
 
   async function fetchReadiness(): Promise<void> {

@@ -2273,6 +2273,12 @@ summary:hover { color: var(--ck-text); }
 .cockpit-rail-item.active .cockpit-rail-label { color: currentColor; }
 .cockpit-rail-label { font-size: 9px; letter-spacing: .10em; }
 .cockpit-rail-desc { font-size: 9px; }
+/* Controlled emblem illumination: item identities remain distinct without
+   turning the rail into an always-on neon wall. */
+.cockpit-rail-item .cockpit-rail-icon { opacity: .88; background: color-mix(in srgb, currentColor 7%, transparent); box-shadow: 0 0 8px color-mix(in srgb, currentColor 18%, transparent), inset 0 0 7px color-mix(in srgb, currentColor 9%, transparent); }
+.cockpit-rail-item:hover .cockpit-rail-icon { opacity: 1; box-shadow: 0 0 12px color-mix(in srgb, currentColor 34%, transparent), inset 0 0 9px color-mix(in srgb, currentColor 14%, transparent); }
+.cockpit-rail-item.active .cockpit-rail-icon { opacity: 1; background: color-mix(in srgb, currentColor 13%, transparent); box-shadow: 0 0 16px color-mix(in srgb, currentColor 48%, transparent), inset 0 0 12px color-mix(in srgb, currentColor 20%, transparent); }
+.cockpit-rail-item.active .cockpit-rail-label { text-shadow: 0 0 8px color-mix(in srgb, currentColor 45%, transparent); }
 
 /* Resident figure: the crop is deliberately framed as advisory visual
    presence, never as an authority or a second Resident implementation. */
@@ -2299,6 +2305,13 @@ summary:hover { color: var(--ck-text); }
 .resident-figure-suggestion-kicker { color: var(--covert-magenta); font: 7px var(--ck-font-mono); letter-spacing: .12em; }
 .resident-figure-suggestion-title { font: 9px var(--ck-font-mono); }
 .resident-figure-suggestion-detail { color: #d9b8df; }
+.resident-figure[data-ambient-action='POSTURE_SHIFT'] .resident-figure-image { animation: resident-presence-shift 4.5s ease-in-out 1; }
+.resident-figure[data-ambient-action='LOOK_AT_WORKSPACE'] .resident-figure-image { transform: translateX(1px) scale(1.006); transition: transform 900ms ease; }
+@keyframes resident-presence-shift { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 45% { transform: translate3d(1px, -2px, 0) scale(1.008); } }
+@media (prefers-reduced-motion: reduce) {
+  .resident-figure[data-ambient-action='POSTURE_SHIFT'] .resident-figure-image { animation: none; }
+  .resident-figure[data-ambient-action='LOOK_AT_WORKSPACE'] .resident-figure-image { transition: none; }
+}
 
 .cockpit-resident { border-color: rgba(193, 139, 255, .38); border-radius: 2px; background: linear-gradient(120deg, rgba(32, 22, 57, .72), transparent 45%), rgba(10, 14, 23, .95); box-shadow: var(--covert-shadow), inset 0 1px 0 rgba(193, 139, 255, .18); }
 .cockpit-resident-title { color: var(--covert-text); font-size: 18px; }
