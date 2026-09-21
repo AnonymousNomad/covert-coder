@@ -118,6 +118,24 @@ export const ModelRegisterResponse = z
   })
   .strict();
 
+// Role assignment extends the existing runtime registry. The hidden `chat`
+// role keeps a registered local model eligible for Resident inference while
+// Planner/Coder/Reviewer remain operator-visible routing roles.
+export const ModelRoleAssignRequest = z
+  .object({
+    id: z.string().min(1),
+    roles: z.array(z.string().min(1).max(48)).min(1).max(8)
+  })
+  .strict();
+
+export const ModelRoleAssignResponse = z
+  .object({
+    id: z.string().min(1),
+    roles: z.array(z.string().min(1).max(48)),
+    saved: z.literal(true)
+  })
+  .strict();
+
 export const ModelProfileRequest = z
   .object({
     id: z.string().min(1),
@@ -138,10 +156,14 @@ export const ModelProfileResponse = z
 export type ModelStateT = z.infer<typeof ModelState>;
 export type ModelStatusEntryT = z.infer<typeof ModelStatusEntry>;
 export type ModelStatusResponseT = z.infer<typeof ModelStatusResponse>;
+export type ModelStartResponseT = z.infer<typeof ModelStartResponse>;
+export type ModelStopResponseT = z.infer<typeof ModelStopResponse>;
 export type ModelIngestResponseT = z.infer<typeof ModelIngestResponse>;
 export type ModelFitReportT = z.infer<typeof ModelFitReport>;
 export type ModelReadyResponseT = z.infer<typeof ModelReadyResponse>;
 export type ModelRegisterRequestT = z.infer<typeof ModelRegisterRequest>;
 export type ModelRegisterResponseT = z.infer<typeof ModelRegisterResponse>;
+export type ModelRoleAssignRequestT = z.infer<typeof ModelRoleAssignRequest>;
+export type ModelRoleAssignResponseT = z.infer<typeof ModelRoleAssignResponse>;
 export type ModelProfileRequestT = z.infer<typeof ModelProfileRequest>;
 export type ModelProfileResponseT = z.infer<typeof ModelProfileResponse>;

@@ -11662,6 +11662,70 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "manifest": {
+                            "type": "object",
+                            "properties": {
+                              "repo_id": {
+                                "type": "string"
+                              },
+                              "filename": {
+                                "type": "string"
+                              },
+                              "quant_label": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "size_bytes": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "architecture": {
+                                "type": "string"
+                              },
+                              "sha256": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "etag": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "downloaded_at": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "hf",
+                                  "manual"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "ready",
+                                  "unsupported-runtime"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "repo_id",
+                              "filename",
+                              "size_bytes",
+                              "architecture",
+                              "downloaded_at",
+                              "source",
+                              "status"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -11835,6 +11899,29 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "author": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "pipeline_tag": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "library_name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "parameters": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "last_modified": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "gated": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -12392,6 +12479,77 @@
                 },
                 "required": [
                   "filename"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/roles": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 48
+                      }
+                    },
+                    "saved": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "roles",
+                    "saved"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 48
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "roles"
                 ],
                 "additionalProperties": false
               }

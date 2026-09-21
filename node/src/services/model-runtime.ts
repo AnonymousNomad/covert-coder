@@ -245,11 +245,15 @@ export class ModelRuntime {
   }
 
   async status(): Promise<{ runtime: boolean; models: Array<Record<string, unknown>> }> {
-    if (!this.pythonReady && this.pythonProbe === null && Date.now() - this.lastProbeAt > 5000) await this.probePython();
+    // The proven llama-server binary is sufficient for this status contract.
+    // Do not make the first UI read wait through every optional Python
+    // fallback candidate when the primary engine is already available.
+    const binaryAvailable = resolveLlamaBinary(this.workspace) !== null;
+    if (!binaryAvailable && !this.pythonReady && this.pythonProbe === null && Date.now() - this.lastProbeAt > 5000) await this.probePython();
     // Engine availability = binary serving path OR python fallback. Binary is
     // the verified primary; conflating this with the python probe alone
     // mislabeled RUNNING binary engines as merely "installed".
-    const engineAvailable = resolveLlamaBinary(this.workspace) !== null || this.pythonReady;
+    const engineAvailable = binaryAvailable || this.pythonReady;
     return {
       runtime: engineAvailable,
       models: [...this.models.values()].map(model => {
@@ -943,6 +947,28 @@ export class ModelRuntime {
     const stat = await fs.stat(file).catch(() => {
       throw new ModelRuntimeError('BAD_REQUEST', `artifact not found in models directory: ${rel}`);
     });
+    const manifestRaw = await fs.readFile(`${file}.manifest.json`, 'utf8').catch(() => null);
+    if (manifestRaw !== null) {
+      let manifest: { status?: string; architecture?: string; sha256?: string | null };
+      try {
+        manifest = JSON.parse(manifestRaw) as { status?: string; architecture?: string; sha256?: string | null };
+      } catch {
+        throw new ModelRuntimeError('BAD_REQUEST', `model manifest is not valid JSON: ${rel}`);
+      }
+      if (manifest.status !== 'ready') {
+        throw new ModelRuntimeError('NOT_READY', `model artifact is not compatible with the local runtime: ${rel}`);
+      }
+      if (typeof manifest.architecture === 'string' && manifest.architecture.length > 0 && !ALLOWED_ARCHITECTURES.includes(manifest.architecture)) {
+        throw new ModelRuntimeError('NOT_READY', `model architecture ${manifest.architecture} is not supported by the proven local runtime`);
+      }
+      if (typeof manifest.sha256 === 'string' && /^[0-9a-f]{64}$/.test(manifest.sha256)) {
+        const hash = crypto.createHash('sha256');
+        for await (const chunk of createReadStream(file)) hash.update(chunk);
+        if (hash.digest('hex') !== manifest.sha256) {
+          throw new ModelRuntimeError('CONFLICT', `model checksum changed after download: ${rel}`);
+        }
+      }
+    }
     const id = path.basename(rel).replace(/\.gguf$/i, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
     const existing = this.models.get(id);
     if (existing) return { id: existing.id, status: 'ready', endpoint: existing.endpoint };
@@ -966,6 +992,19 @@ export class ModelRuntime {
     await this.persistIngested();
     this.logger?.info('model registered', { id, endpoint: entry.endpoint, source: rel });
     return { id, status: 'ready', endpoint: entry.endpoint };
+  }
+
+  async assignRoles(id: string, roles: string[]): Promise<{ id: string; roles: string[]; saved: true }> {
+    const model = this.models.get(id);
+    if (!model) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
+    if (model.ingested !== true) throw new ModelRuntimeError('BAD_REQUEST', 'only a registered local model can receive operator role assignments');
+    const normalized = [...new Set(roles.map(role => String(role).trim()).filter(Boolean))];
+    if (normalized.length === 0) throw new ModelRuntimeError('BAD_REQUEST', 'at least one role is required');
+    if (!normalized.includes('chat')) normalized.unshift('chat');
+    model.roles = normalized;
+    await this.persistIngested();
+    this.logger?.info('model roles assigned', { id, roles: normalized });
+    return { id, roles: normalized, saved: true };
   }
 
   // Profile parity with the legacy /api/models/profile: presets + sampler /

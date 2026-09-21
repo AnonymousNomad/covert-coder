@@ -128,7 +128,8 @@ test('m1: happy-path download streams to final file with manifest and no .part l
     assert.equal(manifest.repo_id, 'testorg/tiny-gguf');
     assert.equal(manifest.size_bytes, payload.length);
     assert.equal(manifest.source, 'hf');
-    assert.equal(manifest.status, 'ready');
+    assert.equal(manifest.status, 'unsupported-runtime');
+    assert.match(manifest.sha256, /^[0-9a-f]{64}$/);
     assert.equal(manifest.etag, '"abc123"');
 
     const jobs = hub.listDownloads();

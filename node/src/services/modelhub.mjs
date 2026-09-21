@@ -1,6 +1,6 @@
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomUUID, randomBytes, createHash } from 'node:crypto';
 import path from 'node:path';
-import { promises as fs } from 'node:fs';
+import { promises as fs, createReadStream } from 'node:fs';
 import { probeGguf } from './gguf.ts';
 import { logEgress } from './egress-journal.mjs';
 
@@ -174,7 +174,8 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
   }
 
   async function search(q, sort = 'downloads', limit = 20) {
-    const url = `${HF_API}?search=${encodeURIComponent(q)}&filter=gguf&sort=${sort}&direction=-1&limit=${limit}`;
+    const hubSort = sort === 'modified' ? 'lastModified' : sort;
+    const url = `${HF_API}?search=${encodeURIComponent(q)}&filter=gguf&sort=${hubSort}&direction=-1&limit=${limit}`;
     logEgress(workspace, { action: 'modelhub.search', url });
     const response = await fetchImpl(url, { headers: await hubHeaders() });
     if (!response.ok) {
@@ -184,12 +185,21 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
     }
     const raw = await response.json();
     return {
-      models: raw.map(item => ({
-        repo_id: item.id,
-        downloads: typeof item.downloads === 'number' ? item.downloads : 0,
-        likes: typeof item.likes === 'number' ? item.likes : 0,
-        tags: Array.isArray(item.tags) ? item.tags : []
-      }))
+      models: raw.map(item => {
+        const model = {
+          repo_id: item.id,
+          downloads: typeof item.downloads === 'number' ? item.downloads : 0,
+          likes: typeof item.likes === 'number' ? item.likes : 0,
+          tags: Array.isArray(item.tags) ? item.tags.filter(tag => typeof tag === 'string') : []
+        };
+        if (typeof item.author === 'string' && item.author.length > 0) model.author = item.author;
+        if (typeof item.pipeline_tag === 'string' && item.pipeline_tag.length > 0) model.pipeline_tag = item.pipeline_tag;
+        if (typeof item.library_name === 'string' && item.library_name.length > 0) model.library_name = item.library_name;
+        if (typeof item.parameters === 'number' && Number.isFinite(item.parameters) && item.parameters >= 0) model.parameters = item.parameters;
+        if (typeof item.lastModified === 'string' && item.lastModified.length > 0) model.last_modified = item.lastModified;
+        if (typeof item.gated === 'boolean') model.gated = item.gated;
+        return model;
+      })
     };
   }
 
@@ -256,9 +266,17 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       manifest.architecture = info.architecture;
       if (!SUPPORTED_ARCHS.has(info.architecture)) manifest.status = 'unsupported-runtime';
     } catch {
-      // payload without a readable GGUF header: record what we know
+      // A .gguf suffix is not proof of a runnable artifact. Keep the artifact
+      // contained for retry/inspection, but never advertise it as runtime
+      // compatible when the header cannot be read.
+      manifest.status = 'unsupported-runtime';
     }
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(path.join(modelsDirLexical, job.filename))) hash.update(chunk);
+    const digest = hash.digest('hex');
+    manifest.sha256 = digest;
     await publishManifest(job.filename, manifest);
+    job.manifest = manifest;
     return manifest;
   }
 
@@ -387,6 +405,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       error: null,
       error_code: null,
       etag: null,
+      manifest: undefined,
       controller: new AbortController()
     };
     jobs.set(job.job_id, job);
@@ -439,7 +458,8 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       status: job.status,
       bytes_done: job.bytes_done,
       bytes_total: job.bytes_total,
-      error: job.error
+      error: job.error,
+      ...(job.manifest !== undefined ? { manifest: job.manifest } : {})
     }));
   }
 

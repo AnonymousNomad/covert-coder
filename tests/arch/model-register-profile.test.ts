@@ -6,7 +6,7 @@ import { promises as fs } from 'node:fs';
 import type http from 'node:http';
 import { ArchServer } from '../../node/src/server.ts';
 import { ModelRuntime, ModelRuntimeError } from '../../node/src/services/model-runtime.ts';
-import { routeForModelReady, routeForModelRegister, routeForModelProfile } from '../../node/src/routes/models.ts';
+import { routeForModelReady, routeForModelRegister, routeForModelRoleAssign, routeForModelProfile } from '../../node/src/routes/models.ts';
 import { routesForAuthority } from '../../node/src/routes/authority.ts';
 import { pairFixture } from './authority-fixture.ts';
 import { Envelope } from '../../common/errors.ts';
@@ -41,6 +41,7 @@ before(async () => {
   server
     .route(routeForModelReady(runtime))
     .route(routeForModelRegister(runtime))
+    .route(routeForModelRoleAssign(runtime))
     .route(routeForModelProfile(runtime));
   httpServer = await server.listen(0);
   const address = httpServer.address();
@@ -126,6 +127,17 @@ test('POST /api/models/profile applies a preset and writes the sidecar', async (
   const sidecar = JSON.parse(await fs.readFile(sidecarPath, 'utf8')) as { preset?: string; samplers?: Record<string, number> };
   assert.equal(sidecar.preset, 'balanced');
   assert.equal(sidecar.samplers?.temperature, 0.7);
+});
+
+test('POST /api/models/roles persists operator roles and retains Resident chat eligibility', async () => {
+  const res = await mutate('/api/models/roles', { id: 'fantom-4b', roles: ['planner', 'reviewer'] }, 'task:mr-roles');
+  assert.equal(res.status, 200);
+  const data = okData(await res.json()) as { id: string; roles: string[]; saved: boolean };
+  assert.equal(data.id, 'fantom-4b');
+  assert.equal(data.saved, true);
+  assert.deepEqual(data.roles, ['chat', 'planner', 'reviewer']);
+  const persisted = JSON.parse(await ingestedRaw()) as Array<{ id: string; roles: string[] }>;
+  assert.deepEqual(persisted.find(entry => entry.id === 'fantom-4b')?.roles, ['chat', 'planner', 'reviewer']);
 });
 
 test('POST /api/models/profile rejects unknown presets and sampler keys', async () => {

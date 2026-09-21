@@ -13,9 +13,12 @@ import {
   ModelReadyResponse,
   ModelRegisterRequest,
   ModelRegisterResponse,
+  ModelRoleAssignRequest,
+  ModelRoleAssignResponse,
   ModelProfileRequest,
   ModelProfileResponse,
   type ModelRegisterRequestT,
+  type ModelRoleAssignRequestT,
   type ModelProfileRequestT
 } from '../../../common/contracts/models.ts';
 
@@ -167,6 +170,32 @@ export function routeForModelRegister(manager: ModelRuntime): Route {
       const request = registrationBody(manager, body) as Parameters<ModelRuntime['register']>[0];
       try {
         return await manager.register(request);
+      } catch (error) {
+        throw toRouteError(error);
+      }
+    }
+  };
+}
+
+export function routeForModelRoleAssign(manager: ModelRuntime): Route {
+  return {
+    method: 'POST',
+    path: '/api/models/roles',
+    body: ModelRoleAssignRequest,
+    response: ModelRoleAssignResponse,
+    describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
+      const request = body as ModelRoleAssignRequestT;
+      return {
+        workspace: manager.workspace,
+        taskId,
+        kind: 'capability.write',
+        args: { body: { id: request.id, roles: request.roles } }
+      };
+    },
+    handler: async ({ body }) => {
+      const request = body as ModelRoleAssignRequestT;
+      try {
+        return await manager.assignRoles(request.id, request.roles);
       } catch (error) {
         throw toRouteError(error);
       }

@@ -12,7 +12,13 @@ export const HubModel = z.object({
   repo_id: z.string().min(1),
   downloads: z.number().int().gte(0),
   likes: z.number().int().gte(0),
-  tags: z.array(z.string())
+  tags: z.array(z.string()),
+  author: z.string().min(1).optional(),
+  pipeline_tag: z.string().min(1).optional(),
+  library_name: z.string().min(1).optional(),
+  parameters: z.number().nonnegative().optional(),
+  last_modified: z.string().min(1).optional(),
+  gated: z.boolean().optional()
 }).strict();
 
 export const HubSearchResponse = z.object({
@@ -61,20 +67,6 @@ export const HubCancelResponse = z.object({
 
 export const DownloadJobState = z.enum(['running', 'done', 'error', 'cancelled']);
 
-export const HubDownloadJob = z.object({
-  job_id: z.string(),
-  repo_id: z.string(),
-  filename: z.string(),
-  status: DownloadJobState,
-  bytes_done: z.number().int().gte(0),
-  bytes_total: z.number().int().gte(0).nullable(),
-  error: z.string().nullable()
-}).strict();
-
-export const HubDownloadsListResponse = z.object({
-  jobs: z.array(HubDownloadJob)
-}).strict();
-
 export const ModelManifestStatus = z.enum(['ready', 'unsupported-runtime']);
 export const ModelSource = z.enum(['hf', 'manual']);
 
@@ -89,6 +81,21 @@ export const ModelManifest = z.object({
   downloaded_at: z.string(),
   source: ModelSource,
   status: ModelManifestStatus
+}).strict();
+
+export const HubDownloadJob = z.object({
+  job_id: z.string(),
+  repo_id: z.string(),
+  filename: z.string(),
+  status: DownloadJobState,
+  bytes_done: z.number().int().gte(0),
+  bytes_total: z.number().int().gte(0).nullable(),
+  error: z.string().nullable(),
+  manifest: ModelManifest.optional()
+}).strict();
+
+export const HubDownloadsListResponse = z.object({
+  jobs: z.array(HubDownloadJob)
 }).strict();
 
 export const ModelImportRequest = z.object({
@@ -135,5 +142,10 @@ export const HubStreamEvent = z.discriminatedUnion('event', [
 ]);
 
 export type HubSearchQueryT = z.infer<typeof HubSearchQuery>;
+export type HubSearchResponseT = z.infer<typeof HubSearchResponse>;
+export type HubFilesResponseT = z.infer<typeof HubFilesResponse>;
 export type HubDownloadRequestT = z.infer<typeof HubDownloadRequest>;
+export type HubDownloadStartedResponseT = z.infer<typeof HubDownloadStartedResponse>;
+export type HubDownloadsListResponseT = z.infer<typeof HubDownloadsListResponse>;
+export type HubCancelResponseT = z.infer<typeof HubCancelResponse>;
 export type ModelManifestT = z.infer<typeof ModelManifest>;

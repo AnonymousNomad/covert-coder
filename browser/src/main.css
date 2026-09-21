@@ -1916,6 +1916,66 @@ body {
   word-break: break-all;
 }
 
+/* Governed Model Hub acquisition surface. The visual language stays compact
+   and tactical; every status is sourced from the existing runtime contracts. */
+.models-feedback { min-height: 18px; color: var(--covert-cyan); }
+.models-empty-setup { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid rgba(89, 228, 244, .34); background: linear-gradient(135deg, rgba(89, 228, 244, .07), rgba(155, 108, 255, .06)), var(--covert-bg-gunmetal); }
+.models-empty-title { color: var(--covert-text); font: 12px var(--covert-mono); letter-spacing: .12em; }
+.models-empty-detail, .models-discovery-note, .models-discovery-empty { color: var(--covert-muted); font-size: 10px; line-height: 1.45; }
+.models-action { min-height: 25px; padding: 4px 8px; border: 1px solid rgba(74, 113, 163, .62); border-radius: 1px; background: rgba(5, 8, 14, .82); color: var(--covert-text); font: 9px var(--covert-mono); letter-spacing: .08em; cursor: pointer; }
+.models-action:hover:not(:disabled) { border-color: var(--covert-cyan); color: var(--covert-cyan); box-shadow: 0 0 10px rgba(89, 228, 244, .12); }
+.models-action:disabled { opacity: .48; cursor: not-allowed; }
+.models-action-primary { border-color: var(--covert-violet); color: var(--covert-violet); }
+.models-action-primary:hover:not(:disabled) { border-color: var(--covert-cyan); color: var(--covert-cyan); }
+.models-action-quiet { color: var(--covert-muted); }
+.models-action-warn { border-color: var(--covert-amber); color: var(--covert-amber); }
+.models-card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.models-discovery { display: flex; flex-direction: column; gap: 7px; padding: 9px; border: 1px solid rgba(155, 108, 255, .34); background: rgba(6, 9, 17, .72); }
+.models-discovery > .models-section-header { display: flex; align-items: center; justify-content: space-between; margin: 0; }
+.models-search-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; }
+.models-search-input, .models-search-sort { min-width: 0; min-height: 28px; padding: 5px 7px; border: 1px solid rgba(74, 113, 163, .62); border-radius: 1px; background: #05080e; color: var(--covert-text); font: 10px var(--covert-mono); }
+.models-search-input:focus, .models-search-sort:focus { outline: 1px solid var(--covert-cyan); border-color: var(--covert-cyan); }
+.models-hub-results { display: flex; flex-direction: column; gap: 6px; }
+.models-hub-card { padding: 8px; border: 1px solid rgba(74, 113, 163, .42); background: rgba(4, 7, 13, .76); }
+.models-hub-card.selected { border-color: var(--covert-violet); box-shadow: inset 0 0 18px rgba(155, 108, 255, .08); }
+.models-hub-card-head, .models-acquisition-job-head { display: flex; align-items: center; gap: 8px; }
+.models-hub-repo { color: var(--covert-text); font: 11px var(--covert-mono); overflow-wrap: anywhere; }
+.models-hub-compatible { margin-left: auto; color: var(--covert-green); font: 8px var(--covert-mono); letter-spacing: .08em; }
+.models-hub-meta, .models-hub-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 5px; color: var(--covert-muted); font: 9px var(--covert-mono); }
+.models-hub-tags { color: var(--covert-blue); }
+.models-hub-warning, .models-file-fit.err, .model-acquisition-job-error { margin-top: 5px; color: var(--covert-amber); font-size: 9px; }
+.models-file-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; padding-top: 7px; border-top: 1px solid rgba(74, 113, 163, .35); }
+.models-file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 6px; border: 1px solid rgba(74, 113, 163, .28); background: rgba(8, 12, 20, .74); }
+.models-file-row.selected { border-color: var(--covert-cyan); }
+.models-file-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.models-file-name { color: var(--covert-text); font: 10px var(--covert-mono); overflow-wrap: anywhere; }
+.models-file-meta, .models-file-fit, .models-selected-line, .models-role-note, .models-test-result { color: var(--covert-muted); font: 9px var(--covert-mono); }
+.models-file-fit.ok, .ok-text { color: var(--covert-green); }
+.models-file-fit.warn, .warn-text { color: var(--covert-amber); }
+.models-file-fit.dim { color: var(--covert-muted); }
+.models-selected-artifact { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--covert-violet); background: rgba(75, 38, 119, .14); }
+.models-selected-title, .models-role-title { color: var(--covert-violet); font: 9px var(--covert-mono); letter-spacing: .1em; }
+.models-selected-artifact .models-action { align-self: flex-start; margin-top: 4px; }
+.models-download-jobs { display: flex; flex-direction: column; gap: 5px; }
+.model-acquisition-job { display: flex; flex-direction: column; gap: 4px; padding: 7px; border-left: 3px solid var(--covert-blue); background: rgba(8, 12, 20, .78); }
+.model-acquisition-job.ok { border-left-color: var(--covert-green); }
+.model-acquisition-job.err { border-left-color: var(--covert-danger); }
+.model-acquisition-job.dim { border-left-color: var(--covert-muted); opacity: .75; }
+.model-acquisition-job-name { color: var(--covert-text); font: 10px var(--covert-mono); overflow-wrap: anywhere; }
+.model-acquisition-job-status { margin-left: auto; color: var(--covert-cyan); font: 8px var(--covert-mono); letter-spacing: .08em; }
+.model-acquisition-job-meta, .model-acquisition-job-hash { color: var(--covert-muted); font: 9px var(--covert-mono); overflow-wrap: anywhere; }
+.model-acquisition-job-hash { color: var(--covert-green); }
+.models-download-progress { width: 100%; height: 6px; accent-color: var(--covert-cyan); }
+.models-role-box { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 8px; border-top: 1px solid rgba(155, 108, 255, .28); background: rgba(15, 10, 25, .45); }
+.models-role-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.models-role-check { display: flex; align-items: center; gap: 4px; color: var(--covert-text); font: 9px var(--covert-mono); }
+.models-role-check input { accent-color: var(--covert-violet); }
+
+@media (max-width: 700px) {
+  .models-search-form { grid-template-columns: 1fr; }
+  .models-file-row { grid-template-columns: 1fr; }
+}
+
 /* Real terminal: provider strip + open controls + xterm session */
 .panel-section-title {
   font-size: 9px;

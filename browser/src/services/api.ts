@@ -51,8 +51,39 @@ import {
 } from '../../../common/contracts/lsp.ts';
 import {
   ModelStatusResponse,
-  type ModelStatusResponseT
+  type ModelStatusResponseT,
+  ModelStartResponse,
+  ModelStopResponse,
+  ModelReadyQuery,
+  ModelReadyResponse,
+  ModelRegisterRequest,
+  ModelRegisterResponse,
+  ModelRoleAssignRequest,
+  ModelRoleAssignResponse,
+  type ModelStartResponseT,
+  type ModelStopResponseT,
+  type ModelReadyResponseT,
+  type ModelRegisterRequestT,
+  type ModelRegisterResponseT,
+  type ModelRoleAssignRequestT,
+  type ModelRoleAssignResponseT
 } from '../../../common/contracts/models.ts';
+import {
+  HubSearchQuery,
+  HubSearchResponse,
+  HubFilesQuery,
+  HubFilesResponse,
+  HubDownloadRequest,
+  HubDownloadStartedResponse,
+  HubDownloadsListResponse,
+  HubCancelRequest,
+  HubCancelResponse,
+  type HubSearchResponseT,
+  type HubFilesResponseT,
+  type HubDownloadStartedResponseT,
+  type HubDownloadsListResponseT,
+  type HubCancelResponseT
+} from '../../../common/contracts/modelhub.ts';
 import {
   ClosedLoopStatusResponse,
   type ClosedLoopStatusT
@@ -64,9 +95,16 @@ import {
 import {
   TaskListResponse,
   type TaskListResponseT,
+  TaskRunRequest,
+  TaskRunResponse,
+  type TaskRunResponseT,
   TaskStatusResponse,
   type TaskStatusResponseT
 } from '../../../common/contracts/tasks.ts';
+import {
+  AuthorityDecisionRequest,
+  AuthorityDecisionResponse
+} from '../../../common/contracts/authority.ts';
 import {
   AuditReadResponse,
   type AuditReadQueryT,
@@ -86,6 +124,7 @@ import {
   type FitResponseT
 } from '../../../common/contracts/routing.ts';
 import {
+  ChatRequest,
   ChatResponse,
   type ChatResponseT,
   ChatStreamRequest,
@@ -352,6 +391,50 @@ export const api = {
   modelsStatus(): Promise<ModelStatusResponseT> {
     return call('/api/models/status', { schema: ModelStatusResponse });
   },
+  modelStart(id: string): Promise<ModelStartResponseT> {
+    return call('/api/models/start', { body: { id }, schema: ModelStartResponse });
+  },
+  modelStop(id: string): Promise<ModelStopResponseT> {
+    return call('/api/models/stop', { body: { id }, schema: ModelStopResponse });
+  },
+  modelReady(id: string): Promise<ModelReadyResponseT> {
+    const query = ModelReadyQuery.safeParse({ id });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid model readiness query');
+    return call('/api/model/ready', { query: query.data, schema: ModelReadyResponse });
+  },
+  modelRegister(request: ModelRegisterRequestT): Promise<ModelRegisterResponseT> {
+    const body = ModelRegisterRequest.safeParse(request);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid model registration request');
+    return call('/api/models/register', { body: body.data, schema: ModelRegisterResponse });
+  },
+  modelAssignRoles(request: ModelRoleAssignRequestT): Promise<ModelRoleAssignResponseT> {
+    const body = ModelRoleAssignRequest.safeParse(request);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid model role assignment request');
+    return call('/api/models/roles', { body: body.data, schema: ModelRoleAssignResponse });
+  },
+  modelHubSearch(q: string, sort: 'downloads' | 'likes' | 'modified' = 'downloads', limit = 20): Promise<HubSearchResponseT> {
+    const query = HubSearchQuery.safeParse({ q, sort, limit });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid Model Hub search request');
+    return call('/api/modelhub/search', { query: query.data, schema: HubSearchResponse });
+  },
+  modelHubFiles(repo_id: string): Promise<HubFilesResponseT> {
+    const query = HubFilesQuery.safeParse({ repo_id });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid Model Hub repository');
+    return call('/api/modelhub/files', { query: query.data, schema: HubFilesResponse });
+  },
+  modelHubDownload(request: { repo_id: string; filename: string; quant_label?: string | null }): Promise<HubDownloadStartedResponseT> {
+    const body = HubDownloadRequest.safeParse(request);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid Model Hub download request');
+    return call('/api/modelhub/download', { body: body.data, schema: HubDownloadStartedResponse });
+  },
+  modelHubDownloads(): Promise<HubDownloadsListResponseT> {
+    return call('/api/modelhub/downloads', { schema: HubDownloadsListResponse });
+  },
+  modelHubCancel(job_id: string): Promise<HubCancelResponseT> {
+    const body = HubCancelRequest.safeParse({ job_id });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid Model Hub cancellation request');
+    return call('/api/modelhub/downloads/cancel', { body: body.data, schema: HubCancelResponse });
+  },
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });
   },
@@ -360,6 +443,16 @@ export const api = {
   },
   tasksList(): Promise<TaskListResponseT> {
     return call('/api/tasks', { schema: TaskListResponse });
+  },
+  tasksRun(label: string): Promise<TaskRunResponseT> {
+    const body = TaskRunRequest.safeParse({ label });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid task label');
+    return call('/api/tasks/run', { body: body.data, schema: TaskRunResponse });
+  },
+  authorityDecision(operationId: string, decision: 'approve' | 'reject'): Promise<z.infer<typeof AuthorityDecisionResponse>> {
+    const body = AuthorityDecisionRequest.safeParse({ operation_id: operationId, decision });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid authority decision');
+    return call('/api/authority/decision', { method: 'POST', body: body.data, schema: AuthorityDecisionResponse });
   },
   tasksStatus(): Promise<TaskStatusResponseT> {
     return call('/api/tasks/status', { schema: TaskStatusResponse });
@@ -385,6 +478,16 @@ export const api = {
   },
   chat(modelId: string, messages: ChatMessageT[]): Promise<ChatResponseT> {
     return call('/api/chat', { body: { modelId, messages }, schema: ChatResponse });
+  },
+  modelTest(modelId: string): Promise<ChatResponseT> {
+    const body = ChatRequest.safeParse({
+      modelId,
+      messages: [{ role: 'user', content: 'Respond with exactly one line and no other text: COVERT_MODEL_READY' }],
+      harness: false,
+      options: { maxTokens: 32, temperature: 0, timeoutMs: 60_000 }
+    });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid model test request');
+    return call('/api/chat', { body: body.data, schema: ChatResponse });
   },
   async chatStream(modelId: string, messages: ChatMessageT[], signal?: AbortSignal): Promise<Response> {
     const body = ChatStreamRequest.safeParse({ modelId, messages });
