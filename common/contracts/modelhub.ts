@@ -148,4 +148,6 @@ export type HubDownloadRequestT = z.infer<typeof HubDownloadRequest>;
 export type HubDownloadStartedResponseT = z.infer<typeof HubDownloadStartedResponse>;
 export type HubDownloadsListResponseT = z.infer<typeof HubDownloadsListResponse>;
 export type HubCancelResponseT = z.infer<typeof HubCancelResponse>;
+export type ModelImportRequestT = z.infer<typeof ModelImportRequest>;
+export type ModelImportResponseT = z.infer<typeof ModelImportResponse>;
 export type ModelManifestT = z.infer<typeof ModelManifest>;

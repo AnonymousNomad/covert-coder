@@ -22,6 +22,16 @@ type HubFileT = HubFilesResponseT['files'][number];
 type DownloadJobT = HubDownloadsListResponseT['jobs'][number];
 type HubSort = 'downloads' | 'likes' | 'modified';
 type FitLabel = 'GOOD FIT' | 'MAY FIT' | 'TOO LARGE' | 'UNKNOWN';
+type StarterBucket = 'LIGHTWEIGHT' | 'BALANCED' | 'CODING';
+type BootstrapStage = 'IDLE' | 'DOWNLOADING' | 'VERIFYING' | 'REGISTERING' | 'STARTING' | 'READY' | 'FAILED' | 'CANCELLED';
+
+interface StarterCandidate {
+  bucket: StarterBucket;
+  model: HubModelT;
+  file: HubFileT;
+  fit: FitLabel;
+  purpose: string;
+}
 
 function el(tag: string, cls: string, text?: string): HTMLElement {
   const node = document.createElement(tag);
@@ -92,7 +102,13 @@ function relativeTime(iso: string | undefined): string {
   return hours < 24 ? `UPDATED ${hours}H AGO` : `UPDATED ${Math.round(hours / 24)}D AGO`;
 }
 
-export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>): PanelHandles {
+const STARTER_QUERIES: Array<{ bucket: StarterBucket; query: string; purpose: string }> = [
+  { bucket: 'LIGHTWEIGHT', query: 'SmolLM2 360M GGUF', purpose: 'Fastest reliable local proof and everyday Resident chat.' },
+  { bucket: 'BALANCED', query: 'Llama 3.2 1B GGUF', purpose: 'A stronger general model when the machine has room for it.' },
+  { bucket: 'CODING', query: 'Qwen2.5 Coder 0.5B GGUF', purpose: 'Coding-oriented local assistance for inspection and edits.' }
+];
+
+export function createModelsPanel(parent: HTMLElement, store: Store<AppState>): PanelHandles {
   parent.innerHTML = '';
   const root = el('div', 'panel-content models-panel');
   const header = el('header', 'panel-header');
@@ -111,6 +127,10 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   let refreshing = false;
   let pending = false;
   let findOpen = false;
+  let startersLoading = false;
+  let startersLoaded = false;
+  let starterError = '';
+  let starters: StarterCandidate[] = [];
   let searchBusy = false;
   let filesBusy = false;
   let queryText = '';
@@ -127,6 +147,11 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   let jobsMount: HTMLElement | null = null;
   let testResults = new Map<string, string>();
   let roleSelections = new Map<string, string[]>();
+  let importPath = '';
+  let importBusy = false;
+  let bootstrapStage: BootstrapStage = 'IDLE';
+  let bootstrapJobId = '';
+  let bootstrapCandidate: StarterCandidate | null = null;
   const verifiedReady = new Set<string>();
   const registering = new Set<string>();
   const registeredJobs = new Set<string>();
@@ -146,10 +171,11 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     if (activeJobs.length === 0) return;
     jobsMount.appendChild(el('div', 'models-section-header', 'DOWNLOAD / VERIFICATION EVIDENCE'));
     for (const job of activeJobs) {
-      const row = el('div', `model-acquisition-job ${job.status === 'done' ? 'ok' : job.status === 'error' ? 'err' : job.status === 'cancelled' ? 'dim' : 'running'}`);
+      const bootstrap = job.job_id === bootstrapJobId;
+      const row = el('div', `model-acquisition-job ${job.status === 'done' && bootstrapStage === 'READY' ? 'ok' : job.status === 'error' || bootstrapStage === 'FAILED' ? 'err' : job.status === 'cancelled' || bootstrapStage === 'CANCELLED' ? 'dim' : 'running'}`);
       const head = el('div', 'model-acquisition-job-head');
       head.appendChild(el('strong', 'model-acquisition-job-name', job.filename));
-      head.appendChild(el('span', 'model-acquisition-job-status', job.status.toUpperCase()));
+      head.appendChild(el('span', 'model-acquisition-job-status', bootstrap ? bootstrapStage : job.status.toUpperCase()));
       row.appendChild(head);
       if (job.bytes_total !== null && job.bytes_total > 0) {
         const progress = document.createElement('progress');
@@ -180,22 +206,22 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
           } finally {
             pending = false;
           }
-        }, pending, 'models-action models-action-warn'));
+        }, pending && !bootstrap, 'models-action models-action-warn'));
       }
       jobsMount.appendChild(row);
     }
   }
 
-  async function registerCompletedJob(job: DownloadJobT): Promise<void> {
-    if (job.status !== 'done' || registering.has(job.job_id) || registeredJobs.has(job.job_id) || job.manifest === undefined) return;
+  async function registerCompletedJob(job: DownloadJobT): Promise<string | null> {
+    if (job.status !== 'done' || registering.has(job.job_id) || job.manifest === undefined) return null;
     if (job.manifest.status !== 'ready') {
       setFeedback(`${job.filename}: FORMAT NOT CURRENTLY SUPPORTED · ${job.manifest.architecture || 'GGUF header unavailable'}.`);
-      return;
+      return null;
     }
     const registeredId = job.filename.replace(/\.gguf$/i, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
     if (status.models.some(model => model.id === registeredId && model.ingested === true)) {
       registeredJobs.add(job.job_id);
-      return;
+      return registeredId;
     }
     registering.add(job.job_id);
     setFeedback(`${job.filename}: verified SHA256. Requesting approval to register the local artifact.`);
@@ -208,8 +234,10 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       registeredJobs.add(job.job_id);
       setFeedback(`${job.filename}: REGISTERED · choose START MODEL in the inventory.`);
       await refreshState();
+      return registeredId;
     } catch (error) {
       setFeedback(`Registration did not complete: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
     } finally {
       registering.delete(job.job_id);
     }
@@ -217,10 +245,15 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
 
   async function refreshJobs(): Promise<void> {
     if (!alive) return;
+    // The bootstrap journey owns its polling while a governed install is in
+    // flight. A second 1.5s projection loop can queue the same authority
+    // read behind slow local telemetry and turn a healthy download into a
+    // client-side timeout.
+    if ((pending && bootstrapJobId.length > 0) || startersLoading || searchBusy || filesBusy) return;
     try {
       jobs = (await api.modelHubDownloads()).jobs;
       renderJobs();
-      const completed = jobs.find(job => job.status === 'done' && job.manifest !== undefined && !registering.has(job.job_id) && !registeredJobs.has(job.job_id));
+      const completed = jobs.find(job => job.status === 'done' && job.manifest !== undefined && job.job_id !== bootstrapJobId && !registering.has(job.job_id) && !registeredJobs.has(job.job_id));
       if (completed !== undefined) await registerCompletedJob(completed);
     } catch {
       // The model inventory remains useful when the optional download
@@ -229,7 +262,10 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   }
 
   async function refreshState(): Promise<void> {
-    if (!alive || refreshing) return;
+    // Discovery and acquisition own their bounded read cadence. Background
+    // status/route/telemetry projections must not compete with the visible
+    // Hub request or download proof on a constrained local workstation.
+    if (!alive || refreshing || startersLoading || searchBusy || filesBusy || pending) return;
     refreshing = true;
     try {
       const [nextStatus, nextRoutes, nextHardware] = await Promise.all([
@@ -258,8 +294,12 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       if (alive) render();
     } catch (error) {
       if (alive) {
-        body.innerHTML = '';
-        body.appendChild(el('div', 'panel-error', `Failed to load model state: ${error instanceof Error ? error.message : String(error)}`));
+        // A transient status/route failure must not erase the operator's
+        // discovery or download surface. Preserve the last truthful inventory
+        // and let the next bounded poll refresh it; an empty initial body is
+        // still rendered into the intentional zero-model state below.
+        setFeedback(`Model state temporarily unavailable: ${error instanceof Error ? error.message : String(error)} · retrying.`);
+        if (body.childElementCount === 0) render();
       }
     } finally {
       refreshing = false;
@@ -303,6 +343,105 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     }
   }
 
+  function starterFile(files: HubFileT[], bucket: StarterBucket): HubFileT | null {
+    const compatible = files.filter(file => file.filename.toLowerCase().endsWith('.gguf'));
+    if (compatible.length === 0) return null;
+    const sized = [...compatible].sort((a, b) => (a.size ?? Number.MAX_SAFE_INTEGER) - (b.size ?? Number.MAX_SAFE_INTEGER));
+    // Prefer a broadly supported Q4_K_M artifact so the first-run choice is
+    // useful without blindly selecting the smallest, lowest-quality file.
+    const preferred = sized.find(file => /q4[_-]?k[_-]?m/i.test(file.filename));
+    if (preferred !== undefined) return preferred;
+    if (bucket === 'BALANCED') {
+      const useful = sized.find(file => file.size !== null && file.size >= 400 * 1024 ** 2 && file.size <= 2 * 1024 ** 3);
+      return useful ?? sized[0] ?? null;
+    }
+    return sized[0] ?? null;
+  }
+
+  async function retryHub<T>(operation: () => Promise<T>): Promise<T> {
+    let lastError: unknown;
+    // Startup and the local authority projection can legitimately take longer
+    // than one browser read timeout on this machine. Keep discovery truthful,
+    // but give the canonical stack a short bounded retry window before
+    // declaring that live Hub data is unavailable.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) await new Promise(resolve => window.setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  }
+
+  async function loadStarterModels(): Promise<void> {
+    if (startersLoading || startersLoaded) return;
+    startersLoading = true;
+    starterError = '';
+    setFeedback('Loading live Hugging Face starter recommendations · querying current GGUF repositories and artifact sizes.');
+    if (alive) render();
+    try {
+      const results = await Promise.allSettled(STARTER_QUERIES.map(async definition => {
+        const found = await retryHub(() => api.modelHubSearch(definition.query, 'downloads', 12));
+        // Hub search is already filtered to GGUF repositories. Inspect a small
+        // bounded prefix instead of serially probing eight repositories; the
+        // first installable candidate is enough for Quick Start and the full
+        // search remains available below for deliberate exploration.
+        for (const model of found.models.slice(0, 3)) {
+          try {
+            const files = (await retryHub(() => api.modelHubFiles(model.repo_id))).files;
+            const file = starterFile(files, definition.bucket);
+            if (file !== null) return { bucket: definition.bucket, model, file, fit: fitForArtifact(file.size, hardware), purpose: definition.purpose } satisfies StarterCandidate;
+          } catch {
+            // One unavailable repository must not hide the other live starters.
+          }
+        }
+        return null;
+      }));
+      starters = results.flatMap(result => result.status === 'fulfilled' && result.value !== null ? [result.value] : []);
+      startersLoaded = true;
+      if (starters.length === 0) {
+        starterError = 'No compatible live starter artifact was returned. Use FIND A MODEL for a broader explicit search.';
+        setFeedback(`Live starter recommendations unavailable · ${starterError}`);
+      } else {
+        setFeedback(`${starters.length} live starter recommendation${starters.length === 1 ? '' : 's'} loaded. Choose an artifact only when its fit is truthful for this machine.`);
+      }
+    } catch (error) {
+      startersLoaded = true;
+      starterError = error instanceof Error ? error.message : String(error);
+      setFeedback(`Live starter search unavailable · ${starterError}`);
+    } finally {
+      startersLoading = false;
+      if (alive) render();
+    }
+  }
+
+  async function importExistingModel(): Promise<void> {
+    const source = importPath.trim();
+    if (source.length === 0 || importBusy || pending) {
+      setFeedback('Enter the path to an existing GGUF file. Covert validates the file before it is copied into the governed models directory.');
+      return;
+    }
+    importBusy = true;
+    setFeedback('Approval required to validate and import the selected local GGUF artifact.');
+    try {
+      const response = await api.modelImport({ path: source });
+      try {
+        await api.modelRegister({ filename: response.manifest.filename, repo_id: response.manifest.repo_id });
+        setFeedback(`${response.manifest.filename}: IMPORTED · REGISTERED · ${formatBytes(response.manifest.size_bytes)} · ${response.manifest.sha256 ?? 'SHA256 UNAVAILABLE'} · choose START MODEL in the inventory.`);
+      } catch (registrationError) {
+        setFeedback(`${response.manifest.filename}: IMPORTED and verified · registration approval did not complete: ${registrationError instanceof Error ? registrationError.message : String(registrationError)}`);
+      }
+      await refreshState();
+    } catch (error) {
+      setFeedback(`Import did not complete · ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      importBusy = false;
+      if (alive) render();
+    }
+  }
+
   async function downloadSelected(): Promise<void> {
     if (selectedRepo.length === 0 || selectedFile === null || pending) return;
     pending = true;
@@ -316,6 +455,119 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       setFeedback(`Download did not start: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       pending = false;
+    }
+  }
+
+  async function waitForDownload(jobId: string): Promise<DownloadJobT> {
+    const deadline = Date.now() + 30 * 60_000;
+    let lastProjectionAt = Date.now();
+    let lastProjectionError = '';
+    while (alive && Date.now() < deadline) {
+      try {
+        const response = await api.modelHubDownloads();
+        lastProjectionAt = Date.now();
+        lastProjectionError = '';
+        jobs = response.jobs;
+        const job = jobs.find(item => item.job_id === jobId);
+        if (job !== undefined) {
+          if (job.status === 'done' && job.manifest === undefined) {
+            bootstrapStage = 'VERIFYING';
+            setFeedback(`${job.filename}: VERIFYING · download bytes are complete; waiting for the server manifest and SHA256 evidence.`);
+            renderJobs();
+          } else if (job.status === 'done' || job.status === 'error' || job.status === 'cancelled') {
+            renderJobs();
+            return job;
+          }
+          renderJobs();
+        }
+      } catch (error) {
+        // A read timeout does not change the server-owned job state. Keep the
+        // install alive and retry while the backend remains reachable; fail
+        // only after a bounded outage window so the UI never claims READY.
+        lastProjectionError = error instanceof Error ? error.message : String(error);
+        if (Date.now() - lastProjectionAt > 120_000) {
+          throw new Error(`download status unavailable for 120s: ${lastProjectionError}`);
+        }
+        setFeedback(`${bootstrapCandidate?.file.filename ?? 'Model download'}: DOWNLOAD IN PROGRESS · status read retrying (${lastProjectionError}).`);
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 1500));
+    }
+    throw new Error('download proof timed out; the job was not marked complete');
+  }
+
+  async function waitForReady(id: string): Promise<void> {
+    const deadline = Date.now() + 120_000;
+    while (alive && Date.now() < deadline) {
+      const ready = await api.modelReady(id);
+      if (ready.ready === true) return;
+      await new Promise(resolve => window.setTimeout(resolve, 1000));
+    }
+    throw new Error('runtime readiness proof timed out; the model is not READY');
+  }
+
+  async function installStarter(candidate: StarterCandidate): Promise<void> {
+    if (pending) return;
+    if (candidate.fit === 'TOO LARGE') {
+      setFeedback(`${candidate.file.filename}: TOO LARGE for the conservative hardware estimate. Choose a smaller compatible artifact.`);
+      return;
+    }
+    bootstrapCandidate = candidate;
+    bootstrapStage = 'DOWNLOADING';
+    bootstrapJobId = '';
+    pending = true;
+    selectedRepo = candidate.model.repo_id;
+    selectedFile = candidate.file;
+    selectedFiles = [candidate.file];
+    selectedQuant = quantLabel(candidate.file.filename) === 'QUANT UNKNOWN' ? '' : quantLabel(candidate.file.filename);
+    setFeedback(`${candidate.model.repo_id}: DOWNLOAD · governed local acquisition started.`);
+    if (alive) render();
+    try {
+      const started = await api.modelHubDownload({ repo_id: candidate.model.repo_id, filename: candidate.file.filename, quant_label: selectedQuant || quantLabel(candidate.file.filename) });
+      bootstrapJobId = started.job_id;
+      setFeedback(`${candidate.file.filename}: DOWNLOADING · real Hugging Face bytes are being written to a contained partial file.`);
+      if (alive) render();
+      const job = await waitForDownload(started.job_id);
+      if (job.status === 'cancelled') {
+        bootstrapStage = 'CANCELLED';
+        throw new Error('download cancelled; no model was registered');
+      }
+      if (job.status !== 'done' || job.manifest === undefined) {
+        bootstrapStage = 'FAILED';
+        throw new Error(`download failed · ${job.error ?? 'no verified manifest was returned'}`);
+      }
+      bootstrapStage = 'VERIFYING';
+      setFeedback(`${candidate.file.filename}: VERIFYING · manifest and SHA256 evidence received.`);
+      if (alive) render();
+      if (job.manifest.status !== 'ready') {
+        bootstrapStage = 'FAILED';
+        throw new Error(`FORMAT NOT CURRENTLY SUPPORTED · ${job.manifest.architecture || 'GGUF runtime header unavailable'}`);
+      }
+      bootstrapStage = 'REGISTERING';
+      setFeedback(`${candidate.file.filename}: REGISTERING · requesting approval for the verified local artifact.`);
+      if (alive) render();
+      const id = await registerCompletedJob(job);
+      if (id === null) {
+        bootstrapStage = 'FAILED';
+        throw new Error('registration did not produce a usable model id');
+      }
+      bootstrapStage = 'STARTING';
+      setFeedback(`${candidate.file.filename}: STARTING · waiting for endpoint and inference readiness.`);
+      if (alive) render();
+      await api.modelStart(id);
+      await waitForReady(id);
+      verifiedReady.add(id);
+      bootstrapStage = 'READY';
+      setFeedback(`${candidate.file.filename}: READY · local serving and readiness proof succeeded. USE WITH RESIDENT or assign roles below.`);
+      await refreshState();
+    } catch (error) {
+      if (bootstrapStage !== 'CANCELLED') bootstrapStage = 'FAILED';
+      if (bootstrapStage === 'FAILED') setFeedback(`${candidate.file.filename}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      pending = false;
+      if (alive) {
+        await refreshState();
+        render();
+      }
     }
   }
 
@@ -405,6 +657,62 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     titleRow.appendChild(button('CLOSE', () => { findOpen = false; render(); }, false, 'models-action models-action-quiet'));
     section.appendChild(titleRow);
     section.appendChild(el('div', 'models-discovery-note', 'Search is explicit and governed. Results are scoped to repositories with GGUF-compatible artifacts; final runtime compatibility is checked after download.'));
+
+    const quickStart = el('section', 'models-quick-start');
+    const quickHead = el('div', 'models-section-header');
+    quickHead.appendChild(el('span', '', 'QUICK START · LIVE HUB RECOMMENDATIONS'));
+    quickHead.appendChild(el('span', 'models-quick-start-status', startersLoading ? 'LOADING…' : startersLoaded ? 'CURRENT HUB DATA' : 'NOT LOADED'));
+    quickStart.appendChild(quickHead);
+    quickStart.appendChild(el('div', 'models-discovery-note', hardware === null
+      ? 'Hardware fit is UNKNOWN until the local profile responds.'
+      : `RECOMMENDED FOR THIS MACHINE · ${formatBytes(hardware.freeRamBytes)} free RAM · ${hardware.backend.toUpperCase()} · ${hardware.logicalCpus} logical CPUs. Fit is conservative, not a performance promise.`));
+    if (startersLoading) quickStart.appendChild(el('div', 'models-discovery-empty', 'Searching live Hub repositories, inspecting current GGUF files, and measuring their sizes…'));
+    if (starterError.length > 0) quickStart.appendChild(el('div', 'models-hub-warning', starterError));
+    for (const candidate of starters) {
+      const card = el('article', `models-starter-card ${bootstrapCandidate?.file.filename === candidate.file.filename ? 'selected' : ''}`);
+      const head = el('div', 'models-hub-card-head');
+      head.appendChild(el('strong', 'models-starter-bucket', candidate.bucket));
+      head.appendChild(el('span', `models-file-fit ${fitClass(candidate.fit)}`, candidate.fit));
+      card.appendChild(head);
+      card.appendChild(el('strong', 'models-starter-repo', candidate.model.repo_id));
+      card.appendChild(el('span', 'models-starter-file', candidate.file.filename));
+      card.appendChild(el('span', 'models-starter-meta', `${formatBytes(candidate.file.size)} · ${quantLabel(candidate.file.filename)} · ${formatParameters(candidate.model.parameters)} · LICENSE UNKNOWN`));
+      card.appendChild(el('span', 'models-starter-purpose', candidate.purpose));
+      const actionRow = el('div', 'models-card-actions');
+      const isCurrent = bootstrapCandidate?.file.filename === candidate.file.filename;
+      const actionLabel = isCurrent && bootstrapStage !== 'IDLE' ? bootstrapStage : 'INSTALL & SET UP';
+      actionRow.appendChild(button(actionLabel, () => installStarter(candidate), pending || candidate.fit === 'TOO LARGE' || (isCurrent && bootstrapStage !== 'FAILED' && bootstrapStage !== 'CANCELLED' && bootstrapStage !== 'READY'), 'models-action models-action-primary'));
+      if (isCurrent && bootstrapStage === 'READY') {
+        actionRow.appendChild(button('USE WITH RESIDENT', () => { store.set(previous => ({ ...previous, panel: 'resident' })); }, false, 'models-action'));
+      }
+      card.appendChild(actionRow);
+      quickStart.appendChild(card);
+    }
+    if (!startersLoading && !startersLoaded) {
+      quickStart.appendChild(button('LOAD RECOMMENDED STARTERS', () => { void loadStarterModels(); }, false, 'models-action models-action-primary'));
+    }
+    section.appendChild(quickStart);
+
+    const importSection = el('section', 'models-import');
+    importSection.appendChild(el('div', 'models-section-header', 'IMPORT EXISTING MODEL · GOVERNED GGUF PATH'));
+    importSection.appendChild(el('div', 'models-discovery-note', 'Use this only for a compatible GGUF you already own. Covert validates the file, copies it into the governed models directory, and never crawls the rest of the disk.'));
+    const importForm = document.createElement('form');
+    importForm.className = 'models-import-form';
+    const importInput = document.createElement('input');
+    importInput.className = 'models-search-input';
+    importInput.type = 'text';
+    importInput.placeholder = 'Full path to an existing .gguf file';
+    importInput.value = importPath;
+    importInput.setAttribute('aria-label', 'Existing GGUF file path');
+    importInput.addEventListener('input', () => { importPath = importInput.value; });
+    importForm.appendChild(importInput);
+    const importButton = button(importBusy ? 'IMPORTING…' : 'IMPORT EXISTING MODEL', () => {}, importBusy || pending, 'models-action');
+    importButton.type = 'submit';
+    importForm.appendChild(importButton);
+    importForm.addEventListener('submit', event => { event.preventDefault(); void importExistingModel(); });
+    importSection.appendChild(importForm);
+    section.appendChild(importSection);
+
     const form = document.createElement('form');
     form.className = 'models-search-form';
     const input = document.createElement('input');
@@ -565,13 +873,17 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       const empty = el('section', 'models-empty models-empty-setup');
       empty.appendChild(el('strong', 'models-empty-title', 'NO LOCAL MODELS READY'));
       empty.appendChild(el('span', 'models-empty-detail', status.models.length > 0
-        ? 'The model registry is present, but no local artifact is available or runnable yet. Start with the governed path: search Hugging Face for a compatible GGUF, choose one artifact, download it, verify its manifest, register it, and prove READY.'
-        : 'Start with the governed local path: search Hugging Face for a compatible GGUF, choose one artifact, download it, verify its manifest, register it, and prove READY.'));
-      empty.appendChild(button(findOpen ? 'FIND MODEL OPEN' : 'FIND A MODEL', () => { findOpen = true; render(); }, false, 'models-action models-action-primary'));
+        ? `${status.models.length} catalog entr${status.models.length === 1 ? 'y is' : 'ies are'} present, but no verified local artifact is installed and runnable. Covert needs one compatible GGUF before Resident can send.`
+        : 'No compatible local artifact is installed yet. Choose a starter from the live Hub, or use the governed import path for a GGUF you already own.'));
+      empty.appendChild(button('INSTALL A LOCAL MODEL', () => { findOpen = true; void loadStarterModels(); }, false, 'models-action models-action-primary'));
+      empty.appendChild(button('FIND A MODEL', () => { findOpen = true; render(); }, false, 'models-action'));
+      empty.appendChild(button('IMPORT EXISTING MODEL', () => { findOpen = true; render(); }, false, 'models-action models-action-quiet'));
       body.appendChild(empty);
     }
     const counts = el('div', 'models-counts');
-    counts.appendChild(el('span', 'models-counts-value', `${readyCount} ACTIVE · ${status.models.length} REGISTERED`));
+    const installedCount = status.models.filter(model => model.ingested === true).length;
+    const catalogCount = Math.max(0, status.models.length - installedCount);
+    counts.appendChild(el('span', 'models-counts-value', `${readyCount} ACTIVE · ${installedCount} INSTALLED · ${catalogCount} CATALOG`));
     body.appendChild(counts);
     if (findOpen) body.appendChild(renderDiscovery());
 

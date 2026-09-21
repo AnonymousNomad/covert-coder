@@ -31,7 +31,7 @@ function registrationBody(manager: ModelRuntime, body: unknown): Record<string, 
   const input = body as ModelRegisterRequestT;
   let filename: string;
   try {
-    filename = validateRegistrationFilename(manager.modelDir, input.filename);
+    filename = validateRegistrationFilename(manager.registrationDir, input.filename);
   } catch (error) {
     throw toRouteError(error);
   }

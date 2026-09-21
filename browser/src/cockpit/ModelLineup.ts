@@ -90,8 +90,22 @@ export function createModelLineup(parent: HTMLElement, store: Store<AppState>): 
     const active = states.filter(modelIsActive).length;
     const startable = states.filter((state) => state === 'STARTABLE').length;
     const total = status.models.length;
-    header3.appendChild(el('span', 'cockpit-lineup-counts-value', `${active} active · ${startable} startable · ${total} registered`));
+    const installed = status.models.filter(model => model.ingested === true).length;
+    const catalog = Math.max(0, total - installed);
+    const usable = status.models.filter(model => model.runtime_available === true && model.artifact_available === true).length;
+    header3.appendChild(el('span', 'cockpit-lineup-counts-value', `${active} active · ${startable} startable · ${installed} installed · ${catalog} catalog`));
     list.appendChild(header3);
+
+    if (usable === 0) {
+      const setup = el('div', 'cockpit-lineup-setup');
+      setup.appendChild(el('strong', '', 'NO LOCAL MODEL READY'));
+      setup.appendChild(el('span', '', 'Open Models to install a compatible GGUF, prove READY, and assign Resident roles.'));
+      const setupButton = el('button', 'cockpit-mode', 'SET UP LOCAL MODEL') as HTMLButtonElement;
+      setupButton.type = 'button';
+      setupButton.addEventListener('click', () => store.set(previous => ({ ...previous, panel: 'models' })));
+      setup.appendChild(setupButton);
+      list.appendChild(setup);
+    }
 
     const roleSection = el('div', 'cockpit-lineup-roles');
     roleSection.appendChild(el('div', 'cockpit-lineup-section-label', 'ROLE SLOTS \u00b7 ROUTE EVIDENCE'));
@@ -112,7 +126,7 @@ export function createModelLineup(parent: HTMLElement, store: Store<AppState>): 
     list.appendChild(roleDetails);
 
     if (status.models.length === 0) {
-      list.appendChild(el('div', 'cockpit-lineup-empty', 'No models installed. Install a GGUF via /api/modelhub to populate this surface.'));
+      list.appendChild(el('div', 'cockpit-lineup-empty', 'No model catalog entries are available. Open Models to install a compatible GGUF.'));
       return;
     }
 

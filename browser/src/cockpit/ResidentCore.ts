@@ -35,6 +35,7 @@ export interface ResidentCoreHandles {
 
 export interface ResidentCoreOptions {
   onToast?: (code: string, message: string) => void;
+  onNavigate?: (panel: AppState['panel']) => void;
 }
 
 interface ResidentData {
@@ -173,7 +174,10 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   // refresh lifecycle so returning to chat does not require a hidden/manual
   // refresh before Send becomes usable. This only refreshes presentation
   // data; authority and READY evidence remain backend-owned.
-  const chatPanel = createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
+  const chatPanel = createChatPanel(chatMount, {
+    ...(opts.onToast === undefined ? {} : { onToast: opts.onToast }),
+    ...(opts.onNavigate === undefined ? {} : { onSetupModel: () => opts.onNavigate?.('models') })
+  });
 
   let alive = true;
   let activeSessionId: string | null = null;

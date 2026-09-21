@@ -114,18 +114,27 @@ export class ModelRouter {
   async routes(): Promise<ModelRoute[]> {
     const status = await this.runtime.status();
     const running = new Set(status.models.filter(model => model.status === 'running').map(model => String(model.id)));
-    const local = this.runtime.list().map(entry => {
+    const local = await Promise.all(this.runtime.list().map(async entry => {
       const route = this.localRoute(entry);
       if (running.has(entry.id)) {
         const health = this.health.get(route.id);
-        route.status = health !== undefined && Date.now() - health.at < PROBE_TTL_MS ? health.status : 'unverified';
-        route.probeMs = health?.at ?? null;
+        if (health !== undefined && Date.now() - health.at < PROBE_TTL_MS) {
+          route.status = health.status;
+          route.probeMs = null;
+        } else {
+          const startedAt = Date.now();
+          const result = await this.runtime.verifyEndpointModel(entry.id, LOCAL_PROBE_TIMEOUT_MS).catch(() => ({ ready: false as const }));
+          const probeStatus: RouteStatusT = result.ready ? 'ready' : 'down';
+          this.health.set(route.id, { status: probeStatus, at: Date.now() });
+          route.status = probeStatus;
+          route.probeMs = Date.now() - startedAt;
+        }
       } else {
         route.status = entry.status === 'ready' ? 'unverified' : 'down';
         route.probeMs = null;
       }
       return route;
-    });
+    }));
     const connected = new Set(await this.providers.list().then(list => list.filter(provider => provider.status === 'connected').map(provider => provider.id)));
     const cloud = this.cloudRoutes().map(route => {
       const providerId = route.id.split(':')[1]!;

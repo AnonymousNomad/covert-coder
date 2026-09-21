@@ -7,6 +7,7 @@ import type { RouteEntryT } from '../../../common/contracts/routing.ts';
 
 export interface ChatPanelOptions {
   onToast?: (code: string, message: string) => void;
+  onSetupModel?: () => void;
 }
 
 export interface ChatPanel {
@@ -71,6 +72,15 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
     return routes.find(route => route.id === id);
   }
 
+  function selectedRouteIsReady(): boolean {
+    return routeById(boundModelId)?.status === 'ready';
+  }
+
+  function syncInputState(): void {
+    sendButton.disabled = streaming || !selectedRouteIsReady() || input.value.trim().length === 0;
+    modelSelect.disabled = streaming || orderedRoutes().every(route => route.status !== 'ready');
+  }
+
   async function refreshModels(): Promise<void> {
     refreshButton.disabled = true;
     try {
@@ -81,22 +91,31 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
         const option = document.createElement('option');
         option.value = route.id;
         option.textContent = routeLabel(route);
+        option.disabled = route.status !== 'ready';
         modelSelect.appendChild(option);
       }
-      if (current.length > 0 && routeById(current) !== undefined) {
+      const readyRoutes = orderedRoutes().filter(route => route.status === 'ready');
+      const localReady = readyRoutes.find(route => route.providerType === 'local');
+      const preferred = localReady ?? readyRoutes[0];
+      if (current.length > 0 && routeById(current)?.status === 'ready') {
         modelSelect.value = current;
       } else {
-        const ready = orderedRoutes().find(route => route.status === 'ready');
-        modelSelect.value = ready?.id ?? (modelSelect.options.length > 0 ? modelSelect.options[0]!.value : '');
+        modelSelect.value = preferred?.id ?? '';
       }
       boundModelId = modelSelect.value;
-      sendButton.disabled = boundModelId.length === 0 || streaming || input.value.trim().length === 0;
-      if (boundModelId.length === 0) showBanner('No model route is available. Open Models to inspect runtime and artifact state.');
-      else hideBanner();
+      syncInputState();
+      if (preferred === undefined) {
+        showSetupBanner(routes.length === 0
+          ? 'No model route is available yet. Set up a local model before using Resident.'
+          : 'No local model is ready yet. Set one up in Models; Resident will refresh automatically when READY is proven.');
+      } else if (localReady === undefined) {
+        showBanner(`No local model is ready yet. Resident is using ${preferred.displayName} through the available remote route.`);
+      } else hideBanner();
       void refreshMeter();
     } catch {
-      showBanner('Model routes are unavailable. Check Models and the local runtime, then refresh routes here.');
-      sendButton.disabled = true;
+      showSetupBanner('Model routes are unavailable. Open Models to inspect local runtime and artifact state.');
+      boundModelId = '';
+      syncInputState();
     } finally {
       refreshButton.disabled = streaming;
     }
@@ -118,7 +137,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
 
   function restoreBinding(storedModelId: string): void {
     const candidates = [storedModelId, `local:${storedModelId}`];
-    let route = candidates.map(routeById).find(entry => entry !== undefined);
+    let route = candidates.map(routeById).find(entry => entry?.status === 'ready');
     if (route === undefined) route = orderedRoutes().find(entry => entry.status === 'ready');
     if (route !== undefined) {
       boundModelId = route.id;
@@ -182,7 +201,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
 
   function setStreaming(value: boolean): void {
     streaming = value;
-    sendButton.disabled = value || boundModelId.length === 0 || input.value.trim().length === 0;
+    syncInputState();
     modelSelect.disabled = value;
     refreshButton.disabled = value;
     input.disabled = value;
@@ -190,7 +209,21 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   }
 
   function showBanner(text: string): void {
-    banner.textContent = text;
+    banner.replaceChildren(document.createTextNode(text));
+    banner.classList.add('visible');
+  }
+
+  function showSetupBanner(text: string): void {
+    banner.textContent = '';
+    banner.appendChild(document.createTextNode(text));
+    if (opts.onSetupModel !== undefined) {
+      const setup = document.createElement('button');
+      setup.type = 'button';
+      setup.className = 'chat-setup-button';
+      setup.textContent = 'SET UP A MODEL';
+      setup.addEventListener('click', opts.onSetupModel);
+      banner.appendChild(setup);
+    }
     banner.classList.add('visible');
   }
 
@@ -305,6 +338,10 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
     if (next === previous) return;
     const from = routeById(previous);
     const to = routeById(next);
+    if (to?.status !== 'ready') {
+      modelSelect.value = previous;
+      return;
+    }
     boundModelId = next;
     if (from !== undefined && to !== undefined && to.contextLength < from.contextLength) {
       showBanner(`switching from ${from.displayName} (${from.contextLength} ctx) to ${to.displayName} (${to.contextLength} ctx) — the most recent turns will be kept, older ones are not sent`);
@@ -313,7 +350,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   });
 
   sendButton.addEventListener('click', () => void send());
-  input.addEventListener('input', () => { sendButton.disabled = streaming || boundModelId.length === 0 || input.value.trim().length === 0; });
+  input.addEventListener('input', syncInputState);
   refreshButton.addEventListener('click', () => { void refreshModels(); });
   input.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey) {

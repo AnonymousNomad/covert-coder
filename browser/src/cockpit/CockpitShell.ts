@@ -234,7 +234,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   intel.addEventListener('keydown', event => { if (event.key === 'Escape') closeIntel(); });
   const navigation = createNavigationRail(navHost, store);
   const residentFigure = createResidentFigure(figureHost, store);
-  const resident = createResidentCore(residentMount, store, { onToast: notify });
+  const resident = createResidentCore(residentMount, store, { onToast: notify, onNavigate: panel => store.set(previous => ({ ...previous, panel })) });
   const modelLineup = createModelLineup(modelSlot, store);
   const telemetry = createSystemTelemetry(telemetrySlot, store);
   const activity = createActivityTimeline(activitySlot, store);

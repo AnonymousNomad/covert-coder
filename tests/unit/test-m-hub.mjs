@@ -190,6 +190,32 @@ test('m1: interrupted download auto-resumes via Range request and completes', { 
   }
 });
 
+test('m1: response-header stall becomes a retryable timeout and never registers an artifact', { timeout: 5000 }, async () => {
+  let calls = 0;
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    downloadHeaderTimeoutMs: 25,
+    fetchImpl: async () => {
+      calls += 1;
+      return new Promise(() => {});
+    }
+  });
+
+  await hub.startDownload({
+    repo_id: 'testorg/header-stall',
+    filename: 'header-stall.gguf',
+    quant_label: null
+  });
+
+  const job = hub.listDownloads()[0];
+  assert.equal(job.status, 'error');
+  assert.match(job.error ?? '', /waiting for response/);
+  assert.equal(calls, 3, 'bounded retry attempts should be observable');
+  await assert.rejects(() => fs.access(path.join(modelsDir, 'header-stall.gguf.part')));
+  await assert.rejects(() => fs.access(path.join(modelsDir, 'header-stall.gguf')));
+});
+
 test('m1: cancel aborts mid-stream, deletes .part, emits cancelled and never done', { timeout: 12000 }, async () => {
   const server = http.createServer((_req, res) => {
     res.setHeader('content-length', String(10 * 1024 * 1024));

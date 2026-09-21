@@ -150,6 +150,23 @@ test('POST /api/models/profile rejects unknown presets and sampler keys', async 
   assert.equal(errorCode(await badSampler.json()), 'BAD_REQUEST');
 });
 
+test('downloaded artifacts register from the workspace acquisition directory, not the bundled catalog directory', async () => {
+  const acquiredDir = path.join(dir, 'acquired-models');
+  await fs.mkdir(acquiredDir, { recursive: true });
+  await fs.copyFile(path.join(modelDir, 'fantom-4b.gguf'), path.join(acquiredDir, 'downloaded.gguf'));
+  const isolated = new ModelRuntime({
+    workspace: dir,
+    manifestPath: path.join(modelDir, 'manifest.json'),
+    ingestedPath: path.join(dir, '.aide', 'isolated-ingested.json'),
+    modelDir,
+    registrationDir: acquiredDir
+  });
+  await isolated.load();
+  const result = await isolated.register({ filename: 'downloaded.gguf', repo_id: 'fixture/acquired' });
+  assert.equal(result.id, 'downloaded');
+  assert.equal(isolated.get(result.id)?.file, path.join(acquiredDir, 'downloaded.gguf'));
+});
+
 test('GET /api/model/ready reports not-ready without a server and 400 without id', async () => {
   const res = await owner.request('/api/model/ready?id=fantom-4b');
   assert.equal(res.status, 200);

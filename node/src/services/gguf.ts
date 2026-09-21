@@ -73,9 +73,16 @@ export async function probeGguf(filePath: string): Promise<GgufInfo> {
     return out;
   };
 
-  const skip = (bytes: number): void => {
-    pos += bytes;
-    window = Buffer.alloc(0);
+  const skip = async (bytes: number): Promise<void> => {
+    if (!Number.isSafeInteger(bytes) || bytes < 0) throw new Error('gguf metadata span is out of range');
+    let remaining = bytes;
+    while (remaining > 0) {
+      if (window.length === 0) await ensure(Math.min(remaining, CHUNK));
+      const consumed = Math.min(remaining, window.length);
+      window = window.subarray(consumed);
+      pos += consumed;
+      remaining -= consumed;
+    }
   };
 
   try {
@@ -126,11 +133,11 @@ export async function probeGguf(filePath: string): Promise<GgufInfo> {
             const elLen = readUint64(window, 0);
             if (elLen > MAX_STRING) throw new Error('gguf array element exceeds limit');
             take(8);
-            skip(elLen);
+            await skip(elLen);
           }
         } else {
           const size = ELEMENT_SIZES[elType] ?? 0;
-          skip(size * count);
+          await skip(size * count);
         }
       } else {
         await ensure(ELEMENT_SIZES[type] ?? 0);

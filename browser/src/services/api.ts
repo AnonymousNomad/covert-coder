@@ -78,11 +78,15 @@ import {
   HubDownloadsListResponse,
   HubCancelRequest,
   HubCancelResponse,
+  ModelImportRequest,
+  ModelImportResponse,
   type HubSearchResponseT,
   type HubFilesResponseT,
   type HubDownloadStartedResponseT,
   type HubDownloadsListResponseT,
-  type HubCancelResponseT
+  type HubCancelResponseT,
+  type ModelImportRequestT,
+  type ModelImportResponseT
 } from '../../../common/contracts/modelhub.ts';
 import {
   ClosedLoopStatusResponse,
@@ -415,12 +419,12 @@ export const api = {
   modelHubSearch(q: string, sort: 'downloads' | 'likes' | 'modified' = 'downloads', limit = 20): Promise<HubSearchResponseT> {
     const query = HubSearchQuery.safeParse({ q, sort, limit });
     if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid Model Hub search request');
-    return call('/api/modelhub/search', { query: query.data, schema: HubSearchResponse });
+    return call('/api/modelhub/search', { query: query.data, schema: HubSearchResponse, timeoutMs: 30_000 });
   },
   modelHubFiles(repo_id: string): Promise<HubFilesResponseT> {
     const query = HubFilesQuery.safeParse({ repo_id });
     if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid Model Hub repository');
-    return call('/api/modelhub/files', { query: query.data, schema: HubFilesResponse });
+    return call('/api/modelhub/files', { query: query.data, schema: HubFilesResponse, timeoutMs: 30_000 });
   },
   modelHubDownload(request: { repo_id: string; filename: string; quant_label?: string | null }): Promise<HubDownloadStartedResponseT> {
     const body = HubDownloadRequest.safeParse(request);
@@ -428,12 +432,17 @@ export const api = {
     return call('/api/modelhub/download', { body: body.data, schema: HubDownloadStartedResponse });
   },
   modelHubDownloads(): Promise<HubDownloadsListResponseT> {
-    return call('/api/modelhub/downloads', { schema: HubDownloadsListResponse });
+    return call('/api/modelhub/downloads', { schema: HubDownloadsListResponse, timeoutMs: 30_000 });
   },
   modelHubCancel(job_id: string): Promise<HubCancelResponseT> {
     const body = HubCancelRequest.safeParse({ job_id });
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid Model Hub cancellation request');
     return call('/api/modelhub/downloads/cancel', { body: body.data, schema: HubCancelResponse });
+  },
+  modelImport(request: ModelImportRequestT): Promise<ModelImportResponseT> {
+    const body = ModelImportRequest.safeParse(request);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid local model import request');
+    return call('/api/models/import', { body: body.data, schema: ModelImportResponse });
   },
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });

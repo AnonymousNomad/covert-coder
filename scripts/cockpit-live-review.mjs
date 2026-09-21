@@ -10,9 +10,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function startReview({ approveTerminal = false } = {}) {
+export async function startReview({ approveTerminal = false, approveAllLocalOperations = false } = {}) {
   const { spawn } = require('node-pty');
   const { chromium } = require('@playwright/test');
+  const approvalWorkspace = process.env.AIDE_WORKSPACE ?? root;
   const ports = { ui: 4273, facade: 4877, arch: 4878, legacy: 4879 };
   const origin = `http://127.0.0.1:${ports.ui}`;
   const launcher = spawn('cmd.exe', ['/d', '/c', 'npm start'], {
@@ -67,9 +68,16 @@ export async function startReview({ approveTerminal = false } = {}) {
       else if (approveTerminal && dialog.type() === 'confirm' && dialog.message().startsWith('Approve this operation once?')) {
         let operation;
         try { operation = JSON.parse(dialog.message().slice(dialog.message().indexOf('\n') + 1)); } catch { /* deny malformed */ }
-        if (operation?.workspace?.toLowerCase() === root.toLowerCase() && ['terminal.session.start', 'terminal.session.stop'].includes(operation.operation)) await dialog.accept();
+        if (operation?.workspace?.toLowerCase() === approvalWorkspace.toLowerCase() && ['terminal.session.start', 'terminal.session.stop'].includes(operation.operation)) await dialog.accept();
         else await dialog.dismiss();
       }
+      else if (approveAllLocalOperations && dialog.type() === 'confirm' && dialog.message().startsWith('Approve this operation once?')) {
+        let operation;
+        try { operation = JSON.parse(dialog.message().slice(dialog.message().indexOf('\n') + 1)); } catch { /* deny malformed */ }
+        if (operation?.workspace?.toLowerCase() === approvalWorkspace.toLowerCase()) await dialog.accept();
+        else await dialog.dismiss();
+      }
+      else if (approveAllLocalOperations && dialog.type() === 'confirm' && dialog.message().startsWith('Approve this build command once?')) await dialog.accept();
       else await dialog.dismiss();
     });
     await page.goto(origin, { waitUntil: 'commit', timeout: 90000 });

@@ -12,6 +12,8 @@ const SUPPORTED_ARCHS = new Set([
   'deepseek2', 'olmo', 'internlm2', 'baichuan'
 ]);
 const MAX_EVENTS = 500;
+const DEFAULT_DOWNLOAD_IDLE_TIMEOUT_MS = 45_000;
+const DEFAULT_DOWNLOAD_HEADER_TIMEOUT_MS = 30_000;
 
 // Effective-filesystem containment doctrine, mirrored from the accepted
 // daemon/eval-export.mjs implementation: lexical checks are necessary but not
@@ -68,7 +70,7 @@ function safeFilename(filename) {
   }
 }
 
-export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.fetch, onEvent, authorization }) {
+export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.fetch, onEvent, authorization, downloadIdleTimeoutMs = DEFAULT_DOWNLOAD_IDLE_TIMEOUT_MS, downloadHeaderTimeoutMs = DEFAULT_DOWNLOAD_HEADER_TIMEOUT_MS }) {
 
   // Authorization is optional and operator-owned: when provided it yields a
   // bearer token (e.g. the vaulted Hugging Face access token) attached to HF
@@ -285,6 +287,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
     const finalPath = path.join(modelsDirLexical, job.filename);
     const finalUrl = urlTemplate.replace('{filename}', encodeURIComponent(job.filename));
     logEgress(workspace, { action: 'modelhub.download', url: finalUrl });
+    let releaseAbortListener = () => {};
     try {
       // Effective containment before any mutation: the models root must be a
       // real descendant of the workspace, and the partial's parent (created
@@ -293,7 +296,36 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       await ensureContainedParent(modelsReal, partPath, 'partial download file');
       const resumeFrom = await assertSafePartial(partPath);
       const headers = await hubHeaders(resumeFrom > 0 ? { range: `bytes=${resumeFrom}-` } : {});
-      const response = await fetchImpl(finalUrl, { headers });
+      // Keep the service-owned abort signal attached to the upstream request:
+      // cancel must interrupt both the fetch and a currently pending body
+      // read, not merely mark the job cancelled in memory.
+      const requestController = new AbortController();
+      const relayAbort = () => requestController.abort();
+      job.controller.signal.addEventListener('abort', relayAbort, { once: true });
+      releaseAbortListener = () => job.controller.signal.removeEventListener('abort', relayAbort);
+      let headerTimer;
+      let headerTimedOut = false;
+      let response;
+      try {
+        const headerTimeout = new Promise((_, reject) => {
+          headerTimer = setTimeout(() => {
+            headerTimedOut = true;
+            requestController.abort();
+            reject(Object.assign(new Error(`download stalled waiting for response for ${downloadHeaderTimeoutMs}ms`), { code: 'DOWNLOAD_TIMEOUT' }));
+          }, downloadHeaderTimeoutMs);
+        });
+        response = await Promise.race([
+          fetchImpl(finalUrl, { headers, signal: requestController.signal }),
+          headerTimeout
+        ]);
+      } catch (error) {
+        if (headerTimedOut && !job.controller.signal.aborted) {
+          throw Object.assign(new Error(`download stalled waiting for response for ${downloadHeaderTimeoutMs}ms`), { code: 'DOWNLOAD_TIMEOUT' });
+        }
+        throw error;
+      } finally {
+        clearTimeout(headerTimer);
+      }
       let effectiveResume = resumeFrom;
       if (response.status === 200 && effectiveResume > 0) effectiveResume = 0;
       if (response.status !== 200 && response.status !== 206) {
@@ -311,28 +343,54 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
         let position = effectiveResume;
         let lastEmit = Date.now();
         const startedAt = lastEmit;
-        for await (const chunk of body) {
-          if (job.controller.signal.aborted) {
-            throw Object.assign(new Error('cancelled'), { code: 'CANCELLED' });
+        const reader = typeof body.getReader === 'function' ? body.getReader() : null;
+        if (reader === null) {
+          for await (const chunk of body) {
+            if (job.controller.signal.aborted) throw Object.assign(new Error('cancelled'), { code: 'CANCELLED' });
+            await fileHandle.write(chunk, 0, chunk.length, position);
+            position += chunk.length;
+            job.bytes_done = position;
           }
-          await fileHandle.write(chunk, 0, chunk.length, position);
-          position += chunk.length;
-          job.bytes_done = position;
-          const now = Date.now();
-          if (now - lastEmit >= 250) {
-            lastEmit = now;
-            const rate = Math.max(1, job.bytes_done - effectiveResume) / Math.max(1, now - startedAt);
-            emit({
-              event: 'progress',
-              job_id: job.job_id,
-              bytes_done: job.bytes_done,
-              bytes_total: job.bytes_total,
-              eta_s: job.bytes_total ? Math.round((job.bytes_total - job.bytes_done) / rate) : null
+        } else {
+          while (true) {
+            let timer;
+            const next = reader.read();
+            const idle = new Promise((_, reject) => {
+              timer = setTimeout(() => {
+                requestController.abort();
+                reject(Object.assign(new Error(`download stalled for ${downloadIdleTimeoutMs}ms`), { code: 'DOWNLOAD_TIMEOUT' }));
+              }, downloadIdleTimeoutMs);
             });
+            let result;
+            try {
+              result = await Promise.race([next, idle]);
+            } finally {
+              clearTimeout(timer);
+            }
+            if (result.done) break;
+            const chunk = result.value;
+            if (job.controller.signal.aborted) throw Object.assign(new Error('cancelled'), { code: 'CANCELLED' });
+            await fileHandle.write(chunk, 0, chunk.length, position);
+            position += chunk.length;
+            job.bytes_done = position;
+            const now = Date.now();
+            if (now - lastEmit >= 250) {
+              lastEmit = now;
+              const rate = Math.max(1, job.bytes_done - effectiveResume) / Math.max(1, now - startedAt);
+              emit({
+                event: 'progress',
+                job_id: job.job_id,
+                bytes_done: job.bytes_done,
+                bytes_total: job.bytes_total,
+                eta_s: job.bytes_total ? Math.round((job.bytes_total - job.bytes_done) / rate) : null
+              });
+            }
           }
+          reader.releaseLock();
         }
       } finally {
         await fileHandle.close();
+        releaseAbortListener();
       }
 
       // Publication boundary: re-prove effective containment and destination
@@ -341,11 +399,15 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       await ensureContainedParent(publishRootReal, finalPath, 'model artifact');
       await assertSafeDestination(finalPath, 'model artifact');
       await fs.rename(partPath, finalPath);
-      job.status = 'done';
       const manifest = await persistManifest(job);
+      // Publish the terminal state only after the artifact manifest and hash
+      // are durable. Consumers must never observe DONE without verification
+      // evidence and then race the registration step.
+      job.status = 'done';
       emit({ event: 'done', job_id: job.job_id, bytes_done: job.bytes_done, bytes_total: job.bytes_total, filename: job.filename, manifest });
     } catch (error) {
-      const cancelled = job.controller.signal.aborted || error?.name === 'AbortError' || error?.code === 'CANCELLED';
+      releaseAbortListener();
+      const cancelled = job.controller.signal.aborted || error?.code === 'CANCELLED';
       if (!cancelled) {
         // keep the .part file so a later attempt resumes instead of restarting
         job.status = 'error';
@@ -381,7 +443,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
         emit({ event: 'error', job_id: job.job_id, error: job.error });
         return;
       }
-      job.status = 'running';
+      if (attempt < 2) job.status = 'running';
     }
   }
 

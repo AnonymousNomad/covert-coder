@@ -211,11 +211,18 @@ export function createResidentFigure(parent: HTMLElement, store: Store<AppState>
   async function refresh(): Promise<void> {
     if (!alive) return;
     setState('THINKING', 'RESIDENT · READING STATE');
+    // Models owns the visible acquisition projection while that surface is
+    // open. Avoid a second download read from the Resident figure competing
+    // with Hub discovery/download proof; the figure still observes runtime
+    // and route state and refreshes normally when the operator returns.
+    const downloadProjection = store.get().panel === 'models'
+      ? Promise.resolve({ jobs: [] } satisfies HubDownloadsListResponseT)
+      : api.modelHubDownloads();
     const [pushResult, modelResult, routeResult, downloadResult] = await Promise.allSettled([
       api.residentPush(),
       api.modelsStatus(),
       api.routes(),
-      api.modelHubDownloads()
+      downloadProjection
     ]);
     if (!alive) return;
     applyPush(pushResult.status === 'fulfilled' ? pushResult.value.push : null);

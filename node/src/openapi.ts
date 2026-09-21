@@ -220,6 +220,7 @@ export async function createModelRuntime(repoRoot: string, workspace: string, op
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
     ingestedPath: path.join(workspace, '.aide', 'ingested-models.json'),
     modelDir: path.join(repoRoot, 'models'),
+    registrationDir: path.join(workspace, 'models'),
     logger: options.logger,
     onStatusChange: (id, status) => {
       const eventStatus = status === 'running' ? 'ready' : status === 'starting' ? 'loading' : status === 'stopped' ? 'stopped' : 'error';

@@ -91,6 +91,12 @@ export interface ModelRuntimeOptions {
   manifestPath: string;
   ingestedPath: string;
   modelDir: string;
+  /**
+   * Directory for operator-acquired artifacts. Bundled catalog entries remain
+   * rooted at modelDir, while governed Model Hub/import registration resolves
+   * only inside this separate workspace-owned directory.
+   */
+  registrationDir?: string;
   pythonServer?: boolean;
   spawnChild?: typeof spawn;
   requestTimeoutMs?: number;
@@ -124,6 +130,7 @@ export class ModelRuntime {
   private readonly manifestPath: string;
   private readonly ingestedPath: string;
   readonly modelDir: string;
+  readonly registrationDir: string;
   private readonly spawnChild: typeof spawn;
   private readonly logger: ModelRuntimeOptions['logger'];
   private readonly onStatusChange: NonNullable<ModelRuntimeOptions['onStatusChange']>;
@@ -143,6 +150,7 @@ export class ModelRuntime {
     this.manifestPath = options.manifestPath;
     this.ingestedPath = options.ingestedPath;
     this.modelDir = options.modelDir;
+    this.registrationDir = options.registrationDir ?? options.modelDir;
     this.spawnChild = options.spawnChild ?? spawn;
     this.logger = options.logger;
     this.onStatusChange = options.onStatusChange ?? (() => {});
@@ -942,8 +950,8 @@ export class ModelRuntime {
   // store (ingested-models.json), NOT the checked-in manifest.json — the
   // manifest stays pristine (git clean); the ingested store survives restarts.
   async register(options: { filename: string; repo_id?: string; quant_label?: string; context_tokens?: number }): Promise<{ id: string; status: string; endpoint: string }> {
-    const rel = validateRegistrationFilename(this.modelDir, options.filename);
-    const file = path.resolve(this.modelDir, rel);
+    const rel = validateRegistrationFilename(this.registrationDir, options.filename);
+    const file = path.resolve(this.registrationDir, rel);
     const stat = await fs.stat(file).catch(() => {
       throw new ModelRuntimeError('BAD_REQUEST', `artifact not found in models directory: ${rel}`);
     });

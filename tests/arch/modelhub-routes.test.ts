@@ -173,8 +173,8 @@ async function waitForJob(jobId: string, status: string, timeoutMs = 10000): Pro
   throw new Error(`job ${jobId} did not reach ${status}`);
 }
 
-// The job status flips to done before the manifest is published (existing
-// ordering); the done event is the authoritative completion signal.
+// The terminal job state is published only after the manifest and hash are
+// durable; the done event remains the authoritative completion signal.
 async function waitForDoneEvent(jobId: string, timeoutMs = 10000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {

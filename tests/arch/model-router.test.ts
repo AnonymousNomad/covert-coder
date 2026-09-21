@@ -106,6 +106,16 @@ test('unstarted local models are unverified, not down', async () => {
   assert.equal(local.status, 'unverified', 'declared ready but not running');
 });
 
+test('running local models are endpoint-probed and exposed as ready routes', async () => {
+  const runtime = new FakeRuntime();
+  runtime.entries = [entry('a', 'ready', ['chat'])];
+  runtime.ready.add('a');
+  const router = makeRouter(runtime, new FakeProviders());
+  const local = (await router.routes()).find(route => route.id === 'local:a')!;
+  assert.equal(local.status, 'ready');
+  assert.equal(typeof local.probeMs, 'number');
+});
+
 test('routeForRole returns the first ready model and reports a fallback when the first is down', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat']), entry('b', 'ready', ['chat'])];

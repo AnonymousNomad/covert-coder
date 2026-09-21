@@ -216,8 +216,18 @@ async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
   const activeCount = states.filter(modelIsActive).length;
   const startableCount = states.filter(state => state === 'STARTABLE').length;
   const totalCount = res.models.length;
+  const usableCount = res.models.filter(model => model.runtime_available === true && model.artifact_available === true).length;
   if (activeCount === 0) {
-    shell.topbar.setEngine({ label: startableCount > 0 ? `${startableCount} OF ${totalCount} MODELS STARTABLE` : totalCount > 0 ? 'NO MODEL ACTIVE' : 'NO MODEL INSTALLED', ready: false });
+    shell.topbar.setEngine({
+      label: startableCount > 0
+        ? `${startableCount} OF ${totalCount} MODELS STARTABLE`
+        : usableCount > 0
+          ? `${usableCount} LOCAL MODEL${usableCount === 1 ? '' : 'S'} AVAILABLE`
+          : totalCount > 0
+            ? 'NO LOCAL MODEL READY'
+            : 'NO MODEL INSTALLED',
+      ready: false
+    });
     return;
   }
   shell.topbar.setEngine({ label: `${activeCount} OF ${totalCount} MODELS ACTIVE`, ready: states.some(modelIsVerifiedReady) });

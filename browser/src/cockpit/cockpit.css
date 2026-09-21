@@ -1255,6 +1255,29 @@ summary:hover { color: var(--ck-text); }
   letter-spacing: 0.08em;
 }
 
+.cockpit-lineup-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(155, 108, 255, .38);
+  background: rgba(75, 38, 119, .12);
+}
+
+.cockpit-lineup-setup strong {
+  color: var(--covert-violet);
+  font: 9px var(--covert-mono);
+  letter-spacing: .08em;
+}
+
+.cockpit-lineup-setup span {
+  color: var(--ck-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.cockpit-lineup-setup .cockpit-mode { align-self: flex-start; }
+
 .cockpit-lineup-roles {
   display: flex;
   flex-direction: column;
