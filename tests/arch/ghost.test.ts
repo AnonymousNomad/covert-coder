@@ -48,6 +48,8 @@ before(async () => {
     { type: 'agent', session_id: EPISODE, chatSource: 'provider', mode: 'act', ts: '2026-01-01T00:00:01.000Z' },
     { type: 'agent.start', session_id: EPISODE, mode: 'act', chat_source: 'agent-loop', at: '2026-01-01T00:00:02.000Z' },
     { type: 'approval', session_id: EPISODE, decision: 'approved', tool: 'write_file', ts: '2026-01-01T00:01:00.000Z' },
+    { type: 'authority', task_id: EPISODE, kind: 'agent.tool', decision: 'consumed', ts: '2026-01-01T00:01:05.000Z' },
+    { type: 'authority', task_id: EPISODE, kind: 'agent.tool', decision: 'execution-succeeded', ts: '2026-01-01T00:01:06.000Z' },
     { type: 'agent', session_id: 'unrelated-session', chatSource: 'local', ts: '2026-01-01T00:01:30.000Z' }
   ]);
   await writeJsonl(path.join(aide, 'egress', 'journal.jsonl'), [
@@ -77,11 +79,16 @@ before(async () => {
   episode = await assembleEpisode({ workspace, episodeId: EPISODE });
 });
 
-function inlineScenario(checks: GhostScenarioT['checks']): GhostScenarioT {
-  return { scenario_id: 'unit-inline', version: 1, description: 'inline unit scenario', tags: ['unit'], checks, limitations: [] };
+function inlineScenario(checks: GhostScenarioT['checks'], expected: 'PASS' | 'FAIL' = 'PASS'): GhostScenarioT {
+  return { scenario_id: 'unit-inline', version: 1, description: 'inline unit scenario', tags: ['unit'], checks, expected_status: expected, limitations: [] };
 }
 
-const harnessPass = { tests_passed: true, tests_detail: 'exit 0', changed_files: ['src/fix.mjs'], evidence_refs: ['harness/unit.json'] };
+const harnessPass = {
+  flags: { tests_passed: true, answer_matches: true },
+  details: { tests_passed: 'exit 0', answer_matches: 'BUGLINE matched' },
+  changed_files: ['src/fix.mjs'],
+  evidence_refs: ['harness/unit.json']
+};
 
 test('assembler projects canonical events from every store', () => {
   const kinds = episode.events.map(event => event.kind);
@@ -104,6 +111,8 @@ test('assembler projects canonical events from every store', () => {
   assert.ok(episode.limitations.some(limitation => limitation.includes('transcript')));
   assert.ok(episode.limitations.some(limitation => limitation.includes('time-window')));
   assert.ok(episode.limitations.some(limitation => limitation.includes('not causally')));
+  assert.ok(episode.events.some(event => event.kind === 'authority.consumed'), 'task_id-correlated authority rows join the episode');
+  assert.ok(!episode.events.some(event => event.data?.decision === 'execution-succeeded'), 'lifecycle completions are not mislabeled as authority transitions');
   assert.equal(episode.verification?.state, 'failed');
   assert.ok(!episode.events.some(event => event.session_id === 'unrelated-session'), 'audit rows are session-correlated');
 });
@@ -133,6 +142,8 @@ test('certifier passes a matching episode with harness evidence', () => {
   ]);
   const result = certifyEpisode({ scenario, episode, harness: harnessPass, testedSha: 'c5d3034', durationMs: 1234 });
   assert.equal(result.status, 'PASS');
+  assert.equal(result.expected_status, 'PASS');
+  assert.equal(result.agreement, true);
   assert.equal(result.first_divergence, null);
   assert.ok(result.checks.every(check => check.status === 'PASS'));
   assert.equal(result.tested_sha, 'c5d3034');
@@ -144,14 +155,38 @@ test('certifier fails on harness evidence with a useful first divergence', () =>
     { kind: 'required_event', target: 'tool.failed', description: 'the failing tool ran' },
     { kind: 'harness_evidence', target: 'tests_passed', description: 'tests pass' }
   ]);
-  const result = certifyEpisode({ scenario, episode, harness: { ...harnessPass, tests_passed: false, tests_detail: 'exit 1; fail 2' }, testedSha: null, durationMs: 10 });
+  const result = certifyEpisode({
+    scenario, episode,
+    harness: { ...harnessPass, flags: { ...harnessPass.flags, tests_passed: false }, details: { ...harnessPass.details, tests_passed: 'exit 1; fail 2' } },
+    testedSha: null, durationMs: 10
+  });
   assert.equal(result.status, 'FAIL');
+  assert.equal(result.agreement, false);
   assert.ok(result.first_divergence);
   assert.equal(result.first_divergence?.check_index, 1);
   assert.equal(result.first_divergence?.expected, 'tests pass');
   assert.ok(result.first_divergence?.observed.includes('exit 1'));
   assert.equal(result.first_divergence?.likely_boundary, 'worker effect -> canonical verification');
   assert.ok(result.first_divergence?.last_verified_event);
+});
+
+test('expected-failure scenarios agree when they fail', () => {
+  const scenario = inlineScenario([
+    { kind: 'required_event', target: 'session.done', description: 'session completed' }
+  ], 'FAIL');
+  const result = certifyEpisode({ scenario, episode, harness: harnessPass, testedSha: null, durationMs: 10 });
+  assert.equal(result.status, 'FAIL');
+  assert.equal(result.expected_status, 'FAIL');
+  assert.equal(result.agreement, true);
+});
+
+test('unknown harness evidence targets fail closed', () => {
+  const scenario = inlineScenario([
+    { kind: 'harness_evidence', target: 'not_a_flag', description: 'unknown evidence' }
+  ]);
+  const result = certifyEpisode({ scenario, episode, harness: harnessPass, testedSha: null, durationMs: 10 });
+  assert.equal(result.status, 'FAIL');
+  assert.ok(result.first_divergence?.observed.includes('unknown harness evidence'));
 });
 
 test('certifier fails on a missing required event with boundary classification', () => {
@@ -169,6 +204,10 @@ test('selective regression is conservative when a file is unmapped', () => {
   const mapped = affectedScenarios(['node/src/services/subscription-transports.ts']);
   assert.equal(mapped.conservative, false);
   assert.ok(mapped.selected.includes('codex-bugfix'));
+  assert.ok(mapped.selected.includes('codex-analysis'));
+  const continuity = affectedScenarios(['node/src/services/continuation-manager.ts']);
+  assert.ok(continuity.selected.includes('continuation-handoff'));
+  assert.ok(continuity.selected.includes('restart-continuity'));
   const unknown = affectedScenarios(['src/brand-new-area/widget.tsx']);
   assert.equal(unknown.conservative, true);
   assert.deepEqual(unknown.selected.sort(), GHOST_SCENARIOS.map(scenario => scenario.scenario_id).sort());
@@ -179,10 +218,13 @@ test('selective regression is conservative when a file is unmapped', () => {
 test('scenario registry is well formed', () => {
   const ids = GHOST_SCENARIOS.map(scenario => scenario.scenario_id);
   assert.equal(new Set(ids).size, ids.length);
+  assert.equal(ids.length, 9);
   for (const scenario of GHOST_SCENARIOS) {
     assert.ok(scenario.checks.length > 0);
+    assert.ok(scenario.expected_status === 'PASS' || scenario.expected_status === 'FAIL');
     for (const check of scenario.checks) assert.ok(check.description.length > 4);
   }
-  assert.equal(scenarioById('codex-bugfix')?.version, 1);
+  assert.equal(scenarioById('codex-bugfix')?.expected_status, 'FAIL');
+  assert.equal(scenarioById('scripted-bugfix')?.expected_status, 'PASS');
   assert.equal(scenarioById('nope'), null);
 });
