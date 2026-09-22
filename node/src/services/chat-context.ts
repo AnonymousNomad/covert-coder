@@ -55,7 +55,7 @@ function insertBeforeFinalUser(messages: ChatMessageT[], block: string): ChatMes
   return [...messages.slice(0, lastUser.index), { role: 'system', content: block }, ...messages.slice(lastUser.index)];
 }
 
-async function workspaceContext(workspace: string, indexService: ChatIndexService | undefined, userText: string): Promise<{ block: string; hits: number; degraded: boolean } | null> {
+export async function workspaceContext(workspace: string, indexService: ChatIndexService | undefined, userText: string): Promise<{ block: string; hits: number; degraded: boolean } | null> {
   if (!indexService || userText.trim().length < CONTEXT_MIN_QUERY_LEN) return null;
   let search: { results?: Array<{ path: string; line: number; header: string }>; degraded?: boolean };
   try {

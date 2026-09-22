@@ -1,0 +1,75 @@
+{
+  "workspace": "E:\\pip_temp\\phase2-yCRJqP",
+  "fixture": {
+    "objective": "OBJECTIVE: make add(a,b) return the sum; write tests before changing code.",
+    "constraint": "CONSTRAINT: no new dependencies; only src/math.mjs may change.",
+    "failed": "FAILED APPROACH: subtraction (add(2,3) returned -1) was tried and rejected.",
+    "evidence": "EVIDENCE REQUIREMENT: node --test must pass before completion.",
+    "completed_work": ".aide/verifications/v1 (passed)",
+    "reindex_status": 200
+  },
+  "resident": {
+    "status": 200,
+    "harness": {
+      "injected": true,
+      "tier": "full",
+      "bytes": 3844,
+      "version": "2.1.0",
+      "served_context_tokens": 8192,
+      "drift_reinjected": false,
+      "approx_prompt_tokens": 2260,
+      "compose_ms": 89.46,
+      "memory_bytes": 0,
+      "context_hits": 2,
+      "context_degraded": true,
+      "context_tokens": 163,
+      "memory_recall_hits": 1,
+      "memory_recall_tokens": 129,
+      "memory_recall_degraded": false
+    },
+    "system_chars": 8950,
+    "facts": {
+      "objective": true,
+      "constraint": true,
+      "failed_approach": true,
+      "evidence_requirement": true
+    }
+  },
+  "worker": {
+    "status": 200,
+    "session": "39c74cad-82f1-45db-aa69-f7522db19ec5",
+    "system_chars": 11286,
+    "facts": {
+      "objective": true,
+      "constraint": true,
+      "failed_approach": true,
+      "evidence_requirement": true
+    },
+    "expert_advisory_on_local": {
+      "status": 200,
+      "system_chars": 11012,
+      "expert_block_present": true
+    }
+  },
+  "expert": {
+    "status": -1,
+    "body_head": "{\"error\":\"Expected values to be strictly equal:\\n+ actual - expected\\n\\n+ 'approved'\\n- 'pending'\\n\"}"
+  },
+  "split": {
+    "facts_available_to_resident": {
+      "objective": true,
+      "constraint": true,
+      "failed_approach": true,
+      "evidence_requirement": true
+    },
+    "facts_delivered_to_worker": {
+      "objective": true,
+      "constraint": true,
+      "failed_approach": true,
+      "evidence_requirement": true
+    },
+    "worker_system_chars": 11286,
+    "resident_system_chars": 8950,
+    "expert_consumer_chain": "consultExpert -> agent.ts system-prompt block (provider path only) / legacy UI chip; no decision branch"
+  }
+}

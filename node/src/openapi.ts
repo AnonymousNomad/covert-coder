@@ -12,6 +12,7 @@ import { routeForSessionGet, routeForSessionPut } from './routes/session.ts';
 import { routeForModelStatus, routeForModelStart, routeForModelStop, routeForModelIngest, routeForModelReady, routeForModelRegister, routeForModelProfile } from './routes/models.ts';
 import { routeForRoutes, routeForRoute, routeForFit } from './routes/routing.ts';
 import { routeForChat, routeForChatStream, routeForChatHistory, routeForChatHistorySave } from './routes/chat.ts';
+import { workspaceContext } from './services/chat-context.ts';
 import { ChatStore } from './services/chat-store.ts';
 import { routeForLspStatus, routeForLspStart, routeForLspOpen, routeForLspClose, routeForLspChange, routeForLspCompletion, routeForLspHover, routeForLspDefinition, routeForLspNotify, routeForLspRequest, routeForLspStop, lspDiagnosticsToMarkers } from './routes/lsp.ts';
 import {
@@ -473,6 +474,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
       return '';
     }
   };
+  // The index service is created below (embed gate is async); the worker RAG
+  // provider resolves through this ref so the agent loop can be constructed
+  // first without duplicating the index service.
+  let indexServiceRef: { hybridSearch(query: string, maxHits?: number): Promise<unknown> } | null = null;
   const agentLoop = createAgentLoop({
     workspace,
     authority: options.authority,
@@ -488,6 +493,15 @@ export async function buildRoutes(workspace: string, version: string, options: B
     residentProvider: async () => renderResidentContext(await residentService.context()),
     skillProvider: (task?: string) => (task ? skillProvider(task) : Promise.resolve('')),
     memoryProvider: (task?: string) => (task ? renderMemoryContext(task) : Promise.resolve('')),
+    indexProvider: async (task?: string) => {
+      if (!task || indexServiceRef === null) return '';
+      try {
+        const context = await workspaceContext(workspace, indexServiceRef as never, task);
+        return context?.block ?? '';
+      } catch {
+        return '';
+      }
+    },
     onSessionEnd: async ({ session_id, outcome, passed, status, evidence_file }) => {
       try {
         const { refreshed } = await memoryService.digest();
@@ -513,6 +527,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     embed: embedFn,
     onEvent: event => options.events?.publish('index', event)
   });
+  indexServiceRef = indexService as never;
   // Desktop service is created lazily in the IIFE below (it can depend on
   // things resolved at runtime). The IIFE also writes the live instance into
   // this module-scope binding so the agent loop's dispatchTool closure
