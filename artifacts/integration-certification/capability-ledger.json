@@ -412,6 +412,23 @@
     { "capability": "Kimi transport (kimi-code CLI)", "source_lane": "release/subscription-provider-certification", "accepted_there": true, "present_in_production": false, "production_equivalent": null, "reconciliation_required": true },
     { "capability": "OpenCode bridge", "source_lane": "release/subscription-provider-certification", "accepted_there": true, "present_in_production": false, "production_equivalent": null, "reconciliation_required": true }
   ],
+  "memory_truth_workstream": {
+    "status": "NEXT_AFTER_SPLIT_BRAIN_BEFORE_PROOF",
+    "dependency_note": "Per the operator addendum item 23: if dependency evidence shows the memory truth repair must occur before role projection can safely ship, adjust locally and document why. Current evidence (Luna) shows poisoning + temporal-order defects in the retrieval path; role projection must consume truth-filtered memory, so the admission/temporal repairs are a prerequisite for the role-projection wiring.",
+    "luna_findings_frozen": "luna/LUNA-HELIX-FINDINGS-FROZEN.md",
+    "protected_properties": ["restart persistence", "project isolation", "normal supersession", "bounded recall", "verified failure > false worker success"],
+    "capabilities": [
+      { "id": "memory.admission", "phases": { "DEFINED": "partial", "REGISTERED": "unknown", "SELECTABLE": "unknown", "ROUTED": "unknown", "INVOKED": "unknown", "OBSERVABLE": "partial", "VERIFIED": "unknown", "RECOVERABLE": "unknown" }, "classification": "UNKNOWN", "notes": "Whether the admission path distinguishes ASSERTED / OBSERVED / SYSTEM-DERIVED / OPERATOR-CONFIRMED / VERIFICATION-BACKED / SUPERSEDED / UNKNOWN is not yet established. Probe required before any classification." },
+      { "id": "memory.provenance", "phases": { "DEFINED": "unknown", "OBSERVABLE": "unknown" }, "classification": "UNKNOWN", "notes": "Luna: normalized recall lacks sufficient provenance metadata. Trace required." },
+      { "id": "memory.evidence-backed", "phases": { "DEFINED": "unknown" }, "classification": "UNKNOWN", "notes": "Verified claims must reference canonical evidence (test run X, exit code, revision) without duplicating payloads." },
+      { "id": "memory.temporal-ordering", "phases": { "DEFINED": "unknown", "VERIFIED": "no" }, "classification": "DEFECTIVE", "notes": "Luna proved older out-of-order writes can override newer temporal truth. Ordering authority (revisions/sequence/event-time vs ingestion-time) must be established from existing semantics." },
+      { "id": "memory.supersession", "phases": { "DEFINED": true, "VERIFIED": "partial" }, "classification": "PARTIALLY_WIRED", "notes": "Basic fact-key supersession PROVEN (protected). Extend only to represent CURRENT/SUPERSEDED/REJECTED/UNVERIFIED/UNKNOWN." },
+      { "id": "memory.negative-knowledge", "phases": { "DEFINED": "unknown" }, "classification": "UNKNOWN", "notes": "Rejected approaches must remain retrievable when relevant (A failed -> B accepted; A retrievable on repeat attempt)." },
+      { "id": "helix.integration", "phases": { "DEFINED": true, "ROUTED": "partial" }, "classification": "PARTIALLY_WIRED", "notes": "Event digests/patterns and memory recall are not one coherent role-specific reconstruction path (Luna). Do NOT build Helix 2; map existing owners." },
+      { "id": "memory.role-projection", "phases": { "DEFINED": false }, "classification": "NOT_IMPLEMENTED", "notes": "Role-specific minimum-useful-category projection to be derived from existing architecture + probes (addendum item 16)." },
+      { "id": "memory.poisoning-resistance", "phases": { "DEFINED": "no", "VERIFIED": "no" }, "classification": "DEFECTIVE", "notes": "Luna: repeated unsupported assertion -> active retrievable memory. Fix at admission/validity, never by preventing workers from contributing memory. Fixture required: repeated claim + contradictory verified evidence." }
+    ]
+  },
   "overall": {
     "overall_production_wiring": "PARTIALLY_WIRED",
     "offline_core_capability": "UNKNOWN (Part 19 pending)",
