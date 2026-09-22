@@ -1,0 +1,70 @@
+{
+  "workspace": "E:\\pip_temp\\roleproj-rSkcsH",
+  "facts": {
+    "objective": "OBJECTIVE: make add(a,b) return the sum; write tests before changing code.",
+    "architecture": "ARCHITECTURE: single module src/math.mjs; no framework; pure functions only.",
+    "constraints": "CONSTRAINTS: no new dependencies; only src/math.mjs may change.",
+    "plan": "ACCEPTED PLAN: 1) write a failing test 2) implement sum 3) run node --test 4) verify.",
+    "implementation": "IMPLEMENTATION: src/math.mjs exports add(a, b).",
+    "failed": "FAILED APPROACH: subtraction (add(2,3) returned -1) was tried and rejected.",
+    "tests": "TESTS REQUIREMENT: node --test must pass; add(2,3)===5 and add(5,0)===5.",
+    "evidence": "EXECUTION EVIDENCE: verification v1 passed (node --test exit 0).",
+    "risks": "KNOWN RISK: reusing the old subtraction path silently breaks add(2,3)."
+  },
+  "roles": {
+    "planner": {
+      "status": 200,
+      "system_chars": 11637,
+      "fact_hits": {
+        "objective": true,
+        "architecture": true,
+        "constraints": true,
+        "plan": true,
+        "implementation": true,
+        "failed": true,
+        "tests": false,
+        "evidence": false,
+        "risks": true
+      },
+      "has_memory_block": true,
+      "has_project_files_block": true,
+      "has_skill_block": true
+    },
+    "coder": {
+      "status": 200,
+      "system_chars": 11802,
+      "fact_hits": {
+        "objective": true,
+        "architecture": true,
+        "constraints": true,
+        "plan": true,
+        "implementation": true,
+        "failed": true,
+        "tests": true,
+        "evidence": true,
+        "risks": true
+      },
+      "has_memory_block": true,
+      "has_project_files_block": true,
+      "has_skill_block": true
+    },
+    "reviewer": {
+      "status": 200,
+      "system_chars": 11802,
+      "fact_hits": {
+        "objective": true,
+        "architecture": true,
+        "constraints": true,
+        "plan": true,
+        "implementation": true,
+        "failed": true,
+        "tests": true,
+        "evidence": true,
+        "risks": true
+      },
+      "has_memory_block": true,
+      "has_project_files_block": true,
+      "has_skill_block": true
+    }
+  }
+}

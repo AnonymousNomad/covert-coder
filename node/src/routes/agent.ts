@@ -81,7 +81,7 @@ export function routesForAgent(service: AgentLoopService, options: {
 } = {}): Route[] {
   return [
     { method: 'POST', path: '/api/agent/start', body: AgentStartRequest, response: AgentStartResponse, handler: wrap(async ({ body, execution }) => {
-      const request = body as { task: string; mode?: 'plan' | 'act'; chat_source?: 'local' | 'provider'; architectEditor?: boolean; expertAdvisory?: boolean };
+      const request = body as { task: string; mode?: 'plan' | 'act'; chat_source?: 'local' | 'provider'; architectEditor?: boolean; expertAdvisory?: boolean; role?: string };
       let chatFnOverride: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | undefined;
       if (request.chat_source === 'provider') {
         if (!options.resolveProviderChatFn) throw new RouteError('NOT_READY', 'no provider resolver wired');
@@ -144,6 +144,10 @@ export function routesForAgent(service: AgentLoopService, options: {
       return service.start(request.task, request.mode ?? 'act', chatFnOverride, {
         execution, request: body,
         architectEditor: request.architectEditor === true,
+        // Role projection: an explicit role drives role-aware context
+        // retrieval; otherwise the mode default applies (plan->planner,
+        // act->coder) inside the loop.
+        ...((body as { role?: string }).role !== undefined ? { role: String((body as { role?: string }).role) } : {}),
         ...(options.resolveEffectiveContext ? { effectiveContextTokens: (await options.resolveEffectiveContext()) ?? null } : {})
       });
     }) },

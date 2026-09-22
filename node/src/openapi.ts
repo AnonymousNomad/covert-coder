@@ -464,10 +464,15 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // composer uses). Truth classes are carried through so asserted history can
   // never masquerade as verified current truth.
   const memoryRecall = createMemoryRecall({ workspace });
-  const renderMemoryContext = async (task?: string): Promise<string> => {
+  const roleQuery = (task: string, role?: string): string => {
+    if (role === 'planner') return `${task} objective architecture constraints accepted plan failed approach`;
+    if (role === 'reviewer') return `${task} acceptance criteria evidence verification tests known risks diff`;
+    return `${task} accepted plan implementation files tests failed approach`;
+  };
+  const renderMemoryContext = async (task?: string, role?: string): Promise<string> => {
     if (!task) return '';
     try {
-      const result = await memoryRecall.recall(task, { topN: 5, budgetTokens: 300 });
+      const result = await memoryRecall.recall(roleQuery(task, role), { topN: 5, budgetTokens: 300 });
       if (result.hits.length === 0) return '';
       return result.hits.map(hit => `- [${hit.validity ?? 'unrecorded'}] ${String(hit.summary ?? hit.intent ?? '').slice(0, 240)} (${hit.ts})`).join('\n');
     } catch {
@@ -493,10 +498,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
     residentProvider: async () => renderResidentContext(await residentService.context()),
     skillProvider: (task?: string) => (task ? skillProvider(task) : Promise.resolve('')),
     memoryProvider: (task?: string) => (task ? renderMemoryContext(task) : Promise.resolve('')),
-    indexProvider: async (task?: string) => {
+    indexProvider: async (task?: string, role?: string) => {
       if (!task || indexServiceRef === null) return '';
       try {
-        const context = await workspaceContext(workspace, indexServiceRef as never, task);
+        const context = await workspaceContext(workspace, indexServiceRef as never, roleQuery(task, role));
         return context?.block ?? '';
       } catch {
         return '';

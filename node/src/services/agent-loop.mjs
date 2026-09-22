@@ -270,12 +270,12 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     return write;
   }]));
 
-  async function contextFor(session, source, provider, arg) {
+  async function contextFor(session, source, provider, arg, role) {
     let content = '', error = null;
     let status = 'unavailable';
     try {
       if (typeof provider === 'function') {
-        content = await resolveStringProvider(provider, arg);
+        content = role !== undefined ? await resolveStringProvider((task) => provider(task, role), arg) : await resolveStringProvider(provider, arg);
         status = content ? 'injected' : 'no_match';
       }
     } catch (cause) {
@@ -298,8 +298,8 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       // appended as a separate system message before the first model call.
       const contexts = await Promise.all([
         contextFor(session, 'resident', session.residentProvider),
-        contextFor(session, 'memory', session.memoryProvider, session.task),
-        contextFor(session, 'index', session.indexProvider, session.task),
+        contextFor(session, 'memory', session.memoryProvider, session.task, session.role),
+        contextFor(session, 'index', session.indexProvider, session.task, session.role),
         contextFor(session, 'skills', session.skillProvider, session.task)
       ]);
       const failedContext = contexts.find(result => result.status === 'failed');
@@ -757,6 +757,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         // blocks. Fail-closed: a throwing provider yields an empty block.
         residentProvider: typeof options.residentProvider === 'function' ? options.residentProvider : residentProvider,
         skillProvider: typeof options.skillProvider === 'function' ? options.skillProvider : skillProvider,
+        role: typeof options.role === 'string' ? options.role : (mode === 'plan' ? 'planner' : 'coder'),
         memoryProvider: typeof options.memoryProvider === 'function' ? options.memoryProvider : memoryProvider,
         indexProvider: typeof options.indexProvider === 'function' ? options.indexProvider : indexProvider,
         transcript: []
