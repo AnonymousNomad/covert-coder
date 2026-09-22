@@ -1,0 +1,34 @@
+{
+  "wave": "D-preconditions",
+  "date": "2026-09-22",
+  "lane": "audit/wiring-ledger",
+  "baseline": "fa2ec6b",
+  "credential": {
+    "credential_present": true,
+    "credential_source": "[redacted mechanism: OpenCode documented server auth API — PUT /auth/{id}]",
+    "provider_authenticated": true,
+    "enrolled_provider_id": "opencode",
+    "key_persisted_to_project_state": false,
+    "key_in_evidence_artifacts": false,
+    "key_in_logs": false,
+    "key_in_prompts": false,
+    "key_in_ghost_records": false
+  },
+  "discovery": {
+    "method": "opencode serve (loopback) -> GET /config/providers (documented API)",
+    "provider": "opencode-go",
+    "connected_providers": ["opencode", "opencode-go", "deepseek", "anthropic", "google", "openai", "openrouter", "minimax", "zenmux", "gmicloud", "gmi-cloud", "aihubmix", "modelscope", "huggingface"],
+    "model_count": 30,
+    "default_model": "gpt-5.6-luna",
+    "models": [
+      "qwen3.7-max", "longcat-2.0", "deepseek-v4-flash-vision-exp", "qwen3.6-plus", "muse-spark-1.2-contributor",
+      "mimo-v2.6-pro", "minimax-m2.7", "kimi-k2.6", "glm-5.2", "minimax-m3", "deepseek-v4-flash", "kimi-k2.7-code",
+      "deepseek-v4.1-flash", "hy3", "hy4-preview", "gpt-5.6-luna", "kimi-k3", "glm-5.3-flash", "muse-spark-1.3-contributor",
+      "qwen3.8-flash", "mimo-v2.6-flash", "grok-4.6", "qwen3.8-max", "glm-5.1", "qwen3.7-plus", "deepseek-v4-pro",
+      "glm-5.3", "grok-4.7", "mimo-v2.5", "mimo-v2.5-pro"
+    ],
+    "diversity_families": ["deepseek", "kimi", "minimax", "qwen", "glm", "mimo", "longcat", "grok", "hy", "muse-spark", "gpt"]
+  },
+  "next_waves": ["A workflow activation", "B handoff", "C restart continuity", "D provider integration via the existing opencode bridge", "E routing", "missions", "regressions"],
+  "notes": "The existing Covert OpenCode bridge (release/subscription-provider-certification lane, IMPLEMENTED_ELSEWHERE_NOT_RECONCILED) already speaks the documented server API this provider rides; integration should route 'opencode-go/<model>' through it rather than a new transport. No credential contents recorded anywhere."
+}
