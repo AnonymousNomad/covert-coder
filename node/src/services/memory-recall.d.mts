@@ -22,6 +22,8 @@ export interface MemoryHit {
   files_touched: string[];
   outcome?: string;
   fact_key?: string;
+  validity?: string;
+  evidence_ref?: string;
   score: number;
 }
 export interface RecallResult {
@@ -39,7 +41,7 @@ export interface MemoryStatus {
 }
 export interface MemoryRecallApi {
   recall(query: string, opts?: { topN?: number; budgetTokens?: number }): Promise<RecallResult>;
-  remember(entry: { session_id?: string; ts?: string; [key: string]: unknown }): Promise<void>;
+  remember(entry: { session_id?: string; ts?: string; validity?: string; evidence_ref?: string; [key: string]: unknown }): Promise<void>;
   status(): Promise<MemoryStatus>;
 }
 export function createMemoryRecall(opts: { workspace: string }): MemoryRecallApi;

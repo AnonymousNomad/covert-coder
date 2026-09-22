@@ -1,0 +1,89 @@
+{
+  "workspace": "E:\\pip_temp\\memtruth-lYM88d",
+  "poisoning": {
+    "hits": [
+      {
+        "session_id": "claim-1",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:01.000Z"
+      },
+      {
+        "session_id": "claim-2",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:02.000Z"
+      },
+      {
+        "session_id": "claim-3",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:03.000Z"
+      },
+      {
+        "session_id": "verify-1",
+        "summary": "Deployment FAILED: tests failed (verification)",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:05.000Z"
+      }
+    ],
+    "verified_present": true,
+    "asserted_present": true,
+    "truth_classes_present": false,
+    "factkey_hits": [
+      {
+        "session_id": "fk-claim-late",
+        "summary": "Tests passed",
+        "fact_key": "tests.status",
+        "validity": null,
+        "ts": "2026-09-22T00:10:01.000Z"
+      },
+      {
+        "session_id": "verify-1",
+        "summary": "Deployment FAILED: tests failed (verification)",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:05.000Z"
+      },
+      {
+        "session_id": "claim-1",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:01.000Z"
+      },
+      {
+        "session_id": "claim-2",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:02.000Z"
+      },
+      {
+        "session_id": "claim-3",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": null,
+        "ts": "2026-09-22T00:00:03.000Z"
+      }
+    ],
+    "late_claim_owns_current": true
+  },
+  "temporal": {
+    "hits": [
+      {
+        "session_id": "A2-late",
+        "summary": "Plan A (older, arriving late)",
+        "fact_key": "build.plan",
+        "validity": null,
+        "ts": "2026-09-22T00:30:00.000Z"
+      }
+    ],
+    "late_older_owns_current": true,
+    "newer_valid_present": false
+  }
+}

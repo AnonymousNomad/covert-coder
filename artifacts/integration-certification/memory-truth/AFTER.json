@@ -1,0 +1,89 @@
+{
+  "workspace": "E:\\pip_temp\\memtruth-OkWyHI",
+  "poisoning": {
+    "hits": [
+      {
+        "session_id": "claim-1",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": "asserted",
+        "ts": "2026-09-22T00:00:01.000Z"
+      },
+      {
+        "session_id": "claim-2",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": "asserted",
+        "ts": "2026-09-22T00:00:02.000Z"
+      },
+      {
+        "session_id": "claim-3",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": "asserted",
+        "ts": "2026-09-22T00:00:03.000Z"
+      },
+      {
+        "session_id": "verify-1",
+        "summary": "Deployment FAILED: tests failed (verification)",
+        "fact_key": null,
+        "validity": "verified",
+        "ts": "2026-09-22T00:00:05.000Z"
+      }
+    ],
+    "verified_present": true,
+    "asserted_present": true,
+    "truth_classes_present": true,
+    "factkey_hits": [
+      {
+        "session_id": "fk-verified",
+        "summary": "Tests FAILED (verified)",
+        "fact_key": "tests.status",
+        "validity": "verified",
+        "ts": "2026-09-22T00:10:00.000Z"
+      },
+      {
+        "session_id": "verify-1",
+        "summary": "Deployment FAILED: tests failed (verification)",
+        "fact_key": null,
+        "validity": "verified",
+        "ts": "2026-09-22T00:00:05.000Z"
+      },
+      {
+        "session_id": "claim-1",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": "asserted",
+        "ts": "2026-09-22T00:00:01.000Z"
+      },
+      {
+        "session_id": "claim-2",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": "asserted",
+        "ts": "2026-09-22T00:00:02.000Z"
+      },
+      {
+        "session_id": "claim-3",
+        "summary": "Deployment succeeded",
+        "fact_key": null,
+        "validity": "asserted",
+        "ts": "2026-09-22T00:00:03.000Z"
+      }
+    ],
+    "late_claim_owns_current": false
+  },
+  "temporal": {
+    "hits": [
+      {
+        "session_id": "B",
+        "summary": "Plan B supersedes A",
+        "fact_key": "build.plan",
+        "validity": null,
+        "ts": "2026-09-22T02:00:00.000Z"
+      }
+    ],
+    "late_older_owns_current": false,
+    "newer_valid_present": true
+  }
+}

@@ -38,6 +38,8 @@ type MemoryRecallService = {
     outcome?: string;
     skills_invoked?: string[];
     files_touched?: string[];
+    validity?: string;
+    evidence_ref?: string;
   }): Promise<void>;
 };
 
@@ -246,7 +248,10 @@ export function routeForChatHistorySave(store: ChatStore, workspace: string): Ro
           summary: (lastUser?.content ?? '').slice(0, 500),
           outcome: (lastAssistant?.content ?? '').slice(0, 300),
           skills_invoked: [],
-          files_touched: [...files]
+          files_touched: [...files],
+          // Conversational turns are ASSERTED history, never verification:
+          // repetition must not manufacture operational truth.
+          validity: 'asserted'
         });
         memory = { persisted: true, degraded: false };
       } catch {

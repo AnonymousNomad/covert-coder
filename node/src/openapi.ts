@@ -59,6 +59,7 @@ import { createHubService } from '../../node/src/services/modelhub.mjs';
 import { routesForModelHub } from './routes/modelhub.ts';
 import { routesForOrch } from './routes/orch.ts';
 import { routesForMemory, createMemoryService } from './routes/memory.ts';
+import { createMemoryRecall } from './services/memory-recall.mjs';
 import { routesForWorkbenches, routesForWorktree } from './routes/workbenches.ts';
 import { WorkbenchManager } from '../../workbenches/manager.mjs';
 import { routesForOnboarding } from './routes/onboarding.ts';
@@ -458,6 +459,20 @@ export async function buildRoutes(workspace: string, version: string, options: B
   });
   const skillsRoot = options.skillsRoot ?? repoRoot;
   const skillProvider = await createSkillsLoader({ skillsRoot });
+  // Bounded project-memory recall for workers (same canonical service the chat
+  // composer uses). Truth classes are carried through so asserted history can
+  // never masquerade as verified current truth.
+  const memoryRecall = createMemoryRecall({ workspace });
+  const renderMemoryContext = async (task?: string): Promise<string> => {
+    if (!task) return '';
+    try {
+      const result = await memoryRecall.recall(task, { topN: 5, budgetTokens: 300 });
+      if (result.hits.length === 0) return '';
+      return result.hits.map(hit => `- [${hit.validity ?? 'unrecorded'}] ${String(hit.summary ?? hit.intent ?? '').slice(0, 240)} (${hit.ts})`).join('\n');
+    } catch {
+      return '';
+    }
+  };
   const agentLoop = createAgentLoop({
     workspace,
     authority: options.authority,
@@ -472,6 +487,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     onEvent: event => options.events?.publish('agent', event),
     residentProvider: async () => renderResidentContext(await residentService.context()),
     skillProvider: (task?: string) => (task ? skillProvider(task) : Promise.resolve('')),
+    memoryProvider: (task?: string) => (task ? renderMemoryContext(task) : Promise.resolve('')),
     onSessionEnd: async ({ session_id, outcome, passed, status, evidence_file }) => {
       try {
         const { refreshed } = await memoryService.digest();

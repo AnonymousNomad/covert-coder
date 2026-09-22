@@ -70,6 +70,8 @@ function normalizeEntry(entry) {
     ...(entry.fact_key ? { fact_key: scrubText(entry.fact_key) } : {}),
     ...(Array.isArray(entry.supersedes) ? { supersedes: scrubItems(entry.supersedes) } : {}),
     ...(entry.validated === false ? { validated: false } : {}),
+    ...(entry.validity ? { validity: scrubText(entry.validity) } : {}),
+    ...(entry.evidence_ref ? { evidence_ref: scrubText(entry.evidence_ref) } : {}),
     ...(entry.intent ? { intent: scrubText(entry.intent) } : {}),
     ...(entry.summary ? { summary: scrubText(entry.summary) } : {}),
     ...(Array.isArray(entry.skills_invoked) ? { skills_invoked: scrubItems(entry.skills_invoked) } : {}),
@@ -136,15 +138,31 @@ export function createMemoryRecall({ workspace }) {
   function activeMemories(memories) {
     const superseded = new Set();
     const latestByFact = new Map();
+    // Truth classes: VERIFIED outranks ASSERTED for current-truth ownership;
+    // REJECTED/SUPERSEDED are never active (they remain file history).
+    // REPETITION != VERIFICATION: extra asserted rows never change the class.
+    const classRank = memory => (memory.validity === 'verified' ? 2 : memory.validity === undefined || memory.validity === 'asserted' || memory.validity === 'unknown' ? 1 : 0);
     for (const memory of memories) {
       if (memory.validated === false) continue;
-      if (memory.fact_key) latestByFact.set(memory.fact_key, memory.session_id);
+      if (memory.validity === 'rejected' || memory.validity === 'superseded') continue;
+      if (memory.fact_key) {
+        const current = latestByFact.get(memory.fact_key);
+        // Current-truth owner is chosen by (truth class, event time) — never
+        // by append order, so an older event arriving late cannot replace a
+        // newer accepted fact.
+        const better = current === undefined
+          || classRank(memory) > classRank(current)
+          || (classRank(memory) === classRank(current) && memory.ts > current.ts);
+        if (better) latestByFact.set(memory.fact_key, memory);
+      }
       for (const target of memory.supersedes ?? []) superseded.add(target);
     }
     return memories.filter(memory => {
+      if (memory.validated === false) return false;
+      if (memory.validity === 'rejected' || memory.validity === 'superseded') return false;
       if (superseded.has(memory.session_id) || (memory.fact_key && superseded.has(memory.fact_key))) return false;
-      if (memory.fact_key && latestByFact.get(memory.fact_key) !== memory.session_id) return false;
-      return memory.validated !== false;
+      if (memory.fact_key && latestByFact.get(memory.fact_key)?.session_id !== memory.session_id) return false;
+      return true;
     });
   }
 
@@ -194,6 +212,8 @@ export function createMemoryRecall({ workspace }) {
       files_touched: s.memory.files_touched || [],
       outcome: s.memory.outcome,
       ...(s.memory.fact_key ? { fact_key: s.memory.fact_key } : {}),
+      ...(s.memory.validity ? { validity: s.memory.validity } : {}),
+      ...(s.memory.evidence_ref ? { evidence_ref: s.memory.evidence_ref } : {}),
       score: Math.round(s.score * 100) / 100
     }));
     let chars = 0;
