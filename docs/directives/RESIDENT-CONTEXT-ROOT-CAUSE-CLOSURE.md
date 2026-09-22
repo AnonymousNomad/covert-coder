@@ -485,3 +485,94 @@ IF LIQUID SPEAKS ITS NATIVE PROTOCOL AND COVERT MISREADS IT, FIX THE ADAPTER.
 
 IF THE MODEL STILL FAILS AFTER THE SYSTEM SPEAKS ITS LANGUAGE CORRECTLY,
 THEN — AND ONLY THEN — CALL IT MODEL CAPACITY.
+
+---
+
+# ADDENDUM — LIQUID RUNTIME PROFILE / INFERENCE CONTROLS
+
+Applies to this directive; does not replace it. Recorded 2026-09-22.
+
+## PURPOSE
+Do not continue testing Liquid 2.6B through one rigid inference configuration.
+Covert owns the model runtime; expose, record and control the model-specific
+inference settings needed to determine whether the failure is: input admission /
+generation budget / reasoning parsing / tool parsing / stop behavior / timeout /
+hardware-runtime configuration / actual model capacity. Do NOT change models.
+Candidate remains `LiquidAI/LFM2.5-2.6B-QAD-Q4_0`.
+
+1. **MODEL RUNTIME PROFILE** (not hard-coded Resident settings): MODEL ID ·
+   ARTIFACT SHA256 · GGUF CHAT TEMPLATE · CONTEXT SIZE · MAX GENERATION/N_PREDICT ·
+   TEMPERATURE · TOP_K · TOP_P · MIN_P if supported · REPEAT PENALTY · SEED ·
+   STOP SEQUENCES · TIMEOUT · BATCH · UBATCH · THREAD COUNT · GPU OFFLOAD/LAYERS ·
+   REASONING FORMAT · TOOL-CALL PARSER · TOOL-RESULT FORMAT. No silent defaults;
+   record the effective configuration for every diagnostic run.
+2. **THREE TOKEN BUDGETS**, reported independently: A. MODEL CONTEXT CAPACITY ·
+   B. INPUT TOKENS ACTUALLY USED · C. OUTPUT/GENERATION TOKENS RESERVED.
+   Never report only `context = N`. Required: INPUT + OUTPUT RESERVE + SAFETY
+   MARGIN <= ACTIVE CONTEXT SIZE.
+3. **DO NOT SIMPLY MAX CONTEXT**: use the smallest context window that safely fits
+   bounded project truth + workflow + relevant Skills + bounded capability
+   descriptors + user request + required output reserve. Measure first.
+4. **GENERATION-BUDGET SWEEP** (same frozen task; no task/prompt/scoring/sampling
+   changes between runs): diagnostic ceilings 1024 / 2048 / 4096 where they fit.
+   Record: reasoning tokens · final-content tokens · tool-call emitted? ·
+   finish_reason · truncated? · valid proposal? · latency. Goal: minimum safe
+   reserve where Liquid reliably reaches its actionable/final output.
+5. **CONTEXT-SIZE SWEEP** (only after output-budget behavior is understood):
+   8K/12K/16K or nearest supported; same task + reserve; measure prompt admission,
+   prompt eval time, RAM, latency, result quality; do not increase context if the
+   prompt does not require it.
+6. **SAMPLING PROFILE**: start from the known accounting configuration
+   (temperature 0.1, top_k 50, repeat_penalty 1.1); record Covert's values; test
+   parity first; no broad sampling search yet.
+7. **TOP_P / MIN_P**: record whether active; do not assume defaults; reproduce the
+   accounting effective settings as closely as possible; avoid stacking changes.
+8. **CHAT TEMPLATE MUST BE OBSERVABLE**: template source (GGUF embedded / runtime
+   default / custom Covert); rendered roles; reasoning delimiters; tool-call
+   delimiters; tool-result formatting; inspectable diagnostic representation.
+   Covert must not unknowingly override the model's native protocol.
+9. **REASONING HANDLING**: explicitly separate reasoning from final content where
+   supported; record reasoning_content / content / tool_calls / finish_reason; do
+   not score raw reasoning as the final answer; do not ingest raw reasoning into
+   Helix as canonical memory.
+10. **TOOL PARSER PROFILE**: Liquid-native output -> model adapter/parser ->
+    canonical Covert action schema -> Authority. Authority/Harness never
+    understand Liquid-specific syntax.
+11. **TOOL-RESULT ROUNDTRIP PROFILE**: capture proposal -> execution result ->
+    returned tool message -> subsequent model response; a successful invocation
+    followed by malformed reinjection is an adapter defect.
+12. **STOP CONDITIONS**: record all active stops; determine whether termination
+    came from EOS / max_tokens / timeout / custom stop / tool delimiter /
+    reasoning delimiter / server parser; no blind stop-token edits.
+13. **TIMEOUT PROFILE**: measure model load, prompt evaluation, reasoning
+    generation, tool proposal, final answer separately; do not classify slow CPU
+    inference as model incapacity.
+14. **CPU/GPU SETTINGS**: record threads, batch, ubatch, GPU layers/offload, VRAM,
+    RAM. If no Vulkan/GPU build exists: classify `GPU PATH NOT TESTED`; do not
+    pretend CPU measurements are final hardware performance.
+15. **AUTO PROFILE VS ADVANCED PROFILE**: structure the runtime profile for a
+    later AUTO (derived from model metadata/hardware/working-context/required
+    reserve) and ADVANCED (explicit overrides); config-level control suffices now.
+16. **PROFILE PERSISTENCE**: persist the demonstrated working Liquid profile in
+    canonical model/runtime configuration (model identity, profile version,
+    effective settings, hardware assumptions, tested date/result); no secrets.
+17. **PROFILE SAFETY**: reject impossible configurations before launch
+    (input+reserve > context; unsupported parser/template; invalid sampling;
+    unsafe allocation where knowable). Fail truthfully.
+18. **ROOT-CAUSE OUTPUT** (yes/no, no ambiguous "context issue"): DID HELIX FAIL? ·
+    DID INPUT CONTEXT OVERFLOW? · DID OUTPUT BUDGET TRUNCATE REASONING/FINAL? ·
+    WAS CHAT TEMPLATE WRONG? · WAS REASONING EXTRACTION WRONG? · WAS TOOL PARSING
+    WRONG? · WAS TOOL-RESULT ROUNDTRIP WRONG? · WERE STOP CONDITIONS WRONG? ·
+    WAS TIMEOUT TOO LOW FOR THIS HARDWARE? · IS MODEL CAPACITY STILL A PROVEN
+    FAILURE?
+19. **LIQUID PROFILE RESULT**: return the smallest demonstrated stable profile
+    (context size, max generation, sampling, timeout, threads, batch, GPU offload,
+    chat template, reasoning format, tool parser, stop conditions, mean input/output
+    tokens, RAM, VRAM, latency, PARITY BATTERY PASS/FAIL, FROZEN RESIDENT BATTERY).
+
+## FINAL LAW (addendum)
+DO NOT GUESS AT MODEL SETTINGS. MEASURE THEM.
+HELIX DECIDES WHAT KNOWLEDGE MATTERS. CONTEXT CONTROL DECIDES WHAT ENTERS THIS
+TURN. THE RUNTIME PROFILE DECIDES HOW THE MODEL IS ALLOWED TO RUN. THE ADAPTER
+DECIDES HOW COVERT UNDERSTANDS ITS OUTPUT. MAKE ALL FOUR LAYERS OBSERVABLE.
+THEN TUNE THE RUNTIME, NOT THE TRUTH.
