@@ -150,7 +150,10 @@ export const AgentAbortedEvent = z.object({
 export const AgentContextEvent = z.object({
   event: z.literal('context'),
   session_id: z.string().min(1),
-  source: z.enum(['skills', 'resident']),
+  // Context-projection sources: the original advisory sources plus the
+  // canonical worker-context projections wired by the integration lane
+  // (memory recall, workspace index/RAG, verification state, workflow stage).
+  source: z.enum(['skills', 'resident', 'memory', 'index', 'evidence', 'workflow']),
   status: z.enum(['no_match', 'injected', 'unavailable', 'failed']),
   error: z.string().nullable()
 }).strict();
