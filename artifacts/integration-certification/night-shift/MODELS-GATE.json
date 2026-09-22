@@ -1,0 +1,28 @@
+{
+  "workspace": "E:\\pip_temp\\models-gate-bC6Otk",
+  "findings": {
+    "ingest_prepare": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "BAD_REQUEST",
+          "message": "invalid operation parameters"
+        }
+      }
+    },
+    "import_prepare": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "BAD_REQUEST",
+          "message": "invalid operation parameters"
+        }
+      }
+    },
+    "ingest_kind": null,
+    "ingest_binds_path": false,
+    "enrolled": false
+  }
+}

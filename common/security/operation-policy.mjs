@@ -89,6 +89,12 @@ const HTTP_POLICY = new Map([
   // local-inference production-gate repair; production previously waived
   // these routes, leaving chat unreachable behind the governed dispatcher.)
   ['POST /api/chat', 'capability.execute'], ['POST /api/chat/stream', 'capability.execute'],
+  // Local model acquisition path (ported from the accepted local-inference
+  // production-gate lane): import/ingest were waived and therefore denied at
+  // the dispatcher, breaking the artifact -> registered -> installed ->
+  // startable lifecycle. Both bind the exact source/artifact path through the
+  // approved operation body digest.
+  ['POST /api/models/import', 'capability.write'], ['POST /api/models/ingest', 'capability.write'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/
