@@ -189,6 +189,12 @@ export class GitService {
   }
 
   async status() {
+    // A plain directory is a legitimate workspace state: report truthful
+    // Git-unavailable state through the contract's git_repo flag instead of
+    // failing the request (Wave 2 repair).
+    if (!(await this.hasRepo())) {
+      return { git_repo: false, branch: null, oid: null, upstream: null, ahead: 0, behind: 0, detached: false, changes: [] };
+    }
     const { stdout } = await this.run(['status', '--porcelain=v2', '--branch', '--no-renames'], { timeoutMs: 10000 });
     return parseStatusPorcelainV2(stdout);
   }

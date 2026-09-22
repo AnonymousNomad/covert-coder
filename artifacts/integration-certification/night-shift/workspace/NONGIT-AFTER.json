@@ -1,0 +1,20 @@
+{
+  "workspace": "E:\\pip_temp\\nongit-UZNPIm",
+  "findings": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "data": {
+        "git_repo": false,
+        "branch": null,
+        "oid": null,
+        "upstream": null,
+        "ahead": 0,
+        "behind": 0,
+        "detached": false,
+        "changes": []
+      }
+    },
+    "truthful": true
+  }
+}

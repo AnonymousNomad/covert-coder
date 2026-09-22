@@ -1,0 +1,14 @@
+{
+  "workspace": "E:\\pip_temp\\nongit-lMO1YL",
+  "findings": {
+    "status": 500,
+    "body": {
+      "ok": false,
+      "error": {
+        "code": "NOT_A_REPO",
+        "message": "workspace is not a git repository"
+      }
+    },
+    "truthful": false
+  }
+}
