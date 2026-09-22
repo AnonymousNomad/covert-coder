@@ -382,7 +382,19 @@ test('downloads list holds shape for the authorized actor', async () => {
   }
 });
 
-test('models import remains migration-waived (fail closed)', async () => {
-  const response = await post('/api/models/import', { path: path.join(workspace, 'outside.gguf') });
-  assert.equal(response.status, 403, 'waived route stays fail-closed until its own wave');
+test('models import is governed: unapproved is refused, anonymous is forbidden', async () => {
+  // Supersedes the migration-waiver expectation: the local-inference lane's
+  // accepted enrollment makes model acquisition a governed capability.write
+  // (port landed on this lane). Fail-closed semantics preserved: no operation
+  // approval means no import.
+  const pairedUnapproved = await post('/api/models/import', { path: path.join(workspace, 'outside.gguf') });
+  assert.equal(pairedUnapproved.status, 409, JSON.stringify(pairedUnapproved.body));
+  assert.equal((pairedUnapproved.body.error as { detail?: { reason?: string } } | undefined)?.detail?.reason, 'APPROVAL_REQUIRED');
+  const anonymous = await fetch(`${base}/api/models/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path: path.join(workspace, 'outside.gguf') }),
+    signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(anonymous.status, 403, 'anonymous import rejected at the authority edge');
 });

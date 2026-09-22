@@ -251,6 +251,9 @@ export function createResidentService(workspace: string, probes: ResidentProbes 
     const empty: ResidentSummaryT['git'] = { git_repo: false, branch: null, upstream: null, ahead: 0, behind: 0, changes: 0, conflicts: 0, clean: true };
     try {
       const status = await git.status();
+      // Truthful non-repository state: status() reports git_repo:false instead
+      // of throwing (Wave 2 repair); the summary must honor that truth.
+      if ((status as { git_repo?: boolean }).git_repo === false) return empty;
       const changes = Array.isArray(status.changes) ? status.changes : [];
       const conflicts = changes.filter(c => (c as { conflict?: boolean }).conflict === true).length;
       return {
