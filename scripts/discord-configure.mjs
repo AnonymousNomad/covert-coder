@@ -508,12 +508,18 @@ async function applyPlan() {
   if (!guild.features?.includes('COMMUNITY')) ownerActions.push('Enable Community in Server Settings, then rerun the command.');
   if (created.deferred.some(item => item.reason === 'COMMUNITY_FEATURE_REQUIRED')) ownerActions.push('Enable Community in Server Settings, then rerun the command to create the announcement channel.');
   if (automod.status === 'DEFERRED' && automod.reason !== 'AUTOMOD_API_UNAVAILABLE_OR_PERMISSION') ownerActions.push('Review AutoMod availability in Server Settings, then rerun the command.');
-  if (onboarding.status === 'DEFERRED') ownerActions.push('Review Community Onboarding availability in Server Settings, then rerun the command.');
+  if (onboarding.status === 'DEFERRED' && [
+    'COMMUNITY_FEATURE_REQUIRED',
+    'ONBOARDING_API_UNAVAILABLE_OR_PERMISSION'
+  ].includes(onboarding.reason)) {
+    ownerActions.push('Review Community Onboarding availability in Server Settings, then rerun the command.');
+  }
   console.log(JSON.stringify({
     schema: 'covert.discord-configurator-result.v1',
     mode: 'apply',
     guild_id: guild.id,
     guild_name: guild.name,
+    guild_features: guild.features ?? [],
     creates_only: true,
     created,
     automod,
