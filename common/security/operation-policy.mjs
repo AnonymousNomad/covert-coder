@@ -83,6 +83,12 @@ const HTTP_POLICY = new Map([
   ['GET /api/models/status', 'capability.read'], ['GET /api/model/ready', 'capability.read'],
   ['GET /api/models/routes', 'capability.read'],
   ['GET /api/chat/history', 'capability.read'],
+  // Chat is an approval-bound operation: the approved op binds the exact
+  // messages body, which also binds any external transmission when the
+  // resolved route is a remote provider. (Ported from the accepted
+  // local-inference production-gate repair; production previously waived
+  // these routes, leaving chat unreachable behind the governed dispatcher.)
+  ['POST /api/chat', 'capability.execute'], ['POST /api/chat/stream', 'capability.execute'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/

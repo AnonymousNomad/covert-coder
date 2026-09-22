@@ -1,0 +1,95 @@
+{
+  "workspace": "E:\\pip_temp\\p0-probe-zMBPxW",
+  "findings": {
+    "chat_prepare": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "operation_id": "25b01f77-e2d2-43a0-b5e8-4d3810098be9",
+          "actor_id": "37a6d56f-47b2-47cb-8e9e-ceb943eb66f9",
+          "task_id": "p0-chat",
+          "workspace": "E:\\pip_temp\\p0-probe-zMBPxW",
+          "kind": "capability.execute",
+          "digest": "bf45b366a014bfd166517817c88f04ed2648ddac3624e1bffabfb82ed3ed1a7f",
+          "risk": "execute",
+          "state": "pending",
+          "expires_at": 1790035821740,
+          "args": {
+            "body": {
+              "messages": [
+                {
+                  "content": "hi",
+                  "role": "user"
+                }
+              ],
+              "modelId": "scripted-local"
+            },
+            "method": "POST",
+            "path": "/api/chat",
+            "query": {}
+          }
+        }
+      }
+    },
+    "tool_prepare": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "operation_id": "e194903f-a295-4e63-8db6-bb96f8b9b8f1",
+          "actor_id": "37a6d56f-47b2-47cb-8e9e-ceb943eb66f9",
+          "task_id": "p0-tool",
+          "workspace": "E:\\pip_temp\\p0-probe-zMBPxW",
+          "kind": "agent.tool",
+          "digest": "81742f48a8ac70199f08f624e188bc27828e5861171a483e0c0ae148dd1d414f",
+          "risk": "execute",
+          "state": "pending",
+          "expires_at": 1790035821782,
+          "args": {
+            "body": {
+              "arguments": {
+                "path": "probe.txt"
+              },
+              "name": "read_file"
+            },
+            "method": "POST",
+            "path": "/api/agent/tool",
+            "query": {}
+          }
+        }
+      }
+    },
+    "tool_exec": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "ok": true,
+          "output": "probe.txt lines 1-1 of 1\n    1 | PROBE-CONTENT",
+          "terminal": false
+        }
+      }
+    },
+    "aide_before": [
+      "cipher-state.jsonl",
+      "datasets",
+      "exports"
+    ],
+    "aide_after": [
+      "cipher-state.jsonl",
+      "datasets",
+      "exports"
+    ],
+    "tool_mutate": {
+      "status": 403,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "tool write_file requires a session approval; use agent/start and agent/decision"
+        }
+      }
+    }
+  }
+}

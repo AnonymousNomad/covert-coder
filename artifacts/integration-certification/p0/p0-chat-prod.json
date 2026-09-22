@@ -1,0 +1,38 @@
+{
+  "workspace": "E:\\pip_temp\\p0-chat-prod-tCaYEq",
+  "findings": {
+    "ts_direct": {
+      "status": 403,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "capability has no authority policy"
+        }
+      }
+    },
+    "facade": {
+      "status": 403,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "capability has no authority policy"
+        }
+      }
+    },
+    "legacy": {
+      "status": 409,
+      "body": {
+        "error": "legacy authorization or execution failed",
+        "code": "NOT_READY"
+      }
+    },
+    "facade_approved": {
+      "status": -1,
+      "body": {
+        "error": "prepare failed: HTTP 403 {\"ok\":false,\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"capability has no authority policy\"}}"
+      }
+    }
+  }
+}
