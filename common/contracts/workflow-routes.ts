@@ -15,6 +15,24 @@ export const WorkflowStateResponse = z.strictObject({
 });
 export type WorkflowStateResponseT = z.infer<typeof WorkflowStateResponse>;
 
+// Production creation boundary (wiring audit Wave 1): an actionable operator
+// objective establishes the canonical workflow through the EXISTING workflow
+// service + workflow.create authority kind. Ordinary conversation never calls
+// this route. project_id binds the workflow to the existing project identity;
+// no redundant identifiers are introduced (workflow_id/workspace are minted by
+// the canonical owner).
+export const WorkflowCreateRequest = z.strictObject({
+  project_id: z.string().min(1).max(128)
+});
+export type WorkflowCreateRequestT = z.infer<typeof WorkflowCreateRequest>;
+
+export const WorkflowCreateResponse = z.strictObject({
+  status: z.literal('created'),
+  state: WorkflowState,
+  operation_id: z.string().min(1)
+});
+export type WorkflowCreateResponseT = z.infer<typeof WorkflowCreateResponse>;
+
 // HTTP wrapper for a transition submission. `requested_by` is route-internal
 // display metadata that defaults to 'operator' (only operator-paired actors
 // can hold workflow.transition operations); the parsed body is byte-identical

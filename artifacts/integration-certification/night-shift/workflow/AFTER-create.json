@@ -1,0 +1,85 @@
+{
+  "workspace": "E:\\pip_temp\\wf-create-P9LCQV",
+  "findings": {
+    "chat_status": 409,
+    "state_after_chat": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "state": null
+        }
+      }
+    },
+    "create_prepare": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "operation_id": "75544474-4a64-43ff-9745-942a1b77d5c2",
+          "actor_id": "3cfb3a91-0930-49b9-b67c-8be23c9fd752",
+          "task_id": "wf-before-create",
+          "workspace": "E:\\pip_temp\\wf-create-P9LCQV",
+          "kind": "workflow.create",
+          "digest": "c9fdb81fcef33ebe4cdb36a7db16dc4635d097ee913a58b43b80e9226d737b0a",
+          "risk": "write",
+          "state": "pending",
+          "expires_at": 1790043062849,
+          "args": {
+            "body": {
+              "project_id": "demo-project"
+            }
+          }
+        }
+      }
+    },
+    "create_attempt": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "status": "created",
+          "state": {
+            "version": 1,
+            "workflow_id": "5f59e265-18da-433b-b4c6-b2ec2fcd5ae7",
+            "workspace": "E:\\pip_temp\\wf-create-P9LCQV",
+            "project_id": "demo-project",
+            "stage": "DISCOVERY",
+            "previous_stage": null,
+            "revision": 0,
+            "artifacts": [],
+            "last_transition_id": null,
+            "created_at": "2026-09-22T02:06:02.894Z",
+            "updated_at": "2026-09-22T02:06:02.894Z"
+          },
+          "operation_id": "2301fdce-763c-4bd8-b61f-441185bb56c2"
+        }
+      }
+    },
+    "state_after_actionable": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "state": {
+            "version": 1,
+            "workflow_id": "5f59e265-18da-433b-b4c6-b2ec2fcd5ae7",
+            "workspace": "E:\\pip_temp\\wf-create-P9LCQV",
+            "project_id": "demo-project",
+            "stage": "DISCOVERY",
+            "previous_stage": null,
+            "revision": 0,
+            "artifacts": [],
+            "last_transition_id": null,
+            "created_at": "2026-09-22T02:06:02.894Z",
+            "updated_at": "2026-09-22T02:06:02.894Z"
+          }
+        }
+      }
+    },
+    "verdict": {
+      "workflow_created_by_actionable_objective": true,
+      "workflow_created_by_chat": false
+    }
+  }
+}

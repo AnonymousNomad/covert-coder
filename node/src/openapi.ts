@@ -680,7 +680,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // Workflow production spine (Slice 7): GET state + POST transition over
     // the governed kernel (validator-backed gates, operator approvals, audit
     // spine). Adapters only — no workflow logic lives in the routes.
-    ...routesForWorkflow({ service: workflowService, audit: auditTrail }),
+    ...routesForWorkflow({ service: workflowService, audit: auditTrail, workspace }),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the

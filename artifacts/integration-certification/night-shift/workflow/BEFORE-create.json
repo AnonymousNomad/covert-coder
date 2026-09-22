@@ -1,0 +1,44 @@
+{
+  "workspace": "E:\\pip_temp\\wf-create-JguXvJ",
+  "findings": {
+    "create_prepare": {
+      "status": 403,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "operation target unavailable"
+        }
+      }
+    },
+    "create_attempt": {
+      "status": -1,
+      "body": {
+        "error": "Expected values to be strictly equal:\n\n403 !== 200\n"
+      }
+    },
+    "state_after_actionable": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "state": null
+        }
+      }
+    },
+    "chat_status": 409,
+    "state_after_chat": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "state": null
+        }
+      }
+    },
+    "before": {
+      "actionable_objective_creates_workflow": true,
+      "ordinary_conversation_creates_workflow": true
+    }
+  }
+}

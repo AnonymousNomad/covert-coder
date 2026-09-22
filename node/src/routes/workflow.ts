@@ -9,13 +9,16 @@
 import { type Route, type RouteContext, RouteError } from '../server.ts';
 import {
   WorkflowStateResponse,
+  WorkflowCreateRequest,
+  WorkflowCreateResponse,
   WorkflowTransitionRequest as TransitionRequestBody,
   WorkflowTransitionResponse
 } from '../../../common/contracts/workflow-routes.ts';
-import type { WorkflowTransitionRequestT as TransitionBodyT } from '../../../common/contracts/workflow-routes.ts';
+import type { WorkflowTransitionRequestT as TransitionBodyT, WorkflowCreateRequestT } from '../../../common/contracts/workflow-routes.ts';
 import type { WorkflowStateT, WorkflowTransitionRequestT } from '../../../common/contracts/workflow.ts';
 import { WorkflowError, type GateEvaluation, type WorkflowService } from '../services/workflow-service.ts';
 import type { AuditTrailService } from '../services/audit-trail.mjs';
+import type { OperationInput } from '../../../common/security/operation-policy.mjs';
 
 function toRouteError(error: unknown): RouteError {
   if (error instanceof RouteError) return error;
@@ -64,7 +67,7 @@ function requestedRow(state: WorkflowStateT, request: WorkflowTransitionRequestT
   };
 }
 
-export function routesForWorkflow(options: { service: WorkflowService | null; audit: AuditTrailService }): Route[] {
+export function routesForWorkflow(options: { service: WorkflowService | null; audit: AuditTrailService; workspace: string }): Route[] {
   const requireService = (): WorkflowService => {
     if (!options.service) throw new RouteError('NOT_READY', 'workflow service requires execution authority');
     return options.service;
@@ -77,6 +80,31 @@ export function routesForWorkflow(options: { service: WorkflowService | null; au
       handler: wrap(async () => {
         const service = requireService();
         return { state: await service.load() };
+      })
+    },
+    {
+      // Production creation boundary (wiring audit Wave 1): the smallest
+      // legitimate caller of the canonical workflow service. Governed by the
+      // existing workflow.create authority kind via a route-owned descriptor
+      // (the approved operation binds the exact project_id). Refuses to
+      // overwrite an existing workflow in this workspace.
+      method: 'POST',
+      path: '/api/workflow/create',
+      body: WorkflowCreateRequest,
+      response: WorkflowCreateResponse,
+      describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
+        const parsed = WorkflowCreateRequest.parse(body);
+        return { workspace: options.workspace, taskId, kind: 'workflow.create', args: { body: { project_id: parsed.project_id } } };
+      },
+      handler: wrap(async (ctx: RouteContext) => {
+        const service = requireService();
+        const execution = ctx.execution;
+        if (!execution) throw new RouteError('NOT_READY', 'exact operation approval required', { reason: 'APPROVAL_REQUIRED' });
+        const body = ctx.body as WorkflowCreateRequestT;
+        const existing = await service.load();
+        if (existing !== null) throw new RouteError('CONFLICT', 'a workflow already exists in this workspace');
+        const created = await service.create(execution, { project_id: body.project_id });
+        return { status: 'created' as const, state: created, operation_id: execution.operation_id };
       })
     },
     {
