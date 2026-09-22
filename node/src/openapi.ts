@@ -545,7 +545,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
     }),
     onEvent: event => options.events?.publish('agent', event),
     residentProvider: async () => renderResidentContext(await residentService.context()),
-    skillProvider: (task?: string) => (task ? skillProvider(task) : Promise.resolve('')),
+    skillProvider: async (task?: string) => {
+      if (!task) return '';
+      const stage = await currentStage();
+      return skillProvider(task + stageEmphasis(stage));
+    },
     memoryProvider: (task?: string) => (task ? renderMemoryContext(task) : Promise.resolve('')),
     indexProvider: async (task?: string, role?: string) => {
       if (!task || indexServiceRef === null) return '';
@@ -635,7 +639,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
     });
   const chatContextProviders = {
     resident: async () => renderResidentContext(await residentService.context()),
-    skills: (task: string) => skillProvider(task)
+    skills: async (task: string) => {
+      const stage = await currentStage();
+      return skillProvider(task + stageEmphasis(stage));
+    }
   };
   const core: Route[] = [
     ...routesForAuthority(),

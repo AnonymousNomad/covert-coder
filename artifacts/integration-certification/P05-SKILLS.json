@@ -1,0 +1,51 @@
+{
+  "skillsRoot": "E:\\aide-sovereign-workbench-audit",
+  "cases": {
+    "verification_task": {
+      "task": "The tests fail. Verify the build, run the test suite and report whether the security checks pass.",
+      "injected": true,
+      "chars": 3652,
+      "picks": [
+        "name: verification-complete",
+        "# Verification-Complete",
+        "## The",
+        "name: aid-dap-real-debugpy-fixture",
+        "# DAP Real Debugpy Fixture — VERIFIED Wire-In Recipe",
+        "## Status: VERIFIED GREEN (2026-09-03)"
+      ]
+    },
+    "web_task": {
+      "task": "Build a responsive landing page with accessible navigation and a contact form.",
+      "injected": true,
+      "chars": 3652,
+      "picks": [
+        "name: ex-arch-immersive-landing-architecture",
+        "# Experience Architecture — Immersive Landing Architecture",
+        "## PURPOSE",
+        "## WHEN TO ACTIVATE",
+        "name: aide-android-build",
+        "# Android Build Integration"
+      ]
+    },
+    "git_task": {
+      "task": "Commit the staged changes and prepare the branch for release.",
+      "injected": true,
+      "chars": 3652,
+      "picks": [
+        "name: aide-worktree-isolation",
+        "# Worktree Isolation — Shadow Git Workspaces, Approval-Gated Merge",
+        "## Why this matters",
+        "- **Safety**: a runaway agent in act mode can corrupt the real workspace. The shadow branch is the rollback.",
+        "- **Review**: the user sees \"these are the chan",
+        "name: aide-agents-md"
+      ]
+    },
+    "irrelevant_control": {
+      "task": "zzzz qqqq xyzzy foobar nonsense tokens only",
+      "injected": false,
+      "chars": 0,
+      "picks": []
+    }
+  },
+  "skill_count": 292
+}
