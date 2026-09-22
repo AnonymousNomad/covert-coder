@@ -223,7 +223,7 @@ test('push uploads the current branch to an explicit local remote and records eg
   }
 });
 
-test('not-a-repo workspace maps to NOT_A_REPO code', async () => {
+test('non-Git workspace returns truthful git_repo:false instead of a server failure', async () => {
   const plainDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-p4-norepo-'));
   try {
     const plainServer = new ArchServer(plainDir, path.join(plainDir, 'arch-test.log'));
@@ -236,8 +236,15 @@ test('not-a-repo workspace maps to NOT_A_REPO code', async () => {
     const plainBase = `http://127.0.0.1:${address.port}`;
     const plainOwner = await pairFixture(plainServer, plainBase);
     const response = await plainOwner.request('/api/git/status', { signal: AbortSignal.timeout(30000) });
-    const body = (await response.json()) as Envelope<unknown>;
-    assert.equal(body.error?.code, 'NOT_A_REPO');
+    const body = (await response.json()) as Envelope<{ git_repo: boolean; branch: string | null }>;
+    // A plain directory is a legitimate workspace state: the ROUTE reports
+    // truthful non-repository state (200 + git_repo:false). The internal
+    // NOT_A_REPO domain classification remains canonical for operations that
+    // genuinely require a repository (commit/branch/...).
+    assert.equal(response.status, 200, JSON.stringify(body));
+    assert.equal(body.ok, true);
+    assert.equal(body.data?.git_repo, false);
+    assert.equal(body.data?.branch, null);
     plainServer.events.close();
     plainHttp.closeAllConnections?.();
     await new Promise<void>(resolve => plainHttp.close(() => resolve()));
