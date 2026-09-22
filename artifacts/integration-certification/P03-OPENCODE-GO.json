@@ -1,0 +1,30 @@
+{
+  "workspace": "E:\\pip_temp\\p03-openpackage-DStBxs",
+  "steps": {
+    "consent": 200,
+    "routing": 200,
+    "start": 200
+  },
+  "readiness": "NOT_APPLICABLE (no resident-intent route in this production surface)",
+  "session_id": "22195706-cb88-4535-8261-eb7a0a4959d5",
+  "session_final": "done",
+  "session_error": null,
+  "verification": "incomplete",
+  "claim_text": "BUGLINE: return a - b;\n\n<attempt_completion><result>Found the bug in src/math.mjs:3 — `add` returns `a - b` instead of `a + b`.</result></attempt_completion>",
+  "egress": [
+    {
+      "action": "opencode",
+      "provider_id": "opencode",
+      "delegated_provider": "opencode-go",
+      "delegated_model": "deepseek-v4.1-flash"
+    }
+  ],
+  "verdict": {
+    "governed_consent": true,
+    "governed_routing": true,
+    "session_done": true,
+    "answer_present": true,
+    "egress_recorded": true,
+    "delegated_identity": true
+  }
+}

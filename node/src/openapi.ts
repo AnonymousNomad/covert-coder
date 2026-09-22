@@ -76,6 +76,7 @@ import { createAgentTools } from './services/agent-tools.mjs';
 import { createCheckpointService } from '../../node/src/services/agent-checkpoints.mjs';
 import { createAgentLoop, requiresToolApproval } from '../../node/src/services/agent-loop.mjs';
 import { routesForAgent } from './routes/agent.ts';
+import { createOpenCodeBridge, parseOpenCodeModelRef } from './services/opencode-bridge.ts';
 import { createAuditTrail } from './services/audit-trail.mjs';
 import { createWorkflowService } from './services/workflow-service.ts';
 import { createSkillsLoader } from './services/skills-loader.mjs';
@@ -596,6 +597,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // desktopServiceRef. The /api/experts/* routes and the agent loop's
   // consultExpert callback both close over this one instance.
   const expertsService = createExpertsService(workspace);
+  // OpenCode bridge (documented server API; vendor owns its credentials).
+  const opencodeBridge = createOpenCodeBridge();
   // Freshness: fs watcher → 5s debounce → incremental reindex. Opt-in via
   // options.watchIndex (server boot only; see BuildRoutesOptions note). .aide
   // is filtered or the index's own persist writes would retrigger forever.
@@ -799,7 +802,48 @@ export async function buildRoutes(workspace: string, version: string, options: B
         // pins every role to the local runtime regardless of byok routing.
         const preference = (connectionsService as { getPreference(): string }).getPreference();
         if (preference === 'local-only') return null;
-        return byokService.resolveChatFn(role);
+        // Custom BYOK providers first (unchanged contract).
+        const byokFn = byokService.resolveChatFn(role);
+        if (byokFn) return byokFn;
+        // OpenCode bridge (documented headless server API; credential owned by
+        // OpenCode itself). Routing model_id convention "<providerID>/<modelID>"
+        // selects the delegated provider/model explicitly; delegated identity is
+        // recorded only when OpenCode returns it authoritatively.
+        let routing: Record<string, unknown> = {};
+        try {
+          routing = ((byokService.status() as { routing?: Record<string, unknown> } | undefined)?.routing) ?? {};
+        } catch {
+          routing = {};
+        }
+        const target = routing[role];
+        if (target === undefined || target === 'local' || typeof target !== 'object' || target === null) return null;
+        const providerId = String((target as { provider_id?: unknown }).provider_id ?? '');
+        const modelId = String((target as { model_id?: unknown }).model_id ?? '');
+        if (providerId === 'opencode') {
+          return async messages => {
+            const prompt = messages
+              .map(message => `${message.role.toUpperCase()}: ${message.content}`)
+              .join('\n\n');
+            const modelRef = parseOpenCodeModelRef(modelId);
+            const result = await opencodeBridge.runTask({
+              workspace,
+              prompt,
+              providerID: modelRef.providerID,
+              modelID: modelRef.modelID,
+              timeoutMs: 300000
+            });
+            logEgress(workspace, {
+              action: 'opencode',
+              url: `${result.server_url}/`,
+              provider_id: 'opencode',
+              role,
+              ...(result.delegated_provider !== null ? { delegated_provider: result.delegated_provider } : {}),
+              ...(result.delegated_model !== null ? { delegated_model: result.delegated_model } : {})
+            });
+            return result.text;
+          };
+        }
+        return null;
       },
       // Expert advisory wire-in (aide-micro-expert-collective skill, audit
       // Week 1 item #7). When the agent is started with `expertAdvisory:true`,
