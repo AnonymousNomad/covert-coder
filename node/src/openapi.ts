@@ -469,6 +469,29 @@ export async function buildRoutes(workspace: string, version: string, options: B
     if (role === 'reviewer') return `${task} acceptance criteria evidence verification tests known risks diff`;
     return `${task} accepted plan implementation files tests failed approach`;
   };
+  // Reviewer evidence intelligence: canonical verification records only (the
+  // evidence owner), never worker prose. Reviewer-only by design - the coder
+  // projection must not be dominated by execution evidence.
+  const renderVerificationContext = async (role?: string): Promise<string> => {
+    if (role !== 'reviewer') return '';
+    try {
+      const dir = path.join(workspace, '.aide', 'verifications');
+      const entries = await fs.readdir(dir);
+      const rows = [];
+      for (const entry of entries.filter(name => name.endsWith('.verification.json')).sort().slice(-8)) {
+        try {
+          const record = JSON.parse(await fs.readFile(path.join(dir, entry), 'utf8')) as { session_id?: unknown; outcome?: unknown; verification?: { state?: unknown; passed?: unknown } | null };
+          const state = typeof record.verification?.state === 'string' ? record.verification.state : String(record.outcome ?? 'unknown');
+          const passed = record.verification?.passed === true;
+          rows.push(`- ${entry}: ${passed ? 'PASSED' : 'NOT_PASSED'} (state=${state})`);
+        } catch { /* unreadable record is not evidence */ }
+      }
+      if (rows.length === 0) return '';
+      return rows.join('\n');
+    } catch {
+      return '';
+    }
+  };
   const renderMemoryContext = async (task?: string, role?: string): Promise<string> => {
     if (!task) return '';
     try {
@@ -507,6 +530,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
         return '';
       }
     },
+    evidenceProvider: async (_task?: string, role?: string) => renderVerificationContext(role),
     onSessionEnd: async ({ session_id, outcome, passed, status, evidence_file }) => {
       try {
         const { refreshed } = await memoryService.digest();

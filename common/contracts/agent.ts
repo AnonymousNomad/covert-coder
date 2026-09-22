@@ -21,7 +21,11 @@ export const AgentStartRequest = z.object({
   // model call and prepends the result to the system prompt as a
   // non-blocking hint. The main model is never blocked on the expert.
   // Per the existing intent handler pattern: ADVISORY only, never gates.
-  expertAdvisory: z.boolean().optional()
+  expertAdvisory: z.boolean().optional(),
+  // Role projection (wiring audit Phase 2C/2D): the worker role drives
+  // role-aware context retrieval (planner/coder/reviewer). Defaults inside
+  // the loop from the mode (plan->planner, act->coder) when omitted.
+  role: z.enum(['planner', 'coder', 'reviewer']).optional()
 }).strict();
 
 export const AgentStartResponse = z.object({

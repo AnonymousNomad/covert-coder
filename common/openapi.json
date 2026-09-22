@@ -1342,6 +1342,14 @@
                   },
                   "expertAdvisory": {
                     "type": "boolean"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "planner",
+                      "coder",
+                      "reviewer"
+                    ]
                   }
                 },
                 "required": [
