@@ -172,7 +172,7 @@ export class ModelRuntime {
     const id = raw.id;
     const endpoint = raw.endpoint;
     const file = typeof raw.file === 'string' ? raw.file : String(raw.artifact_uri ?? '').startsWith('local://')
-      ? path.resolve(this.modelDir, path.basename(String(raw.artifact_uri).replace('local://', '')))
+      ? this.resolveArtifactPath(path.basename(String(raw.artifact_uri).replace('local://', '')))
       : '';
     if (typeof id !== 'string' || id.length === 0 || typeof endpoint !== 'string' || endpoint.length === 0) return null;
     const entry: ModelEntry = {
@@ -881,9 +881,22 @@ export class ModelRuntime {
   // the models directory becomes a ready engine. Persists to the TS dynamic
   // store (ingested-models.json), NOT the checked-in manifest.json — the
   // manifest stays pristine (git clean); the ingested store survives restarts.
+  // Acquisition (import/download) lands artifacts in the WORKSPACE models
+  // directory; the bundled starter manifest resolves from the repo models
+  // directory. Registration and local:// resolution must accept both canonical
+  // roots (D2 repair: import -> workspace/models vs register -> repoRoot/models
+  // mismatch broke the artifact -> installed -> startable lifecycle).
+  private resolveArtifactPath(rel: string): string {
+    const repoCandidate = path.resolve(this.modelDir, rel);
+    if (existsSync(repoCandidate)) return repoCandidate;
+    const workspaceCandidate = path.resolve(path.join(this.workspace, 'models'), rel);
+    if (existsSync(workspaceCandidate)) return workspaceCandidate;
+    return repoCandidate;
+  }
+
   async register(options: { filename: string; repo_id?: string; quant_label?: string; context_tokens?: number }): Promise<{ id: string; status: string; endpoint: string }> {
     const rel = validateRegistrationFilename(this.modelDir, options.filename);
-    const file = path.resolve(this.modelDir, rel);
+    const file = this.resolveArtifactPath(rel);
     const stat = await fs.stat(file).catch(() => {
       throw new ModelRuntimeError('BAD_REQUEST', `artifact not found in models directory: ${rel}`);
     });

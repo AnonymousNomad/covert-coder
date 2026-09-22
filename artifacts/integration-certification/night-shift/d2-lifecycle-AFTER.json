@@ -1,0 +1,297 @@
+{
+  "workspace": "E:\\pip_temp\\d2-lifecycle-C2i7oE",
+  "artifact": "E:\\models\\smollm2-360m-instruct-q8_0.gguf",
+  "steps": {
+    "import": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "manifest": {
+            "repo_id": "local-import",
+            "filename": "smollm2-360m-instruct-q8_0.gguf",
+            "size_bytes": 386404992,
+            "architecture": "llama",
+            "sha256": null,
+            "etag": null,
+            "downloaded_at": "2026-09-22T18:27:47.219Z",
+            "source": "manual",
+            "status": "ready"
+          }
+        }
+      }
+    },
+    "register": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "ready",
+          "endpoint": "http://127.0.0.1:8093/v1"
+        }
+      }
+    },
+    "start1": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "starting",
+          "endpoint": "http://127.0.0.1:8093/v1"
+        }
+      }
+    },
+    "ready1": {
+      "ready": false,
+      "last": null
+    },
+    "inference1": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "text": "D2-INFERENCE-ONE",
+          "modelId": "local:smollm2-360m-instruct-q8_0",
+          "tokens": 9,
+          "timingMs": 1883,
+          "answer": "D2-INFERENCE-ONE",
+          "harness": {
+            "injected": true,
+            "tier": "micro",
+            "bytes": 205,
+            "version": "2.1.0",
+            "served_context_tokens": 2048,
+            "drift_reinjected": false,
+            "approx_prompt_tokens": 113,
+            "compose_ms": 1334.81,
+            "memory_bytes": 0,
+            "context_hits": 0,
+            "context_degraded": false,
+            "context_tokens": 0,
+            "memory_recall_hits": 0,
+            "memory_recall_tokens": 0,
+            "memory_recall_degraded": true
+          }
+        }
+      }
+    },
+    "stop": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "stopped"
+        }
+      }
+    },
+    "ready_after_stop": {
+      "status": 404,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "NOT_FOUND",
+          "message": "route not found"
+        }
+      }
+    },
+    "start2": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "starting",
+          "endpoint": "http://127.0.0.1:8093/v1"
+        }
+      }
+    },
+    "ready2": {
+      "ready": false,
+      "last": null
+    },
+    "inference2": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "text": "D2-INFERENCE-TWO",
+          "modelId": "local:smollm2-360m-instruct-q8_0",
+          "tokens": 10,
+          "timingMs": 2260,
+          "answer": "D2-INFERENCE-TWO",
+          "harness": {
+            "injected": true,
+            "tier": "micro",
+            "bytes": 205,
+            "version": "2.1.0",
+            "served_context_tokens": 2048,
+            "drift_reinjected": false,
+            "approx_prompt_tokens": 113,
+            "compose_ms": 157.96,
+            "memory_bytes": 0,
+            "context_hits": 0,
+            "context_degraded": false,
+            "context_tokens": 0,
+            "memory_recall_hits": 0,
+            "memory_recall_tokens": 0,
+            "memory_recall_degraded": true
+          }
+        }
+      }
+    },
+    "status": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "runtime": true,
+          "models": [
+            {
+              "id": "smollm2-360m-q8",
+              "name": "SmolLM2 360M Instruct",
+              "status": "ready",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8082/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": true,
+              "setup_message": "model file was not found at E:\\aide-sovereign-workbench-audit\\models\\smollm2-360m-instruct-q8_0.gguf",
+              "ingested": false
+            },
+            {
+              "id": "qwen-coder-0.5b-q4",
+              "name": "Qwen2.5-Coder 0.5B Instruct",
+              "status": "ready",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8083/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": true,
+              "setup_message": "model file was not found at E:\\aide-sovereign-workbench-audit\\models\\qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
+              "ingested": false
+            },
+            {
+              "id": "qwen-coder-1.5b-q4",
+              "name": "Qwen2.5-Coder 1.5B Instruct",
+              "status": "ready",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8087/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": true,
+              "setup_message": "model file was not found at E:\\aide-sovereign-workbench-audit\\models\\qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+              "ingested": false
+            },
+            {
+              "id": "granite-3.3-2b-instruct",
+              "name": "IBM Granite 3.3 2B Instruct",
+              "status": "pending",
+              "declared_status": "pending",
+              "endpoint": "http://127.0.0.1:8088/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": false,
+              "ingested": false
+            },
+            {
+              "id": "smollm2-1.7b-instruct",
+              "name": "SmolLM2 1.7B Instruct",
+              "status": "pending",
+              "declared_status": "pending",
+              "endpoint": "http://127.0.0.1:8085/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": false,
+              "ingested": false
+            },
+            {
+              "id": "phi-3.5-mini-instruct",
+              "name": "Microsoft Phi-3.5 Mini Instruct",
+              "status": "pending",
+              "declared_status": "pending",
+              "endpoint": "http://127.0.0.1:8086/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": false,
+              "ingested": false
+            },
+            {
+              "id": "aide-cipher-v1",
+              "name": "Cipher v1 (DEPRECATED — replaced by north-mini-code-1.0)",
+              "status": "ready",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8091/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": true,
+              "setup_message": "model file was not found at E:\\aide-sovereign-workbench-audit\\models\\base.q8_0.gguf (REMOVED — see north-mini-code-1.0)",
+              "ingested": false
+            },
+            {
+              "id": "north-mini-code-1.0",
+              "name": "North-Mini-Code 1.0 (Cohere Labs 30B-A3B MoE, Q2_K_XL)",
+              "status": "ready",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8084/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": true,
+              "setup_message": "model file was not found at E:\\aide-sovereign-workbench-audit\\models\\North-Mini-Code-1.0-UD-Q2_K_XL.gguf",
+              "ingested": false
+            },
+            {
+              "id": "qwen3-4b-minimax-m2.1-coder.q4_k_m",
+              "name": "Qwen3-4B-MiniMax-M2.1-Coder.q4_k_m",
+              "status": "ready",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8090/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": true,
+              "setup_message": "model file was not found at E:\\aide-sovereign-workbench-audit\\models\\Qwen3-4B-MiniMax-M2.1-Coder.q4_k_m.gguf",
+              "ingested": false
+            },
+            {
+              "id": "north-mini-code-1.0-ud-q2_k_xl",
+              "name": "North-Mini-Code-1.0-UD-Q2_K_XL",
+              "status": "ready",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8092/v1",
+              "runtime_available": true,
+              "artifact_available": false,
+              "setup_required": true,
+              "setup_message": "model file was not found at E:\\aide-sovereign-workbench-audit\\models\\North-Mini-Code-1.0-UD-Q2_K_XL.gguf",
+              "ingested": false
+            },
+            {
+              "id": "smollm2-360m-instruct-q8_0",
+              "name": "smollm2-360m-instruct-q8_0",
+              "status": "running",
+              "declared_status": "ready",
+              "endpoint": "http://127.0.0.1:8093/v1",
+              "runtime_available": true,
+              "artifact_available": true,
+              "setup_required": false,
+              "ingested": true
+            }
+          ]
+        }
+      }
+    }
+  },
+  "model_id": "smollm2-360m-instruct-q8_0",
+  "inference1_text": "D2-INFERENCE-ONE",
+  "inference2_text": "D2-INFERENCE-TWO",
+  "verdict": {
+    "import_ok": true,
+    "register_ok": true,
+    "start1_ok": false,
+    "inference1_ok": true,
+    "stop_ok": false,
+    "start2_ok": false,
+    "inference2_ok": true
+  }
+}
