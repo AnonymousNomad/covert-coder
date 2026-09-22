@@ -17,6 +17,8 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { createTelegramBridge } = require('../node/src/services/telegram.mjs');
+const { createExecutionAuthority } = require('../node/src/services/execution-authority.mjs');
+const { createTelegramBrain } = require('../node/src/services/telegram-brain.mjs');
 
 if (process.platform !== 'win32') {
   // DPAPI token protection shells out to powershell.exe — a Windows-only
@@ -44,10 +46,32 @@ async function until(check, ms, step = 100) {
 
 let dir;
 let bridge;
+let authority;
+let owner;
+let commandHandler = async () => null;
 let server;
 let sentMessages = [];
 let queuedUpdates = [];
+let requestedOffsets = [];
 const TOKEN = '123456:battERYtoken_token';
+let operationSequence = 0;
+
+// The transport now requires the canonical authority composition root. This
+// fixture deliberately exercises that contract instead of passing a mock
+// assertion function or bypassing the execution binding.
+async function authorizedBridgeCall(kind, body, invoke) {
+  const input = {
+    workspace: dir,
+    taskId: `telegram-battery-${++operationSequence}`,
+    kind,
+    args: { body }
+  };
+  const operation = await authority.prepare(owner, input);
+  if (operation.state === 'pending') await authority.decide(owner, operation.operation_id, 'approve');
+  return authority.execute(owner, operation.operation_id, input,
+    (_descriptor, execution) => invoke(execution));
+}
+
 function startMockApi() {
   return new Promise(resolve => {
     server = http.createServer((req, res) => {
@@ -67,6 +91,7 @@ function startMockApi() {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, result: { id: 42, username: 'aide_test_bot' } }));
         } else if (method === 'getUpdates') {
+          requestedOffsets.push(body.offset);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, result: queuedUpdates.splice(0) }));
         } else if (method === 'sendMessage') {
@@ -86,11 +111,19 @@ function startMockApi() {
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-tg-'));
   process.env.TELEGRAM_API_BASE = `http://127.0.0.1:${await startMockApi()}`;
-  bridge = createTelegramBridge({ workspace: dir });
+  authority = createExecutionAuthority({
+    workspace: dir,
+    record: async () => ({ persisted: true })
+  });
+  const origin = 'http://telegram-battery.local';
+  const paired = await authority.pair(authority.control.createPairing(origin), origin);
+  owner = authority.authenticate(paired.token, origin);
+  bridge = createTelegramBridge({ workspace: dir, authority, onCommand: args => commandHandler(args) });
 });
 
 test('connect verifies token and stores it DPAPI-encrypted at rest', async () => {
-  await bridge.connect({ token: TOKEN });
+  await authorizedBridgeCall('telegram.connect', { token: TOKEN }, execution =>
+    bridge.connect({ token: TOKEN }, execution));
   const cfg = JSON.parse(await fs.readFile(path.join(dir, '.aide', 'telegram', 'config.json'), 'utf8'));
   assert.ok(cfg.token_b64, 'token persisted');
   assert.ok(!cfg.token_b64.includes(TOKEN), 'raw token never at rest');
@@ -98,8 +131,31 @@ test('connect verifies token and stores it DPAPI-encrypted at rest', async () =>
 });
 
 test('polling ingests allowlisted messages into durable spool before handling', async () => {
-  bridge.authorizeChat(111);
-  queuedUpdates.push({ update_id: 10, message: { chat: { id: 111 }, text: '/ping' } });
+  await authorizedBridgeCall('authority.grant', { chat_id: 111, user_id: 111 }, execution =>
+    bridge.authorizeChat({ chat_id: 111, user_id: 111 }, execution));
+  await authorizedBridgeCall('telegram.start', {}, execution => bridge.startPolling(execution));
+  const desktop = {
+    async status() {
+      return {
+        enabled: true,
+        grants: { apps: ['notepad.exe'], roots: ['C:\\work'], window_titles: [] },
+        session_started_at: new Date().toISOString(),
+        ttl_minutes: 30
+      };
+    },
+    async act(request, execution) {
+      authority.assertExecution(execution, 'desktop.action', request);
+      return { ok: true, output: 'launched', latency_ms: 5 };
+    }
+  };
+  const brain = createTelegramBrain({
+    desktop,
+    resolveEngineChat: async () => ({ text: 'Opening that for you now.\nlaunch_app(target="notepad.exe")' }),
+    authority,
+    workspace: dir
+  });
+  commandHandler = brain.onCommand;
+  queuedUpdates.push({ update_id: 10, message: { chat: { id: 111 }, from: { id: 111 }, text: '/ping' } });
   // wait until the update is durably spooled (crash-safe before handling)
   const spool = await until(async () => {
     const s = await fs.readFile(path.join(dir, '.aide', 'telegram', 'spool.jsonl'), 'utf8').catch(() => '');
@@ -126,8 +182,19 @@ test('unknown chats are ignored silently and counted', async () => {
   assert.ok(!sentMessages.some(m => m.chat_id === 999), 'never replies to strangers');
 });
 
+test('help command exposes only the supported local transport commands', async () => {
+  queuedUpdates.push({ update_id: 12, message: { chat: { id: 111 }, from: { id: 111 }, text: '/help' } });
+  const help = await until(() => {
+    const m = sentMessages.filter(x => x.chat_id === 111 && x.text.startsWith('AIDE bridge commands:')).pop();
+    return m || null;
+  }, 10000);
+  assert.ok(help, 'help reply sent');
+  assert.match(help.text, /\/ping/);
+  assert.match(help.text, /\/status/);
+});
+
 test('status command reports local-only posture', async () => {
-  queuedUpdates.push({ update_id: 12, message: { chat: { id: 111 }, text: '/status' } });
+  queuedUpdates.push({ update_id: 13, message: { chat: { id: 111 }, from: { id: 111 }, text: '/status' } });
   const statusMsg = await until(() => {
     const m = sentMessages.filter(x => x.text.startsWith('AIDE status')).pop();
     return m || null;
@@ -141,11 +208,52 @@ test('offset acks prevent redelivery', async () => {
     const o = await fs.readFile(path.join(dir, '.aide', 'telegram', 'offset.txt'), 'utf8').catch(() => null);
     return o ? Number(o) : null;
   }, 10000);
-  assert.equal(offset, 13); // last update_id 12 + 1
+  assert.equal(offset, 14); // last update_id 13 + 1
+});
+
+test('bridge delegates /ask proposal and exact confirmation through Authority', async () => {
+  queuedUpdates.push({ update_id: 15, message: { chat: { id: 111 }, from: { id: 111 }, text: '/ask open notepad' } });
+  const proposal = await until(() => {
+    const m = sentMessages.filter(x => x.chat_id === 111 && x.text.startsWith('Opening that for you now.')).pop();
+    return m || null;
+  }, 10000);
+  assert.ok(proposal, 'proposal reply sent');
+  const operationId = /YES ([0-9a-f-]{36})/i.exec(proposal.text)?.[1];
+  assert.ok(operationId, 'proposal contains exact operation id');
+  assert.equal(sentMessages.filter(x => x.chat_id === 111 && x.text.startsWith('✅ Executed')).length, 0);
+
+  queuedUpdates.push({ update_id: 16, message: { chat: { id: 111 }, from: { id: 111 }, text: `YES ${operationId}` } });
+  const executed = await until(() => {
+    const m = sentMessages.filter(x => x.chat_id === 111 && x.text.startsWith('✅ Executed')).pop();
+    return m || null;
+  }, 10000);
+  assert.ok(executed, 'confirmed execution reply sent');
+});
+
+test('restart resumes from the durable offset and preserves the allowlist', async () => {
+  await authorizedBridgeCall('telegram.disconnect', {}, execution => bridge.disconnect(execution));
+  await until(async () => !(await bridge.status()).running, 10000);
+
+  bridge = createTelegramBridge({ workspace: dir, authority, onCommand: args => commandHandler(args) });
+  const before = await bridge.status();
+  assert.deepEqual(before.chat_ids, [111]);
+  await authorizedBridgeCall('telegram.start', {}, execution => bridge.startPolling(execution));
+
+  queuedUpdates.push({ update_id: 14, message: { chat: { id: 111 }, text: '/ping' } });
+  const resumed = await until(async () => {
+    const offset = await fs.readFile(path.join(dir, '.aide', 'telegram', 'offset.txt'), 'utf8').catch(() => null);
+    return offset === '15' ? offset : null;
+  }, 10000);
+  assert.equal(resumed, '15');
+  assert.ok(requestedOffsets.includes(14), 'poll after restart used the persisted offset');
+  assert.ok(sentMessages.some(m => m.chat_id === 111 && m.text === 'pong — AIDE is alive and local.'), 'post-restart command replied');
 });
 
 after(async () => {
-  await bridge?.disconnect().catch(() => {});
+  if (bridge && authority && owner) {
+    await authorizedBridgeCall('telegram.disconnect', {}, execution => bridge.disconnect(execution)).catch(() => {});
+  }
+  authority?.control.close();
   await new Promise(resolve => server?.close?.(resolve));
   await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
   console.log('\nTELEGRAM BATTERY: complete');
