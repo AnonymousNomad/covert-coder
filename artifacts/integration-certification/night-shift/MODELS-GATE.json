@@ -1,28 +1,58 @@
 {
-  "workspace": "E:\\pip_temp\\models-gate-bC6Otk",
+  "workspace": "E:\\pip_temp\\models-gate-FbC5WB",
   "findings": {
     "ingest_prepare": {
-      "status": 400,
+      "status": 200,
       "body": {
-        "ok": false,
-        "error": {
-          "code": "BAD_REQUEST",
-          "message": "invalid operation parameters"
+        "ok": true,
+        "data": {
+          "operation_id": "bc614378-9a94-4106-89bd-a7413148c95c",
+          "actor_id": "f9705462-10d1-4766-a94d-352021c3ccbd",
+          "task_id": "w1-ingest",
+          "workspace": "E:\\pip_temp\\models-gate-FbC5WB",
+          "kind": "capability.write",
+          "digest": "dad9cec9bd896f4d939060ce26d07e161dbcc32e187b518db6abaf0d20857b68",
+          "risk": "write",
+          "state": "pending",
+          "expires_at": 1790099809036,
+          "args": {
+            "body": {
+              "path": "candidate.gguf"
+            },
+            "method": "POST",
+            "path": "/api/models/ingest",
+            "query": {}
+          }
         }
       }
     },
     "import_prepare": {
-      "status": 400,
+      "status": 200,
       "body": {
-        "ok": false,
-        "error": {
-          "code": "BAD_REQUEST",
-          "message": "invalid operation parameters"
+        "ok": true,
+        "data": {
+          "operation_id": "c1eb1f92-d15f-4150-8235-33ba6653c9b2",
+          "actor_id": "f9705462-10d1-4766-a94d-352021c3ccbd",
+          "task_id": "w1-import",
+          "workspace": "E:\\pip_temp\\models-gate-FbC5WB",
+          "kind": "capability.write",
+          "digest": "804a12bdfa34ae570c2b9bf8c87e8c3e16d1481a52a10d00f5b1a623b22d0e1d",
+          "risk": "write",
+          "state": "pending",
+          "expires_at": 1790099809057,
+          "args": {
+            "body": {
+              "path": "candidate.gguf"
+            },
+            "method": "POST",
+            "path": "/api/models/import",
+            "query": {}
+          }
         }
       }
     },
-    "ingest_kind": null,
-    "ingest_binds_path": false,
-    "enrolled": false
+    "ingest_kind": "capability.write",
+    "ingest_binds_path": true,
+    "enrolled": true
   }
 }
