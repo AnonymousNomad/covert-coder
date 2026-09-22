@@ -1,0 +1,180 @@
+{
+  "workspace": "E:\\pip_temp\\d2-negative-3oVf8Z",
+  "findings": {
+    "missing_artifact": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "BAD_REQUEST",
+          "message": "artifact not found in models directory: does-not-exist.gguf"
+        }
+      }
+    },
+    "invalid_path": {
+      "status": -1,
+      "body": {
+        "error": "Expected values to be strictly equal:\n\n400 !== 200\n"
+      }
+    },
+    "import1": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "manifest": {
+            "repo_id": "local-import",
+            "filename": "smollm2-360m-instruct-q8_0.gguf",
+            "size_bytes": 386404992,
+            "architecture": "llama",
+            "sha256": null,
+            "etag": null,
+            "downloaded_at": "2026-09-22T20:16:29.332Z",
+            "source": "manual",
+            "status": "ready"
+          }
+        }
+      }
+    },
+    "import2": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "manifest": {
+            "repo_id": "local-import",
+            "filename": "smollm2-360m-instruct-q8_0.gguf",
+            "size_bytes": 386404992,
+            "architecture": "llama",
+            "sha256": null,
+            "etag": null,
+            "downloaded_at": "2026-09-22T20:16:44.590Z",
+            "source": "manual",
+            "status": "ready"
+          }
+        }
+      }
+    },
+    "register1": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "ready",
+          "endpoint": "http://127.0.0.1:8093/v1"
+        }
+      }
+    },
+    "register2": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "ready",
+          "endpoint": "http://127.0.0.1:8093/v1"
+        }
+      }
+    },
+    "chat_before_start": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "text": "You should fail if the model engine is not available or the model endpoint is not active.",
+          "modelId": "local:smollm2-360m-instruct-q8_0",
+          "tokens": 19,
+          "timingMs": 1515,
+          "answer": "You should fail if the model engine is not available or the model endpoint is not active.",
+          "harness": {
+            "injected": true,
+            "tier": "micro",
+            "bytes": 205,
+            "version": "2.1.0",
+            "served_context_tokens": 2048,
+            "drift_reinjected": false,
+            "approx_prompt_tokens": 124,
+            "compose_ms": 2091.74,
+            "memory_bytes": 0,
+            "context_hits": 0,
+            "context_degraded": false,
+            "context_tokens": 0,
+            "memory_recall_hits": 0,
+            "memory_recall_tokens": 0,
+            "memory_recall_degraded": true
+          }
+        }
+      }
+    },
+    "stale_entry": {
+      "artifact_available": false,
+      "status": "ready",
+      "setup_required": true
+    },
+    "start_stale": {
+      "status": 409,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "NOT_READY",
+          "message": "Local model setup required: model file was not found at E:\\pip_temp\\d2-negative-3oVf8Z\\models\\smollm2-360m-instruct-q8_0.gguf."
+        }
+      }
+    },
+    "stop_idle": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "stopped"
+        }
+      }
+    },
+    "start1": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "running",
+          "endpoint": "http://127.0.0.1:8093/v1"
+        }
+      }
+    },
+    "start2": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "running",
+          "endpoint": "http://127.0.0.1:8093/v1"
+        }
+      }
+    },
+    "stop_final": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "id": "smollm2-360m-instruct-q8_0",
+          "status": "stopped"
+        }
+      }
+    }
+  },
+  "model_id": "smollm2-360m-instruct-q8_0",
+  "verdict": {
+    "missing_artifact_truthful": true,
+    "invalid_path_truthful": true,
+    "duplicate_import_truthful": true,
+    "duplicate_register_idempotent": true,
+    "chat_before_start_truthful": false,
+    "stale_entry_truthful": true,
+    "start_stale_truthful": true,
+    "stop_idle_truthful": true,
+    "duplicate_start_truthful": true
+  }
+}

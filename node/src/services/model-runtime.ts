@@ -123,6 +123,7 @@ export class ModelRuntime {
   readonly workspace: string;
   private readonly manifestPath: string;
   private readonly ingestedPath: string;
+  private readonly enginePidsPath: string;
   readonly modelDir: string;
   private readonly spawnChild: typeof spawn;
   private readonly logger: ModelRuntimeOptions['logger'];
@@ -143,12 +144,18 @@ export class ModelRuntime {
     this.manifestPath = options.manifestPath;
     this.ingestedPath = options.ingestedPath;
     this.modelDir = options.modelDir;
+    this.enginePidsPath = path.join(options.workspace, '.aide', 'model-engines.json');
     this.spawnChild = options.spawnChild ?? spawn;
     this.logger = options.logger;
     this.onStatusChange = options.onStatusChange ?? (() => {});
   }
 
   async load(): Promise<void> {
+    // Wave 10A: reap stale OWNED engines before projecting inventory. Engines
+    // are spawned detached and can outlive a hard Covert shutdown (Windows
+    // TerminateProcess never runs shutdown hooks). Ownership proof is exact:
+    // PID + command line containing the registered model artifact path.
+    await this.sweepStaleEngines();
     const manifest = JSON.parse(await fs.readFile(this.manifestPath, 'utf8')) as { models?: Array<Record<string, unknown>> };
     for (const raw of manifest.models ?? []) {
       const entry = this.entryFromManifest(raw);
@@ -475,6 +482,7 @@ export class ModelRuntime {
         // ggml-vulkan.dll / llama.dll siblings (aide-inhouse-model-runtime SOP).
         const child = this.spawnChild(llamaBinary, binaryArgs, { cwd: llamaBinaryDir, stdio: ['ignore', 'ignore', 'pipe'], detached: true });
         this.processes.set(id, child);
+        if (child.pid !== undefined) void this.recordEnginePid(id, child.pid, model.file);
         this.onStatusChange(id, 'starting');
         const stderrLog = path.join(this.workspace, '.aide', 'logs', `engine-${id}.err.log`);
         await fs.mkdir(path.dirname(stderrLog), { recursive: true }).catch(() => {});
@@ -483,6 +491,7 @@ export class ModelRuntime {
         child.once('exit', (code, signal) => {
           this.processes.delete(id);
           this.warmed.delete(id);
+          void this.clearEnginePid(id);
           void fs.appendFile(stderrLog, `${stderrTail}[exit code=${code} signal=${signal}]\n`).catch(() => {});
           this.onStatusChange(id, 'stopped');
         });
@@ -586,11 +595,93 @@ export class ModelRuntime {
         child.kill('SIGKILL');
       }
     }
+    await this.clearEnginePid(id);
     return { id, status: 'stopped' };
   }
 
   async stopAll(): Promise<void> {
     for (const id of [...this.processes.keys()]) await this.stop(id);
+  }
+
+  // --- Wave 10A: owned-engine lifecycle persistence + stale-engine sweep ---
+
+  private async readEnginePids(): Promise<Record<string, { pid: number; file: string }>> {
+    try {
+      const raw = JSON.parse(await fs.readFile(this.enginePidsPath, 'utf8')) as Record<string, { pid?: unknown; file?: unknown }>;
+      const out: Record<string, { pid: number; file: string }> = {};
+      for (const [id, entry] of Object.entries(raw ?? {})) {
+        const pid = Number(entry?.pid);
+        const file = String(entry?.file ?? '');
+        if (Number.isInteger(pid) && pid > 0 && file.length > 0) out[id] = { pid, file };
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  }
+
+  private async writeEnginePids(map: Record<string, { pid: number; file: string }>): Promise<void> {
+    try {
+      await fs.mkdir(path.dirname(this.enginePidsPath), { recursive: true });
+      await fs.writeFile(this.enginePidsPath, JSON.stringify(map, null, 2), 'utf8');
+    } catch {
+      // Lifecycle bookkeeping is best-effort; it must never break runtime ops.
+    }
+  }
+
+  private async recordEnginePid(id: string, pid: number, file: string): Promise<void> {
+    const map = await this.readEnginePids();
+    map[id] = { pid, file };
+    await this.writeEnginePids(map);
+  }
+
+  private async clearEnginePid(id: string): Promise<void> {
+    const map = await this.readEnginePids();
+    if (map[id] !== undefined) {
+      delete map[id];
+      await this.writeEnginePids(map);
+    }
+  }
+
+  private processInfo(pid: number): Promise<{ commandLine: string } | null> {
+    return new Promise(resolve => {
+      if (process.platform !== 'win32') return resolve(null);
+      execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+        `$p = Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}" -ErrorAction SilentlyContinue; if ($p -ne $null) { $p.CommandLine }`
+      ], { windowsHide: true }, (error, stdout) => {
+        if (error) return resolve(null);
+        const commandLine = String(stdout ?? '').trim();
+        resolve(commandLine.length > 0 ? { commandLine } : null);
+      });
+    });
+  }
+
+  // Reaps engines this runtime previously owned whose process survived a hard
+  // shutdown. Never touches a process whose command line does not contain the
+  // exact registered artifact path (foreign engines stay untouched).
+  async sweepStaleEngines(): Promise<{ reaped: number[] }> {
+    const map = await this.readEnginePids();
+    const reaped: number[] = [];
+    let changed = false;
+    for (const [id, entry] of Object.entries(map)) {
+      const info = await this.processInfo(entry.pid);
+      if (info === null || !info.commandLine.includes(entry.file)) {
+        // Gone already, or the PID now belongs to something else: never touch.
+        delete map[id];
+        changed = true;
+        continue;
+      }
+      await new Promise<void>(resolve => {
+        execFile('taskkill', ['/PID', String(entry.pid), '/F', '/T'], () => resolve());
+      });
+      const after = await this.processInfo(entry.pid);
+      if (after === null) reaped.push(entry.pid);
+      delete map[id];
+      changed = true;
+    }
+    if (changed) await this.writeEnginePids(map);
+    if (reaped.length > 0) this.logger?.warn('reaped stale owned model engines at startup', { pids: reaped });
+    return { reaped };
   }
 
   // Effective context = what the engine ACTUALLY serves (llama-server clamps

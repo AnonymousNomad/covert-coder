@@ -1,0 +1,18 @@
+{
+  "workspace": "E:\\pip_temp\\wave10a-IaT1ZL",
+  "owned_pid": 18688,
+  "foreign_pid": 6744,
+  "sweep": {
+    "reaped": [
+      18688
+    ]
+  },
+  "owned_alive": false,
+  "foreign_alive": true,
+  "map_after": {},
+  "verdict": {
+    "owned_reaped": true,
+    "foreign_untouched": true,
+    "bookkeeping_cleared": true
+  }
+}
