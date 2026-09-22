@@ -311,6 +311,13 @@ function channelId(configuredChannels, categoryName, channelName) {
   return configuredChannels.get(`${categoryName}/${channelName}`)?.id ?? null;
 }
 
+const DISCORD_EPOCH_MS = 1420070400000n;
+const onboardingIdBase = (BigInt(Date.now()) - DISCORD_EPOCH_MS) << 22n;
+let onboardingIdOffset = 1n;
+function onboardingId() {
+  return String(onboardingIdBase | onboardingIdOffset++);
+}
+
 async function ensureOnboarding(targetGuildId, guild, configuredChannels, roleByName) {
   if (!Array.isArray(guild.features) || !guild.features.includes('COMMUNITY')) {
     return { status: 'DEFERRED', reason: 'COMMUNITY_FEATURE_REQUIRED' };
@@ -344,6 +351,7 @@ async function ensureOnboarding(targetGuildId, guild, configuredChannels, roleBy
 
   const options = [
     {
+      id: onboardingId(),
       title: 'Use Covert',
       description: 'Get started with Covert and ask product questions.',
       role_ids: roleByName.get('community')?.id ? [roleByName.get('community').id] : [],
@@ -354,6 +362,7 @@ async function ensureOnboarding(targetGuildId, guild, configuredChannels, roleBy
       emoji_name: '🛠️'
     },
     {
+      id: onboardingId(),
       title: 'Contribute',
       description: 'Follow development and contribute code or documentation.',
       role_ids: roleByName.get('contributor')?.id ? [roleByName.get('contributor').id] : [],
@@ -365,6 +374,7 @@ async function ensureOnboarding(targetGuildId, guild, configuredChannels, roleBy
       emoji_name: '🧩'
     },
     {
+      id: onboardingId(),
       title: 'Test models and workflows',
       description: 'Help test releases, local models, and Skills.',
       role_ids: roleByName.get('tester')?.id ? [roleByName.get('tester').id] : [],
@@ -375,6 +385,7 @@ async function ensureOnboarding(targetGuildId, guild, configuredChannels, roleBy
       emoji_name: '🧪'
     },
     {
+      id: onboardingId(),
       title: 'Follow releases',
       description: 'Receive release and project updates.',
       role_ids: [],
@@ -385,6 +396,7 @@ async function ensureOnboarding(targetGuildId, guild, configuredChannels, roleBy
 
   const result = await discord('PUT', `/guilds/${targetGuildId}/onboarding`, {
     prompts: [{
+      id: onboardingId(),
       type: 0,
       title: 'What brings you to Covert?',
       options,
