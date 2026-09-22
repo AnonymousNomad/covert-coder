@@ -394,10 +394,23 @@
     }
   ],
   "p0_list": [
-    { "id": "authority.selfimprove-runner", "summary": "Detached self-improve runner mutates workspace with no authority or audit (server.ts:382-399)." },
-    { "id": "workflow.release-evidence-gate", "summary": "Release gate accepts abstained/fabricated verification records; records are unauthenticated JSON (workflow-service.ts:275-279)." },
-    { "id": "authority.egress-read", "summary": "External egress auto-approved as capability.read (chat cloud path; HF search with token) — no operator decision binds external transmission (operation-policy.mjs:86-92)." },
-    { "id": "authority.agent-tool-direct", "summary": "Shadowed direct tool dispatcher without authority or evidence (openapi.ts:788-808)." }
+    { "id": "chat.authority-enrollment", "status": "REPAIRED_VERIFIED", "summary": "POST /api/chat + /chat/stream were unenrolled (403 'capability has no authority policy') behind the governed dispatcher, including through the production facade. Ported the accepted local-inference enrollment (capability.execute, body-bound). Evidence: p0/P0-REPAIR-chat-authority-enrollment.md." },
+    { "id": "workflow.release-evidence-gate", "status": "REPAIRED_VERIFIED", "summary": "Release gate accepted abstained/unavailable/fabricated verification records. Gate now requires an affirmative pass (veritas_not_passed). Evidence: p0/P0-REPAIR-release-evidence-affirmative-pass.md." },
+    { "id": "authority.egress-read", "status": "PARTIALLY_REDUCED", "summary": "Chat path now approval-bound (capability.execute) which binds external transmission for cloud-routed chat. Remaining sub-item: GET /api/modelhub/search (token-bearing HF egress) needs its own before/after probe." },
+    { "id": "authority.agent-tool-direct", "status": "RECLASSIFIED_P2", "summary": "Probe: the route prepares as agent.tool/execute, executes read-only tools only after approval, refuses write_file 403. Real gap = no harness evidence record (observability), not an authority bypass." },
+    { "id": "authority.selfimprove-runner", "status": "RECLASSIFIED_VALID_SYSTEM_MAINTENANCE", "summary": "Empirical reproduction: all writes confined to .aide/ (training signal, logs, journal); delegate/verify are log-only; zero user/project workspace mutations. Observability improvement remains optional (P3). Evidence: p0/P0-CLASSIFICATION-selfimprove-runner.md." }
+  ],
+  "reclassifications": [
+    { "id": "authority.agent-tool-direct", "from": "P0 (authority bypass)", "to": "P2 (evidence/observability gap)", "basis": "production probe p0/p0-probe.json" },
+    { "id": "authority.selfimprove-runner", "from": "P0 (mutation without authority)", "to": "VALID SYSTEM MAINTENANCE (P3 observability)", "basis": "bounded reproduction; zero non-.aide writes" }
+  ],
+  "implemented_elsewhere_not_reconciled": [
+    { "capability": "chat/local-inference authority enrollment", "source_lane": "fix/local-inference-production-gate", "accepted_there": true, "present_in_production": false, "production_equivalent": "REPAIRED in this audit lane (ported)", "reconciliation_required": "merge decision (operator)" },
+    { "capability": "Ghost Code (episode projection + certification)", "source_lane": "feat/ghost-real-task-certification-v1 + release/ghost-provider-closure-overnight", "accepted_there": true, "present_in_production": false, "production_equivalent": null, "reconciliation_required": true },
+    { "capability": "provider bridge (moonshot/kimi/opencode role routing)", "source_lane": "release/subscription-provider-certification", "accepted_there": true, "present_in_production": false, "production_equivalent": "moonshot builtin only (via earlier merge); bridge absent", "reconciliation_required": true },
+    { "capability": "subscription transports (codex/claude capability truth + kimi/opencode)", "source_lane": "release/subscription-provider-certification", "accepted_there": true, "present_in_production": "codex/claude transports only (presence-based, no governed routing)", "production_equivalent": "partial", "reconciliation_required": true },
+    { "capability": "Kimi transport (kimi-code CLI)", "source_lane": "release/subscription-provider-certification", "accepted_there": true, "present_in_production": false, "production_equivalent": null, "reconciliation_required": true },
+    { "capability": "OpenCode bridge", "source_lane": "release/subscription-provider-certification", "accepted_there": true, "present_in_production": false, "production_equivalent": null, "reconciliation_required": true }
   ],
   "overall": {
     "overall_production_wiring": "PARTIALLY_WIRED",
