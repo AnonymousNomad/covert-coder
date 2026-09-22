@@ -264,7 +264,7 @@ test('cancel: approved exact operation targets only the owned job', async () => 
   assert.equal(again.body.data?.cancelled, false, 'already-cancelled job preserves the false contract');
 });
 
-test('search: read enrollment binds the exact query, egress journal and pinned host', async () => {
+test('search: external enrollment binds the exact query, egress journal and pinned host', async () => {
   // Malformed strict contract preserved (pre-authority 400s, no network).
   assert.equal((await get('/api/modelhub/search')).status, 400);
   assert.equal((await get('/api/modelhub/search?q=')).status, 400);
@@ -272,6 +272,13 @@ test('search: read enrollment binds the exact query, egress journal and pinned h
   assert.equal((await get('/api/modelhub/search?q=tiny&limit=0')).status, 400);
   assert.equal((await get('/api/modelhub/search?q=tiny&limit=51')).status, 400);
   assert.equal((await get(`/api/modelhub/search?q=${'x'.repeat(201)}`)).status, 400);
+  // External-class egress requires an exact approved operation: an unapproved
+  // search is refused BEFORE any network transmission.
+  const egressBefore = fetchedUrls.length;
+  const unapproved = await get('/api/modelhub/search?q=unapproved');
+  assert.equal(unapproved.status, 409, JSON.stringify(unapproved.body));
+  assert.equal((unapproved.body.error as { detail?: { reason?: string } } | undefined)?.detail?.reason, 'APPROVAL_REQUIRED');
+  assert.equal(fetchedUrls.length, egressBefore, 'unapproved search produced zero egress');
   const anonymous = await fetch(`${base}/api/modelhub/search?q=anon`, { signal: AbortSignal.timeout(5000) });
   assert.equal(anonymous.status, 403, 'anonymous rejected');
   const fetchesBefore = fetchedUrls.length;
@@ -280,11 +287,16 @@ test('search: read enrollment binds the exact query, egress journal and pinned h
   // Control-plane identity: exact q/sort/limit, server workspace, read kind.
   const handle = server.authority.authenticate(owner.headers.Authorization.slice(7), 'http://fixture.local');
   const searchInput = (q: string, sort: string | null, limit: number | null) => ({
-    workspace: path.resolve(workspace), taskId: 'task:search-digest', kind: 'capability.read',
+    workspace: path.resolve(workspace), taskId: 'task:search-digest', kind: 'capability.external',
     args: { body: { q, sort, limit } }
   });
+  const approvedSearch = async (query: string): Promise<{ status: number; body: Envelope<unknown> }> => {
+    const headers = await owner.approve('GET', `/api/modelhub/search?${query}`, {}, 'task:hub-search-approved');
+    const response = await owner.request(`/api/modelhub/search?${query}`, { headers, signal: AbortSignal.timeout(15000) });
+    return { status: response.status, body: (await response.json()) as Envelope<unknown> };
+  };
   const prepared = await server.authority.prepare(handle, searchInput('gemma tiny', 'likes', 7));
-  assert.equal(prepared.kind, 'capability.read');
+  assert.equal(prepared.kind, 'capability.external');
   assert.equal(prepared.workspace, path.resolve(workspace));
   assert.deepEqual(prepared.args, { body: { q: 'gemma tiny', sort: 'likes', limit: 7 } });
   const omitted = await server.authority.prepare(handle, searchInput('gemma tiny', null, null));
@@ -299,9 +311,10 @@ test('search: read enrollment binds the exact query, egress journal and pinned h
   assert.equal(fetchedUrls.length, fetchesBefore, 'changed inputs produced zero fetch');
   assert.equal((await searchJournal()).length, journalBefore, 'changed inputs produced zero journal effect');
 
-  // Approved exact read (paired actor; capability.read is the accepted policy):
-  // pinned endpoint, mapped bounded response, one egress journal entry.
-  const applied = await get(`/api/modelhub/search?q=${encodeURIComponent('gemma tiny')}&sort=likes&limit=7`);
+  // Approved exact external call (paired actor; capability.external is the
+  // accepted policy for egress): pinned endpoint, mapped bounded response,
+  // one egress journal entry.
+  const applied = await approvedSearch(`q=${encodeURIComponent('gemma tiny')}&sort=likes&limit=7`);
   assert.equal(applied.status, 200, JSON.stringify(applied.body));
   assert.deepEqual(applied.body.data, {
     models: [
@@ -324,7 +337,7 @@ test('search: read enrollment binds the exact query, egress journal and pinned h
 
   // URL-injection payload stays fully encoded; host/filter/direction pinned.
   const inject = 'x&filter=evil&direction=1#frag';
-  const injected = await get(`/api/modelhub/search?q=${encodeURIComponent(inject)}`);
+  const injected = await approvedSearch(`q=${encodeURIComponent(inject)}`);
   assert.equal(injected.status, 200);
   const injectedUrl = new URL(fetchedUrls[fetchedUrls.length - 1]!);
   assert.equal(injectedUrl.origin, 'https://huggingface.co');
@@ -333,24 +346,25 @@ test('search: read enrollment binds the exact query, egress journal and pinned h
   assert.equal(injectedUrl.searchParams.get('direction'), '-1');
 
   // Server-owned defaults preserved when optionals are omitted.
-  assert.equal((await get('/api/modelhub/search?q=defaults')).status, 200);
+  assert.equal((await approvedSearch('q=defaults')).status, 200);
   const defaultUrl = new URL(fetchedUrls[fetchedUrls.length - 1]!);
   assert.equal(defaultUrl.searchParams.get('sort'), 'downloads');
   assert.equal(defaultUrl.searchParams.get('limit'), '20');
 
-  // Read-class dispatch never honors caller operation ids: the exact current
-  // request is auto-prepared and executed (no caller substitution surface).
+  // External dispatch never honors caller-supplied operation ids: an unknown
+  // id is NOT_FOUND and no substitution or egress can occur.
+  const egressBeforeForeign = fetchedUrls.length;
   const foreign = await owner.request('/api/modelhub/search?q=foreign-id', {
     headers: { 'X-AIDE-Operation': '00000000-0000-4000-8000-000000000000' }, signal: AbortSignal.timeout(15000)
   });
-  assert.equal(foreign.status, 200, 'foreign operation id has no authority effect for reads');
-  assert.equal((await foreign.json() as { ok: boolean }).ok, true);
+  assert.equal(foreign.status, 404, 'unknown operation id cannot substitute for an exact approval');
+  assert.equal(fetchedUrls.length, egressBeforeForeign, 'foreign id produced zero egress');
 
   // Upstream failure preserves the current mapping (UPSTREAM -> BAD_RESPONSE)
   // and the egress journal stays truthful (the attempt is recorded first).
   searchFailureStatus = 503;
   const journalBeforeFailure = (await searchJournal()).length;
-  const failure = await get('/api/modelhub/search?q=upstream-down');
+  const failure = await approvedSearch('q=upstream-down');
   assert.equal(failure.status, 500, JSON.stringify(failure.body));
   assert.equal(failure.body.error?.code, 'BAD_RESPONSE');
   assert.equal((await searchJournal()).length, journalBeforeFailure + 1, 'attempt journaled before the failing fetch');

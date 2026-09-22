@@ -48,18 +48,19 @@ function wrap(handler: (ctx: RouteContext) => Promise<unknown> | unknown): (ctx:
 export function routesForModelHub(service: HubService): Route[] {
   return [
     { method: 'GET', path: '/api/modelhub/search', query: HubSearchQuery, response: HubSearchResponse,
-      // A read-class external search (mirrors the accepted /api/modelhub/files
-      // disposition): the approved operation binds the exact validated query.
-      // The HF endpoint, gguf filter, direction, user-agent, defaults, egress
-      // journal and response mapping are server-owned. Omitted optionals stay
-      // null in the authority identity so an omitted value never collapses
-      // into an explicit default.
+      // An EXTERNAL-class search: it transmits to Hugging Face and may carry
+      // the stored HF token, so it requires an exact approved operation like
+      // every other external route (download / byok test / connections test /
+      // providers connect). The approved operation binds the exact validated
+      // query. A read-class kind would be auto-executed by the dispatcher
+      // (kinds ending .read never require an operator decision) — that is the
+      // defect this classification closes.
       describeOperation: async ({ query }, taskId): Promise<OperationInput> => {
         const parsed = HubSearchQuery.parse(query);
         return {
           workspace: service.workspace,
           taskId,
-          kind: 'capability.read',
+          kind: 'capability.external',
           args: { body: { q: parsed.q, sort: parsed.sort ?? null, limit: parsed.limit ?? null } }
         };
       },

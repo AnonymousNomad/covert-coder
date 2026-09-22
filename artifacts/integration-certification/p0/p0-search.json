@@ -1,0 +1,19 @@
+{
+  "workspace": "E:\\pip_temp\\p0-search-YY2zCV",
+  "findings": {
+    "prepare": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "BAD_REQUEST",
+          "message": "invalid operation parameters"
+        }
+      }
+    },
+    "unapproved_exec": {
+      "status": 409,
+      "body_head": "{\"ok\":false,\"error\":{\"code\":\"NOT_READY\",\"message\":\"exact operation approval required\",\"detail\":{\"reason\":\"APPROVAL_REQUIRED\",\"adapter\":\"ts\"}}}"
+    }
+  }
+}
