@@ -276,6 +276,9 @@ export function createWorkflowService(options: { workspace: string; authority: E
           const inspection = await inspectVeritasEvidence(workspace, candidate);
           if (!inspection.found) { reason ??= `veritas_missing:${type}`; continue; }
           if (inspection.failed) { reason ??= `veritas_failed:${type}`; continue; }
+          // Fail-closed: the record must affirmatively pass. abstain /
+          // incomplete / unavailable are not evidence.
+          if (!inspection.passed) { reason ??= `veritas_not_passed:${type}`; continue; }
         }
         satisfied = true;
         break;

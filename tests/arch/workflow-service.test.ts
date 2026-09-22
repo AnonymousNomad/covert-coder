@@ -259,7 +259,7 @@ test('stale artifacts block forward progress until re-produced', async () => {
   assert.equal((await applyRequest(env, recovered)).stage, 'VALIDATION');
 });
 
-test('failed Veritas evidence blocks the release transition until the record is not failed', async () => {
+test('failed or unpassed Veritas evidence blocks the release transition; only an affirmative pass satisfies it', async () => {
   const env = await setup();
   const built = await advanceToValidation(env);
   const sessionId = randomUUID();
@@ -273,7 +273,13 @@ test('failed Veritas evidence blocks the release transition until the record is 
   assert.equal(rejected.length, 1);
   const gate = rejected[0]?.gate as { failed?: string[] } | undefined;
   assert.deepEqual(gate?.failed, ['veritas_failed:RELEASE_EVIDENCE']);
-  await writeVerification(env.workspace, sessionId, { outcome: 'done', verification: { execution: 'succeeded', state: 'unavailable' } });
+  // Fail-closed: abstained / unavailable records are NOT release evidence.
+  await writeVerification(env.workspace, sessionId, { outcome: 'done', verification: { execution: 'succeeded', state: 'abstain', passed: false } });
+  assert.deepEqual(await env.service.evaluateTransition(built.state, request), { result: 'unsatisfied', failed: ['veritas_not_passed:RELEASE_EVIDENCE'] });
+  await assert.rejects(applyRequest(env, request), { code: 'GATE_UNSATISFIED' });
+  assert.equal((await env.service.load())?.stage, 'VALIDATION');
+  // Only an affirmative pass satisfies the release gate.
+  await writeVerification(env.workspace, sessionId, { outcome: 'done', verification: { execution: 'succeeded', state: 'passed', passed: true } });
   assert.deepEqual(await env.service.evaluateTransition(built.state, request), { result: 'satisfied', failed: [] });
   assert.equal((await applyRequest(env, request)).stage, 'DEPLOYMENT');
 });

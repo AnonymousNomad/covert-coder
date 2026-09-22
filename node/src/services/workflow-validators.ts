@@ -194,11 +194,15 @@ export interface VeritasEvidenceInspection {
   found: boolean;
   session_id: string | null;
   failed: boolean;
+  // Affirmative pass: the record must indicate success. Absence of failure is
+  // NOT evidence (abstain/incomplete/unavailable must never satisfy a release
+  // gate).
+  passed: boolean;
   status: string | null;
 }
 
 export async function inspectVeritasEvidence(workspace: string, artifactRef: WorkflowArtifactRefT, options: { verificationsDir?: string } = {}): Promise<VeritasEvidenceInspection> {
-  const none: VeritasEvidenceInspection = { found: false, session_id: null, failed: false, status: null };
+  const none: VeritasEvidenceInspection = { found: false, session_id: null, failed: false, passed: false, status: null };
   const artifactPath = path.resolve(workspace, artifactRef.path);
   const artifactRelative = path.relative(workspace, artifactPath);
   if (artifactRelative === '' || artifactRelative.startsWith('..') || path.isAbsolute(artifactRelative)) return none;
@@ -229,11 +233,12 @@ export async function inspectVeritasEvidence(workspace: string, artifactRef: Wor
       || state === 'failed' || state === 'errored'
       || verdictStatus === 'failed' || verdictStatus === 'errored'
       || outcome === 'error' || outcome === 'aborted';
+    const passed = (record.verification as { passed?: unknown } | null)?.passed === true || state === 'passed' || verdictStatus === 'passed';
     const status = typeof state === 'string' ? state
       : typeof verdictStatus === 'string' ? verdictStatus
       : typeof outcome === 'string' ? outcome
       : null;
-    return { found: true, session_id: sessionId, failed, status };
+    return { found: true, session_id: sessionId, failed, passed, status };
   } catch {
     return none;
   }
