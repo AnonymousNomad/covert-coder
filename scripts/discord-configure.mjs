@@ -64,6 +64,30 @@ function safeMessage(payload, status) {
   return message.replace(/(Bot|Bearer)\s+[^\s,]+/gi, '$1 <redacted>').slice(0, 240);
 }
 
+function validationErrors(payload) {
+  const root = payload?.errors;
+  if (!root || typeof root !== 'object') return null;
+  const entries = [];
+  const visit = (node, path = []) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node._errors)) {
+      for (const item of node._errors) {
+        entries.push({
+          path: path.join('.') || '<request>',
+          code: item?.code ?? null,
+          message: safeMessage(item, 400)
+        });
+      }
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (key === '_errors') continue;
+      visit(value, [...path, key]);
+    }
+  };
+  visit(root);
+  return entries.length > 0 ? entries.slice(0, 64) : null;
+}
+
 async function discord(method, pathname, body) {
   if (!token) fail('DISCORD_BOT_TOKEN is required for --apply and was not read from source or artifacts');
   const response = await fetch(`${API}${pathname}`, {
@@ -85,7 +109,8 @@ function errorSummary(error) {
     return {
       status: error.status,
       code: error.code ?? null,
-      message: safeMessage(error.payload, error.status)
+      message: safeMessage(error.payload, error.status),
+      validation_errors: validationErrors(error.payload)
     };
   }
   return { message: String(error?.message ?? error).slice(0, 240) };
