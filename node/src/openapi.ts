@@ -464,10 +464,33 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // composer uses). Truth classes are carried through so asserted history can
   // never masquerade as verified current truth.
   const memoryRecall = createMemoryRecall({ workspace });
-  const roleQuery = (task: string, role?: string): string => {
-    if (role === 'planner') return `${task} objective architecture constraints accepted plan failed approach`;
-    if (role === 'reviewer') return `${task} acceptance criteria evidence verification tests known risks diff`;
-    return `${task} accepted plan implementation files tests failed approach`;
+  const stageEmphasis = (stage: string | null): string => {
+    if (stage === 'IMPLEMENTATION') return ' implementation files tests accepted plan';
+    if (stage === 'VALIDATION') return ' acceptance criteria evidence verification tests';
+    return '';
+  };
+  const currentStage = async (): Promise<string | null> => {
+    try {
+      const state = await workflowService?.load();
+      return state?.stage ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const renderWorkflowContext = async (): Promise<string> => {
+    try {
+      const state = await workflowService?.load();
+      if (!state) return '';
+      return `project: ${state.project_id} | stage: ${state.stage} | revision: ${state.revision} | previous: ${state.previous_stage ?? 'none'}`;
+    } catch {
+      return '';
+    }
+  };
+  const roleQuery = (task: string, role?: string, stage?: string | null): string => {
+    const emphasis = stageEmphasis(stage ?? null);
+    if (role === 'planner') return `${task} objective architecture constraints accepted plan failed approach${emphasis}`;
+    if (role === 'reviewer') return `${task} acceptance criteria evidence verification tests known risks diff${emphasis}`;
+    return `${task} accepted plan implementation files tests failed approach${emphasis}`;
   };
   // Reviewer evidence intelligence: canonical verification records only (the
   // evidence owner), never worker prose. Reviewer-only by design - the coder
@@ -495,7 +518,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const renderMemoryContext = async (task?: string, role?: string): Promise<string> => {
     if (!task) return '';
     try {
-      const result = await memoryRecall.recall(roleQuery(task, role), { topN: 5, budgetTokens: 300 });
+      const stage = await currentStage();
+      let result = await memoryRecall.recall(roleQuery(task, role, stage), { topN: 5, budgetTokens: 300 });
+      if (result.hits.length === 0 && stage !== null) result = await memoryRecall.recall(roleQuery(task, role, null), { topN: 5, budgetTokens: 300 });
       if (result.hits.length === 0) return '';
       return result.hits.map(hit => `- [${hit.validity ?? 'unrecorded'}] ${String(hit.summary ?? hit.intent ?? '').slice(0, 240)} (${hit.ts})`).join('\n');
     } catch {
@@ -524,13 +549,16 @@ export async function buildRoutes(workspace: string, version: string, options: B
     indexProvider: async (task?: string, role?: string) => {
       if (!task || indexServiceRef === null) return '';
       try {
-        const context = await workspaceContext(workspace, indexServiceRef as never, roleQuery(task, role));
+        const stage = await currentStage();
+        let context = await workspaceContext(workspace, indexServiceRef as never, roleQuery(task, role, stage));
+        if (context === null && stage !== null) context = await workspaceContext(workspace, indexServiceRef as never, roleQuery(task, role, null));
         return context?.block ?? '';
       } catch {
         return '';
       }
     },
     evidenceProvider: async (_task?: string, role?: string) => renderVerificationContext(role),
+    workflowProvider: async () => renderWorkflowContext(),
     onSessionEnd: async ({ session_id, outcome, passed, status, evidence_file }) => {
       try {
         const { refreshed } = await memoryService.digest();

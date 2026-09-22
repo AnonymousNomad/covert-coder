@@ -1,0 +1,34 @@
+{
+  "stages": {
+    "IMPLEMENTATION": {
+      "start_status": 200,
+      "state_read": "IMPLEMENTATION",
+      "workflow_block_present": true,
+      "workflow_block_line": "project: stage-fixture | stage: IMPLEMENTATION | revision: 3 | previous: DESIGN",
+      "system_chars": 13609,
+      "fact_hits": {
+        "plan": true,
+        "implementation": true,
+        "failed": true,
+        "tests": true,
+        "evidence": true,
+        "risks": true
+      }
+    },
+    "VALIDATION": {
+      "start_status": 200,
+      "state_read": "VALIDATION",
+      "workflow_block_present": true,
+      "workflow_block_line": "project: stage-fixture | stage: VALIDATION | revision: 3 | previous: IMPLEMENTATION",
+      "system_chars": 13530,
+      "fact_hits": {
+        "plan": true,
+        "implementation": true,
+        "failed": true,
+        "tests": true,
+        "evidence": true,
+        "risks": true
+      }
+    }
+  }
+}

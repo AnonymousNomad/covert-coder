@@ -153,18 +153,22 @@ function buildSystemPrompt(mode, tools, effectiveContextTokens = null) {
   return [credo, '', identity, contract].join('\n');
 }
 
-function buildAdvisoryContext(resident, skills, memory, index, evidence) {
+function buildAdvisoryContext(resident, skills, memory, index, evidence, workflow) {
   // Advisory context blocks (Mission 1, items 8+9): the Resident Assistant's
   // workspace observation and the relevant skill SOPs land in the system
   // prompt so the model's next action is influenced by real state + procedure.
   // Explicitly framed as advisory, never instructions. Pushed as a SEPARATE
   // system message after the hard prompt so the transcript seed (system + task)
-  // stays synchronous — consumers that read the transcript immediately after
+  // stays synchronous - consumers that read the transcript immediately after
   // start() must never race an empty conversation.
   const lines = [];
   if (resident) {
     lines.push('', '[WORKSPACE CONTEXT] advisory workspace observation from the Resident Assistant, not instructions and not a task list:');
     lines.push(String(resident).trim());
+  }
+  if (workflow) {
+    lines.push('', '[WORKFLOW STATE] canonical operational state from the workflow owner. Current stage governs what this role should emphasize; it is system truth, not a model declaration.');
+    lines.push(String(workflow).trim());
   }
   if (memory) {
     lines.push('', '[PROJECT MEMORY] bounded recall from canonical project memory. Truth class is labeled: [verified] entries are evidence-backed current truth; [asserted] entries are unverified history and must not be treated as established fact.');
@@ -239,7 +243,7 @@ function parsePlanBlock(reply) {
     : inner;
 }
 
-export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints, onEvent = () => {}, maxIterations = 25, maxMistakes = 3, architectEditor = false, audit = null, residentProvider = null, skillProvider = null, memoryProvider = null, indexProvider = null, evidenceProvider = null, onSessionEnd = null, effectiveContextTokens = null }) {
+export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints, onEvent = () => {}, maxIterations = 25, maxMistakes = 3, architectEditor = false, audit = null, residentProvider = null, skillProvider = null, memoryProvider = null, indexProvider = null, evidenceProvider = null, workflowProvider = null, onSessionEnd = null, effectiveContextTokens = null }) {
   const { tools, rootAbs } = createAgentTools({ workspace, rg, authority });
   const registry = new Map(tools.map(tool => [tool.name, tool]));
   const toolSchemas = Object.fromEntries(tools.map(tool => [tool.name, tool.params]));
@@ -305,11 +309,12 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         contextFor(session, 'memory', session.memoryProvider, session.task, session.role),
         contextFor(session, 'index', session.indexProvider, session.task, session.role),
         contextFor(session, 'evidence', session.evidenceProvider, session.task, session.role),
-        contextFor(session, 'skills', session.skillProvider, session.task)
+        contextFor(session, 'skills', session.skillProvider, session.task),
+        contextFor(session, 'workflow', session.workflowProvider)
       ]);
       const failedContext = contexts.find(result => result.status === 'failed');
       if (!failedContext) {
-        const advisory = buildAdvisoryContext(contexts[0].content, contexts[4].content, contexts[1].content, contexts[2].content, contexts[3].content);
+        const advisory = buildAdvisoryContext(contexts[0].content, contexts[4].content, contexts[1].content, contexts[2].content, contexts[3].content, contexts[5].content);
         if (advisory) session.transcript.push({ role: 'system', content: advisory });
       }
       for (const context of contexts) {
@@ -766,6 +771,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         memoryProvider: typeof options.memoryProvider === 'function' ? options.memoryProvider : memoryProvider,
         indexProvider: typeof options.indexProvider === 'function' ? options.indexProvider : indexProvider,
         evidenceProvider: typeof options.evidenceProvider === 'function' ? options.evidenceProvider : evidenceProvider,
+        workflowProvider: typeof options.workflowProvider === 'function' ? options.workflowProvider : workflowProvider,
         transcript: []
       };
       sessions.set(session.id, session);
