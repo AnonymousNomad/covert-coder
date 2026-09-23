@@ -29,7 +29,7 @@ const SAMPLER_FLAGS: Record<string, string> = {
   mirostat_tau: '--mirostat-tau', mirostat_eta: '--mirostat-eta', seed: '--seed'
 };
 
-function readProfileSidecar(file: string): { samplers?: Record<string, number>; runtime?: Record<string, number | boolean> } {
+function readProfileSidecar(file: string): { samplers?: Record<string, number>; runtime?: Record<string, number | boolean | string | Record<string, string | number | boolean>> } {
   try {
     return JSON.parse(readFileSync(`${file}.profile.json`, 'utf8'));
   } catch {
@@ -57,7 +57,7 @@ export function resolveLlamaBinary(workspace: string): { path: string; vulkan: b
   return null;
 }
 
-function samplerArgs(profile: ReturnType<typeof readProfileSidecar>): string[] {
+export function samplerArgs(profile: ReturnType<typeof readProfileSidecar>): string[] {
   const args: string[] = [];
   for (const [key, flag] of Object.entries(SAMPLER_FLAGS)) {
     const value = profile.samplers?.[key];
@@ -66,7 +66,31 @@ function samplerArgs(profile: ReturnType<typeof readProfileSidecar>): string[] {
   const runtime = profile.runtime || {};
   if (Number.isFinite(runtime.ngl as number)) args.push('-ngl', String(runtime.ngl));
   if (runtime.flash_attn === 1 || runtime.flash_attn === true) args.push('-fa');
+  if (runtime.template_kwargs !== undefined) args.push(...templateKwargsArgs(runtime.template_kwargs));
   return args;
+}
+
+// Generic profile-driven chat-template kwargs forwarding (H4-era bounded
+// support): `profile.runtime.template_kwargs` maps to llama-server
+// `--chat-template-kwargs '<json>'`, e.g. {"enable_thinking": false} for
+// SmolLM3 non-thinking mode. Plain object of string/number/boolean values;
+// anything else fails clearly instead of reaching the engine silently.
+export function templateKwargsArgs(kwargs: unknown): string[] {
+  if (typeof kwargs !== 'object' || kwargs === null || Array.isArray(kwargs)) {
+    throw new Error('profile runtime.template_kwargs must be a plain object');
+  }
+  const entries = Object.entries(kwargs as Record<string, unknown>);
+  if (entries.length === 0) throw new Error('profile runtime.template_kwargs must not be empty');
+  for (const [key, value] of entries) {
+    const kind = typeof value;
+    if (kind !== 'string' && kind !== 'number' && kind !== 'boolean') {
+      throw new Error(`profile runtime.template_kwargs.${key} must be a string, number or boolean`);
+    }
+    if (kind === 'number' && !Number.isFinite(value)) {
+      throw new Error(`profile runtime.template_kwargs.${key} must be a finite number`);
+    }
+  }
+  return ['--chat-template-kwargs', JSON.stringify(kwargs)];
 }
 
 export interface ModelEntry {
@@ -1040,11 +1064,11 @@ export class ModelRuntime {
   // Profile parity with the legacy /api/models/profile: presets + sampler /
   // runtime key validation (unknown keys -> BAD_REQUEST). Persists the next to
   // the same `${file}.profile.json` sidecar the engine layer reads.
-  async saveProfile(id: string, patch: { preset?: string; samplers?: Record<string, number>; runtime?: Record<string, number | string | boolean> }): Promise<{ id: string; preset: string; saved: true }> {
+  async saveProfile(id: string, patch: { preset?: string; samplers?: Record<string, number>; runtime?: Record<string, number | string | boolean | Record<string, string | number | boolean>> }): Promise<{ id: string; preset: string; saved: true }> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
     const SAMPLER_KEYS = ['temperature', 'top_k', 'top_p', 'min_p', 'mirostat', 'mirostat_tau', 'mirostat_eta', 'repeat_penalty', 'seed'];
-    const RUNTIME_KEYS = ['ngl', 'flash_attn', 'backend'];
+    const RUNTIME_KEYS = ['ngl', 'flash_attn', 'backend', 'template_kwargs'];
     const PRESETS: Record<string, Record<string, number>> = {
       precise: { temperature: 0.1, min_p: 0.05, repeat_penalty: 1.05, seed: 0 },
       balanced: { temperature: 0.7, top_p: 0.9, min_p: 0.05 },
@@ -1066,6 +1090,14 @@ export class ModelRuntime {
     } else if (patch.runtime !== undefined) {
       for (const [key, value] of Object.entries(patch.runtime)) {
         if (!RUNTIME_KEYS.includes(key)) throw new ModelRuntimeError('BAD_REQUEST', `unknown runtime key: ${key}`);
+        if (key === 'template_kwargs') {
+          try {
+            templateKwargsArgs(value);
+          } catch (error) {
+            throw new ModelRuntimeError('BAD_REQUEST', error instanceof Error ? error.message : String(error));
+          }
+          continue;
+        }
         if (key === 'backend' ? typeof value !== 'string' : typeof value !== 'number' || !Number.isFinite(value)) {
           throw new ModelRuntimeError('BAD_REQUEST', `runtime ${key} has invalid type`);
         }
