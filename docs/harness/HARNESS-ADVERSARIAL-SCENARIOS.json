@@ -1,0 +1,88 @@
+{
+  "schema": "covert.harness-review-adversarial-scenarios.v1",
+  "review_base": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "execution_mode": "read_trace_only",
+  "implementation_authorized": false,
+  "scenarios": [
+    {
+      "id": "partial-admission",
+      "severity": "P1",
+      "scenario": "resource check, authority consumption, dispatch and durable result do not settle as one record",
+      "current_behavior": "PARTIAL",
+      "evidence": ["common/contracts/admission.ts", "node/src/services/execution-authority.mjs:286-315"],
+      "required_truth": "attempt cannot be retried until admission/effect state is reconciled"
+    },
+    {
+      "id": "duplicate-execution",
+      "severity": "P0",
+      "scenario": "reuse an approved operation or replay a consumed mutation",
+      "current_behavior": "OPERATION_PATH_PROTECTED; ATTEMPT_PATH_NOT_UNIFIED",
+      "evidence": ["node/src/services/execution-authority.mjs:221-224", "tests/arch/execution-authority.test.ts"],
+      "required_truth": "zero duplicate effect and attempt-scoped evidence"
+    },
+    {
+      "id": "uncertain-mutation-timeout",
+      "severity": "P0",
+      "scenario": "child times out after an unknown side effect",
+      "current_behavior": "PARTIAL; kill/taskkill issued without exact descendant observation",
+      "evidence": ["node/src/services/agent-tools.mjs:232-279"],
+      "required_truth": "UNKNOWN effect blocks blind retry and records ownership/quiescence evidence"
+    },
+    {
+      "id": "wrong-attempt-evidence",
+      "severity": "P1",
+      "scenario": "verification or receipt points at another session/task's evidence",
+      "current_behavior": "PARTIAL; receipt filters task/run IDs but has no sealed attempt envelope",
+      "evidence": ["common/contracts/provenance.ts:44-65", "node/src/services/provenance-ledger.ts:69-113"],
+      "required_truth": "every evidence reference carries exact attempt and project/workflow revision"
+    },
+    {
+      "id": "stale-verification",
+      "severity": "P0",
+      "scenario": "old passing evidence is reused after mutation",
+      "current_behavior": "REQUIRES FUTURE ATTEMPT-SCOPED BINDING",
+      "evidence": ["node/src/services/agent-loop.mjs:623-684"],
+      "required_truth": "verifier input is current-state and current-attempt bound"
+    },
+    {
+      "id": "attempt-contamination",
+      "severity": "P0",
+      "scenario": "Attempt B inherits Attempt A's patch, temp files, processes, ports, or environment",
+      "current_behavior": "PARTIAL; no default worktree/sandbox lifecycle for AgentLoop",
+      "evidence": ["node/src/services/agent-tools.mjs:232-279", "harness/sandbox.mjs:23-126"],
+      "required_truth": "comparison state is isolated or contamination is explicitly recorded"
+    },
+    {
+      "id": "model-context-drift",
+      "severity": "P1",
+      "scenario": "same nominal task runs with different context/Skill/model settings without being recorded",
+      "current_behavior": "PARTIAL; source statuses exist, content identity does not",
+      "evidence": ["node/src/services/agent-loop.mjs:300-328", "common/contracts/agent.ts:160-169"],
+      "required_truth": "sealed context/methodology/model fingerprint per attempt"
+    },
+    {
+      "id": "false-green-battery",
+      "severity": "P0",
+      "scenario": "requested test file is absent or zero tests execute but process exits zero",
+      "current_behavior": "GUARDED ELSEWHERE; legacy Harness checks do not count discovered tests",
+      "evidence": ["harness/checks.mjs:81-89", "scripts/battery-guard.mjs"],
+      "required_truth": "requested=discovered=executed and shortfall fails closed"
+    },
+    {
+      "id": "foreign-process-collision",
+      "severity": "P0",
+      "scenario": "cleanup terminates a process not owned by the attempt",
+      "current_behavior": "PARTIAL; AgentLoop taskkill is not exact-generation proof",
+      "evidence": ["node/src/services/agent-tools.mjs:250-259"],
+      "required_truth": "foreign process untouched; owned generation/quiescence proven"
+    },
+    {
+      "id": "harness_sync_acceptance_drift",
+      "severity": "P0",
+      "scenario": "model-specific calibration lowers verification or security requirements",
+      "current_behavior": "NOT_IMPLEMENTED",
+      "evidence": ["docs/harness/HARNESS-SYNC-ARCHITECTURE.md"],
+      "required_truth": "profile may alter presentation/budget only; acceptance and Authority remain invariant"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "schema": "covert.harness-review-trace.v1",
+  "review_base": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "implementation_authorized": false,
+  "entries": [
+    {
+      "transition": "request_to_session",
+      "status": "PROVEN",
+      "source": ["node/src/routes/agent.ts", "node/src/services/agent-loop.mjs"],
+      "input": "AgentStartRequest",
+      "output": "in-memory session_id",
+      "truth_owner": "AgentLoop plus route Authority",
+      "persistence": "trajectory only at terminal state",
+      "gap": "no durable attempt identity before first model/tool action"
+    },
+    {
+      "transition": "context_assembly",
+      "status": "PARTIAL",
+      "source": ["node/src/services/agent-loop.mjs", "node/src/services/chat-context.ts"],
+      "input": "Resident/memory/index/evidence/Skill/workflow provider text",
+      "output": "system-message projection",
+      "truth_owner": "Context providers and workflow/Skill owners",
+      "persistence": "source/status events; no content manifest",
+      "gap": "no immutable envelope id/hash/order/truncation/exclusion record"
+    },
+    {
+      "transition": "model_selection",
+      "status": "PARTIAL",
+      "source": ["node/src/services/model-router.ts", "node/src/openapi.ts"],
+      "input": "role and route availability",
+      "output": "chat text",
+      "truth_owner": "Model Router/provider/runtime",
+      "persistence": "caller worker hint only",
+      "gap": "actual route, provider, runtime, artifact and usage are not joined to the attempt"
+    },
+    {
+      "transition": "resource_admission",
+      "status": "PARTIAL",
+      "source": ["common/contracts/admission.ts", "node/src/services/resource-admission.ts"],
+      "input": "kind and memory/VRAM/CPU requirement",
+      "output": "START/QUEUE/REFUSE plus probe evidence",
+      "truth_owner": "Resource Admission",
+      "persistence": "response/audit by caller",
+      "gap": "no reservation, attempt binding, expiry or settlement"
+    },
+    {
+      "transition": "authority_operation",
+      "status": "PROVEN",
+      "source": ["node/src/server.ts", "node/src/services/execution-authority.mjs"],
+      "input": "exact route/method/task/body descriptor",
+      "output": "one-shot operation and execution handle",
+      "truth_owner": "Execution Authority",
+      "persistence": "audit event required before state transitions",
+      "gap": "operation is not a complete mission attempt"
+    },
+    {
+      "transition": "tool_execution",
+      "status": "PARTIAL",
+      "source": ["node/src/services/agent-loop.mjs", "node/src/services/agent-tools.mjs"],
+      "input": "normalized tool args and optional Authority handle",
+      "output": "tool result/log",
+      "truth_owner": "Tool owner plus Authority for mutations",
+      "persistence": "audit and terminal trajectory",
+      "gap": "child/process/port/environment/effect ownership is incomplete"
+    },
+    {
+      "transition": "attempt_completion",
+      "status": "PROVEN",
+      "source": ["node/src/services/agent-loop.mjs:396-400"],
+      "input": "model completion tool call",
+      "output": "done event then verification path",
+      "truth_owner": "AgentLoop for lifecycle; Veritas for acceptance",
+      "persistence": "trajectory/verification/provenance",
+      "gap": "done is not accepted and may coexist with unavailable verification"
+    },
+    {
+      "transition": "verification",
+      "status": "PARTIAL",
+      "source": ["node/src/services/agent-loop.mjs", "harness/veritas.mjs"],
+      "input": "tool log and generic execution projection",
+      "output": "failed/unavailable live agent verification or generic Veritas result",
+      "truth_owner": "Veritas",
+      "persistence": "verification JSON/audit/provenance",
+      "gap": "live AgentLoop has no requirement-bound artifact/test verifier"
+    },
+    {
+      "transition": "continuation",
+      "status": "PARTIAL",
+      "source": ["node/src/services/continuation-manager.ts", "node/src/services/worker-handoff.ts"],
+      "input": "trajectory/verification failure",
+      "output": "retry/switch/terminal decision and optional handoff",
+      "truth_owner": "Continuation policy and handoff service",
+      "persistence": "chain/handoff/failure files",
+      "gap": "new attempt/effect certainty is not one canonical admission"
+    },
+    {
+      "transition": "replay",
+      "status": "PARTIAL",
+      "source": ["daemon/replay-store.mjs", "node/src/services/agent-loop.mjs"],
+      "input": "metadata or trajectory",
+      "output": "listable metadata/inspectable transcript",
+      "truth_owner": "Replay/Provenance projections",
+      "persistence": "JSON/JSONL files",
+      "gap": "no exact environment/context/effect reconstruction"
+    },
+    {
+      "transition": "harness_sync",
+      "status": "ABSENT",
+      "source": ["review addendum", "no candidate runtime contract"],
+      "input": "model fingerprint and probes",
+      "output": "Capability Passport/Profile",
+      "truth_owner": "future calibration service and provenance",
+      "persistence": "not implemented",
+      "gap": "all calibration and synthesis contracts remain design-only"
+    }
+  ]
+}
