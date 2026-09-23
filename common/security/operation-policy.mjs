@@ -102,6 +102,7 @@ const HTTP_POLICY = new Map([
   ['POST /api/resource/admission', 'capability.read'],
   ['GET /api/provenance/runs', 'capability.read'], ['GET /api/provenance/run', 'capability.read'], ['GET /api/mission/receipt', 'capability.read'],
   ['GET /api/readiness', 'capability.read'],
+  ['GET /api/egress/manifest', 'capability.read'],
   ['GET /api/worker-handoff/context', 'capability.read'],
   // Failure continuation (Wave 6 reconciliation): reads are central rows; the
   // planning mutation carries its own route-owned descriptor.

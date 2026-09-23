@@ -7472,6 +7472,128 @@
         }
       }
     },
+    "/api/egress/manifest": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "doctrine": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "capabilities": {
+                      "maxItems": 32,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "classification": {
+                            "type": "string",
+                            "enum": [
+                              "PACKAGED_LOCAL",
+                              "OS_PROVIDED",
+                              "OPTIONAL_EXTERNAL",
+                              "CLOUD_ONLY",
+                              "MISSING_LOCAL_EQUIVALENT"
+                            ]
+                          },
+                          "detail": {
+                            "type": "string",
+                            "maxLength": 300
+                          },
+                          "egress_host": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "consent": {
+                            "type": "string",
+                            "enum": [
+                              "local_only",
+                              "opted_in",
+                              "not_configured"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "classification",
+                          "detail",
+                          "egress_host",
+                          "consent"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "recent_external_activity": {
+                      "type": "object",
+                      "properties": {
+                        "events": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "last_at": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 40
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "providers": {
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 120
+                          }
+                        }
+                      },
+                      "required": [
+                        "events",
+                        "last_at",
+                        "providers"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "generated_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "doctrine",
+                    "capabilities",
+                    "recent_external_activity",
+                    "generated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/experts": {
       "get": {
         "responses": {

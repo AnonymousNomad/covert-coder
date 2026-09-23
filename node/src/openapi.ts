@@ -126,6 +126,8 @@ import { ModelRuntime } from './services/model-runtime.ts';
 import { createHealthSupervisor } from './services/health-supervisor.ts';
 import { createReadinessService } from './services/readiness.ts';
 import { routesForReadiness } from './routes/readiness.ts';
+import { createEgressManifest } from './services/egress-manifest.ts';
+import { routesForEgressManifest } from './routes/egress-manifest.ts';
 import { GitService } from './services/git-service.mjs';
 import type { Logger } from './services/logger.ts';
 import type { EventHub } from './events.ts';
@@ -671,6 +673,17 @@ export async function buildRoutes(workspace: string, version: string, options: B
       }
     })
   });
+  const egressManifest = createEgressManifest({
+    workspace,
+    consentEnabled: () => byokService.getConsent() === true,
+    providerIds: () => {
+      try {
+        return secretStore.listProviderIds();
+      } catch {
+        return [];
+      }
+    }
+  });
   const readinessService = createReadinessService({
     healthSnapshot: async () => {
       const snapshot = await readinessSupervisor.snapshot();
@@ -791,6 +804,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForResourceAdmission(resourceAdmission),
     ...routesForProvenance(provenanceLedger),
     ...routesForReadiness(readinessService),
+    ...routesForEgressManifest(egressManifest),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the

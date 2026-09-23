@@ -1,0 +1,62 @@
+{
+  "battery_id": "p1-integration",
+  "started_at": "2026-09-23T13:22:03.762Z",
+  "requested_files": [
+    "tests/arch/health-supervisor.test.ts",
+    "tests/arch/resource-admission.test.ts",
+    "tests/arch/provenance.test.ts",
+    "tests/arch/readiness.test.ts",
+    "tests/arch/doctor-truth.test.ts",
+    "tests/arch/egress-manifest.test.ts",
+    "tests/arch/route-authority-coverage.test.ts",
+    "tests/arch/openapi-drift.test.ts",
+    "tests/arch/contracts.test.ts"
+  ],
+  "file_exists": [
+    {
+      "file": "tests/arch/health-supervisor.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/resource-admission.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/provenance.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/readiness.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/doctor-truth.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/egress-manifest.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/route-authority-coverage.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/openapi-drift.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/contracts.test.ts",
+      "exists": true
+    }
+  ],
+  "observed_tests": 52,
+  "pass": 52,
+  "fail": 0,
+  "skip": 0,
+  "exit_code": 0,
+  "expected_tests": null,
+  "verdict": "PASS",
+  "failure_reasons": [],
+  "output_tail": "✔ no requirement fields -> START with honest evidence (1.0137ms)\n✔ route serves the canonical decision over real machine memory (1398.5885ms)\n{\"routes\":233,\"rawOwnership\":{\"PUBLIC\":1,\"AUTHORITY_CONTROL\":4,\"ENROLLED_CENTRAL\":134,\"ENROLLED_DESCRIPTOR\":74},\"finalDispositions\":{\"PUBLIC\":1,\"AUTHORITY_CONTROL\":4,\"ENROLLED_CENTRAL\":134,\"ENROLLED_DESCRIPTOR\":74,\"MIGRATION-WAIVED\":20,\"CONFLICTING\":0,\"UNCLASSIFIED\":0},\"waiver\":20}\n✔ every externally reachable TS route has exactly one deliberate authority disposition (500.7538ms)\nℹ tests 52\nℹ suites 0\nℹ pass 52\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 5719.1517"
+}
