@@ -5,7 +5,7 @@ Last verified: 2026-09-23 (after P0.8 freeze). Purpose: reconstruct the mission 
 ## Current state
 
 ```
-current_sha:        (this commit — P0 FREEZE)
+current_sha:        cfedd3d (P0 FREEZE — includes contracts drift fix)
 branch:             audit/wiring-ledger
 origin:             github.com/AnonymousNomad/covert-coder
 phase:              P0 CLOSED -> P1 QUEUE (not started)
@@ -61,3 +61,4 @@ foreign processes touched:  0
 - `task_id` for worker-handoff create must be a canonical session id (trajectory-backed).
 - Kimi live proof ENVIRONMENT-BLOCKED (no Kimi Code entitlement); moonshot builtin path recorded.
 - Foreign engines (main worktree LFM2.5, ports 8097/8194) must never be killed.
+- CI red on 12b9519/8f02d7f: stale common/openapi.json after continuation/handoff route adds; fixed by regenerating (cfedd3d). Lesson: regression batches must include tests/arch/openapi-drift.test.ts.
