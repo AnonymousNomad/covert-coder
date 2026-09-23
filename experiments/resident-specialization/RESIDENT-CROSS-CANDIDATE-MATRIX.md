@@ -32,3 +32,17 @@ Covert (and if so, which layer).
 
 No candidate-specific hacks. Any amplification ships to every compatible Resident
 model and reruns affected comparisons.
+
+## HARNESS-SYNC LESSON (recorded per accepted directive)
+
+`	ext
+INTERVENTION:
+  explicit obligation projection
+RESULT:
+  NO BENEFIT / HARMFUL on tested Granite compound task
+LESSON:
+  model-specific Harness adaptation may require removing interventions,
+  not adding them
+`'n
+Harness-mode attribution placeholder for future Model Capability Passports.
+
