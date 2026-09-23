@@ -32,8 +32,9 @@
     {
       "id": "granite-3.3-2b",
       "model": "ibm-granite/granite-3.3-2b-instruct-GGUF Q4_K_M (1545303328 b)",
-      "download": "STARTED",
-      "screen": "NOT_STARTED"
+      "download": "DONE (sha256 ac71e9e32c0bea919b409c5918f69ca74339854b0319c5065e4e9fb6d95c4852, 1545303328 B, GGUF v3)",
+      "screen": "SCREENED 9/20 SCREEN_FAIL (COMPOUND 0/2 repeats across 3 families; 3 containment escapes found + repaired; battery 14/14)",
+      "verdict": "SCREEN_FAIL; amplification threshold met; projection A/B pending"
     },
     {
       "id": "smollm3-3b",
@@ -88,6 +89,23 @@
         "phi-4-mini",
         "fable5"
       ],
+      "permanent_resident": "VACANT"
+    },
+    "resume_point_4": [
+      "1) confirm live containment of the widened fabricated-status pattern:",
+      "   AIDE_DEV_ONLY=dev-comm-01 AIDE_CANDIDATE_FILE=granite-3.3-2b-instruct-Q4_K_M.gguf AIDE_CANDIDATE_LABEL=granite-comm01 node --experimental-strip-types experiments/resident-specialization/run-dev.mjs  (expect UNUSABLE)",
+      "2) model-neutral amplification A/B (authorized; projections wired): rerun Granite and Terminal-SFT with AIDE_SEAT_PROJECTIONS=1 and compare compound/authority/retrieval vs the baselines",
+      "3) continue pool: SmolLM3 3B non-thinking (download ggml-org Q4_K_M), Phi-4-mini community GGUF, fable5 if resolvable",
+      "4) best candidates proceed: full DEV -> tool roundtrip -> resource -> frozen qualification"
+    ],
+    "state_4": {
+      "pool_screened": {
+        "macaw": "8/20",
+        "terminal_sft": "10/20",
+        "granite": "9/20"
+      },
+      "amplification": "AUTHORIZED + WIRED (AIDE_SEAT_PROJECTIONS=1); A/B pending",
+      "containment": "repaired (14/14, tsc PASS)",
       "permanent_resident": "VACANT"
     }
   },

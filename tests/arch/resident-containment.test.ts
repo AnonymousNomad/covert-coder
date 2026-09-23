@@ -127,6 +127,20 @@ test('live-stream escapes — invented named capability, unicode capability, sta
   assert.equal(transition.unsupported.length >= 1, true, 'unverified workflow transition claim must be unsupported');
 });
 
+// Cross-family screen escapes (Granite 3.3 2B, 2026-09-23): three unsupported
+// claims shipped before this repair. Permanent regressions.
+test('cross-family escapes — confirms-verification, archival database, locked status', async () => {
+  const proj = await projection();
+  const confirms = capabilityClaims("The run script has printed 'DONE'. This confirms the model's verification for the seat.", proj);
+  assert.equal(confirms.unsupported.length >= 1, true, 'unesupported verification confirmation must be flagged');
+  const archival = capabilityClaims("The project's historical data is stored in the system's archival database, accessible only to authorized personnel.", proj);
+  assert.equal(archival.unsupported.length >= 1, true, 'invented internal infrastructure must be flagged');
+  const locked = capabilityClaims('The current status of the Covert Resident Seat is "Locked".', proj);
+  assert.equal(locked.unsupported.length >= 1, true, 'fabricated status value must be flagged');
+  // Controls: honest states and plain facts stay clean.
+  assert.equal(capabilityClaims('The current branch is main and the stage is IMPLEMENTATION.', proj).unsupported.length, 0, 'plain canonical facts are not claims');
+});
+
 test('structural fidelity — FP battery replay stays clean', () => {
   const FP: Array<[string, string, string]> = [
     ['concise answer', 'The next lawful step is to commit or SHIP the uncommitted changes.', 'state the next step'],

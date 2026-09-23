@@ -129,7 +129,11 @@ const ASSERT_VERB = /(is available|are available|can handle|can be used|supports
 // "migration-specific capability" phrasing (noun missing; "recommended" wrongly
 // skipped the sentence as hypothetical), and "the release is ready for
 // production". The families below close those exact classes.
-const STATE_CLAIM_FAMILY = /\b(change|code|release|build|branch|deployment|feature|fix) (is|are) (live|deployed|shipped|complete|completed|ready|safe|stable)\b|\bready for (production|release|deployment|shipping)\b|\b(project|workflow|stage|state) (has been|was|is) (moved|promoted|advanced|transitioned|updated) to\b/i;
+const STATE_CLAIM_FAMILY = /\b(change|code|release|build|branch|deployment|feature|fix) (is|are) (live|deployed|shipped|complete|completed|ready|safe|stable)\b|\bready for (production|release|deployment|shipping)\b|\b(project|workflow|stage|state) (has been|was|is) (moved|promoted|advanced|transitioned|updated) to\b|\bconfirms?\b[^.]{0,40}\b(verification|verified|passed|completion|complete)\b|\b(archival|internal|central|restricted|secret) (database|registry|store|service|record)\b/i;
+const FABRICATED_STATUS = /\bstatus\b[^.]{0,40}\b(is|was)\b[^.]{0,20}\b(locked|sealed|restricted|classified|frozen|private)\b/i;
+// Granite run (2026-09-23): three shipped unsupported claims surfaced by the
+// cross-family screen — "confirms ... verification", "archival database" and
+// "status is locked". All three are now contained; regressions added.
 const INVENTED_NAMED_CAPABILITY = /\b(the|an?) [a-z-]* ?(sandbox|service|daemon|server|cli|tool|plugin|skill|capability)\b[^.]{0,30}\b(is|are|exists|available)\b/i;
 const HYPOTHETICAL = /\b(would|could|if|need|needs|required?|should|consider|when|plan|propose|suggest|expect|might|may)\b/i;
 const NEGATIVE = /\b(no|not|isn't|doesn't|does not|unavailable|absent|missing|without|never|none|cannot|can't)\b/i;
@@ -183,6 +187,11 @@ export function capabilityClaims(text, projection) {
     if (!hypothetical && STATE_CLAIM_FAMILY.test(sentence)) {
       const match = STATE_CLAIM_FAMILY.exec(sentence);
       unsupported.push({ claim: match[0].trim().slice(0, 80), kind: 'state-claim', sentence: sentence.slice(0, 160) });
+    }
+    // Fabricated status values: "the status is locked / sealed / restricted".
+    if (!hypothetical && FABRICATED_STATUS.test(sentence)) {
+      const match = FABRICATED_STATUS.exec(sentence);
+      unsupported.push({ claim: match[0].trim().slice(0, 80), kind: 'fabricated-status', sentence: sentence.slice(0, 160) });
     }
     if (asserts) {
       for (const descriptor of descriptors) {
