@@ -10,6 +10,7 @@
 - [x] Provenance and release manifests generated separately from candidate.
 - [x] Known limitations are explicit.
 - [x] Third-party notice evidence and human-review items are explicit.
+- [x] The open Tauri/glib advisory is scoped to desktop packaging and recorded.
 - [x] Source quickstart and verification instructions are prepared.
 - [ ] Permanent Resident qualification and dependent gates.
 - [ ] Packaged desktop installer certification.

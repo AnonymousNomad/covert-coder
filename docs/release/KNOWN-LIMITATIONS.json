@@ -12,7 +12,7 @@
     { "id": "migration-waivers", "status": "DOCUMENTED", "text": "The candidate retains documented architecture-decision waivers for selected legacy chat/model routes." },
     { "id": "external-providers", "status": "OPT_IN", "text": "External providers require explicit enrollment and consent; local operation remains the default." },
     { "id": "kimi-proof", "status": "ENVIRONMENT_BLOCKED", "text": "Kimi live proof was blocked on the certification machine by missing entitlement." },
-    { "id": "tauri-glib", "status": "POST_RELEASE_TRACKED", "text": "The desktop/Tauri transitive glib issue remains a separate packaging-lane investigation and is not a source-core certification claim." },
+    { "id": "tauri-glib", "status": "DESKTOP_PACKAGING_BLOCKER", "text": "GitHub Dependabot alert GHSA-wrw7-89jp-8q8g observes glib 0.18.5 through the Linux-capable Tauri desktop graph; no packaged desktop binary is certified, so this remains a separate packaging-lane blocker and not a source-core claim." },
     { "id": "sbom-checksums", "status": "ASSEMBLY_IN_PROGRESS", "text": "The source-release SBOM, provenance manifest, release manifest, and SHA-256 checksums are generated in the separate assembly artifact set and must be refreshed if the release input changes." }
   ]
 }

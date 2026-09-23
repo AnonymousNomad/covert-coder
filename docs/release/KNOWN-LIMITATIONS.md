@@ -21,8 +21,11 @@ turn pending or post-candidate work into shipped behavior.
   the local-first source core.
 - **Kimi live proof:** blocked on the certification machine by entitlement, not
   silently promoted to a pass.
-- **Tauri/glib:** tracked for the desktop packaging lane; this source-core
-  record does not certify an installer.
+- **Tauri/glib:** GitHub Dependabot alert `GHSA-wrw7-89jp-8q8g` observes
+  `glib 0.18.5` through the desktop graph. It blocks certification of an
+  affected packaged desktop path until resolved or explicitly mitigated; this
+  source-core record does not certify an installer. See
+  [the exact disposition](TAURI-GLIB-DISPOSITION.md).
 - **Release artifacts:** the SBOM and checksums in the assembly set are bound to
   this SHA. They must be regenerated for any new source candidate.
 
