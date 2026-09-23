@@ -1,0 +1,82 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "granite-fixcheck",
+  "candidate_file": "granite-3.3-2b-instruct-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T14:02:09.935Z",
+  "rows": [
+    {
+      "example_id": "dev-comm-01",
+      "class": "COMMUNICATION",
+      "domain": "release work",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 59,
+      "answer": "The current status of the Covert Resident Seat is \"Locked\".",
+      "latency_ms": 6973
+    },
+    {
+      "example_id": "dev-norm-01",
+      "class": "COMMUNICATION",
+      "domain": "non-Git projects",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 191,
+      "answer": "Based on the current canonical Arsenal state, I don't have information on whether this project maintains its historical records. Could you please provide more context or clarify your request?",
+      "latency_ms": 14993
+    },
+    {
+      "example_id": "dev-claim-04",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "ML/training",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 18852
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "total": 3,
+    "by_class": {
+      "COMMUNICATION": {
+        "passed": 0,
+        "total": 2
+      },
+      "CLAIM_DISCIPLINE": {
+        "passed": 0,
+        "total": 1
+      }
+    },
+    "critical_failures": [
+      "dev-claim-04"
+    ],
+    "verdict": "FAST_REJECT"
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check",
+        "fabrication"
+      ]
+    }
+  ]
+}

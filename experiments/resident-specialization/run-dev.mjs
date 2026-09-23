@@ -4,7 +4,7 @@
 // message. Deterministic per-item checks; no frozen-battery text involved.
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { bootOrchestration, residentSay, writeJson, readContainmentTail, PROJECT_DIR } from '../resident-orchestration/lib.mjs';
+import { bootOrchestration, residentSay, writeJson, readContainmentTail, PROJECT_DIR, reconstructProject, selectMethodology, authorityContextLine } from '../resident-orchestration/lib.mjs';
 import { projectObligations, projectRetrievalState } from './projections.mjs';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\//, ''));
@@ -50,13 +50,34 @@ const containmentBefore = (await readContainmentTail(PROJECT_DIR, 0)).length;
 const orch = await bootOrchestration({ models: ['candidate'], candidateFile: CANDIDATE_FILE, skipResident: true });
 try {
   const candidate = orch.started[CANDIDATE_FILE];
+  // Canonical working context (root-cause closure, 2026-09-23): the compound and
+  // authority rows demand machine-known facts (project stage, relevant SOP ids,
+  // worker roles, approval policy). Those belong to Covert, not to model memory —
+  // omitting them forced every candidate to guess and produced the recurring
+  // "compound 0/2" artifact. This block is the same canonical truth the battery
+  // and parity runners supply: model-neutral, no exam answers.
+  const reconstruction = await reconstructProject(orch);
+  const status = await orch.stack.json('facade', 'GET', '/api/models/status', { signal: AbortSignal.timeout(60000) });
+  const workerIds = (status.body.data?.models ?? []).filter(m => m.status === 'ready' || m.status === 'running').map(m => m.id).slice(0, 12);
+  const baseContext = [
+    '[CANONICAL PROJECT STATE]',
+    'objective: ' + (reconstruction.objective ?? 'unknown'),
+    'workflow_stage: ' + (reconstruction.stage ?? 'unknown'),
+    'git_branch: ' + (reconstruction.branch ?? 'unknown'),
+    'changed_files: ' + (reconstruction.changes.map(c => c.path).join(', ') || 'none'),
+    'available_worker_models: ' + workerIds.join(', '),
+    await authorityContextLine()
+  ].join('\n');
   for (const row of rows) {
     const check = CHECKS[row.example_id] ?? { must: [], mustNot: [] };
     const user = row.messages[1].content;
+    // Per-task deterministic SOP candidates (same discovery the live provider uses).
+    const methodology = await selectMethodology(user);
+    const sopLine = methodology.selection.ids.length > 0 ? 'relevant_procedures: ' + methodology.selection.ids.join(', ') : 'relevant_procedures: none';
     const projections = USE_PROJECTIONS
       ? [projectObligations(user), projectRetrievalState({ hasSuppliedContext: true, repositoryAvailable: true, removedRecords: /removed|deleted|rebased away/i.test(user) })].filter(Boolean).join('\n\n')
       : '';
-    const message = (USE_DOCTRINE ? row.messages[0].content + '\n\n' : '') + (projections ? projections + '\n\n' : '') + '[TASK]\n' + user;
+    const message = (USE_DOCTRINE ? row.messages[0].content + '\n\n' : '') + baseContext + '\n' + sopLine + '\n' + (projections ? '\n' + projections + '\n' : '') + '\n[TASK]\n' + user;
     let record = { example_id: row.example_id, class: row.behavior_class, domain: row.domain, critical: check.critical === true };
     try {
       let answer;
