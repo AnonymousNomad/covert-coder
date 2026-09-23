@@ -243,7 +243,7 @@ function parsePlanBlock(reply) {
     : inner;
 }
 
-export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints, onEvent = () => {}, maxIterations = 25, maxMistakes = 3, architectEditor = false, audit = null, residentProvider = null, skillProvider = null, memoryProvider = null, indexProvider = null, evidenceProvider = null, workflowProvider = null, onSessionEnd = null, effectiveContextTokens = null }) {
+export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints, onEvent = () => {}, maxIterations = 25, maxMistakes = 3, architectEditor = false, audit = null, residentProvider = null, skillProvider = null, memoryProvider = null, indexProvider = null, evidenceProvider = null, workflowProvider = null, onSessionEnd = null, effectiveContextTokens = null, provenanceLedger = null }) {
   const { tools, rootAbs } = createAgentTools({ workspace, rg, authority });
   const registry = new Map(tools.map(tool => [tool.name, tool]));
   const toolSchemas = Object.fromEntries(tools.map(tool => [tool.name, tool.params]));
@@ -686,6 +686,29 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       session.evidenceErrors.push(`verification event: ${published.error}`);
       verification.state = 'errored';
     }
+    if (provenanceLedger !== null && typeof provenanceLedger.record === 'function') {
+      try {
+        await provenanceLedger.record({
+          run_id: session.id,
+          task_id: session.id,
+          task: String(session.task ?? '').slice(0, 500),
+          mode: session.mode,
+          worker: session.worker ?? null,
+          handoff_id: session.handoff_id ?? null,
+          chat_source: session.chat_source ?? null,
+          result: outcome,
+          error: session.error === null || session.error === undefined ? null : String(session.error).slice(0, 300),
+          verification_state: verification.state,
+          evidence_file: verification.evidence_file ?? null,
+          trajectory_file: verification.trajectory_file ?? null,
+          iterations: session.iterations,
+          started_at: session.startedAt,
+          finished_at: new Date().toISOString()
+        });
+      } catch (error) {
+        session.evidenceErrors.push(`provenance ledger: ${String(error?.message ?? error)}`);
+      }
+    }
     if (typeof onSessionEnd === 'function') {
       try {
         await onSessionEnd({ session_id: session.id, outcome, passed: false, status: verification.state, evidence_file: verification.evidence_file });
@@ -739,6 +762,9 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         id: randomUUID(),
         task,
         mode: mode === 'plan' ? 'plan' : 'act',
+        worker: request.worker ?? null,
+        handoff_id: request.handoff_id ?? null,
+        chat_source: request.chat_source ?? null,
         state: 'running',
         iterations: 0,
         mistakeCount: 0,

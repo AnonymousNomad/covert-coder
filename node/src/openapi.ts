@@ -81,6 +81,8 @@ import { createOpenCodeBridge, parseOpenCodeModelRef } from './services/opencode
 import { createWorkerHandoffService } from './services/worker-handoff.ts';
 import { createResourceAdmission } from './services/resource-admission.ts';
 import { routesForResourceAdmission } from './routes/resource-admission.ts';
+import { createProvenanceLedger } from './services/provenance-ledger.ts';
+import { routesForProvenance } from './routes/provenance.ts';
 import { createContinuationManager } from './services/continuation-manager.ts';
 import { routesForWorkerHandoff } from './routes/worker-handoff.ts';
 import { routesForContinuation } from './routes/continuation.ts';
@@ -540,12 +542,14 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // provider resolves through this ref so the agent loop can be constructed
   // first without duplicating the index service.
   let indexServiceRef: { hybridSearch(query: string, maxHits?: number): Promise<unknown> } | null = null;
+  const provenanceLedger = createProvenanceLedger({ workspace });
   const agentLoop = createAgentLoop({
     workspace,
     authority: options.authority,
     rg: rgService.available() ? rgService : null,
     checkpoints: agentCheckpoints,
     audit: auditTrail,
+    provenanceLedger,
     chatFn: options.agentChatFn ?? (async messages => {
       const selection = await modelRouter.routeForRole('chat');
       const result = await modelRouter.chat(selection.modelId, messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })), {});
@@ -744,6 +748,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForWorkerHandoff(workerHandoffService, workspace),
     ...routesForContinuation(continuationManager, workspace),
     ...routesForResourceAdmission(resourceAdmission),
+    ...routesForProvenance(provenanceLedger),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the

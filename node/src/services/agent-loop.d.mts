@@ -38,6 +38,7 @@ export declare function createAgentLoop(options: {
   evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null;
   workflowProvider?: () => Promise<string> | string | null;
   onSessionEnd?(info: { session_id: string; outcome: string; passed: boolean; status: string; evidence_file: string | null }): Promise<void> | void;
+  provenanceLedger?: { record(run: unknown): Promise<unknown> | unknown } | null;
   effectiveContextTokens?: number | null;
 }): AgentLoopService;
 

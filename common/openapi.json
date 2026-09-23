@@ -11567,6 +11567,261 @@
         ]
       }
     },
+    "/api/mission/receipt": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mission_id": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "workspace": {
+                      "type": "string",
+                      "maxLength": 1000
+                    },
+                    "recorded_at": {
+                      "type": "string"
+                    },
+                    "runs": {
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "run_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "task_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "task": {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "mode": {
+                            "type": "string",
+                            "maxLength": 20
+                          },
+                          "worker": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "handoff_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "chat_source": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "result": {
+                            "type": "string",
+                            "enum": [
+                              "done",
+                              "error",
+                              "aborted"
+                            ]
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verification_state": {
+                            "type": "string",
+                            "maxLength": 40
+                          },
+                          "evidence_file": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "trajectory_file": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "iterations": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "started_at": {
+                            "type": "string"
+                          },
+                          "finished_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "run_id",
+                          "task_id",
+                          "task",
+                          "mode",
+                          "worker",
+                          "handoff_id",
+                          "chat_source",
+                          "result",
+                          "error",
+                          "verification_state",
+                          "evidence_file",
+                          "trajectory_file",
+                          "iterations",
+                          "started_at",
+                          "finished_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "handoffs": {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "handoff_id": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "from": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "to": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "state": {
+                            "type": "string",
+                            "maxLength": 40
+                          },
+                          "objective": {
+                            "type": "string",
+                            "maxLength": 2000
+                          }
+                        },
+                        "required": [
+                          "handoff_id",
+                          "from",
+                          "to",
+                          "state",
+                          "objective"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "verification": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "supported_conclusion": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 600
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "limitations": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 300
+                      }
+                    },
+                    "evidence_refs": {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 500
+                      }
+                    }
+                  },
+                  "required": [
+                    "mission_id",
+                    "workspace",
+                    "recorded_at",
+                    "runs",
+                    "handoffs",
+                    "verification",
+                    "supported_conclusion",
+                    "limitations",
+                    "evidence_refs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
     "/api/model/ready": {
       "get": {
         "responses": {
@@ -15282,6 +15537,338 @@
                   "text"
                 ],
                 "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/provenance/run": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "type": "object",
+                      "properties": {
+                        "run_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "task_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "task": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "mode": {
+                          "type": "string",
+                          "maxLength": 20
+                        },
+                        "worker": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "handoff_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "chat_source": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 40
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "done",
+                            "error",
+                            "aborted"
+                          ]
+                        },
+                        "error": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 300
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "verification_state": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "evidence_file": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "trajectory_file": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "iterations": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "started_at": {
+                          "type": "string"
+                        },
+                        "finished_at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "run_id",
+                        "task_id",
+                        "task",
+                        "mode",
+                        "worker",
+                        "handoff_id",
+                        "chat_source",
+                        "result",
+                        "error",
+                        "verification_state",
+                        "evidence_file",
+                        "trajectory_file",
+                        "iterations",
+                        "started_at",
+                        "finished_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "run"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
+    "/api/provenance/runs": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "runs": {
+                      "maxItems": 500,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "run_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "task_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "task": {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "mode": {
+                            "type": "string",
+                            "maxLength": 20
+                          },
+                          "worker": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "handoff_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "chat_source": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "result": {
+                            "type": "string",
+                            "enum": [
+                              "done",
+                              "error",
+                              "aborted"
+                            ]
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verification_state": {
+                            "type": "string",
+                            "maxLength": 40
+                          },
+                          "evidence_file": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "trajectory_file": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "iterations": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "started_at": {
+                            "type": "string"
+                          },
+                          "finished_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "run_id",
+                          "task_id",
+                          "task",
+                          "mode",
+                          "worker",
+                          "handoff_id",
+                          "chat_source",
+                          "result",
+                          "error",
+                          "verification_state",
+                          "evidence_file",
+                          "trajectory_file",
+                          "iterations",
+                          "started_at",
+                          "finished_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "corrupt_lines": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "runs",
+                    "total",
+                    "corrupt_lines"
+                  ],
+                  "additionalProperties": false
+                }
               }
             }
           }
