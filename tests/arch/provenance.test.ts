@@ -124,8 +124,9 @@ test('LIVE: agent session finalize appends one run and the routes project it', a
   const address = http.address() as { port: number };
   const owner = await pairFixture(server, `http://127.0.0.1:${address.port}`);
   try {
-    const headers = await owner.approve('POST', '/api/agent/start', { task: 'provenance live run', mode: 'act' }, 'prov-start');
-    const start = await owner.request('/api/agent/start', { method: 'POST', headers, body: JSON.stringify({ task: 'provenance live run', mode: 'act' }), signal: AbortSignal.timeout(120000) });
+    const startBody = { task: 'provenance live run', mode: 'act', worker: { worker: 'local:auto', provider: 'local', model: 'auto', role: 'act' } };
+    const headers = await owner.approve('POST', '/api/agent/start', startBody, 'prov-start');
+    const start = await owner.request('/api/agent/start', { method: 'POST', headers, body: JSON.stringify(startBody), signal: AbortSignal.timeout(120000) });
     const startBody = await start.json();
     assert.equal(start.status, 200);
     const sessionId = startBody.data.session_id as string;
@@ -140,6 +141,10 @@ test('LIVE: agent session finalize appends one run and the routes project it', a
     assert.equal(listed.data.runs.length, 1);
     assert.equal(listed.data.runs[0].run_id, sessionId);
     assert.equal(listed.data.runs[0].result, 'done');
+    // Worker objects normalize to the descriptor's worker string (regression:
+    // an object here previously failed the strict contract and the run was
+    // silently dropped into evidence errors).
+    assert.equal(listed.data.runs[0].worker, 'local:auto');
     const receipt = await (await owner.request(`/api/mission/receipt?id=${encodeURIComponent(sessionId)}`, { signal: AbortSignal.timeout(30000) })).json();
     assert.equal(receipt.data.runs.length, 1);
     assert.ok(['failed', 'incomplete', 'unavailable', 'errored'].includes(receipt.data.verification));

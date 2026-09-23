@@ -1,0 +1,59 @@
+{
+  "workspace": "E:\\pip_temp\\p10-golden-QodQD0",
+  "mission": "golden-verified-mission",
+  "steps": {
+    "readiness": 200,
+    "start": 200,
+    "provenance": 200,
+    "receipt": 200
+  },
+  "verdict": {
+    "readiness_truthful": true,
+    "local_engine_ran": true,
+    "skill_sop_selected": true,
+    "authority_approved": true,
+    "real_execution": true,
+    "veritas_evidence": true,
+    "provenance_ledger": true,
+    "mission_receipt": true,
+    "no_unsupported_completion": true
+  },
+  "readiness": {
+    "ready": true,
+    "golden": true,
+    "models": "READY"
+  },
+  "session_id": "8faccf81-8ce4-4cfa-b73a-0c6838a877b5",
+  "final_state": "done",
+  "verification_state": "unavailable",
+  "evidence_file": "8faccf81-8ce4-4cfa-b73a-0c6838a877b5.verification.json",
+  "iterations": 3,
+  "file_fixed": true,
+  "context_blocks": [
+    "[WORKSPACE CONTEXT]",
+    "[SKILL CONTEXT]"
+  ],
+  "skill_context_present": true,
+  "resident_context_present": false,
+  "verification_file_exists": true,
+  "trajectory_file_exists": true,
+  "provenance_run": {
+    "result": "done",
+    "worker": "local:auto",
+    "verification_state": "unavailable",
+    "evidence_file": "8faccf81-8ce4-4cfa-b73a-0c6838a877b5.verification.json"
+  },
+  "receipt": {
+    "runs": 1,
+    "verification": "unavailable",
+    "supported_conclusion": null,
+    "limitations": [
+      "no run reached verified state; committed process exit is not test evidence",
+      "no canonical worker handoffs recorded for this mission"
+    ],
+    "evidence_refs": [
+      "8faccf81-8ce4-4cfa-b73a-0c6838a877b5.verification.json",
+      "8faccf81-8ce4-4cfa-b73a-0c6838a877b5.traj.json"
+    ]
+  }
+}

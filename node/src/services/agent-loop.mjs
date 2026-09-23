@@ -762,7 +762,9 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         id: randomUUID(),
         task,
         mode: mode === 'plan' ? 'plan' : 'act',
-        worker: request.worker ?? null,
+        worker: request.worker === undefined || request.worker === null ? null
+          : typeof request.worker === 'string' ? request.worker
+          : String(request.worker.worker ?? 'unknown'),
         handoff_id: request.handoff_id ?? null,
         chat_source: request.chat_source ?? null,
         state: 'running',
