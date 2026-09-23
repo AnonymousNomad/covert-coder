@@ -26,8 +26,10 @@
     {
       "id": "fable5",
       "model": "AyoubChLin/LFM2.5-2.6B-fable5-coding-agent-GGUF",
-      "download": "BLOCKED_404_FILENAME (repo/file name needs resolving; candidate C only)",
-      "screen": "NOT_STARTED"
+      "download": "DONE (AyoubChLin/LFM2.5-2.6B-fable5-coding-agent-GGUF Q4_K_M; sha256 d2a4299e5240f278ace3963b57c05ec6754d95352d0a0bda0a791eeb6f9f472e; 1674455040 B)",
+      "screen": "SCREENED 8/20 FAST_REJECT (5 contained interventions)",
+      "verdict": "SCREEN_FAIL — critical failures dev-auth-01/02/04, dev-claim-02",
+      "evidence": "experiments/resident-orchestration/results/DEV-fable5.json"
     },
     {
       "id": "granite-3.3-2b",
@@ -47,14 +49,16 @@
     {
       "id": "phi-4-mini",
       "model": "microsoft/Phi-4-mini-instruct-GGUF",
-      "download": "GATED_401 (use a community GGUF if reached)",
-      "screen": "NOT_STARTED"
+      "download": "DONE (bartowski/microsoft_Phi-4-mini-instruct-GGUF Q4_K_M; sha256 01999f17c39cc3074afae5e9c539bc82d45f2dd7faa3917c66cbef76fce8c0c2; 2491874688 B)",
+      "screen": "SCREENED 6/20 FAST_REJECT (ngl 99 profile; 2 contained interventions; no engine artifacts)",
+      "verdict": "SCREEN_FAIL — critical failures dev-auth-01/02/04, dev-claim-02/04",
+      "evidence": "experiments/resident-orchestration/results/DEV-phi4-mini.json"
     },
     {
       "id": "uncensored-control",
       "model": "LFM2.5-2.6B uncensored/abliterated",
       "download": "CONTROL_ONLY (after viable release candidates)",
-      "screen": "NOT_STARTED"
+      "screen": "NOT_TESTED — control only; no viable release candidate emerged"
     },
     {
       "id": "smollm3-3b",
@@ -165,5 +169,7 @@
     "result": "PASS (425c)",
     "classification": "HARNESS ARTIFACT resolved",
     "matrix_note": "corrected screen 8/20"
-  }
+  },
+  "pool_status": "EXHAUSTED",
+  "final_decomposition": "experiments/resident-specialization/POOL-EXHAUSTED-FINAL-DECOMPOSITION.md (compound 0/12 across six candidates; containment 0 escapes; projection intervention harmful on Granite)"
 }
