@@ -627,3 +627,142 @@ HARNESS SYNC: architecturally justified; implementation depends on sealed eviden
 CROSS-MODEL SYNTHESIS: coherent future analysis layer; no runtime implemented
 IMPLEMENTATION AUTHORIZED: NO
 ```
+
+## Addendum: Live Execution Observatory
+
+### Product disposition
+
+**Live Execution is an intended Covert product requirement.** The Resident is
+the conversational front door, but the operator must be able to watch governed
+engineering work as it occurs. This is not a UI activity-theater layer. It is a
+canonical execution-event projection.
+
+```text
+Resident
+→ mission
+→ sealed attempt
+→ canonical Harness/Authority/Resource/Veritas events
+→ editor + terminal + workers + verification
+→ Mission Receipt
+```
+
+The UI must show work without showing private chain-of-thought, hidden
+reasoning tokens, credentials, authorization headers, unsafe prompts, or
+unredacted sensitive environment data.
+
+### Current reality
+
+The candidate has AgentLoop source/status events, tool logs, trajectories,
+Authority audit events, verification JSON and Provenance rows. They are useful
+ingredients but not one ordered, mission/attempt-scoped, reconnectable event
+stream. A frontend cannot currently prove that a displayed command, file
+mutation, worker, model, test count or Veritas result is the canonical fact.
+
+Therefore the current candidate does not support a truthful full Live Execution
+surface without the sealed attempt/event boundary. The UI must not infer state
+from random processes, spinners, timestamps, model claims or cached `RUNNING`
+status.
+
+### Canonical event ownership
+
+The proposed event source is:
+
+```text
+Context / Skills / Workflow / Router facts
+→ sealed execution envelope
+→ Harness / Authority / Resource observations
+→ Provenance/event projection
+→ Live Execution UI
+```
+
+The event stream is a projection of canonical subsystem facts, not a second
+ledger. Each event needs event ID/schema, mission/project/workflow/stage,
+attempt lineage, monotonic sequence, timestamps, source owner, event kind, safe
+payload, causal/evidence/Authority references and redaction status.
+
+The UI may cache a snapshot and reconnect cursor. It may not write canonical
+execution state.
+
+### Required observable facts
+
+The first-class projection must support, when actually observed:
+
+```text
+mission/stage and concurrency
+worker role and actual model/provider/runtime
+Standard vs Synchronized Harness/profile
+Skill/SOP selection
+resource decision and queue reason
+file reads, writes, diffs and effect uncertainty
+terminal command, cwd, bounded output, exit and duration
+Authority request/result/consumption/denial
+handoff, retry and repair lineage
+test requested/discovered/executed counts
+Veritas evidence and verdict
+egress placement and credential owner reference
+Mission Receipt readiness
+```
+
+Every visible fact must be traceable to canonical evidence. `COMPLETE` and
+`VERIFIED` remain separate. A worker claim, exit code, process existence or
+event count cannot create a green result.
+
+### Pause and cancel
+
+Pause/cancel are not frontend-owned process kills. They are governed requests
+with explicit semantics for pending admission, active model calls, active
+tools, partial mutations, verification and quiescence. If effect state becomes
+uncertain, the attempt becomes `UNKNOWN` and blind continuation/retry is
+blocked. No button should ship as operational until this contract is proven.
+
+### Ghost Code and Mission Receipt
+
+Live Execution and Ghost Code consume the same bounded execution facts. The
+timeline supports observation/semantic replay where available; it never
+promises deterministic replay of stochastic model reasoning or silently
+re-executes mutations. A `MISSION_RECEIPT_READY` event must reference the same
+attempt/evidence IDs shown in the timeline. A receipt and timeline that tell
+different stories is a release defect.
+
+### Performance and privacy
+
+The transport needs snapshot-plus-cursor recovery, batching, backpressure,
+bounded terminal output, diff virtualization, and separate durable evidence
+from ephemeral rendering. Redaction happens before stream delivery and
+persistence. A disconnected UI labels the last snapshot `STALE`/`UNKNOWN` and
+never presents cached activity as current.
+
+### Smallest observability proof
+
+After the sealed attempt boundary exists, implement one real mission with:
+
+```text
+mission start
+→ worker/model selected
+→ Skill visible
+→ actual file read/write and diff
+→ actual terminal command/output
+→ Authority result
+→ test event with executed count
+→ Veritas result
+→ Mission Receipt
+```
+
+Acceptance is equality between each displayed fact and the canonical observed
+fact. The required result is:
+
+```text
+SHADOW EXECUTION SEMANTICS: 0
+```
+
+The complete observability contracts are in:
+
+```text
+docs/harness/LIVE-EXECUTION-OBSERVABILITY.md
+docs/harness/LIVE-EXECUTION-UX.md
+```
+
+The first implementation owner remains DeepSeek #1 for backend event emission,
+streaming, redaction, Provenance/Authority/Veritas integration and lifecycle
+semantics. Luna owns the UX contract, event requirements and independent
+certification. No implementation was performed in this review.

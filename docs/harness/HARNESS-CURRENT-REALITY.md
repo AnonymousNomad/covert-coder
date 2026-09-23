@@ -347,6 +347,51 @@ After a live AgentLoop attempt, the candidate cannot reliably answer all of:
 
 These are the signals the next architecture slice must make answerable.
 
+## Live Execution reality
+
+The candidate has ingredients for observability but not a canonical Live
+Execution stream:
+
+```text
+AgentLoop source/status events
+tool log and trajectory files
+Authority audit events
+verification JSON
+Provenance row
+```
+
+These are separate persistence/projection paths. They do not currently provide
+one mission/attempt-scoped, ordered event stream that a frontend can consume to
+show actual file, terminal, worker, Authority and Veritas activity. The
+candidate therefore cannot honestly support a full “watch the work” surface
+without either guessing from process/UI state or adding the sealed attempt and
+event boundary proposed in this review.
+
+Specific current limitations:
+
+- AgentLoop context events identify source/status, not an immutable delivered
+  Context Envelope.
+- Tool logs can describe calls and results, but are not a canonical streamed
+  event contract with durable sequence, mission/attempt identity and redaction
+  status.
+- File/process observations are not uniformly joined to an attempt or
+  observable effect certainty.
+- The current negative verification projection is useful fail-closed evidence,
+  but is not a live Veritas event stream or Mission Receipt join.
+- Pause/cancel behavior is not yet a proven safe lifecycle contract for active
+  model calls, tools, partial mutation or uncertain effects.
+
+The required Live Execution design is recorded in:
+
+```text
+docs/harness/LIVE-EXECUTION-OBSERVABILITY.md
+docs/harness/LIVE-EXECUTION-UX.md
+```
+
+The design treats the observatory as a frontend projection of canonical
+Harness/Authority/Resource/Veritas/Provenance facts. It does not create a UI
+truth system or expose private chain-of-thought.
+
 ## Model access and connection reality
 
 The candidate already has a useful but incomplete connection surface. It is not

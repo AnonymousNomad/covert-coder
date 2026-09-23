@@ -118,6 +118,27 @@ The record must distinguish:
 - independent verification;
 - accepted canonical result.
 
+## 4a. Live Execution event projection
+
+The lifecycle journal is also the future source for the Live Execution
+observatory. It should emit typed, ordered, redacted events with the same
+attempt/envelope identity. The UI consumes a snapshot plus sequence cursor; it
+does not infer state from processes, timers, model prose or local rendering.
+
+At minimum, the projection must make available when observed:
+
+```text
+mission/stage, context/Skill selection, worker/model/runtime,
+resource decision, Authority request/result, file/diff observations,
+terminal command/output/result, handoff/repair, test execution,
+Veritas evidence/verdict, terminal state, Mission Receipt reference
+```
+
+High-volume output may be streamed with bounded retention, but command identity,
+result, hashes/counts and evidence references remain durable where required.
+The event stream is not a second provenance store and cannot contain secrets,
+private chain-of-thought or hidden reasoning tokens.
+
 ## 5. Budget semantics
 
 Separate the roles:

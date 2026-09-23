@@ -26,6 +26,8 @@ projection or shadow implementation, not complete ownership.
 | Model Capability Passport | — | — | E (fingerprint/lineage validation) | — | O (verified observations) | — | Future canonical owner | R |
 | Synchronized Harness Profile | — | P (derived execution presentation) | E (invariant preservation) | — | O | — | Future policy projection | R |
 | Cross-Model Synthesis | D (analysis criteria) | P (recommendation) | — | — | O | — | Future analysis projection | R |
+| Canonical Execution Event Stream | — | — | E (ordering/redaction/scope) | — | O (subsystem facts) | — | Future journal/projection | R |
+| Live Execution UI | — | — | — | — | O (stream projection) | — | Ephemeral cache/cursor only | R |
 
 ## Candidate reality versus intended division
 
@@ -80,3 +82,7 @@ projection or shadow implementation, not complete ownership.
 - Model Capability Passports store attributable observations; Synchronized
   Profiles are derived policy projections; Cross-Model Synthesis analyzes
   canonical verified history. None becomes a second execution or truth system.
+- The Canonical Execution Event Stream is the ordered, redacted projection of
+  Harness/Authority/Resource/Veritas/Provenance facts. The Live Execution UI
+  only renders it and may keep a reconnect cursor; it cannot invent mission
+  state, permissions, execution, or verification.
