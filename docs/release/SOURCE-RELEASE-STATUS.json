@@ -1,0 +1,11 @@
+{
+  "schema": "covert.source-release-status.v1",
+  "release_name": "COVERT SOURCE RELEASE",
+  "core": "CERTIFIED",
+  "sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "installer": "NOT_CERTIFIED",
+  "permanent_resident": "PENDING_QUALIFICATION",
+  "capability_fabric": "POST_CANDIDATE",
+  "delegation": "POST_CANDIDATE",
+  "final_public_v1": "PENDING_RESIDENT_DEPENDENT_ACCEPTANCE"
+}

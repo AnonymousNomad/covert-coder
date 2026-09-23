@@ -1,0 +1,59 @@
+{
+  "schema": "covert.certified-dependency-baseline.v1",
+  "candidate_sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "candidate_branch": "audit/wiring-ledger",
+  "candidate_lockfile_sha256": "5E5DB8EC50247E517EF54F8521DA33502407F46E2E71AB79FC346B8B7A22AD6A",
+  "candidate_versions": {
+    "zod": "4.6.2",
+    "@types/node": "26.5.1",
+    "@playwright/test": "1.62.1",
+    "playwright": "1.62.1",
+    "playwright-core": "1.62.1"
+  },
+  "production_reconciliation": {
+    "production_branch": "covert-production",
+    "production_sha_observed": "f4da26b0b1c062dce8f3066f350f032dd3877ce4",
+    "candidate_production_merge_base": "a92eb996d438ba433916a886d3d1de084c71dd4f",
+    "candidate_commits_ahead_of_production": 49,
+    "production_commits_ahead_of_candidate": 3,
+    "candidate_contains_production_dependency_merges": false,
+    "production_dependency_merges_are_post_candidate": true
+  },
+  "dependabot_merges": [
+    {
+      "pull_request": 28,
+      "title": "chore(deps): bump zod from 4.6.2 to 4.6.5",
+      "base": "covert-production",
+      "merge_commit": "2ab607bb88454980866170baa4cae46edc61d04e",
+      "merged_at": "2026-09-23T12:25:17Z",
+      "resulting_version": "4.6.5",
+      "url": "https://github.com/AnonymousNomad/covert-coder/pull/28"
+    },
+    {
+      "pull_request": 29,
+      "title": "chore(deps-dev): bump @types/node from 26.5.1 to 26.6.1",
+      "base": "covert-production",
+      "merge_commit": "d1ec478f7246d9e9e462b9acb228ef5e1d34eea9",
+      "merged_at": "2026-09-23T12:36:58Z",
+      "resulting_version": "26.6.1",
+      "url": "https://github.com/AnonymousNomad/covert-coder/pull/29"
+    },
+    {
+      "pull_request": 27,
+      "title": "chore(deps-dev): bump @playwright/test from 1.62.1 to 1.63.0",
+      "base": "covert-production",
+      "merge_commit": "f4da26b0b1c062dce8f3066f350f032dd3877ce4",
+      "merged_at": "2026-09-23T13:18:09Z",
+      "resulting_version": "1.63.0",
+      "url": "https://github.com/AnonymousNomad/covert-coder/pull/27"
+    }
+  ],
+  "interpretation": "The earlier Dependabot merge report describes later covert-production history. The certification observed the older versions because the immutable candidate froze before those three production merges. Neither observation invalidates the other.",
+  "release_decision": {
+    "certified_source_baseline": "candidate_versions",
+    "newer_production_versions_included": false,
+    "rewrite_candidate": false,
+    "new_candidate_required_for_newer_baseline": true,
+    "status": "RECONCILED_NO_CANDIDATE_MUTATION"
+  }
+}
