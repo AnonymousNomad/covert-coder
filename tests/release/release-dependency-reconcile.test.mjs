@@ -113,3 +113,17 @@ test('flags a newer candidate version for explicit review', async () => {
     await rm(env.root, { recursive: true, force: true });
   }
 });
+
+test('fails closed on a package manifest and lockfile root mismatch', async () => {
+  const env = await setup();
+  try {
+    const lock = JSON.parse(await readFile(path.join(env.candidate, 'package-lock.json'), 'utf8'));
+    lock.packages[''].devDependencies['@playwright/test'] = '^1.62.0';
+    await writeFile(path.join(env.candidate, 'package-lock.json'), JSON.stringify(lock));
+    const result = await run(env.production, env.candidate);
+    assert.equal(result.code, 2);
+    assert.ok(parsed(result).issues.some((issue) => issue.code === 'LOCKFILE_DIVERGENCE' && issue.package === '@playwright/test'));
+  } finally {
+    await rm(env.root, { recursive: true, force: true });
+  }
+});
