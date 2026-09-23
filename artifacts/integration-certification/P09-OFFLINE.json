@@ -1,0 +1,83 @@
+{
+  "workspace": "E:\\pip_temp\\p09-offline-twO08w",
+  "steps": {
+    "byok_status": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "providers": [],
+          "routing": {
+            "plan": "local",
+            "act": "local",
+            "utility": "local"
+          },
+          "consent_enabled": false
+        }
+      }
+    },
+    "provider_attempt": {
+      "status": 403,
+      "body": {
+        "ok": false,
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "BYOK egress consent is disabled"
+        }
+      }
+    },
+    "local_start": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "session_id": "9830aeaa-a156-45ad-9daa-88321fbe724e"
+        }
+      }
+    }
+  },
+  "consent_enabled": false,
+  "local_final": {
+    "session_id": "9830aeaa-a156-45ad-9daa-88321fbe724e",
+    "state": "done",
+    "mode": "act",
+    "iterations": 1,
+    "mistake_count": 0,
+    "error": null,
+    "pending_approval": null,
+    "verification": {
+      "execution": "succeeded",
+      "state": "incomplete",
+      "passed": false,
+      "checks": [
+        {
+          "name": "execution",
+          "state": "passed",
+          "reason": "Completion reached with successful executed tools."
+        },
+        {
+          "name": "required-artifacts",
+          "state": "incomplete",
+          "reason": "No successful code artifact production was recorded."
+        },
+        {
+          "name": "required-tests",
+          "state": "unavailable",
+          "reason": "No independent requirement-bound test verifier is configured; command success is not test evidence."
+        }
+      ],
+      "evidence_file": "9830aeaa-a156-45ad-9daa-88321fbe724e.verification.json",
+      "trajectory_file": "9830aeaa-a156-45ad-9daa-88321fbe724e.traj.json",
+      "audit": "persisted",
+      "publication": "accepted",
+      "errors": []
+    }
+  },
+  "egress_lines": 0,
+  "verdict": {
+    "consent_disabled_truth": true,
+    "external_truthful_refusal": true,
+    "local_session_done": true,
+    "zero_remote_egress": true
+  }
+}
