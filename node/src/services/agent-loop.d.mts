@@ -12,7 +12,7 @@ export declare class AgentSessionError extends Error {
 }
 
 export interface AgentLoopService {
-  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null }): { session_id: string };
+  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null }): Promise<{ session_id: string }>;
   decide(sessionId: string, approvalId: string, decision: 'approve' | 'reject' | 'abort', execution?: ExecutionHandle): Promise<{ ok: boolean }>;
   status(sessionId: string): AgentStatusResponseT;
   list(): AgentStatusResponseT[];
@@ -39,6 +39,20 @@ export declare function createAgentLoop(options: {
   workflowProvider?: () => Promise<string> | string | null;
   onSessionEnd?(info: { session_id: string; outcome: string; passed: boolean; status: string; evidence_file: string | null }): Promise<void> | void;
   provenanceLedger?: { record(run: unknown): Promise<unknown> | unknown } | null;
+  attemptJournal?: {
+    admit(input: unknown): Promise<{ attempt_id: string }>;
+    assertAdmitted(attemptId: string): Promise<{ admitted: boolean; reason: string }>;
+    executionStarted(attemptId: string): Promise<void>;
+    bindContext(attemptId: string, sha256: string, blocks: string[]): Promise<{ drift: boolean }>;
+    effectObserved(attemptId: string, data: { tool: string; path: string | null; sha256: string | null; bytes: number | null }): Promise<void>;
+    effectUncertain(attemptId: string, data: { tool: string; path: string | null; error: string }): Promise<void>;
+    verificationStarted(attemptId: string): Promise<void>;
+    finalize(attemptId: string, data: { result: string; verification_state: string; accepted: boolean; failure_class: string | null; error: string | null }): Promise<void>;
+    noteMutationDispatch(attemptId: string, tool: string): void;
+    clearMutationDispatch(attemptId: string, tool: string): void;
+    uncertainAttempts: Set<string>;
+  } | null;
+  resourceAdmission?: { admit(request: unknown): Promise<{ decision: string; reason: string }> } | null;
   effectiveContextTokens?: number | null;
 }): AgentLoopService;
 

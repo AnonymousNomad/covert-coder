@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://covert.example/schemas/model-capability-passport.v1.json",
+  "title": "Covert Model Capability Passport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "passport_id", "fingerprint", "calibration", "observations", "limitations"],
+  "properties": {
+    "schema": {"const": "covert.model-capability-passport.v1"},
+    "passport_id": {"type": "string", "minLength": 1},
+    "fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model_id", "runtime", "adapter", "chat_template", "inference_config_digest"],
+      "properties": {
+        "provider": {"type": "string"},
+        "model_id": {"type": "string"},
+        "model_revision": {"type": ["string", "null"]},
+        "artifact_sha256": {"type": ["string", "null"]},
+        "quantization": {"type": ["string", "null"]},
+        "runtime": {"type": "string"},
+        "runtime_version": {"type": ["string", "null"]},
+        "adapter": {"type": "string"},
+        "adapter_version": {"type": ["string", "null"]},
+        "chat_template": {"type": "string"},
+        "inference_config_digest": {"type": "string"},
+        "machine_profile_digest": {"type": ["string", "null"]}
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "started_at", "completed_at", "environment_digest", "harness_version", "context_contract_version"],
+      "properties": {
+        "version": {"type": "string"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "completed_at": {"type": ["string", "null"], "format": "date-time"},
+        "environment_digest": {"type": "string"},
+        "harness_version": {"type": "string"},
+        "context_contract_version": {"type": "string"},
+        "skill_contract_version": {"type": ["string", "null"]},
+        "veritas_contract_version": {"type": ["string", "null"]}
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dimension", "status", "probe_ids", "sample_count", "confidence", "evidence_refs"],
+        "properties": {
+          "dimension": {"type": "string"},
+          "status": {"enum": ["OBSERVED", "INSUFFICIENT_EVIDENCE", "NOT_TESTED", "UNKNOWN", "INVALIDATED"]},
+          "probe_ids": {"type": "array", "items": {"type": "string"}},
+          "sample_count": {"type": "integer", "minimum": 0},
+          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+          "observed_behavior": {},
+          "raw_metrics": {"type": "object"},
+          "evidence_refs": {"type": "array", "items": {"type": "string"}},
+          "limitations": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "source_provenance": {"type": "array", "items": {"type": "string"}}
+  }
+}

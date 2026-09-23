@@ -9909,6 +9909,816 @@
         }
       }
     },
+    "/api/harness/attempt": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "envelope": {
+                      "type": "object",
+                      "properties": {
+                        "schema": {
+                          "type": "string",
+                          "const": "covert.attempt.v1"
+                        },
+                        "attempt_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "sealed": {
+                          "type": "boolean"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "sealed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "mission_id": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "project_id": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "task_id": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "workflow_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        },
+                        "stage_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        },
+                        "parent_attempt_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "handoff_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "continuation_chain_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "worker_role": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "worker_identity": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "worker_provider": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "worker_model": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "observed_model": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        },
+                        "runtime_profile": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        },
+                        "adapter_identity": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        },
+                        "context_envelope": {
+                          "type": "object",
+                          "properties": {
+                            "identity": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "UNKNOWN"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_RECORDED"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_APPLICABLE"
+                                }
+                              ]
+                            },
+                            "sha256": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 64
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "blocks": {
+                              "maxItems": 32,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            },
+                            "bound_at": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identity",
+                            "sha256",
+                            "blocks",
+                            "bound_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "skills": {
+                          "type": "object",
+                          "properties": {
+                            "identities": {
+                              "maxItems": 32,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 200
+                              }
+                            },
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "UNKNOWN"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_RECORDED"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_APPLICABLE"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "identities",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "capabilities": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 120
+                          }
+                        },
+                        "objective": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "acceptance_criteria": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        },
+                        "verification_requirements": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        },
+                        "resource_admission": {
+                          "type": "object",
+                          "properties": {
+                            "decision": {
+                              "type": "string",
+                              "enum": [
+                                "START",
+                                "QUEUE",
+                                "REFUSE_RESOURCE",
+                                "NOT_RECORDED"
+                              ]
+                            },
+                            "reason": {
+                              "type": "string",
+                              "maxLength": 600
+                            },
+                            "checked_at": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "decision",
+                            "reason",
+                            "checked_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "authority_scope": {
+                          "type": "object",
+                          "properties": {
+                            "owner": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "UNKNOWN"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_RECORDED"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_APPLICABLE"
+                                }
+                              ]
+                            },
+                            "operation_kind": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "UNKNOWN"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_RECORDED"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_APPLICABLE"
+                                }
+                              ]
+                            },
+                            "workspace": {
+                              "type": "string",
+                              "maxLength": 1000
+                            },
+                            "permit_identity": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "UNKNOWN"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_RECORDED"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_APPLICABLE"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "owner",
+                            "operation_kind",
+                            "workspace",
+                            "permit_identity"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "mutation_scope": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 120
+                          }
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "max_iterations": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "effective_context_tokens": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "timeout_ms": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "retry_bounds": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 500
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "UNKNOWN"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_RECORDED"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "NOT_APPLICABLE"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "max_iterations",
+                            "effective_context_tokens",
+                            "timeout_ms",
+                            "retry_bounds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "mode": {
+                          "type": "string",
+                          "maxLength": 20
+                        },
+                        "started_by": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "string",
+                              "const": "UNKNOWN"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_RECORDED"
+                            },
+                            {
+                              "type": "string",
+                              "const": "NOT_APPLICABLE"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "schema",
+                        "attempt_id",
+                        "sealed",
+                        "created_at",
+                        "sealed_at",
+                        "mission_id",
+                        "project_id",
+                        "task_id",
+                        "workflow_id",
+                        "stage_id",
+                        "parent_attempt_id",
+                        "handoff_id",
+                        "continuation_chain_id",
+                        "worker_role",
+                        "worker_identity",
+                        "worker_provider",
+                        "worker_model",
+                        "observed_model",
+                        "runtime_profile",
+                        "adapter_identity",
+                        "context_envelope",
+                        "skills",
+                        "capabilities",
+                        "objective",
+                        "acceptance_criteria",
+                        "verification_requirements",
+                        "resource_admission",
+                        "authority_scope",
+                        "mutation_scope",
+                        "budget",
+                        "mode",
+                        "started_by"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "ADMITTED",
+                        "RUNNING",
+                        "COMPLETED",
+                        "ACCEPTED",
+                        "FAILED",
+                        "ABORTED",
+                        "RECOVERED_NOT_STARTED",
+                        "RECOVERED_UNCERTAIN",
+                        "RECOVERED_MUTATED_UNVERIFIED",
+                        "RECOVERED_INCOMPLETE_ADMISSION"
+                      ]
+                    },
+                    "retry_safety": {
+                      "type": "string",
+                      "enum": [
+                        "SAFE_TO_RETRY",
+                        "UNCERTAIN_BLOCKED",
+                        "NEW_ATTEMPT_REQUIRED",
+                        "NOT_APPLICABLE"
+                      ]
+                    },
+                    "failure_class": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "ADMISSION_FAILURE",
+                            "RESOURCE_FAILURE",
+                            "AUTHORITY_FAILURE",
+                            "EXECUTION_FAILURE",
+                            "TOOL_FAILURE",
+                            "VERIFICATION_FAILURE",
+                            "RUNTIME_FAILURE",
+                            "UNKNOWN"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "recovery_note": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 600
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "maxItems": 500,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "seq": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "ts": {
+                            "type": "string"
+                          },
+                          "attempt_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "event": {
+                            "type": "string",
+                            "maxLength": 60
+                          },
+                          "data": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": [
+                                "string",
+                                "number",
+                                "boolean",
+                                "null"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "seq",
+                          "ts",
+                          "attempt_id",
+                          "event",
+                          "data"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "envelope",
+                    "state",
+                    "retry_safety",
+                    "failure_class",
+                    "recovery_note",
+                    "events"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/harness/attempts": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attempts": {
+                      "maxItems": 500,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "attempt_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "task_id": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "ADMITTED",
+                              "RUNNING",
+                              "COMPLETED",
+                              "ACCEPTED",
+                              "FAILED",
+                              "ABORTED",
+                              "RECOVERED_NOT_STARTED",
+                              "RECOVERED_UNCERTAIN",
+                              "RECOVERED_MUTATED_UNVERIFIED",
+                              "RECOVERED_INCOMPLETE_ADMISSION"
+                            ]
+                          },
+                          "retry_safety": {
+                            "type": "string",
+                            "enum": [
+                              "SAFE_TO_RETRY",
+                              "UNCERTAIN_BLOCKED",
+                              "NEW_ATTEMPT_REQUIRED",
+                              "NOT_APPLICABLE"
+                            ]
+                          },
+                          "sealed": {
+                            "type": "boolean"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "attempt_id",
+                          "task_id",
+                          "state",
+                          "retry_safety",
+                          "sealed",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "attempts",
+                    "total"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "responses": {
@@ -11816,6 +12626,17 @@
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 9007199254740991
+                          },
+                          "attempt_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "started_at": {
                             "type": "string"
@@ -15779,6 +16600,17 @@
                           "minimum": 0,
                           "maximum": 9007199254740991
                         },
+                        "attempt_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
                         "started_at": {
                           "type": "string"
                         },
@@ -15945,6 +16777,17 @@
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 9007199254740991
+                          },
+                          "attempt_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "started_at": {
                             "type": "string"

@@ -25,6 +25,7 @@ export const ProvenanceRun = z.strictObject({
   evidence_file: z.string().max(500).nullable(),
   trajectory_file: z.string().max(500).nullable(),
   iterations: z.number().int().gte(0),
+  attempt_id: z.string().max(200).nullable().optional(),
   started_at: z.string(),
   finished_at: z.string()
 });

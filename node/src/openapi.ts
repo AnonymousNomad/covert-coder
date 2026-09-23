@@ -82,6 +82,8 @@ import { createWorkerHandoffService } from './services/worker-handoff.ts';
 import { createResourceAdmission } from './services/resource-admission.ts';
 import { routesForResourceAdmission } from './routes/resource-admission.ts';
 import { createProvenanceLedger } from './services/provenance-ledger.ts';
+import { createAttemptJournal } from './services/attempt-journal.ts';
+import { routesForAttempts } from './routes/attempts.ts';
 import { routesForProvenance } from './routes/provenance.ts';
 import { createContinuationManager } from './services/continuation-manager.ts';
 import { routesForWorkerHandoff } from './routes/worker-handoff.ts';
@@ -548,6 +550,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // first without duplicating the index service.
   let indexServiceRef: { hybridSearch(query: string, maxHits?: number): Promise<unknown> } | null = null;
   const provenanceLedger = createProvenanceLedger({ workspace });
+  // HARNESS vNEXT H3 — durable attempt/admission journal around the live
+  // mutation path. Recovery classification runs once at construction.
+  const attemptJournal = createAttemptJournal({ workspace });
+  const resourceAdmission = createResourceAdmission();
+  void attemptJournal.recover().catch(() => {});
   const agentLoop = createAgentLoop({
     workspace,
     authority: options.authority,
@@ -555,6 +562,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     checkpoints: agentCheckpoints,
     audit: auditTrail,
     provenanceLedger,
+    attemptJournal,
+    resourceAdmission,
     chatFn: options.agentChatFn ?? (async messages => {
       const selection = await modelRouter.routeForRole('chat');
       const result = await modelRouter.chat(selection.modelId, messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })), {});
@@ -662,7 +671,6 @@ export async function buildRoutes(workspace: string, version: string, options: B
     }
   };
   const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
-  const resourceAdmission = createResourceAdmission();
   const readinessSupervisor = createHealthSupervisor({
     workspace,
     version,
@@ -803,6 +811,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForContinuation(continuationManager, workspace),
     ...routesForResourceAdmission(resourceAdmission),
     ...routesForProvenance(provenanceLedger),
+    ...routesForAttempts(attemptJournal),
     ...routesForReadiness(readinessService),
     ...routesForEgressManifest(egressManifest),
     ...routesForWorkbenches(new WorkbenchManager({

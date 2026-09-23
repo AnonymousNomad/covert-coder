@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://covert.example/schemas/synchronized-harness-profile.v1.json",
+  "title": "Covert Synchronized Harness Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "profile_id", "passport_id", "fingerprint", "policy", "derivation", "invariants"],
+  "properties": {
+    "schema": {"const": "covert.synchronized-harness-profile.v1"},
+    "profile_id": {"type": "string", "minLength": 1},
+    "passport_id": {"type": "string", "minLength": 1},
+    "fingerprint": {"type": "object", "additionalProperties": false, "required": ["digest"], "properties": {"digest": {"type": "string"}, "valid_until": {"type": ["string", "null"], "format": "date-time"}}},
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context_density": {"enum": ["COMPACT", "STANDARD", "DENSE", "UNKNOWN"]},
+        "obligation_projection": {"enum": ["EXPLICIT", "STANDARD", "UNKNOWN"]},
+        "decomposition": {"enum": ["ATOMIC", "MEDIUM", "LARGE", "UNKNOWN"]},
+        "capability_candidate_limit": {"type": ["integer", "null"], "minimum": 1},
+        "skill_projection": {"enum": ["COMPACT_STAGE_SPECIFIC", "STANDARD", "DEEP_ON_DEMAND", "UNKNOWN"]},
+        "retrieval_state": {"enum": ["EXPLICIT", "STANDARD", "UNKNOWN"]},
+        "reasoning_budget": {"type": "object", "additionalProperties": false, "properties": {"mode": {"type": ["string", "null"]}, "max_tokens": {"type": ["integer", "null"], "minimum": 1}, "source_observation_refs": {"type": "array", "items": {"type": "string"}}}},
+        "repair_budget": {"type": ["integer", "null"], "minimum": 0},
+        "output_contract": {"enum": ["STRUCTURED", "STANDARD", "UNKNOWN"]}
+      }
+    },
+    "derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "observation_refs", "derived_at"],
+      "properties": {"version": {"type": "string"}, "observation_refs": {"type": "array", "items": {"type": "string"}}, "derived_at": {"type": "string", "format": "date-time"}}
+    },
+    "invariants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_unchanged", "veritas_unchanged", "acceptance_unchanged", "isolation_unchanged", "standard_mode_available"],
+      "properties": {
+        "authority_unchanged": {"const": true},
+        "veritas_unchanged": {"const": true},
+        "acceptance_unchanged": {"const": true},
+        "isolation_unchanged": {"const": true},
+        "standard_mode_available": {"const": true}
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}
