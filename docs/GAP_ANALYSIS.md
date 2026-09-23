@@ -1,4 +1,4 @@
-# AIDE Gap Analysis — Becoming the Developer's Choice (2026-08-25)
+# Covert Coder Gap Analysis — Becoming the Developer's Choice (2026-08-25)
 
 Sources: Microsoft Research "To Copilot and Beyond: 22 AI Systems Developers
 Want Built" (860 devs, Apr 2026); JetBrains AI Pulse wave 2 (10,000 devs,

@@ -1,10 +1,10 @@
 cff-version: 1.2.0
-title: Covert Coder (AIDE Sovereign Workbench lineage)
+title: Covert Coder
 message: If you use Covert Coder in research or software development, please cite this repository.
 type: software
 authors:
   - family-names: AnonymousNomad
-    given-names: AIDE Contributors
+    given-names: Covert Coder Contributors
 repository-code: https://github.com/AnonymousNomad/covert-coder
 license: Apache-2.0
 version: 0.1.0-preflight
