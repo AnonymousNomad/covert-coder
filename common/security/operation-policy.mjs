@@ -100,6 +100,9 @@ const HTTP_POLICY = new Map([
   // (node/src/routes/worker-handoff.ts).
   ['GET /api/worker-handoff/list', 'capability.read'], ['GET /api/worker-handoff/get', 'capability.read'],
   ['GET /api/worker-handoff/context', 'capability.read'],
+  // Failure continuation (Wave 6 reconciliation): reads are central rows; the
+  // planning mutation carries its own route-owned descriptor.
+  ['GET /api/agent/continuations', 'capability.read'], ['GET /api/agent/continuation', 'capability.read'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/
