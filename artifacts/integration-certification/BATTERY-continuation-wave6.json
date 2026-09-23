@@ -1,0 +1,22 @@
+{
+  "battery_id": "continuation-wave6",
+  "started_at": "2026-09-23T01:41:08.068Z",
+  "requested_files": [
+    "tests/arch/failure-continuation.test.ts"
+  ],
+  "file_exists": [
+    {
+      "file": "tests/arch/failure-continuation.test.ts",
+      "exists": true
+    }
+  ],
+  "observed_tests": 10,
+  "pass": 10,
+  "fail": 0,
+  "skip": 0,
+  "exit_code": 0,
+  "expected_tests": 10,
+  "verdict": "PASS",
+  "failure_reasons": [],
+  "output_tail": "✔ restart: chains and failure records persist on a fresh stack (N/O/P) (177.631ms)\n✔ Journey 1: live local failure → governed switch → replacement completes the same task (1903.9889ms)\n✔ Journey 2: local-only failure with no eligible local replacement blocks with zero egress (1706.4326ms)\n✔ Journey 3: partial effect is not replayed; replacement continues from canonical state (2987.168ms)\nℹ tests 10\nℹ suites 0\nℹ pass 10\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 13575.6924"
+}
