@@ -19,8 +19,9 @@
     {
       "id": "terminal-sft",
       "model": "mradermacher/LFM2.5-2.6B-Terminal-SFT-GGUF Q4_K_M",
-      "download": "RESUMING (.part advancing)",
-      "screen": "PENDING"
+      "download": "DONE (sha256 8749cf68c231142c098c8cba4b334078677888849b78cd3076e68ed4926403b7, 1674455584 B, GGUF v3)",
+      "screen": "SCREENED 10/20 SCREEN_FAIL (containment PASS 1/1; retrieval 2/2; compound 0/2)",
+      "verdict": "SCREEN_FAIL — next candidate per pipeline"
     },
     {
       "id": "fable5",
@@ -31,7 +32,7 @@
     {
       "id": "granite-3.3-2b",
       "model": "ibm-granite/granite-3.3-2b-instruct-GGUF Q4_K_M (1545303328 b)",
-      "download": "NOT_STARTED",
+      "download": "STARTED",
       "screen": "NOT_STARTED"
     },
     {
@@ -70,6 +71,24 @@
       "macaw_corrected": "8/20 SCREEN_FAIL (claim-04 re-run PASS; containment PASS on both unsafe attempts)",
       "owned_processes": "0 after cleanup (download stopped, .part preserved)",
       "note": "qualification contract frozen; no Covert reopen without new evidence"
+    },
+    "resume_point_3": [
+      "1) Granite download (running or resume):",
+      "   node experiments/resident-specialization/download-with-resume.mjs https://huggingface.co/ibm-granite/granite-3.3-2b-instruct-GGUF/resolve/main/granite-3.3-2b-instruct-Q4_K_M.gguf E:\\aide-sovereign-workbench\\models\\granite-3.3-2b-instruct-Q4_K_M.gguf",
+      "2) screen: AIDE_CANDIDATE_FILE=granite-3.3-2b-instruct-Q4_K_M.gguf AIDE_CANDIDATE_LABEL=granite-3.3-2b node --experimental-strip-types experiments/resident-specialization/run-dev.mjs",
+      "3) then SmolLM3 3B (ggml-org Q4_K_M, non-thinking first), Phi-4-mini community GGUF, fable5 if resolvable",
+      "4) shared deficits to watch across families: compound 0/2 (two families), authority clarify-instead-of-state (two families) -> the model-neutral amplification candidates in RESIDENT-CROSS-CANDIDATE-MATRIX.md"
+    ],
+    "state_3": {
+      "macaw": "8/20 SCREEN_FAIL",
+      "terminal_sft": "10/20 SCREEN_FAIL (containment PASS)",
+      "pool_remaining": [
+        "granite-3.3-2b",
+        "smollm3-3b",
+        "phi-4-mini",
+        "fable5"
+      ],
+      "permanent_resident": "VACANT"
     }
   },
   "macaw_ttl_rerun": {
