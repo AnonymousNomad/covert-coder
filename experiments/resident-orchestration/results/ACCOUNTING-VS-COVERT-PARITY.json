@@ -1,0 +1,57 @@
+{
+  "schema": "accounting-vs-covert-parity-v1",
+  "at": "2026-09-22T19:34:38.997Z",
+  "composed": {
+    "message_count": 2,
+    "roles": [
+      {
+        "role": "system",
+        "tokens_approx": 774,
+        "head": "[AIDE harness 2.1.0 | tier:micro | ctx:2048] You are an expert software engineer working inside AIDE. Answer exactly what is asked - nothing",
+        "tail": "\",\"kind\":\"MODEL\",\"availability\":\"READY\",\"location\":\"local\",\"roles\":[\"chat\"],\"context_limit\":2048} (4 matching descriptors omitted by budget)"
+      },
+      {
+        "role": "user",
+        "tokens_approx": 98,
+        "head": "[CANONICAL PROJECT STATE] objective: make the version parser obey its test contract (all tests green). workflow_stage: IMPLEMENTATION git_br",
+        "tail": "-1.5b-instruct-q4_k_m relevant_procedures: resident.handle-verification-failure [TASK] Which git branch is the current project on? One line."
+      }
+    ],
+    "total_tokens_approx": 872,
+    "harness": {
+      "injected": true,
+      "tier": "micro",
+      "bytes": 205,
+      "version": "2.1.0",
+      "served_context_tokens": 2048,
+      "drift_reinjected": false,
+      "approx_prompt_tokens": 872,
+      "compose_ms": 819.45,
+      "memory_bytes": 0,
+      "context_hits": 0,
+      "context_degraded": false,
+      "context_tokens": 0,
+      "memory_recall_hits": 0,
+      "memory_recall_tokens": 0,
+      "memory_recall_degraded": true,
+      "awareness_present": true,
+      "awareness_tokens": 693
+    }
+  },
+  "direct_engine": {
+    "ready": true,
+    "finish_reason": "stop",
+    "reasoning_chars": 475,
+    "content_chars": 4,
+    "content_head": "main",
+    "usage": {
+      "completion_tokens": 103,
+      "prompt_tokens": 970,
+      "total_tokens": 1073,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "latency_ms": 54943
+  }
+}

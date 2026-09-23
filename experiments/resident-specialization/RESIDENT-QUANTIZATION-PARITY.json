@@ -1,0 +1,14 @@
+{
+  "schema": "resident-quantization-parity-v1",
+  "at": "2026-09-23T01:11:10.336Z",
+  "status": "NOT_REACHED_BLOCKED",
+  "blocker": "native LFM2.5-2.6B checkpoint unavailable + training stack broken + device class (see RESIDENT-TRAINING-PLAN.md hardware table)",
+  "stages": {
+    "SFT": "NOT_STARTED",
+    "DPO": "NOT_REQUIRED_YET",
+    "GRPO": "NOT_STARTED",
+    "quantization_parity": "NOT_REACHED",
+    "frozen_qualification": "NOT_REACHED",
+    "uncensored_control": "NOT_STARTED"
+  }
+}

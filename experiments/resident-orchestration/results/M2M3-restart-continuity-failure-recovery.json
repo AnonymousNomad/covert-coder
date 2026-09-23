@@ -1,0 +1,309 @@
+{
+  "mission": "M2M3-restart-continuity-failure-recovery",
+  "started_at": "2026-09-22T01:07:49.338Z",
+  "stages": [
+    {
+      "stage": "reconstruction-after-restart",
+      "stage_name": "IMPLEMENTATION",
+      "continuity_entries": 2,
+      "last_verdict": {
+        "deterministic": "FAIL",
+        "advisory": "PASS"
+      }
+    }
+  ],
+  "economics": [
+    {
+      "stage": "resident-continue",
+      "resident_input_tokens": 180,
+      "worker_context_tokens": 0,
+      "retrieved_memory_tokens": 0,
+      "skill_sop_tokens": 0,
+      "output_tokens": 15,
+      "model_calls": 1,
+      "note": null
+    },
+    {
+      "stage": "resident-decision",
+      "resident_input_tokens": 200,
+      "worker_context_tokens": 0,
+      "retrieved_memory_tokens": 0,
+      "skill_sop_tokens": 0,
+      "output_tokens": 18,
+      "model_calls": 1,
+      "note": null
+    },
+    {
+      "stage": "replan",
+      "resident_input_tokens": 0,
+      "worker_context_tokens": 282,
+      "retrieved_memory_tokens": 0,
+      "skill_sop_tokens": 0,
+      "output_tokens": 467,
+      "model_calls": 1,
+      "note": "action honored: REPLAN produced a revised plan"
+    },
+    {
+      "stage": "coder-attempt-1",
+      "resident_input_tokens": 0,
+      "worker_context_tokens": 582,
+      "retrieved_memory_tokens": 0,
+      "skill_sop_tokens": 0,
+      "output_tokens": 100,
+      "model_calls": 1,
+      "note": "retry with the REVISED plan (action honored)"
+    },
+    {
+      "stage": "coder-attempt-2",
+      "resident_input_tokens": 0,
+      "worker_context_tokens": 582,
+      "retrieved_memory_tokens": 0,
+      "skill_sop_tokens": 0,
+      "output_tokens": 247,
+      "model_calls": 1,
+      "note": "previous attempt still failed after the chosen action; bounded recovery escalates to a different local worker"
+    },
+    {
+      "stage": "reviewer",
+      "resident_input_tokens": 0,
+      "worker_context_tokens": 222,
+      "retrieved_memory_tokens": 0,
+      "skill_sop_tokens": 0,
+      "output_tokens": 75,
+      "model_calls": 1,
+      "note": null
+    },
+    {
+      "stage": "resident-status",
+      "resident_input_tokens": 160,
+      "worker_context_tokens": 0,
+      "retrieved_memory_tokens": 0,
+      "skill_sop_tokens": 0,
+      "output_tokens": 30,
+      "model_calls": 1,
+      "note": null
+    }
+  ],
+  "reconstruction": {
+    "workflow": {
+      "project_id": "resident-orch-mission",
+      "stage": "IMPLEMENTATION",
+      "previous_stage": "DESIGN",
+      "revision": 0,
+      "artifacts": [],
+      "branch": "main",
+      "changes": [
+        {
+          "path": "src/version.mjs",
+          "staged": false,
+          "untracked": false
+        },
+        {
+          "path": ".aide/cipher-state.jsonl",
+          "staged": false,
+          "untracked": true
+        },
+        {
+          "path": ".aide/index/",
+          "staged": false,
+          "untracked": true
+        },
+        {
+          "path": ".aide/ingested-models.json",
+          "staged": false,
+          "untracked": true
+        },
+        {
+          "path": ".aide/logs/",
+          "staged": false,
+          "untracked": true
+        },
+        {
+          "path": ".aide/orch/",
+          "staged": false,
+          "untracked": true
+        }
+      ],
+      "objective": "make the version parser obey its test contract (all tests green).",
+      "constraint": "do not weaken or delete tests; keep the public function name.",
+      "tree_top": [
+        "package.json",
+        "plugins",
+        "PROJECT.md",
+        "src",
+        "test"
+      ],
+      "next_step": "implement the objective against the failing tests, then verify"
+    },
+    "continuity_entries": 2,
+    "last_state": {
+      "at": "2026-09-22T01:00:42.913Z",
+      "mission": "M2M3-restart-continuity-failure-recovery",
+      "objective": "make the version parser obey its test contract (all tests green).",
+      "stage": "IMPLEMENTATION",
+      "completed": [
+        {
+          "what": "version parser fixed to contract",
+          "artifact_sha256": "b145de7b3eaca46025cf9fa0a21e8da58322a46922875ee9e7b11d39872d6eb1",
+          "evidence": "node --test exit 1"
+        }
+      ],
+      "failures": [
+        {
+          "what": "implementation still failing after bounded recovery",
+          "exit_code": 1,
+          "attempts": 2
+        }
+      ],
+      "blockers": [
+        "worker capability: local coders produced non-implementing artifacts"
+      ],
+      "next_step": "operator decision: provide a stronger coder model or accept manual implementation",
+      "verdict": {
+        "deterministic": "FAIL",
+        "advisory": "PASS"
+      },
+      "model_switch": {
+        "reason": "previous attempt still failed after the chosen action; bounded recovery escalates to a different local worker",
+        "from": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+        "to": "smollm2-360m-instruct-q8_0"
+      }
+    },
+    "project_state_md": "# Mission state\n\n- objective: make the version parser obey its test contract (all tests green).\n- stage: IMPLEMENTATION\n- completed: version parser fixed to contract\n- verdict: FAIL (deterministic) / PASS (advisory)\n- next: replan and retry the implementation\n"
+  },
+  "continue": "FAIL. The implementation still fails after bounded recovery.",
+  "failure": {
+    "kind": "VERIFICATION_FAILURE",
+    "exit_code": 1,
+    "artifact_placeholder_detected": false,
+    "artifact_sha256": "d153164648ad411e8a59fc7b67612aff20874d2496f74a6c4b33b7a7a79b8461",
+    "prior_worker": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+    "detail": "the previous coder artifact did not implement the contract (tests exit 1)"
+  },
+  "decision": {
+    "raw": "REPLAN. The failure is a test run; recreate it with the exact same code.",
+    "action": "REPLAN",
+    "reason": "REPLAN. The failure is a test run; recreate it with the exact same code."
+  },
+  "revised_plan": "### REVISED BOUNDED IMPLEMENTATION PLAN\n\n#### Step 1: Review and Analyze the Failure Evidence\nThe failure evidence indicates that the previous coder's artifact did not implement the contract (tests exit 1). This suggests that the `parseVersion` function does not correctly validate the input string according to the specified rules.\n\n#### Step 2: Define the Validation Logic for `parseVersion`\nThe validation logic should ensure that the input string consists of three numeric segments separated by dots, and each segment is between 0 and 999. If any of these conditions are not met, the function should return null.\n\n```javascript\nfunction parseVersion(versionString) {\n  if (!versionString || versionString.split('.').length !== 3) {\n    return null;\n  }\n\n  const segments = versionString.split('.');\n  for (const segment of segments) {\n    if (segment < 0 || segment > 999) {\n      return null;\n    }\n  }\n\n  return versionString;\n}\n```\n\n#### Step 3: Implement the Validation Logic in `src/version.mjs`\nUpdate the `src/version.mjs` file to include the validation logic.\n\n```javascript\n// src/version.mjs\nfunction parseVersion(versionString) {\n  if (!versionString || versionString.split('.').length",
+  "action_honored": {
+    "action": "REPLAN",
+    "attempted": true
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "model": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+      "switched": false,
+      "switch_reason": "retry with the REVISED plan (action honored)",
+      "artifact_sha256": "06a9c9f5d97a264ad34692ba84038e6d2c7a8df50f7135ce2645b3979633f375",
+      "exit_code": 1,
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "model": "smollm2-360m-instruct-q8_0",
+      "switched": true,
+      "switch_reason": "previous attempt still failed after the chosen action; bounded recovery escalates to a different local worker",
+      "artifact_sha256": "06a9c9f5d97a264ad34692ba84038e6d2c7a8df50f7135ce2645b3979633f375",
+      "exit_code": 1,
+      "code_extracted": false
+    }
+  ],
+  "verdict": {
+    "deterministic": "FAIL",
+    "advisory": "PASS",
+    "authoritative": "FAIL",
+    "execution": {
+      "passed": false,
+      "results": [
+        {
+          "command": "node --test test/",
+          "exitCode": 1,
+          "stdout_tail": "✖ failing tests:\n\ntest at test:1:1\n✖ test (71.4388ms)\n  'test failed'\n"
+        }
+      ],
+      "checks": [
+        {
+          "name": "command-ran",
+          "passed": true
+        },
+        {
+          "name": "tests-green",
+          "passed": false
+        },
+        {
+          "name": "artifact-hashed",
+          "passed": true
+        }
+      ]
+    },
+    "veritas": {
+      "passed": false,
+      "status": "abstain-needs-evidence",
+      "score": 0,
+      "threshold": 0.9,
+      "evidence_level": "missing",
+      "failed_checks": [],
+      "failed_oaths": [],
+      "rule": "Model confidence is not evidence. A failed deterministic gate blocks final output."
+    }
+  },
+  "status_report": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+  "continuity_entry": {
+    "at": "2026-09-22T01:09:10.400Z",
+    "mission": "M2M3-restart-continuity-failure-recovery",
+    "objective": "make the version parser obey its test contract (all tests green).",
+    "stage": "IMPLEMENTATION",
+    "completed": [
+      {
+        "what": "version parser fixed to contract",
+        "artifact_sha256": "b145de7b3eaca46025cf9fa0a21e8da58322a46922875ee9e7b11d39872d6eb1",
+        "evidence": "node --test exit 1"
+      }
+    ],
+    "failures": [
+      {
+        "what": "implementation still failing after bounded recovery",
+        "exit_code": 1,
+        "attempts": 2
+      }
+    ],
+    "blockers": [
+      "worker capability: local coders produced non-implementing artifacts"
+    ],
+    "next_step": "operator decision: provide a stronger coder model or accept manual implementation",
+    "verdict": {
+      "deterministic": "FAIL",
+      "advisory": "PASS"
+    },
+    "model_switch": {
+      "reason": "previous attempt still failed after the chosen action; bounded recovery escalates to a different local worker",
+      "from": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+      "to": "smollm2-360m-instruct-q8_0"
+    }
+  },
+  "containment_events": [
+    {
+      "request": "Continue.\n\nReconstruct the current project state from the ca",
+      "disposition": "REGENERATED",
+      "triggers": [
+        "structural"
+      ]
+    },
+    {
+      "request": "A worker failure was recorded.\nStructured failure: {\"kind\":\"",
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "request": "Where are we?\n\nCanonical state: {\"objective\":\"make the versi",
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "structural",
+        "fact-check"
+      ]
+    }
+  ],
+  "finished_at": "2026-09-22T01:09:10.402Z"
+}

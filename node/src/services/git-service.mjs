@@ -194,9 +194,21 @@ export class GitService {
   }
 
   async currentBranch() {
-    const { stdout } = await this.run(['rev-parse', '--abbrev-ref', 'HEAD'], { timeoutMs: 8000 });
-    const name = stdout.trim();
-    return name === 'HEAD' ? null : name;
+    try {
+      const { stdout } = await this.run(['rev-parse', '--abbrev-ref', 'HEAD'], { timeoutMs: 8000 });
+      const name = stdout.trim();
+      return name === 'HEAD' ? null : name;
+    } catch {
+      // Unborn HEAD (a repository with no commits yet): rev-parse fails, but
+      // the pending branch name is still knowable and truthful.
+      try {
+        const { stdout } = await this.run(['symbolic-ref', '--short', 'HEAD'], { timeoutMs: 8000 });
+        const name = stdout.trim();
+        return name.length > 0 ? name : null;
+      } catch {
+        return null;
+      }
+    }
   }
 
   async checkout(branch) {

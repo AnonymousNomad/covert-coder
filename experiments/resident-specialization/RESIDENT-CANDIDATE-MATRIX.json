@@ -1,0 +1,55 @@
+{
+  "schema": "resident-candidate-matrix-v1",
+  "at": "2026-09-23T01:41:03.382Z",
+  "contract": "RESIDENT-QUALIFICATION-CONTRACT.md",
+  "candidates": [
+    {
+      "id": "liquid-qad-baseline",
+      "model": "LFM2.5-2.6B-QAD-Q4_0",
+      "status": "REJECTED_BASELINE",
+      "evidence": "LIQUID-CLOSURE-WAVE-REPORT.md (authority inconsistency, compound omissions, protected-claim violations)"
+    },
+    {
+      "id": "macaw",
+      "model": "mradermacher/Macaw-GGUF Q4_K_M",
+      "download": "IN_PROGRESS",
+      "screen": "PENDING"
+    },
+    {
+      "id": "terminal-sft",
+      "model": "mradermacher/LFM2.5-2.6B-Terminal-SFT-GGUF Q4_K_M",
+      "download": "IN_PROGRESS",
+      "screen": "PENDING"
+    },
+    {
+      "id": "fable5",
+      "model": "AyoubChLin/LFM2.5-2.6B-fable5-coding-agent-GGUF",
+      "download": "BLOCKED_404_FILENAME (repo/file name needs resolving; candidate C only)",
+      "screen": "NOT_STARTED"
+    },
+    {
+      "id": "granite-3.3-2b",
+      "model": "ibm-granite/granite-3.3-2b-instruct-GGUF Q4_K_M (1545303328 b)",
+      "download": "NOT_STARTED",
+      "screen": "NOT_STARTED"
+    },
+    {
+      "id": "smollm3-3b",
+      "model": "ggml-org/SmolLM3-3B-GGUF Q4_K_M (1915305312 b)",
+      "download": "NOT_STARTED",
+      "screen": "NOT_STARTED"
+    },
+    {
+      "id": "phi-4-mini",
+      "model": "microsoft/Phi-4-mini-instruct-GGUF",
+      "download": "GATED_401 (use a community GGUF if reached)",
+      "screen": "NOT_STARTED"
+    },
+    {
+      "id": "uncensored-control",
+      "model": "LFM2.5-2.6B uncensored/abliterated",
+      "download": "CONTROL_ONLY (after viable release candidates)",
+      "screen": "NOT_STARTED"
+    }
+  ]
+}

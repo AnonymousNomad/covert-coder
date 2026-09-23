@@ -1,0 +1,48 @@
+{
+  "schema": "resident-provenance-v1",
+  "created_at": "2026-09-23",
+  "program": "Covert Liquid Resident specialization",
+  "lane": "DeepSeek #2 — Resident subsystem",
+  "base_model": {
+    "intended_native": "LiquidAI/LFM2.5-2.6B (official post-trained; NOT on disk, must be fetched on capable hardware)",
+    "preserved_baseline_artifact": {
+      "file": "models/LFM2.5-2.6B-QAD-Q4_0.gguf",
+      "sha256": "a247afd6414918eac8e520a9e6137dc271235461ecbe1180462221d5b8d40b03",
+      "bytes": 1593894944,
+      "status": "REJECTED for the permanent Resident seat; preserved as measurement baseline"
+    },
+    "control_checkpoint": { "model": "LFM2.5-1.2B-Instruct-Q8_0", "sha256_note": "local hardlink; size 1246253888 bytes", "role": "DEV control (live)" }
+  },
+  "dataset": {
+    "builder": "experiments/resident-specialization/dataset/build-dataset.mjs",
+    "train_sha256": "4d7d14fd33cd661e8b8a1cf499526b1a740ec7b756a0f88dff61d259dbaac209",
+    "dev_sha256": "6ea59bae5b1ee9bd3ab5b97e9c1c6a4afacf7682500f7f25e14298de97ab9c8e",
+    "seat_system_sha256": "3df298124a496f7a5db30a03eeee0cba00f151ea2543c688826eabb424ca1ce5",
+    "authorship": "authored in-repo (agent) for the Resident seat; no external corpus copied; no project-sensitive content; leak-guarded against frozen suites"
+  },
+  "frozen_system_at_training_prep": {
+    "covert_head": "ccbe5539968780130793ecf9b628ded13b610ef6",
+    "model_runtime_ts": "29655bf7b38f9d2b",
+    "model_router_ts": "7673cd522d468b5a",
+    "resident_containment_mjs": "468011f0ed8dcd92",
+    "liquid_profile": "e3de9a591aa088ed",
+    "liquid_sidecar": "afa1f7c3a16f7bf9",
+    "resident_sop_catalog": "6145b3394d38c67a"
+  },
+  "stages": {
+    "dataset_build": "DONE",
+    "dev_harness": "DONE",
+    "control_1_2b_dev": { "result_file": "RESIDENT-DEV-RESULTS.json", "score": "5/14" },
+    "sft": "BLOCKED (hardware/training stack; see RESIDENT-TRAINING-PLAN.md)",
+    "dpo": "NOT_REQUIRED_YET",
+    "grpo": "NOT_STARTED",
+    "quantization_parity": "NOT_REACHED",
+    "frozen_qualification": "NOT_REACHED"
+  },
+  "integrity_statements": [
+    "No frozen battery/parity text was used as a training target (8-gram guard enforced at build time).",
+    "The frozen Resident contract, batteries, scoring and definitions were not changed.",
+    "The rejected baseline artifacts, reports and hashes are preserved unchanged.",
+    "No secrets and no private user data are present in any artifact of this program."
+  ]
+}

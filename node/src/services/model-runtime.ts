@@ -1,4 +1,4 @@
-import { promises as fs, existsSync, createReadStream, readFileSync } from 'node:fs';
+﻿import { promises as fs, existsSync, createReadStream, readFileSync } from 'node:fs';
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import net from 'node:net';
 import path from 'node:path';
@@ -439,7 +439,16 @@ export class ModelRuntime {
         '--threads', '4',
         '--parallel', '1',
         '--no-warmup',
-        '--prio', '-1'
+        '--prio', '-1',
+        // Chat-template parity repair (Resident root-cause investigation,
+        // 2026-09-22): GGUFs whose chat template uses Jinja macros (e.g. the
+        // LFM2.5/QAD Resident candidate) degrade under the legacy template
+        // renderer â€” the model reasons longer and its final content is
+        // truncated to empty at the same generation budget. `--jinja` renders
+        // the embedded template exactly. A/B evidence: same task, reserve 1024,
+        // without --jinja finish=length content=0; with --jinja finish=stop
+        // content=243 chars, reasoning 3389 vs 4369 chars.
+        '--jinja'
       ];
       const sampler = samplerArgs(profile);
       const binaryArgs = llamaResolution.vulkan && !Number.isFinite(profileNgl)
@@ -462,7 +471,7 @@ export class ModelRuntime {
         binaryArgs[5] = String(port);
       }
       // Doctrine (aide-engine-lifecycle-doctrine): re-check memory right
-      // before spawn — the gate above ran before endpoint verification and a
+      // before spawn â€” the gate above ran before endpoint verification and a
       // concurrent engine load can have consumed RAM since. A killed engine
       // releases commit asynchronously; spawning a multi-GB mmap load into
       // that transient hole causes commit exhaustion and machine-wide thrash
@@ -493,7 +502,7 @@ export class ModelRuntime {
         });
         if (early === null) break; // survived the danger window
         if (attempt === 2) {
-          throw new ModelRuntimeError('CHILD_FAILED', `${model.name} engine exited immediately (code ${early.code}${early.signal ? `, signal ${early.signal}` : ''}). stderr tail: ${stderrTail.slice(-400) || '(empty — likely killed externally; audit the machine for /IM kill logic; see .aide/logs/engine-' + id + '.err.log)'}`);
+          throw new ModelRuntimeError('CHILD_FAILED', `${model.name} engine exited immediately (code ${early.code}${early.signal ? `, signal ${early.signal}` : ''}). stderr tail: ${stderrTail.slice(-400) || '(empty â€” likely killed externally; audit the machine for /IM kill logic; see .aide/logs/engine-' + id + '.err.log)'}`);
         }
         this.logger?.warn('engine died early; draining memory and retrying once', { id, code: early.code, signal: early.signal });
         await this.waitForMemoryDrain();
@@ -562,9 +571,32 @@ export class ModelRuntime {
     throw new ModelRuntimeError('NOT_READY', `Memory did not recover after stopping engines (${Math.round(last / 1048576)} MB free, need ${Math.round(minFreeBytes / 1048576)} MB). Close heavy applications and try again.`);
   }
 
+  // Identity-verified liveness probe used by stop(): only an engine that
+  // actually serves THIS model counts as "still serving". A port squatted by
+  // an unrelated server is not this model's engine.
+  private async endpointStillServing(id: string, _model: ModelEntry): Promise<boolean> {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const probe = await this.verifyEndpointModel(id, 1500).catch(() => null);
+      if (probe?.ready === true) return true;
+      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 400));
+    }
+    return false;
+  }
+
   async stop(id: string): Promise<{ id: string; status: string }> {
+    const model = this.models.get(id);
     const child = this.processes.get(id);
-    if (!child) return { id, status: 'stopped' };
+    if (!child) {
+      // No retained handle for this model. It may still be served by an engine
+      // this runtime instance does not own (adopted on start in an earlier
+      // session, or orphaned by an abrupt stack exit). Never report a false
+      // "stopped" while the endpoint keeps serving this model.
+      if (model && (await this.endpointStillServing(id, model))) {
+        const port = this.endpointPort(model).port;
+        throw new ModelRuntimeError('CONFLICT', `model ${id} is still served by an engine this runtime does not own (port ${port}); restart the stack to reclaim it`);
+      }
+      return { id, status: 'stopped' };
+    }
     this.processes.delete(id);
     this.warmed.delete(id);
     const waitExit = new Promise<void>(resolve => {
@@ -586,6 +618,10 @@ export class ModelRuntime {
         child.kill('SIGKILL');
       }
     }
+    if (model && (await this.endpointStillServing(id, model))) {
+      const port = this.endpointPort(model).port;
+      throw new ModelRuntimeError('CONFLICT', `stop did not terminate the engine for ${id} (port ${port} is still serving this model)`);
+    }
     return { id, status: 'stopped' };
   }
 
@@ -603,6 +639,38 @@ export class ModelRuntime {
     const declared = Number(this.models.get(id)?.context_tokens);
     return Number.isFinite(declared) && declared > 0 ? declared : null;
   }
+
+  // Exact prompt tokens for the ADMITTED messages: llama-server can render the
+  // model's chat template (/apply-template) and tokenize it (/tokenize). Older
+  // builds lack those endpoints — a conservative character estimate is the
+  // fallback (never a silent zero). Used by the generation-admission invariant.
+  private async measurePromptTokens(model: ModelEntry, messages: Array<{ role: string; content: string }>): Promise<number> {
+    const totalChars = messages.reduce((sum, message) => sum + String(message.content ?? '').length, 0);
+    const estimate = Math.ceil(totalChars / 3);
+    try {
+      const template = await fetch(`${model.endpoint.replace(/\/v1$/, '')}/apply-template`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!template.ok) return estimate;
+      const rendered = await template.json() as { prompt?: string };
+      if (typeof rendered.prompt !== 'string') return estimate;
+      if (process.env.AIDE_DEBUG_PROMPT === '1') {
+        this.logger?.info('debug prompt', { id: model.id, chars: rendered.prompt.length, head: rendered.prompt.slice(0, 140), tail: rendered.prompt.slice(-140) });
+      }
+      const tokenized = await fetch(`${model.endpoint.replace(/\/v1$/, '')}/tokenize`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: rendered.prompt }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!tokenized.ok) return estimate;
+      const result = await tokenized.json() as { tokens?: unknown[] };
+      return Array.isArray(result.tokens) && result.tokens.length > 0 ? result.tokens.length : estimate;
+    } catch {
+      return estimate;
+    }
+  }
   async refreshServedContext(id: string): Promise<void> {
     const model = this.models.get(id);
     if (!model) return;
@@ -614,7 +682,7 @@ export class ModelRuntime {
       const nCtx = Number(props?.default_generation_settings?.n_ctx);
       if (Number.isFinite(nCtx) && nCtx > 0) this.servedCtx.set(id, nCtx);
     } catch {
-      /* endpoint not up yet — keep previous value */
+      /* endpoint not up yet â€” keep previous value */
     }
   }
 
@@ -646,10 +714,11 @@ export class ModelRuntime {
     const kept: Array<{ role: string; content: string }> = [];
     let used = estimateTokens(newest.content);
     if (used > budget) {
-      // Single oversized turn: hard-truncate its head, keep the tail.
-      const keepChars = budget * 4;
-      kept.push({ role: newest.role, content: newest.content.slice(Math.max(0, newest.content.length - keepChars)) });
-      return kept;
+      // FIX (closure wave, 2026-09-22): silently keeping the TAIL of the newest
+      // user turn fed the model word-end fragments ("ine.", "Ded") in parity
+      // runs. Never mutate the admitted newest turn: fail truthfully instead and
+      // let the caller shorten its prompt.
+      return null;
     }
     for (let index = messages.length - 2; index >= 0; index--) {
       const message = messages[index]!;
@@ -673,7 +742,28 @@ export class ModelRuntime {
     const warmed = await this.warmup(id);
     if (!warmed) throw new ModelRuntimeError('NOT_READY', 'model still warming up; try again in a few seconds');
     const started = Date.now();
-    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>): Promise<Response> =>
+    // Generation-budget repair (Resident root-cause closure, 2026-09-22): the
+    // previous hard cap `Math.min(options.maxTokens ?? 512, 512)` silently
+    // truncated thinking-class models â€” the LFM2.5/QAD Resident candidate needs
+    // ~850-1100 tokens of reasoning before its final content, so every Covert
+    // request (450/1000/1536) was capped at 512 and returned empty content with
+    // finish_reason=length. The ceiling now derives from the model's served
+    // context: reserve room for the prompt, keep a 512 floor for small windows.
+    const servedContext = this.getEffectiveContext(id) ?? (Number(model.context_tokens) || 2048);
+    // Generation-admission invariant (closure wave, 2026-09-22):
+    //   ACTUAL PROMPT TOKENS + RESERVED GENERATION + SAFETY MARGIN <= SERVED CONTEXT.
+    // The ceiling must account for the ADMITTED prompt, not just the configured
+    // window. Exact prompt tokens are obtained from the engine (/apply-template +
+    // /tokenize) when available; a conservative character estimate is the
+    // fallback. Prompts that cannot leave the minimum reserve fail truthfully.
+    const SAFETY_MARGIN = 256;
+    const MIN_RESERVE = 256;
+    const promptTokens = await this.measurePromptTokens(model, messages);
+    const generationCeiling = Math.max(MIN_RESERVE, servedContext - promptTokens - SAFETY_MARGIN);
+    if (generationCeiling < Math.min(options.maxTokens ?? 512, MIN_RESERVE)) {
+      throw new ModelRuntimeError('NOT_READY', `prompt exceeds the served context: ${promptTokens} prompt tokens + ${MIN_RESERVE} reserve > ${servedContext}`);
+    }
+    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>, reserveOverride?: number): Promise<Response> =>
       fetch(`${model.endpoint}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -681,21 +771,32 @@ export class ModelRuntime {
           model: model.model,
           messages: payloadMessages,
           temperature: options.temperature ?? 0.2,
-          max_tokens: Math.min(options.maxTokens ?? 512, 512)
+          max_tokens: Math.min(options.maxTokens ?? 512, reserveOverride ?? generationCeiling)
         }),
-        signal: AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))
+        signal: AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 600_000))
       });
-    let response = await attemptRequest(messages);
+    let response: Response;
+    try {
+      response = await attemptRequest(messages);
+    } catch (error) {
+      await this.recycleAfterAbort(id, error);
+      throw error;
+    }
     if (response.status === 400) {
       // Overflow rescue: the engine rejected the prompt (llama.cpp returns
       // HTTP 400 when prompt + max_tokens exceed the served window). Re-fit
-      // history against the effective context and retry ONCE — never surface
-      // an empty-output 504 when the newest turn itself fits.
-      const reserve = Math.min(options.maxTokens ?? 512, 512);
+      // history against the effective context and retry ONCE with a reduced
+      // reserve — never surface an empty-output 504 when the newest turn fits.
+      const reserve = Math.max(MIN_RESERVE, Math.floor(Math.min(options.maxTokens ?? 512, generationCeiling) / 2));
       const refit = this.refitForOverflow(id, messages, reserve);
       if (refit !== null && refit.length < messages.length) {
         this.logger?.warn('completion overflowed served context; retrying with refit history', { id, messages: messages.length, refit: refit.length });
-        response = await attemptRequest(refit);
+        try {
+          response = await attemptRequest(refit, reserve);
+        } catch (error) {
+          await this.recycleAfterAbort(id, error);
+          throw error;
+        }
       }
     }
     if (!response.ok) throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);
@@ -707,6 +808,25 @@ export class ModelRuntime {
     const result: { text: string; modelId: string; tokens?: number; timingMs: number } = { text, modelId: id, timingMs: Date.now() - started };
     if (tokens !== undefined) result.tokens = tokens;
     return result;
+  }
+
+  // RISK-11 repair (closure wave, 2026-09-22): a client abort can leave a
+  // single-slot engine busy indefinitely; subsequent requests then hang behind
+  // the orphaned generation (reproduced: the parity suite died twice at the same
+  // long-reasoning case). Recycle the OWNED engine (handle-scoped stop + relaunch)
+  // so the wedge cannot cascade. Foreign/adopted engines are never touched.
+  private async recycleAfterAbort(id: string, error: unknown): Promise<void> {
+    const name = (error as { name?: string } | null)?.name;
+    const message = String((error as { message?: string } | null)?.message ?? '');
+    if (name !== 'AbortError' && name !== 'TimeoutError' && !/timed out|aborted/i.test(message)) return;
+    if (!this.processes.has(id)) return;
+    try {
+      this.logger?.warn('engine recycled after client abort (RISK-11 safety net)', { id });
+      await this.stop(id);
+      await this.start(id);
+    } catch (recycleError) {
+      this.logger?.warn('engine recycle failed; next start will retry', { id, error: recycleError instanceof Error ? recycleError.message : String(recycleError) });
+    }
   }
 
   async chatStream(
@@ -725,7 +845,12 @@ export class ModelRuntime {
     }
     const warmed = await this.warmup(id);
     if (!warmed) throw new ModelRuntimeError('NOT_READY', 'model still warming up; try again in a few seconds');
-    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>): Promise<Response> =>
+    // Same generation-admission invariant as chat(): the stream path was also
+    // capped at 512 and truncated thinking-class models.
+    const streamServedContext = this.getEffectiveContext(id) ?? (Number(model.context_tokens) || 2048);
+    const streamPromptTokens = await this.measurePromptTokens(model, messages);
+    const streamCeiling = Math.max(256, streamServedContext - streamPromptTokens - 256);
+    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>, reserveOverride?: number): Promise<Response> =>
       fetch(`${model.endpoint}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -733,7 +858,7 @@ export class ModelRuntime {
           model: model.model,
           messages: payloadMessages,
           temperature: options.temperature ?? 0.2,
-          max_tokens: Math.min(options.maxTokens ?? 512, 512),
+          max_tokens: Math.min(options.maxTokens ?? 512, reserveOverride ?? streamCeiling),
           stream: true
         }),
         signal
@@ -742,12 +867,12 @@ export class ModelRuntime {
     if (response.status === 400) {
       // Overflow rescue (same semantics as chat()): refit to the effective
       // window and retry once. Streaming requests overflowed the audit's
-      // 3072 window hardest — scaffold + long prompt + 512 reserve.
-      const reserve = Math.min(options.maxTokens ?? 512, 512);
+      // 3072 window hardest â€” scaffold + long prompt + 512 reserve.
+      const reserve = Math.max(256, Math.floor(Math.min(options.maxTokens ?? 512, streamCeiling) / 2));
       const refit = this.refitForOverflow(id, messages, reserve);
       if (refit !== null && refit.length < messages.length) {
         this.logger?.warn('stream overflowed served context; retrying with refit history', { id, messages: messages.length, refit: refit.length });
-        response = await attemptRequest(refit);
+        response = await attemptRequest(refit, reserve);
       }
     }
     if (!response.ok || response.body === null) throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);
@@ -852,7 +977,7 @@ export class ModelRuntime {
 
   // Readiness poll parity with the legacy /api/model/ready: verify the
   // endpoint, warm it, report running/warming/conflict/not-ready. Never
-  // spawns — the cockpit polls this until ready, then calls start() which
+  // spawns â€” the cockpit polls this until ready, then calls start() which
   // adopts the verified server. Adoption bridge shares warmed/changed state.
   async isReady(id: string, timeoutMs = 5000): Promise<{ id: string; ready: boolean; status: 'running' | 'warming' | 'conflict' | 'not-ready'; endpoint: string; error?: string }> {
     const model = this.models.get(id);
@@ -879,7 +1004,7 @@ export class ModelRuntime {
 
   // Register parity with the legacy /api/models/register: a downloaded GGUF in
   // the models directory becomes a ready engine. Persists to the TS dynamic
-  // store (ingested-models.json), NOT the checked-in manifest.json — the
+  // store (ingested-models.json), NOT the checked-in manifest.json â€” the
   // manifest stays pristine (git clean); the ingested store survives restarts.
   async register(options: { filename: string; repo_id?: string; quant_label?: string; context_tokens?: number }): Promise<{ id: string; status: string; endpoint: string }> {
     const rel = validateRegistrationFilename(this.modelDir, options.filename);
@@ -1006,7 +1131,7 @@ function nextFreePort(models: ReadonlyMap<string, ModelEntry>): number {
     try {
       used.add(Number(new URL(model.endpoint).port));
     } catch {
-      // malformed endpoint — ignore
+      // malformed endpoint â€” ignore
     }
   }
   let port = 8090;

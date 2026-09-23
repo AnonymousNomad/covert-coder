@@ -1,0 +1,30 @@
+{
+  "started_at": "2026-09-22T02:29:41.765Z",
+  "foreign_before": [
+    21716
+  ],
+  "tests": [
+    {
+      "test": "normal-close",
+      "owned_before": [],
+      "owned_during": [
+        16104
+      ],
+      "owned_after": [],
+      "pass": true
+    },
+    {
+      "test": "partial-boot",
+      "outcome": "booted-and-closed",
+      "owned_before": [],
+      "owned_after": [],
+      "pass": true
+    }
+  ],
+  "foreign_after": [
+    21716
+  ],
+  "foreign_untouched": true,
+  "finished_at": "2026-09-22T02:31:28.911Z",
+  "pass": true
+}

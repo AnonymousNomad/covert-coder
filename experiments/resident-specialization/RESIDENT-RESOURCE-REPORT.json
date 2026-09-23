@@ -1,0 +1,39 @@
+{
+  "schema": "resident-resource-report-v1",
+  "at": "2026-09-23T01:11:10.336Z",
+  "hardware": {
+    "gpu": "GTX 1060 6GB (CC6.1, FP32-only)",
+    "cpu": "i7-8750H",
+    "ram_gb": 16,
+    "disk": {
+      "C_free_gb": 9.7,
+      "E_free_gb": 224.6
+    },
+    "gpu_inference_build": "ABSENT (no Vulkan build on disk)"
+  },
+  "measured": {
+    "LFM2.5-2.6B-QAD-Q4_0": {
+      "artifact_bytes": 1593894944,
+      "engine_rss_mb": [
+        2969,
+        3043
+      ],
+      "load_ms_warm": [
+        3084,
+        5151,
+        21335
+      ],
+      "tok_per_sec_cpu": [
+        4.6,
+        10.3
+      ],
+      "long_request_stability": "4 consecutive requests 503-1230 completion tokens, finish=stop, no OOM/crash",
+      "coexistence": "2.97GB candidate + 486MB worker, free RAM 1.8-3.7GB during"
+    },
+    "LFM2.5-1.2B-Instruct-Q8_0": {
+      "artifact_bytes": 1246253888,
+      "note": "DEV control run through the governed path; 14/14 probes completed"
+    }
+  },
+  "verdict": "The 2.6B is viable as a permanent process with a ~1.8-3.7GB free-RAM coexistence envelope and CPU-only generation 5-10 tok/s; a GPU build remains untested (no Vulkan binary on disk)."
+}

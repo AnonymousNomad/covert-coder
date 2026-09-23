@@ -1,0 +1,79 @@
+{
+  "schema": "liquid-stability-v1",
+  "at": "2026-09-22T20:25:10.573Z",
+  "python_note": "runner own measurements",
+  "tests": {
+    "A": {
+      "ready": true,
+      "load_ms": 21335,
+      "free_before_mb": 3427396,
+      "free_peak_mb": 2511568,
+      "engine_rss_mb": [
+        {
+          "pid": 20696,
+          "rss_mb": 3043
+        }
+      ],
+      "request": {
+        "status": 200,
+        "finish": "stop",
+        "content_chars": 4,
+        "usage": {
+          "completion_tokens": 383,
+          "prompt_tokens": 458,
+          "total_tokens": 841,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        },
+        "latency_ms": 95144
+      },
+      "exit_code": null,
+      "free_after_mb": 4413908,
+      "engines_after": [],
+      "stderr_tail": "okens per second) 1.58.573.784 I slot print_timing: id 0 | task 0 | total time = 95064.74 ms / 841 tokens 1.58.573.786 I slot print_timing: id 0 | task 0 | graphs reused = 379 1.58.574.247 I slot release: id 0 | task 0 | stop processing: n_tokens = 840, truncated = 0 "
+    },
+    "B": {
+      "free_before_mb": 5736428,
+      "free_during_mb": 2533556,
+      "engines_during": [
+        {
+          "pid": 9128,
+          "rss_mb": 2969
+        }
+      ],
+      "request": {
+        "content_chars": 4,
+        "latency_ms": 57241,
+        "head": "main"
+      },
+      "boot_ok": true,
+      "error": null,
+      "free_after_mb": 5358372,
+      "engines_after": []
+    },
+    "C": {
+      "boot_ok": true,
+      "free_before_mb": 5356368,
+      "free_during_mb": 2987640,
+      "engines_during": [
+        {
+          "pid": 15384,
+          "rss_mb": 2969
+        },
+        {
+          "pid": 6124,
+          "rss_mb": 486
+        }
+      ],
+      "request": {
+        "content_chars": 4,
+        "latency_ms": 80510
+      },
+      "error": null,
+      "free_after_mb": 5689192,
+      "engines_after": []
+    }
+  },
+  "finished_at": "2026-09-22T20:31:08.833Z"
+}

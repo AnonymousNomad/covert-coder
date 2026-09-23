@@ -1,0 +1,9 @@
+{
+  "name": "resident-orch-target",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/"
+  }
+}

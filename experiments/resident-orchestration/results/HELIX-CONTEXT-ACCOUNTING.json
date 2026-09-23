@@ -1,0 +1,122 @@
+{
+  "schema": "helix-context-accounting-v1",
+  "at": "2026-09-22T19:00:25.981Z",
+  "representative_tasks": [
+    {
+      "id": "status-branch-stage",
+      "required_facts": [
+        "git_branch",
+        "workflow_stage"
+      ]
+    },
+    {
+      "id": "sop-selection",
+      "required_facts": [
+        "relevant SOP id for a failing-test request"
+      ]
+    },
+    {
+      "id": "worker-availability",
+      "required_facts": [
+        "available worker model ids"
+      ]
+    },
+    {
+      "id": "continuity-summary",
+      "required_facts": [
+        "objective",
+        "verified complete",
+        "failed",
+        "next step"
+      ]
+    }
+  ],
+  "helix": {
+    "repo": {
+      "workspace": "repo",
+      "spine_status": {},
+      "blocks": [
+        "project",
+        "user",
+        "task"
+      ],
+      ".aide/memory/patterns.jsonl": {
+        "bytes": 0
+      },
+      ".aide/memory/sessions.jsonl": {
+        "bytes": 2461
+      },
+      ".aide/memory/blocks/project.md": {
+        "bytes": 220
+      },
+      "days": 1
+    },
+    "project": {
+      "workspace": "project",
+      "spine_status": {},
+      "blocks": [
+        "project",
+        "user",
+        "task"
+      ],
+      ".aide/memory/patterns.jsonl": {
+        "absent": true
+      },
+      ".aide/memory/sessions.jsonl": {
+        "absent": true
+      },
+      ".aide/memory/blocks/project.md": {
+        "absent": true
+      },
+      "days": 0
+    }
+  },
+  "retrieval": {
+    "hits": [],
+    "degraded": false,
+    "approx_tokens": 0
+  },
+  "working_context": {
+    "canonical_project_tokens": 82,
+    "helix_retrieval_tokens": 0,
+    "sop_line_tokens": 15,
+    "task_tokens_range": [
+      15,
+      40
+    ],
+    "awareness_envelope_tokens": {
+      "cap": 1500,
+      "measured_typical": [
+        342,
+        932
+      ],
+      "note": "bounded capability descriptors + SOP bodies (<=2) + authority/evidence lines"
+    },
+    "total_sent_tokens_battery": 122,
+    "required_facts_present": {
+      "git_branch": true,
+      "workflow_stage": true,
+      "objective": true,
+      "changed_files": true,
+      "continuity": true,
+      "worker_ids": true,
+      "sop_candidates": "per-task deterministic selection",
+      "stale_or_superseded_excluded": "continuity store keeps only the latest entry in the composed line"
+    },
+    "admission_invariant": {
+      "input_tokens": 122,
+      "reserved_output_450": 450,
+      "reserved_output_1000": 1000,
+      "active_context_2048": 2048,
+      "holds_at_450": true,
+      "holds_at_1000": true,
+      "note": "at the diagnostic 8192 context and 4096 reserve the invariant holds with wide margin"
+    }
+  },
+  "classification": {
+    "helix_memory": "ACCEPT (durable surfaces present: days/sessions/blocks/patterns file resolvable; no Helix defect observed in any failure - failures occurred with facts present)",
+    "retrieval": "ACCEPT (recall returns bounded hits with scores; the critical facts are supplied directly in the working context rather than via recall in the battery path)",
+    "context_control": "ACCEPT (bounded: base ~200t + SOP line + capability details <=300t + envelope <=1500t; the correct bounded facts are present at every failing task)",
+    "note": "The correct bounded facts were present in the working context of every failing 2.6B task - Helix/retrieval/context-control did NOT withhold required truth."
+  }
+}
