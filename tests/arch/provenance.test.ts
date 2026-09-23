@@ -124,9 +124,9 @@ test('LIVE: agent session finalize appends one run and the routes project it', a
   const address = http.address() as { port: number };
   const owner = await pairFixture(server, `http://127.0.0.1:${address.port}`);
   try {
-    const startBody = { task: 'provenance live run', mode: 'act', worker: { worker: 'local:auto', provider: 'local', model: 'auto', role: 'act' } };
-    const headers = await owner.approve('POST', '/api/agent/start', startBody, 'prov-start');
-    const start = await owner.request('/api/agent/start', { method: 'POST', headers, body: JSON.stringify(startBody), signal: AbortSignal.timeout(120000) });
+    const startPayload = { task: 'provenance live run', mode: 'act', worker: { worker: 'local:auto', provider: 'local', model: 'auto', role: 'act' } };
+    const headers = await owner.approve('POST', '/api/agent/start', startPayload, 'prov-start');
+    const start = await owner.request('/api/agent/start', { method: 'POST', headers, body: JSON.stringify(startPayload), signal: AbortSignal.timeout(120000) });
     const startBody = await start.json();
     assert.equal(start.status, 200);
     const sessionId = startBody.data.session_id as string;
