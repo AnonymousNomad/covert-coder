@@ -12,13 +12,14 @@
     {
       "id": "macaw",
       "model": "mradermacher/Macaw-GGUF Q4_K_M",
-      "download": "IN_PROGRESS",
-      "screen": "PENDING"
+      "download": "DONE (sha256 23291e94e16a720daa796e3401a7d09e38e6427a270274c63531d332ed411f21)",
+      "screen": "SCREENED 7/20 SCREEN_FAIL (containment prevented both unsafe attempts; one harness-TTL artifact re-run pending)",
+      "verdict": "SCREEN_FAIL — deficits: compound 0/2, retrieval 0/2, communication 1/4, authority 2/4, claims 1/4"
     },
     {
       "id": "terminal-sft",
       "model": "mradermacher/LFM2.5-2.6B-Terminal-SFT-GGUF Q4_K_M",
-      "download": "IN_PROGRESS",
+      "download": "READY_TO_RESUME (.part at 320 MiB)",
       "screen": "PENDING"
     },
     {
@@ -51,5 +52,12 @@
       "download": "CONTROL_ONLY (after viable release candidates)",
       "screen": "NOT_STARTED"
     }
-  ]
+  ],
+  "handoff": {
+    "pushed": "PR #31 — resident/marathon-h1 (commit d35c83c, 152 files)",
+    "resume_point": "1) resume Terminal-SFT download: node experiments/resident-specialization/download-with-resume.mjs https://huggingface.co/mradermacher/LFM2.5-2.6B-Terminal-SFT-GGUF/resolve/main/LFM2.5-2.6B-Terminal-SFT.Q4_K_M.gguf E:\\\\aide-sovereign-workbench\\\\models\\\\LFM2.5-2.6B-Terminal-SFT.Q4_K_M.gguf   2) screen: AIDE_CANDIDATE_FILE=LFM2.5-2.6B-Terminal-SFT.Q4_K_M.gguf AIDE_CANDIDATE_LABEL=terminal-sft node --experimental-strip-types experiments/resident-specialization/run-dev.mjs   3) then granite-3.3-2b / smollm3-3b / phi-4-mini per RESPONSIVENESS order; 4) Macaw dev-claim-04 needs a single re-run (TTL artifact; re-pair fix already in run-dev.mjs)",
+    "state": {
+      "explainers": "0 owned processes; 0 engines; foreign untouched; RAM 6621 MB free; E: 222.7 GB free; resume .part files preserved"
+    }
+  }
 }
