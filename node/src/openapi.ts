@@ -79,7 +79,9 @@ import { routesForAgent } from './routes/agent.ts';
 import type { WorkerDescriptorT } from '../../common/contracts/worker-handoff.ts';
 import { createOpenCodeBridge, parseOpenCodeModelRef } from './services/opencode-bridge.ts';
 import { createWorkerHandoffService } from './services/worker-handoff.ts';
+import { createContinuationManager } from './services/continuation-manager.ts';
 import { routesForWorkerHandoff } from './routes/worker-handoff.ts';
+import { routesForContinuation } from './routes/continuation.ts';
 import { createAuditTrail } from './services/audit-trail.mjs';
 import { createWorkflowService } from './services/workflow-service.ts';
 import { createSkillsLoader } from './services/skills-loader.mjs';
@@ -648,6 +650,16 @@ export async function buildRoutes(workspace: string, version: string, options: B
     }
   };
   const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
+  // Wave 6 reconciliation: governed failure continuation (classification +
+  // bounded retry/switch + chain persistence) over the handoff service.
+  const continuationManager = createContinuationManager({
+    workspace,
+    handoffService: workerHandoffService,
+    policy: {
+      providerConsent: () => byokService.getConsent(),
+      localOnly: () => (connectionsService as { getPreference(): string }).getPreference() === 'local-only'
+    }
+  });
   const core: Route[] = [
     ...routesForAuthority(),
     makeHealthRoute(workspace, version),
@@ -726,6 +738,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // Governed worker handoff (Wave 3/4 reconciliation): canonical routes over
     // the shared service consumed by the agent-start reception path below.
     ...routesForWorkerHandoff(workerHandoffService, workspace),
+    ...routesForContinuation(continuationManager, workspace),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the
