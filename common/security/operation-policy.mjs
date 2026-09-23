@@ -95,6 +95,11 @@ const HTTP_POLICY = new Map([
   // startable lifecycle. Both bind the exact source/artifact path through the
   // approved operation body digest.
   ['POST /api/models/import', 'capability.write'], ['POST /api/models/ingest', 'capability.write'],
+  // Worker handoff (Wave 3/4 reconciliation): reads are central rows; the
+  // mutations (create/accept/consume) carry their own route-owned descriptors
+  // (node/src/routes/worker-handoff.ts).
+  ['GET /api/worker-handoff/list', 'capability.read'], ['GET /api/worker-handoff/get', 'capability.read'],
+  ['GET /api/worker-handoff/context', 'capability.read'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/

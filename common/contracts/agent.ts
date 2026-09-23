@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WorkerDescriptor } from './worker-handoff.ts';
 
 export const AgentMode = z.enum(['plan', 'act']);
 
@@ -25,7 +26,16 @@ export const AgentStartRequest = z.object({
   // Role projection (wiring audit Phase 2C/2D): the worker role drives
   // role-aware context retrieval (planner/coder/reviewer). Defaults inside
   // the loop from the mode (plan->planner, act->coder) when omitted.
-  role: z.enum(['planner', 'coder', 'reviewer']).optional()
+  role: z.enum(['planner', 'coder', 'reviewer']).optional(),
+  // Governed worker-handoff reception (live worker switch, reconciled Wave
+  // 3/4): when present the route binds the handoff to this session's actual
+  // destination worker, reconstructs the bounded receiving context, and
+  // consumes the handoff exactly at the first destination model invocation.
+  handoff_id: z.string().uuid().optional(),
+  worker: WorkerDescriptor.optional(),
+  // Admission binding (Wave 5A surface; enforced only where the production
+  // stack wires the readiness gate).
+  readiness_id: z.string().uuid().optional()
 }).strict();
 
 export const AgentStartResponse = z.object({

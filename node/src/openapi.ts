@@ -76,7 +76,10 @@ import { createAgentTools } from './services/agent-tools.mjs';
 import { createCheckpointService } from '../../node/src/services/agent-checkpoints.mjs';
 import { createAgentLoop, requiresToolApproval } from '../../node/src/services/agent-loop.mjs';
 import { routesForAgent } from './routes/agent.ts';
+import type { WorkerDescriptorT } from '../../common/contracts/worker-handoff.ts';
 import { createOpenCodeBridge, parseOpenCodeModelRef } from './services/opencode-bridge.ts';
+import { createWorkerHandoffService } from './services/worker-handoff.ts';
+import { routesForWorkerHandoff } from './routes/worker-handoff.ts';
 import { createAuditTrail } from './services/audit-trail.mjs';
 import { createWorkflowService } from './services/workflow-service.ts';
 import { createSkillsLoader } from './services/skills-loader.mjs';
@@ -644,6 +647,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
       return skillProvider(task + stageEmphasis(stage));
     }
   };
+  const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
   const core: Route[] = [
     ...routesForAuthority(),
     makeHealthRoute(workspace, version),
@@ -719,6 +723,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // the governed kernel (validator-backed gates, operator approvals, audit
     // spine). Adapters only — no workflow logic lives in the routes.
     ...routesForWorkflow({ service: workflowService, audit: auditTrail, workspace }),
+    // Governed worker handoff (Wave 3/4 reconciliation): canonical routes over
+    // the shared service consumed by the agent-start reception path below.
+    ...routesForWorkerHandoff(workerHandoffService, workspace),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the
@@ -851,6 +858,35 @@ export async function buildRoutes(workspace: string, version: string, options: B
           };
         }
         return null;
+      },
+      // Live worker-switch reception (Wave 3/4 reconciliation): the governed
+      // handoff adapter + the exact destination chat functions used for
+      // binding and one-shot consume.
+      workerHandoff: {
+        get: (id: string) => workerHandoffService.get(id),
+        accept: (id: string, to: WorkerDescriptorT) => workerHandoffService.accept(id, to),
+        contextBlock: (id: string) => workerHandoffService.contextBlock(id),
+        consume: (id: string) => workerHandoffService.consume(id)
+      },
+      resolveLocalChatFn: async () => {
+        const selection = await modelRouter.routeForRole('chat');
+        return async (messages: Array<{ role: string; content: string }>) => {
+          const result = await modelRouter.chat(selection.modelId, messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })), {});
+          return result.text;
+        };
+      },
+      providerTargetFor: role => {
+        try {
+          const routing = ((byokService.status() as { routing?: Record<string, unknown> } | undefined)?.routing) ?? {};
+          const target = routing[role];
+          if (target === undefined || target === 'local' || typeof target !== 'object' || target === null) return null;
+          return {
+            provider: String((target as { provider_id?: unknown }).provider_id ?? ''),
+            model: String((target as { model_id?: unknown }).model_id ?? '')
+          };
+        } catch {
+          return null;
+        }
       },
       // Expert advisory wire-in (aide-micro-expert-collective skill, audit
       // Week 1 item #7). When the agent is started with `expertAdvisory:true`,
