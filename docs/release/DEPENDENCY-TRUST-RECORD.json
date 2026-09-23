@@ -1,0 +1,32 @@
+{
+  "schema": "covert.release-dependency-trust-record.v1",
+  "baseline_sha": "f4da26b0b1c062dce8f3066f350f032dd3877ce4",
+  "lockfile": {
+    "path": "package-lock.json",
+    "sha256": "0C11388E7F114D5BCEECE57BF78AF3C11B3CCBAA42BFFFD166D6E58F267E9A8D"
+  },
+  "npm": {
+    "zod": "4.6.5",
+    "@types/node": "26.6.1",
+    "@playwright/test": "1.63.0",
+    "playwright": "1.63.0",
+    "playwright-core": "1.63.0"
+  },
+  "rust": {
+    "glib": "0.18.5",
+    "tauri": "2.11.5",
+    "target_specific_reachability": "NOT_ESTABLISHED",
+    "open_advisories": ["GHSA-wrw7-89jp-8q8g / RUSTSEC-2024-0429"]
+  },
+  "required_disclosures": [
+    "known unresolved advisories",
+    "accepted mitigations or reachability evidence",
+    "post-release upgrade items",
+    "artifact and SBOM hashes"
+  ],
+  "claims_not_made": [
+    "zero vulnerabilities",
+    "glib advisory not applicable",
+    "native desktop artifact accepted"
+  ]
+}
