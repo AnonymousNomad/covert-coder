@@ -1470,3 +1470,12 @@ oUnusedParameters: true + erbatimModuleSyntax: true + rasableSyntaxOnly: true;
 - Root-cause investigation accepted; harness-sync lesson recorded (projection = NO BENEFIT/HARMFUL; adaptation may mean removing interventions). Pool resume: SmolLM3-Q4_K_M.gguf download in progress (chunked resume; network flaky, chunk retries observed; two duplicate downloader processes found and killed, single clean downloader relaunched).
 - Resume point: on download completion -> sha256 verify vs remote -> profile sidecar (non-thinking via chat-template-kwargs; runtime support to be added bounded) -> frozen 20-row Seat Screen -> FULL DEV -> tool roundtrip -> resource -> frozen parity -> frozen qualification. Then Phi-4-mini community GGUF, then fable5 (or NOT_TESTED - ARTIFACT UNRESOLVED).
 
+
+### 2026-09-23 — SmolLM3 pool resume: rig diagnosis + screen start
+- Download verified: SmolLM3-Q4_K_M.gguf sha256 8334b850b7bd46238c16b0c550df2138f0889bf433809008cc17a8b05761863e, 1915305312 bytes (exact); stale .part removed.
+- Runtime support shipped: generic profile.runtime.template_kwargs -> --chat-template-kwargs (non-thinking via enable_thinking=false), tests/arch/model-template-kwargs.test.ts 3/3 PASS, tsc PASS; commit ff444dd.
+- First screen boot returned 409 on /api/models/start. Root cause (probe-start.mjs): NOT_READY RAM guard - 'Not enough free RAM to start a model: 1158 MB free, at least 2048 MB required'. NOT an adapter/model failure.
+- Contributing: a STUCK run-dev from the first launch (14:20) held server.ts + daemon children for 18 min (close did not exit); plus orphan vite preview; killed all four (verified), engines reaped, node back to 3 (opencode only).
+- Observation (record, not fix): GET /api/models/status appears able to spawn/warm an engine while the start guard is refusing (engine appeared on port 8102 during probe status call). Potential guard-bypass path for later review; no impact on this qualification (engine reaped).
+- Screen relaunched: dev-auth-01 PASS first row; running with canonical context, SmolLM3 non-thinking.
+
