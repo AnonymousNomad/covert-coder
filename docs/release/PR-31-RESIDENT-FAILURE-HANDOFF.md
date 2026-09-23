@@ -4,12 +4,17 @@ Status at the current production baseline:
 
 ```text
 PR: 31
-HEAD: 2ec17dac593194bd55f8e3296c9c3b61330071f3
+EVIDENCE SNAPSHOT HEAD: 2ec17dac593194bd55f8e3296c9c3b61330071f3
 BASE: covert-production @ f4da26b0b1c062dce8f3066f350f032dd3877ce4
 REVIEW: required
 MERGE STATE: behind / not mergeable for release
 RECOMMENDATION: DO NOT MERGE
 ```
+
+The PR later moved to head `1d0d454a15ebcb0b47a25cfeda1293e42df895eb`
+while its required checks were still in progress. That moving head is not
+silently substituted for this captured failure evidence; DeepSeek #2 must
+requalify the exact new SHA before any release decision.
 
 Both required AIDE CI checks failed. The failure is not explained by the
 recent npm dependency baseline; it is concentrated in Resident/core contracts
