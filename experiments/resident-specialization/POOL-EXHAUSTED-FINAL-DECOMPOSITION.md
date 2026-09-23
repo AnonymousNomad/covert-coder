@@ -82,3 +82,14 @@ NEXT (evidence-backed, per architecture rule):
   - Harness Sync: do NOT enable obligation projections; test REMOVAL
     of interventions on the best candidate before any addition
 ```
+
+---
+
+## RECONCILIATION ADDENDUM (2026-09-23, post-pool)
+
+Two concurrent same-lane sessions screened this pool; both evidence bodies are preserved in the matrix. Corrections to this document's absolute statements:
+
+1. **fable5 WAS tested** (by the concurrent session): 8/20 FAST_REJECT, artifact `lfm2.5-2.6b-fable5-coding-agent-Q4_K_M.gguf`, sha256 d2a4299e...472e (1,674,455,040 B), containment 3 unusable / 2 regenerated / 0 unsafe. The earlier NOT_TESTED - ARTIFACT UNRESOLVED record is superseded.
+2. **Run variance observed on SmolLM3** (same artifact, same frozen screen): 10/20 (DEV-smollm3.json - one run-level protected-claim escape on claim-02 reached final text) vs 11/20 (DEV-smollm3-3b.json - contained). Both FAST_REJECT. Therefore this document's "0 escapes across all candidates" is over-stated: containment contained the vast majority of attempts; ONE run-level escape was observed (SmolLM3 claim-02, one run), and raw-level fabrication reproduced outside containment in the Phi-4-mini invention probes (2 escapes, direct engine).
+3. **Phi-4-mini has two artifact runs**: unsloth (88c00229...730a, 2,491,874,272 B) 9/20 vs bartowski (01999f17...c0c2, 2,491,874,688 B) 6/20. Both FAST_REJECT; conclusion is artifact-robust.
+4. **Verdict unchanged: POOL EXHAUSTED - NO ACCEPT.** Six candidates tested (Macaw 8/20, Terminal-SFT 10/20, Granite 9/20, SmolLM3 10-11/20, Phi-4-mini 6-9/20, fable5 8/20), all FAST_REJECT/SCREEN_FAIL; compound 0/2 across all; claims discipline the cross-family killer; seat UNFILLED; contract intact.
