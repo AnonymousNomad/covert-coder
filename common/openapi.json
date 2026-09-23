@@ -9808,13 +9808,87 @@
                     },
                     "freeMemoryMB": {
                       "type": "number"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "STARTING",
+                        "HEALTHY",
+                        "DEGRADED",
+                        "UNHEALTHY",
+                        "STOPPED",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "components": {
+                      "maxItems": 16,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "component": {
+                            "type": "string",
+                            "enum": [
+                              "backend",
+                              "facade",
+                              "resident",
+                              "model_engines",
+                              "workers",
+                              "remote_bridge"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "STARTING",
+                              "HEALTHY",
+                              "DEGRADED",
+                              "UNHEALTHY",
+                              "STOPPED",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "detail": {
+                            "type": "string",
+                            "maxLength": 600
+                          },
+                          "evidence": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": [
+                                "string",
+                                "number",
+                                "boolean",
+                                "null"
+                              ]
+                            }
+                          },
+                          "checked_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "component",
+                          "state",
+                          "detail",
+                          "evidence",
+                          "checked_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "checked_at": {
+                      "type": "string"
                     }
                   },
                   "required": [
                     "version",
                     "uptimeMs",
                     "workspace",
-                    "freeMemoryMB"
+                    "freeMemoryMB",
+                    "state",
+                    "components",
+                    "checked_at"
                   ],
                   "additionalProperties": false
                 }

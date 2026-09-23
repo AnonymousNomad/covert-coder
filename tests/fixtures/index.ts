@@ -11,7 +11,13 @@ export const healthFixtures = {
     version: 'test',
     uptimeMs: 1234,
     workspace: 'E:\\aide-sovereign-workbench',
-    freeMemoryMB: 5120
+    freeMemoryMB: 5120,
+    state: 'DEGRADED',
+    components: [
+      { component: 'backend', state: 'HEALTHY', detail: 'route handler executing in-process (liveness by evidence)', evidence: { pid: 1 }, checked_at: '2026-09-23T00:00:00.000Z' },
+      { component: 'model_engines', state: 'STOPPED', detail: 'no model engines observed', evidence: {}, checked_at: '2026-09-23T00:00:00.000Z' }
+    ],
+    checked_at: '2026-09-23T00:00:00.000Z'
   } satisfies HealthResponseT
 };
 

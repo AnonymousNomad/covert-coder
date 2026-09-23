@@ -119,6 +119,7 @@ import { WorkspaceService } from './services/workspace.ts';
 import { LspManager } from './services/lsp.ts';
 import { DapManager, type DapAdapterConfig } from './services/dap.ts';
 import { ModelRuntime } from './services/model-runtime.ts';
+import { createHealthSupervisor } from './services/health-supervisor.ts';
 import type { Logger } from './services/logger.ts';
 import type { EventHub } from './events.ts';
 import type { Route } from './server.ts';
@@ -662,7 +663,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   });
   const core: Route[] = [
     ...routesForAuthority(),
-    makeHealthRoute(workspace, version),
+    makeHealthRoute(workspace, version, options.modelRuntime),
     makeWorkspaceListRoute(workspace),
     makeWorkspaceTreeRoute(fsService),
     routeForFileRead(fsService),
@@ -1019,16 +1020,22 @@ async function buildNotificationWiredRoutes(workspace: string, options: BuildRou
   ];
 }
 
-function makeHealthRoute(workspace: string, version: string): Route {  return {
+function makeHealthRoute(workspace: string, version: string, modelRuntime?: ModelRuntime): Route {
+  const supervisor = createHealthSupervisor({
+    workspace,
+    version,
+    ...(modelRuntime === undefined ? {} : {
+      modelStatus: async () => {
+        const status = await modelRuntime.status();
+        return { models: status.models.map(model => ({ id: String(model.id ?? 'unknown'), status: String(model.status ?? 'unknown') })) };
+      }
+    })
+  });
+  return {
     method: 'GET',
     path: '/api/health',
     response: HealthResponse,
-    handler: () => ({
-      version,
-      uptimeMs: Math.round(process.uptime() * 1000),
-      workspace: path.resolve(workspace),
-      freeMemoryMB: Math.round(os.freemem() / 1048576)
-    })
+    handler: () => supervisor.snapshot()
   };
 }
 
