@@ -99,6 +99,7 @@ const HTTP_POLICY = new Map([
   // mutations (create/accept/consume) carry their own route-owned descriptors
   // (node/src/routes/worker-handoff.ts).
   ['GET /api/worker-handoff/list', 'capability.read'], ['GET /api/worker-handoff/get', 'capability.read'],
+  ['POST /api/resource/admission', 'capability.read'],
   ['GET /api/worker-handoff/context', 'capability.read'],
   // Failure continuation (Wave 6 reconciliation): reads are central rows; the
   // planning mutation carries its own route-owned descriptor.

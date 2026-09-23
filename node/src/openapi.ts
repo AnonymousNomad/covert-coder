@@ -79,6 +79,8 @@ import { routesForAgent } from './routes/agent.ts';
 import type { WorkerDescriptorT } from '../../common/contracts/worker-handoff.ts';
 import { createOpenCodeBridge, parseOpenCodeModelRef } from './services/opencode-bridge.ts';
 import { createWorkerHandoffService } from './services/worker-handoff.ts';
+import { createResourceAdmission } from './services/resource-admission.ts';
+import { routesForResourceAdmission } from './routes/resource-admission.ts';
 import { createContinuationManager } from './services/continuation-manager.ts';
 import { routesForWorkerHandoff } from './routes/worker-handoff.ts';
 import { routesForContinuation } from './routes/continuation.ts';
@@ -651,6 +653,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     }
   };
   const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
+  const resourceAdmission = createResourceAdmission();
   // Wave 6 reconciliation: governed failure continuation (classification +
   // bounded retry/switch + chain persistence) over the handoff service.
   const continuationManager = createContinuationManager({
@@ -740,6 +743,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // the shared service consumed by the agent-start reception path below.
     ...routesForWorkerHandoff(workerHandoffService, workspace),
     ...routesForContinuation(continuationManager, workspace),
+    ...routesForResourceAdmission(resourceAdmission),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the

@@ -8,7 +8,7 @@ Last verified: 2026-09-23 (after P0.8 freeze). Purpose: reconstruct the mission 
 current_sha:        cfedd3d (P0 FREEZE — includes contracts drift fix)
 branch:             audit/wiring-ledger
 origin:             github.com/AnonymousNomad/covert-coder
-phase:              P1 IN PROGRESS (Health Supervisor LANDED; next: Resource Admission)
+phase:              P1 IN PROGRESS (Health Supervisor + Resource Admission LANDED; next: Provenance Ledger)
 candidate_ready:    NO
 ```
 
