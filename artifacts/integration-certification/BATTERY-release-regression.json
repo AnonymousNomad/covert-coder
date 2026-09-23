@@ -1,0 +1,102 @@
+{
+  "battery_id": "release-regression",
+  "started_at": "2026-09-23T13:36:53.481Z",
+  "requested_files": [
+    "tests/arch/contracts.test.ts",
+    "tests/arch/agent-routes.test.ts",
+    "tests/arch/worker-handoff.test.ts",
+    "tests/arch/worker-handoff-live.test.ts",
+    "tests/arch/failure-continuation.test.ts",
+    "tests/arch/route-authority-coverage.test.ts",
+    "tests/arch/git-routes.test.ts",
+    "tests/arch/modelhub-routes.test.ts",
+    "tests/arch/resident-routes.test.ts",
+    "tests/arch/agent-execution-integrity.test.ts",
+    "tests/arch/openapi-drift.test.ts",
+    "tests/arch/health-supervisor.test.ts",
+    "tests/arch/resource-admission.test.ts",
+    "tests/arch/provenance.test.ts",
+    "tests/arch/readiness.test.ts",
+    "tests/arch/doctor-truth.test.ts",
+    "tests/arch/egress-manifest.test.ts"
+  ],
+  "file_exists": [
+    {
+      "file": "tests/arch/contracts.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/agent-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/worker-handoff.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/worker-handoff-live.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/failure-continuation.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/route-authority-coverage.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/git-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/modelhub-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/resident-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/agent-execution-integrity.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/openapi-drift.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/health-supervisor.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/resource-admission.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/provenance.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/readiness.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/doctor-truth.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/egress-manifest.test.ts",
+      "exists": true
+    }
+  ],
+  "observed_tests": 140,
+  "pass": 140,
+  "fail": 0,
+  "skip": 0,
+  "exit_code": 0,
+  "expected_tests": null,
+  "verdict": "PASS",
+  "failure_reasons": [],
+  "output_tail": "✔ handoffs survive a second stack instance over the same workspace (restart) (343.5207ms)\n✔ consumed authority does not transfer through a handoff (1675.8569ms)\n✔ synthetic secrets never enter the envelope; the raw transcript stays out (2613.7556ms)\n✔ receiving context is bounded, prioritized, and free of raw transcript (501.2974ms)\nℹ tests 140\nℹ suites 0\nℹ pass 140\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 46665.4582"
+}

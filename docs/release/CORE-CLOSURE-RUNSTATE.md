@@ -8,8 +8,8 @@ Last verified: 2026-09-23 (after P0.8 freeze). Purpose: reconstruct the mission 
 current_sha:        cfedd3d (P0 FREEZE — includes contracts drift fix)
 branch:             audit/wiring-ledger
 origin:             github.com/AnonymousNomad/covert-coder
-phase:              P1 LANDED (all seven surfaces: Health, Admission, Provenance, Mission Receipt, Readiness, Doctor, Egress; next: golden verified mission)
-candidate_ready:    NO
+phase:              CANDIDATE FROZEN (see docs/release/CANDIDATE-FREEZE.md + RELEASE-CLAIM-MATRIX.md)
+candidate_ready:    YES (READY_FOR_LUNA)
 ```
 
 ## Completed gates (all with evidence)

@@ -1,0 +1,29 @@
+{
+  "steps": {
+    "a_start": 200,
+    "a_handoff": 200,
+    "b_runs": 200,
+    "b_receipt": 200,
+    "b_handoffs": 200,
+    "b_get_a_handoff": 404,
+    "b_consume_a_handoff": 404,
+    "b_a_session": 404
+  },
+  "verdict": {
+    "a_run_recorded": true,
+    "a_handoff_created": true,
+    "b_sees_no_a_runs": true,
+    "b_receipt_empty_for_a": true,
+    "b_sees_no_a_handoffs": true,
+    "b_cannot_get_a_handoff": true,
+    "b_cannot_consume_a_handoff": true,
+    "b_cannot_read_a_session": true
+  },
+  "a_session": "8c0bac77-09ec-4566-a145-5ce403a69f75",
+  "a_handoff": "f884b563-bdca-4cbd-a9c6-aa11378205f9",
+  "b_runs": [],
+  "b_receipt_runs": 0,
+  "b_receipt_verification": "not_recorded",
+  "b_handoffs": 0,
+  "cross_project_leak": 0
+}
