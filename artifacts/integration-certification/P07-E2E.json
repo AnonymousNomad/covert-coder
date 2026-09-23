@@ -1,0 +1,44 @@
+{
+  "workspace": "E:\\pip_temp\\p07-e2e-z6MgPH",
+  "steps": {
+    "start_a": 200,
+    "stack_a_closed": true,
+    "continuation": 200,
+    "handoff_list": 200,
+    "handoff_get": 200,
+    "start_b": 200
+  },
+  "final_a": "error",
+  "error_a": "aborted after 3 consecutive malformed steps: no tool call found in your response; respond with exactly one tool call in the documented XML format, or attempt_completion when finished",
+  "continuation_body": {
+    "chain_id": "5b8b68c9-dcad-41cb-8320-e1f1e596c2f7",
+    "decision": "switch",
+    "failure_class": "INVALID_OUTPUT",
+    "attempt": 1,
+    "replacements_remaining": 1,
+    "retry_eligible": false,
+    "handoff_id": "304e1615-f54c-4b3b-8c0b-34346e1f58a0",
+    "replacement": {
+      "worker": "local:coder-2",
+      "provider": "local",
+      "model": "coder-2",
+      "role": "act"
+    },
+    "reason": "governed continuation to local:coder-2 (replacement 1/2)"
+  },
+  "handoff_count": 1,
+  "final_b": "done",
+  "receiving_context_block": true,
+  "transcript_not_replayed": false,
+  "b_saw_question_task": false,
+  "handoff_state_after": "CONSUMED",
+  "verdict": {
+    "worker_a_failed": true,
+    "full_shutdown_clean": true,
+    "restart_continuation_planned": true,
+    "handoff_persisted_across_restart": true,
+    "worker_b_consumed_and_done": true,
+    "receiving_context_from_canonical_handoff": true,
+    "no_transcript_replay": false
+  }
+}
