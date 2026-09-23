@@ -1,0 +1,41 @@
+{
+  "schema": "covert.release-dependency-baseline.v1",
+  "production_branch": "covert-production",
+  "production_sha": "f4da26b0b1c062dce8f3066f350f032dd3877ce4",
+  "required_ci": {
+    "workflow": "AIDE CI",
+    "conclusion": "SUCCESS",
+    "run_id": 35866125477,
+    "verification": "production push check for f4da26b0b1c062dce8f3066f350f032dd3877ce4"
+  },
+  "merged_sources": [
+    {
+      "pr": 28,
+      "package": "zod",
+      "resolved_version": "4.6.5",
+      "merge_commit": "2ab607bb88454980866170baa4cae46edc61d04e"
+    },
+    {
+      "pr": 29,
+      "package": "@types/node",
+      "resolved_version": "26.6.1",
+      "merge_commit": "d1ec478f7246d9e9e462b9acb228ef5e1d34eea9"
+    },
+    {
+      "pr": 27,
+      "package": "@playwright/test",
+      "resolved_version": "1.63.0",
+      "merge_commit": "f4da26b0b1c062dce8f3066f350f032dd3877ce4"
+    }
+  ],
+  "resolved_packages": {
+    "zod": "4.6.5",
+    "@types/node": "26.6.1",
+    "@playwright/test": "1.63.0",
+    "playwright": "1.63.0",
+    "playwright-core": "1.63.0"
+  },
+  "package_lock_sha256": "0C11388E7F114D5BCEECE57BF78AF3C11B3CCBAA42BFFFD166D6E58F267E9A8D",
+  "candidate_rule": "A candidate must contain this resolved baseline or carry an explicit, reviewed compatibility justification for every newer version.",
+  "read_only": true
+}

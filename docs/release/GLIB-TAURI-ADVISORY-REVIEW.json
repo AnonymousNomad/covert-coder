@@ -1,0 +1,38 @@
+{
+  "schema": "covert.glib-tauri-advisory-review.v1",
+  "dependency": "glib",
+  "resolved_version": "0.18.5",
+  "manifest": "desktop/Cargo.lock",
+  "dependabot_alert": {
+    "number": 1,
+    "ghsa": "GHSA-wrw7-89jp-8q8g",
+    "cve": null,
+    "severity": "medium",
+    "vulnerable_range": ">= 0.15.0, < 0.20.0",
+    "first_patched_version": "0.20.0",
+    "scope": "runtime",
+    "state": "open"
+  },
+  "source_evidence": [
+    "GitHub Dependabot alert #1",
+    "RustSec RUSTSEC-2024-0429",
+    "desktop/Cargo.toml declares Tauri 2.x without direct glib",
+    "desktop/Cargo.lock resolves Tauri 2.11.5, GTK/WebKit crates, and glib 0.18.5",
+    "Rust/Cargo unavailable in the audit environment"
+  ],
+  "platform_assessment": {
+    "windows": "not_established_by_local_target_build; Tauri documents WebView2 rather than GTK/WebKitGTK for Windows",
+    "linux": "plausible_transitive_runtime/build reachability through GTK/WebKitGTK",
+    "cross_target_lockfile": "presence alone does not establish shipped artifact reachability"
+  },
+  "classification": "REQUIRES_TARGETED_BUILD_REVIEW",
+  "release_blocker": "NOT_PROVEN",
+  "next_evidence": [
+    "cargo tree for x86_64-pc-windows-msvc",
+    "cargo tree for x86_64-unknown-linux-gnu",
+    "supported-target native build",
+    "bundle inspection",
+    "minimum Tauri movement needed for glib >=0.20.0"
+  ],
+  "no_suppression_or_upgrade_performed": true
+}
