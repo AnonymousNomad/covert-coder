@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { watch as fsWatch } from 'node:fs';
+import { watch as fsWatch, constants as fsConstants } from 'node:fs';
 import os from 'node:os';
 import { logEgress } from '../../node/src/services/egress-journal.mjs';
 import path from 'node:path';
@@ -124,6 +124,9 @@ import { LspManager } from './services/lsp.ts';
 import { DapManager, type DapAdapterConfig } from './services/dap.ts';
 import { ModelRuntime } from './services/model-runtime.ts';
 import { createHealthSupervisor } from './services/health-supervisor.ts';
+import { createReadinessService } from './services/readiness.ts';
+import { routesForReadiness } from './routes/readiness.ts';
+import { GitService } from './services/git-service.mjs';
 import type { Logger } from './services/logger.ts';
 import type { EventHub } from './events.ts';
 import type { Route } from './server.ts';
@@ -658,6 +661,44 @@ export async function buildRoutes(workspace: string, version: string, options: B
   };
   const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
   const resourceAdmission = createResourceAdmission();
+  const readinessSupervisor = createHealthSupervisor({
+    workspace,
+    version,
+    ...(options.modelRuntime === undefined ? {} : {
+      modelStatus: async () => {
+        const status = await options.modelRuntime!.status();
+        return { models: status.models.map(model => ({ id: String(model.id ?? 'unknown'), status: String(model.status ?? 'unknown') })) };
+      }
+    })
+  });
+  const readinessService = createReadinessService({
+    healthSnapshot: async () => {
+      const snapshot = await readinessSupervisor.snapshot();
+      return { state: snapshot.state, components: snapshot.components.map(component => ({ component: component.component, state: component.state })) };
+    },
+    modelsStatus: async () => {
+      if (options.modelRuntime === undefined) return { models: [] };
+      const status = await options.modelRuntime.status();
+      return { models: status.models.map(model => ({ id: String(model.id ?? 'unknown'), status: String(model.status ?? 'unknown') })) };
+    },
+    rgAvailable: () => rgService.available(),
+    workspaceWritable: async () => {
+      try {
+        await fs.access(workspace, fsConstants.W_OK);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    gitRepo: async () => {
+      const status = await new GitService({ workspace }).status();
+      return { git_repo: status.git_repo === true };
+    },
+    memoryAdmit: async () => {
+      const decision = await resourceAdmission.admit({ kind: 'model_start', requirement: { memory_mb: 1024 } });
+      return { decision: decision.decision, reason: decision.reason };
+    }
+  });
   // Wave 6 reconciliation: governed failure continuation (classification +
   // bounded retry/switch + chain persistence) over the handoff service.
   const continuationManager = createContinuationManager({
@@ -749,6 +790,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForContinuation(continuationManager, workspace),
     ...routesForResourceAdmission(resourceAdmission),
     ...routesForProvenance(provenanceLedger),
+    ...routesForReadiness(readinessService),
     ...routesForWorkbenches(new WorkbenchManager({
       workspace,
       // exactOptionalPropertyTypes: pass `null` (not `undefined`) to the

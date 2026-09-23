@@ -16129,6 +16129,96 @@
         }
       }
     },
+    "/api/readiness": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ready": {
+                      "type": "boolean"
+                    },
+                    "ready_for_golden_mission": {
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "maxItems": 32,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "READY",
+                              "DEGRADED",
+                              "BLOCKED",
+                              "OPTIONAL",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "explanation": {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "repair": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "blocking": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "state",
+                          "code",
+                          "explanation",
+                          "repair",
+                          "blocking"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "generated_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ready",
+                    "ready_for_golden_mission",
+                    "items",
+                    "generated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/replays": {
       "get": {
         "responses": {
