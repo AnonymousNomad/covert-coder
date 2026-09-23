@@ -1,0 +1,67 @@
+{
+  "battery_id": "p0-regression",
+  "started_at": "2026-09-23T12:08:44.899Z",
+  "requested_files": [
+    "tests/arch/contracts.test.ts",
+    "tests/arch/agent-routes.test.ts",
+    "tests/arch/worker-handoff.test.ts",
+    "tests/arch/worker-handoff-live.test.ts",
+    "tests/arch/failure-continuation.test.ts",
+    "tests/arch/route-authority-coverage.test.ts",
+    "tests/arch/git-routes.test.ts",
+    "tests/arch/modelhub-routes.test.ts",
+    "tests/arch/resident-routes.test.ts",
+    "tests/arch/agent-execution-integrity.test.ts"
+  ],
+  "file_exists": [
+    {
+      "file": "tests/arch/contracts.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/agent-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/worker-handoff.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/worker-handoff-live.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/failure-continuation.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/route-authority-coverage.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/git-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/modelhub-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/resident-routes.test.ts",
+      "exists": true
+    },
+    {
+      "file": "tests/arch/agent-execution-integrity.test.ts",
+      "exists": true
+    }
+  ],
+  "observed_tests": 98,
+  "pass": 98,
+  "fail": 0,
+  "skip": 0,
+  "exit_code": 0,
+  "expected_tests": null,
+  "verdict": "PASS",
+  "failure_reasons": [],
+  "output_tail": "✔ handoffs survive a second stack instance over the same workspace (restart) (349.2505ms)\n✔ consumed authority does not transfer through a handoff (1560.9257ms)\n✔ synthetic secrets never enter the envelope; the raw transcript stays out (2486.6179ms)\n✔ receiving context is bounded, prioritized, and free of raw transcript (272.0672ms)\nℹ tests 98\nℹ suites 0\nℹ pass 98\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 36999.2304"
+}
