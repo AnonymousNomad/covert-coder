@@ -1518,3 +1518,8 @@ oUnusedParameters: true + erbatimModuleSyntax: true + rasableSyntaxOnly: true;
 - Model decision: official Q4_K_M = primary production candidate; QAD = secondary controlled; Terminal-SFT = research/comparison only.
 - Pipeline unchanged: Terminal-SFT D running -> Macaw D -> rq-chain analyzes -> E1 launches. RQ-D2 partial (a43988b) already committed.
 - RESUME: finish D (analyzer + RQ-D2/D3/D4 verdict) -> E per pre-registration -> F1-F4 with official artifact once downloaded + hash-verified -> final Liquid production gate (authority>=3/4, claims>=3/4, compound>=1/2, comm>=3/4, comprehension>=0.66, zero hard failures). Production Resident slice only if gate passes.
+
+### 2026-09-23 — RQ-D2/D3/D4: Condition D FROZEN
+- All 6 D datasets complete; verdict MIXED_CLAIMS_UP_COMPOUND_OPEN (claims up 5/6, 3 models >=3/4, zero authority drops, compound 0 everywhere). Macaw D = 15/20 zero criticals (claims 4/4, PROMOTE_TO_FULL_DEV) — claims hard-gate reachable under D treatment.
+- Official Liquid artifact VERIFIED on disk: sha256 02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed, 1674455040 bytes exact.
+- E1 runner LIVE (pid 25068, started 09:32) - labels <model>-e1. Resume: wait E1 complete -> E analysis (A/D/E1 compound matrix) -> RQ-E2 verdict; E2 only if compound weak; held-out battery; research note; skill only if held-out passes; then F1-F4 on official Liquid (416-token-class packets, native alignment, 0c diagnosis) -> final gate.
