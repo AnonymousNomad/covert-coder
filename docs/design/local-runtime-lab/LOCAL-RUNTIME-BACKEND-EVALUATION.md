@@ -1,6 +1,6 @@
 # Covert Local Runtime Backend Evaluation
 
-- **Status:** RT0–RT4 research and apparatus; execution checkpoints RT5–RT8 deferred
+- **Status:** Historical RT0–RT4 research record; superseded by the Unsloth product decision and Runtime Broker implementation
 - **Evidence cut:** 2026-09-24
 - **Scope:** local inference only; no cloud providers, credentials, production wiring, or runtime installation
 
@@ -23,6 +23,20 @@
 - **SOURCE OBSERVATION** — behavior visible in the cited project's current source code.
 - **VENDOR CLAIM** — a product claim not independently validated here.
 - **INFERENCE** — a design conclusion drawn from the stated facts.
+
+## Resulting product decision — 2026-09-24
+
+The source research below remains historical evidence. The engineering decision is now settled:
+
+- **Canonical local backend:** Unsloth Studio/runtime.
+- **Normal path:** Covert Runtime Broker → Unsloth → local model execution.
+- **Direct llama.cpp:** internal reference and explicit recovery adapter only; not the ordinary user default.
+- **Ollama and LM Studio:** no production adapters in this slice; the RuntimeAdapter boundary remains open to developer extensions.
+- **Runtime selection research:** closed. No AUTO policy or backend winner comparison is part of the product plan.
+- **Distribution:** external user installation in this slice. Covert does not bundle or copy Unsloth Studio source pending licensing/compliance review.
+- **Performance:** no backend speed winner is claimed. Unsloth must qualify per model and machine before a configuration is marked qualified.
+
+The original RT0 resource snapshot and RT5–RT8 deferrals describe that research checkpoint only. The active ownership rules and implementation state are in [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md) and [RUNTIME-BENCHMARK-METHODOLOGY.md](RUNTIME-BENCHMARK-METHODOLOGY.md).
 - **UNVERIFIED** — not established by documentation or a safe local experiment in this lane.
 
 ## Unsloth Desktop / Studio
@@ -110,7 +124,11 @@
 | Ollama | Yes; local daemon API and CLI. | Technically plausible with a pinned user-scoped service/process, OLLAMA_NO_CLOUD=1, and explicit model lifecycle. | Technically plausible under MIT plus bundled dependency terms/notices; do not bundle model weights by default. |
 | LM Studio | Yes; documented APIs and lms/llmster. | Process control exists, but account for proprietary app terms and rely only on published interfaces. | No for the desktop app under current terms; the separately MIT-licensed CLI is not the whole runtime. |
 
-## Preliminary verdict (no controlled measurements)
+## Historical preliminary verdict (superseded; no controlled measurements)
+
+**Research result:** multiple local runtimes have viable documented serving paths; this research contains no controlled performance winner.
+
+**Product decision (2026-09-24):** Unsloth is the canonical Covert local backend. Direct llama.cpp is the internal reference/recovery path. Runtime selection is closed; no AUTO policy or co-equal backend picker is planned.
 
 - **DEFAULT SOVEREIGN BASELINE:** direct llama.cpp/llama-server, launched as a Covert-owned loopback process with a pinned binary and explicit settings.
 - **BEST MANAGED RUNTIME CANDIDATE:** no empirical winner is established. Ollama and Unsloth are the first managed-service candidates to test: Ollama for headless process/API control and permissive core licensing; Unsloth for model-management features and multi-engine choice. A platform-specific decision requires controlled runs and component-license review.
@@ -127,7 +145,7 @@
 - GGUF has the broadest overlap across the four primary candidates.
 - No backend was installed or benchmarked in this lane.
 
-### Inference
+### Historical inference (before the product decision)
 
 - Covert should own a direct llama.cpp baseline and use adapter-level optional capabilities for managed runtimes.
 - A Broker is justified for discovery, policy, evidence capture, and resource admission; it should not translate every backend feature into a lowest-common-denominator API.
@@ -142,6 +160,8 @@
 - Can a lease safely identify LM Studio's model file and engine version, and Unsloth's model-server child process, without depending on unstable internals?
 
 ## Production boundary
+
+This table records the earlier RT0–RT4 research boundary. It predates the bounded Broker and Unsloth adapter implementation in this worktree.
 
 - Covert runtime changed: NO
 - Harness Sync changed: NO

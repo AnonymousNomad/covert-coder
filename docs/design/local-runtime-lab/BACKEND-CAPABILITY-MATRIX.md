@@ -1,6 +1,14 @@
 # Local Backend Capability Matrix
 
-**Evidence cut:** 2026-09-24. This is a source-backed feature matrix, not a performance ranking. Capabilities are marked documented (D), conditional on model/configuration (C), source-observed (S), unverified here (U), or not established (—). “Not established” is not a claim of impossibility.
+**Evidence cut:** 2026-09-24. Historical source-backed comparison, not a product-selection matrix or performance ranking. Capabilities are marked documented (D), conditional on model/configuration (C), source-observed (S), unverified here (U), or not established (—). “Not established” is not a claim of impossibility.
+
+## Product hierarchy after research
+
+- **Selected canonical backend:** Unsloth.
+- **Direct llama.cpp:** internal diagnostic/reference and explicit recovery path.
+- **Ollama / LM Studio:** extension points only; no shipped adapters are planned in this slice.
+- The matrix below preserves the research record. Its columns are not co-equal product candidates, and it does not establish a speed winner.
+- See [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md) for the implemented Covert boundary and capability values.
 
 | Capability | Direct llama.cpp | Unsloth Desktop / Studio | Ollama | LM Studio |
 |---|---|---|---|---|

@@ -1,6 +1,6 @@
-# Local Runtime Benchmark Methodology
+# Local Runtime Qualification Methodology
 
-- **Status:** harness source and frozen probes prepared; no inference runs performed
+- **Status:** comparative apparatus retained for evidence; active objective is Unsloth configuration qualification; no inference runs performed in this implementation slice
 - **Date:** 2026-09-24
 - **Machine target:** Windows 11, Intel i7-8750H, 16 GB RAM, GTX 1060 6 GB
 
@@ -8,7 +8,9 @@
 
 A final non-destructive pre-commit check found one active, unqualified llama-server process. System commit was 25,379,328,000 / 31,443,066,880 bytes (80.7%), available physical RAM was 3,225,481,216 bytes, and the GTX 1060 had 933 MiB in use. Runtime installs, model loads, and benchmarks remain deferred. The local runner refuses to execute without a same-run lease file declaring exclusive resource clearance, an owner, runtime PID set, local endpoint, artifact path, and expected SHA-256. It checks well-known runtime processes and listeners before sending any inference request; resource clearance and ownership remain operator-attested, not inferred by the runner. The runner refuses adjacent-lane ports 8097 and 8104 and requires the endpoint to be a literal loopback IP.
 
-Do not include the Resident process or model in the lease. Do not attach to or query a foreign endpoint. Do not use a remembered port until an updated listener check establishes that it is free and assigned to this experiment.
+That snapshot is historical evidence from the research pass, not a current resource clearance. Recheck process ownership, port ownership, RAM, commit, and VRAM before any live run. Do not include the Resident process or model in the lease. Do not attach to or query a foreign endpoint. Do not use a remembered port until an updated listener check establishes that it is free and assigned to this experiment.
+
+The 2026-09-24 implementation-lane recheck found a foreign/unclaimed `llama-server` process (PID 28468; working set 3,083,182,080 bytes) without inspecting its command line, model, or endpoint. Available physical memory was 4,505,948 KiB (~4.30 GiB), Windows commit was 24,760,803,328 / 31,443,066,880 bytes (~78.7%), and port 18888 was free. Unsloth was not found on PATH and the configured `AIDE_UNSLOTH_CLI` path did not exist. No process was queried, attached to, started, or stopped. This is still insufficient for a live run: the foreign runtime remains untouched and resource ownership is not cleared for this lane.
 
 ## RT4 apparatus
 
@@ -19,7 +21,11 @@ Research-only files:
 
 The runner does not install, start, stop, unload, or configure a backend. It will not follow redirects, honor HTTP proxy environment variables, call a hosted provider, or send a request to a non-loopback host. The lease must attest that the model is already loaded before the idle sample and warm-up. If an optional metrics endpoint is supplied, its listener must also be loopback-bound and owned by the leased PID set. Lifecycle and backend-native startup/load/unload measurements remain a separate controlled procedure.
 
-## Isomorphism gate
+## Historical cross-backend isomorphism gate
+
+The four-backend bake-off phase is closed as a product-selection exercise. The runner remains useful for qualification, but current runs qualify selected Unsloth configurations; direct llama.cpp is a diagnostic control only.
+
+This gate remains useful for interpreting the RT4 comparison apparatus, but cross-backend winner analysis is retired. Direct llama.cpp is an optional diagnostic control, not a product competitor.
 
 Before any cross-backend comparison:
 
@@ -51,6 +57,20 @@ If format, model hash, tokenization/template, context, GPU offload, thread count
 | Network | Local loopback only; no provider API or cloud model |
 
 Fields that a backend hides or ignores are recorded as unknown, not assumed equal. The target-context profile may be reduced before the first run only if the chosen artifact's memory requirements demand it; after that change, freeze the same value for every backend.
+
+## Active Unsloth qualification
+
+The question is whether one exact Unsloth release, engine path, GGUF artifact, and configuration is qualified for Covert on this machine. A direct llama.cpp run may be retained as a diagnostic reference under a separate record; it does not decide product ownership.
+
+Before loading, require a same-run resource lease, a free loopback port owned by this experiment, explicit model ownership, and an exact SHA-256. Do not silently fall back if Unsloth fails. Record the failure and select direct llama.cpp only through an explicit, journaled recovery action.
+
+Measure startup and model load, TTFT, prompt and generation throughput where native counters exist, total latency, RAM working set, Windows commit, VRAM, tool-call validity, structured-output validity, cancellation, unload/model switch, recovery, shutdown cleanliness, and long-run stability. Do not substitute unknown metrics or runtime repair for model capability.
+
+### GTX 1060 profile gate
+
+The GTX 1060 Mobile is compute capability 6.1. Unsloth's current NVIDIA requirements document CUDA capability 7.0 as the minimum, so the CUDA path is **not supported by that published requirement**. The Unsloth source exposes CPU and Vulkan llama.cpp backend selections for GGUF. CPU is the supported conservative profile; Vulkan is a candidate profile, not qualified on this Pascal device. Neither path has been run in this lane. [Unsloth requirements](https://unsloth.ai/docs/get-started/fine-tuning-for-beginners/unsloth-requirements), [official setup/README](https://github.com/unslothai/unsloth/blob/main/README.md)
+
+GTX 1060 status: **BLOCKED pending exclusive resource ownership and live qualification**. Do not infer support from driver version or from generic Vulkan support.
 
 ## Measurements
 
@@ -120,11 +140,10 @@ Track startup success, request success, crash count, recovery duration, and cont
 ## Backend-specific notes
 
 - **llama.cpp:** capture exact source SHA/build backend, binary hash, command line, context/batch, GPU layers, threads, KV types, mmap, metrics, slots/parallel setting, template, and speculative config. Optional metrics provide prompt/generation counters and speculative counters. [Server metrics](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#L1434-L1456)
-- **Unsloth:** pin Desktop/Studio release and underlying engine. GGUF goes through llama-server; non-GGUF is not an isomorphic comparison. Record Studio root, installed packages, auth/config files without printing credential values, model selection, child PID tree, and whether discovery made outbound requests. Do not install during current foreign ownership.
-- **Ollama:** use the local GGUF import path and record source SHA, resulting Ollama digest, Modelfile/template/options, OLLAMA_NO_CLOUD=1, model keep-alive, /api/ps state, and native timings. [GGUF Modelfile](https://docs.ollama.com/modelfile), [cloud disable](https://github.com/ollama/ollama/blob/main/docs/faq.mdx)
-- **LM Studio:** record app and llama.cpp runtime versions, selected model path, load profile, GUI/headless mode, lms ps/load/unload outputs, server endpoint, and exact model SHA after import. Use the documented CLI/API only. Do not package the desktop app. [Runtime CLI](https://lmstudio.ai/docs/cli), [headless](https://lmstudio.ai/docs/developer/core/headless)
+- **Unsloth:** pin Studio/CLI release and underlying engine when exposed. GGUF goes through llama-server; non-GGUF is a different engine path. Record Studio root, model selection, owned PID topology, and only non-secret config metadata. No install or load during foreign resource ownership. Initial distribution is user-installed external Unsloth; Studio source is not bundled.
+- **Ollama / LM Studio:** retained as historical reference notes only. They are extension points, not active qualification targets in this product slice.
 
-## Current run record
+## Historical research-phase ledger (RT0–RT10)
 
 | Checkpoint | Status | Evidence |
 |---|---|---|
@@ -138,7 +157,29 @@ Track startup success, request success, crash count, recovery duration, and cont
 | RT7 Ollama | Deferred | No install/run |
 | RT8 LM Studio | Deferred | No install/run |
 | RT9 cross-backend analysis | Deferred | No controlled results |
-| RT10 final empirical recommendation | Deferred | Only evidence-based preliminary recommendation available |
+| RT10 final empirical recommendation | Closed by product decision | Unsloth selected as canonical; no speed winner claimed |
+
+## Runtime implementation checkpoints
+
+### RT11 — explicitly unqualified implementation checkpoint
+
+- **Implementation:** PRESENT.
+- **Deterministic tests:** NOT YET RUN.
+- **Live qualification:** BLOCKED pending dependency-backed tests, native Unsloth installation/authentication resolution, and a safe resource window.
+- This checkpoint preserves the Runtime Broker and adapters for review. It is not production accepted.
+
+| Checkpoint | Status | Evidence |
+|---|---|---|
+| RT11 Broker contract | Implemented | `common/contracts/runtime.ts`; see [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md) |
+| RT12 Unsloth adapter | Implemented, deterministic-only in this slice | `node/src/services/unsloth-runtime-adapter.ts` |
+| RT13 ownership/lifecycle | Implemented with fail-closed PID/port checks | Unsloth adapter and direct recovery wrapper |
+| RT14 Model Manager handoff | Contract frozen; implementation/worktree untouched | `common/contracts/runtime.ts` plus [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md); no route or Model Manager code changed |
+| RT15 installation/bootstrap | External user install documented; no automatic installer | AGPL Studio source is not bundled |
+| RT16 deterministic contract tests | Added; execution blocked because this worktree has no installed dependencies | `tests/arch/runtime-broker.test.ts`; no install performed |
+| RT17 GTX 1060 qualification | Blocked | Unsloth Core documents CUDA CC 7.0 minimum; Studio GGUF CUDA compatibility remains unproven; CPU profile not installed/run and Vulkan not run |
+| RT18 Liquid GGUF qualification | Not run | Foreign llama-server and memory ownership prevent safe load |
+| RT19 recovery validation | Deterministic contract added; live recovery not run | No foreign runtime contacted or changed |
+| RT20 acceptance candidate | Not accepted | Contract tests were added but not executed; typecheck/live qualification unavailable in this worktree |
 
 ## Primary references
 

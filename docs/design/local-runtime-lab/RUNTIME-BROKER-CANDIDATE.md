@@ -1,20 +1,26 @@
-# Covert Runtime Broker Candidate
+# Covert Runtime Broker Design and Implementation
 
-**Status:** design-only candidate; no production architecture changed
+**Status:** Unsloth selected; bounded Runtime Broker and adapter foundation implemented in this lane.
+
+The older comparison and multi-backend sketches in this document are historical design inputs. The active Luna-facing schema is [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md).
 
 ## Boundary
 
-Covert chooses a qualified backend profile and owns resource admission, model qualification, routing, evidence capture, and lease policy. The backend owns kernels, tokenization, quantization, inference, and hardware-specific execution.
+Covert standardizes on Unsloth for local inference and owns resource admission, model qualification, routing, evidence capture, and lease policy. Unsloth owns kernels, tokenization, quantization, inference, and hardware-specific execution. The Broker is Covert's stable ownership and integration boundary, not a backend competition layer.
 
 The Broker should not translate each runtime into a fictitious identical engine. It should normalize only request transport and common lifecycle, while preserving native options behind capability-gated settings.
 
-    Covert policy and routing
-              |
-    Local Intelligence API
-              |
-        Runtime Broker
-       /      |      \
-   llama   Unsloth  Ollama  LM Studio
+              Covert
+                 |
+       Local Intelligence API
+                 |
+          Runtime Broker
+                 |
+             Unsloth
+                 |
+        local model execution
+
+Direct llama.cpp remains an internal reference/recovery adapter. Other adapters may be implemented by developers without changing Covert's higher-level architecture; they are not shipped co-equal defaults.
 
 ## Small adapter contract
 
@@ -33,7 +39,7 @@ Required calls:
 | metrics(window) | Optional: return source-tagged counters, timings, and resource measurements. |
 | shutdown() | Optional and owner-gated: stop only a process that this Broker launched and still owns. |
 
-Do not require separate generate(), chat(), respond(), and tools() methods. Keep one infer request envelope with a mode field and optional tool/schema payload; use the backend's native endpoint when capability metadata says it is supported. Tool calls are inference output, not a separate lifecycle operation.
+The implementation exposes discover, health, capabilities, models, load, unload, infer, stream, tools through infer results, cancel, metrics, and shutdown. Unsupported or unknown operations fail closed. Tool calls are inference output, not a separate lifecycle operation.
 
 ### Request envelope
 
@@ -105,7 +111,7 @@ The lease is the authority boundary between Covert and an already-running local 
 
     {
       "lease_id": "uuid",
-      "owner": "covert | user | foreign",
+      "owner": "COVERT_OWNED | USER_OWNED | FOREIGN | UNKNOWN",
       "backend_id": "llama.cpp",
       "backend_version": "pinned-version",
       "runtime_engine": "llama.cpp",
@@ -124,7 +130,7 @@ The lease is the authority boundary between Covert and an already-running local 
       "last_verified_at": "UTC timestamp"
     }
 
-For Ollama, keep its content digest in backend_model_digest; never overwrite the input artifact SHA-256 with a runtime digest. For Unsloth and LM Studio, capture the selected source path and all worker PIDs when observable. If the process topology cannot be mapped, set the relevant lease field to unknown and disallow Broker shutdown.
+For any extension adapter, keep a backend content digest separate from the input artifact SHA-256. For Unsloth, capture the selected source path and listener PID when observable. If process topology cannot be mapped, set ownership to UNKNOWN and disallow Broker shutdown.
 
 ### Ownership transitions
 
@@ -134,7 +140,7 @@ For Ollama, keep its content digest in backend_model_digest; never overwrite the
 - covert-owned → stopped: Broker sends graceful shutdown only to its own PID tree and confirms those PIDs exited.
 - Unexpected PID, port, model, or digest change invalidates the lease and blocks inference until rediscovery and requalification.
 
-## Adapter-specific boundaries
+## Historical adapter-specific research (not a shipping plan)
 
 | Adapter | Common operations | Native-only controls / caveats |
 |---|---|---|
@@ -162,15 +168,21 @@ Write append-only experimental records keyed by:
     isomorphic flag + deviations
     timestamp + evidence source
 
-The Passport records measured performance; it does not make runtime selection changes in this lane. Future adaptive selection must require enough repetitions and reliability evidence, not just a throughput maximum.
+The Passport records the selected Unsloth configuration per artifact and machine. Runtime qualification keys must include backend release and artifact hash; unknown identity is unqualified. No AUTO policy selects among vendors.
 
 ## Developer Notes connection
 
-Future recommendation text can be generated from a Passport and capability facts, then surfaced through the existing Developer Notes system after separate product authorization. Example copy for later review:
+Future recommendation text can be generated from a Runtime Performance Passport and capability facts, then surfaced through the existing Developer Notes system after separate product authorization. Candidate copy:
 
 > Developer Note — James Ferrell
 >
-> GGUF is usually the easiest portable local-model format. Covert can benchmark the available runtimes on your machine instead of assuming one backend is fastest.
+> Covert standardizes on Unsloth for local inference while keeping inference behind a clean runtime boundary. Covert can qualify the selected Unsloth configuration for this machine and model.
+
+Public-safe website copy is draft-only and has not been published:
+
+> **Local inference included in the architecture.** Covert standardizes on Unsloth as its local inference backend, giving the system a consistent model-management and serving layer while retaining an open runtime boundary for developers who require custom infrastructure.
+
+> You should not need to choose and assemble an inference server just to start using local intelligence with Covert.
 
 No production UI or Developer Note was added here.
 
