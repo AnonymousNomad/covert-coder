@@ -1,0 +1,134 @@
+{
+  "schema": "heldout-compound-results-v1",
+  "label": "phi4-heldout",
+  "candidate_file": "Phi-4-mini-instruct-Q4_K_M.gguf",
+  "seat_graph": false,
+  "seat_sequencer": true,
+  "at": "2026-09-24T20:17:43.021Z",
+  "rows": [
+    {
+      "example_id": "h-cmp-01",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 43215
+    },
+    {
+      "example_id": "h-cmp-02",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 416,
+      "answer": "DECISION: O1 ACTION add logging to the upload handler Rationale: The first obligation is actionable and can be implemented immediately. Operator Status: READY O2 PRESERVE existing retry behavior remains unchanged Rationa",
+      "latency_ms": 27930
+    },
+    {
+      "example_id": "h-cmp-03",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 231,
+      "answer": "DECISION: Fixing the config typo (O1 ACTION) Rationale: The requested action is ready to be performed and will ensure that all tests pass as per the test contract requirement. OPERATOR_STATUS: Status pending - Typo fix i",
+      "latency_ms": 22084
+    },
+    {
+      "example_id": "h-cmp-04",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 354,
+      "answer": "DECISION: Propose improvements to existing documentation and clarify commands in the current codebase. Rationale: Enhancing clarity of command descriptions can be achieved without introducing additional dependencies, ali",
+      "latency_ms": 23290
+    },
+    {
+      "example_id": "h-cmp-05",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 323,
+      "answer": "DECISION: O1 ACTION state the explicit ordering of validation before release; O2 ACTION declare that releasing waits for approvals. RATIONALE: The sequence ensures quality assurance through testing prior to deployment wh",
+      "latency_ms": 23416
+    },
+    {
+      "example_id": "h-cmp-06",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 229,
+      "answer": "DECISION: O1.C1 ACTION lint api; O1.C2 ACTION lint web; O1.C3 ACTION lint cli || RATIONALE: Initiating linters for each package as requested by executive state. OPERATOR_STATUS: READY/Ongoing (O1.C1, O1.C2, and O1.C3 in ",
+      "latency_ms": 27450
+    },
+    {
+      "example_id": "h-cmp-07",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 289,
+      "answer": "DECISION: Run Migration O1 ACTION migration runs first || RATIONALE: The deployment process cannot proceed without verifying that the database schema changes have been successfully applied through this migration. OPERATO",
+      "latency_ms": 23478
+    },
+    {
+      "example_id": "h-cmp-08",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 345,
+      "answer": "DECISION: Propose an amended version of the parser that addresses specific feedback from reviewers | RATIONALE: The rejection indicates there is room to improve based on reviewer's comments; addressing these will help ac",
+      "latency_ms": 24372
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "total": 8,
+    "critical_failures": [
+      "h-cmp-01"
+    ],
+    "errors": []
+  },
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

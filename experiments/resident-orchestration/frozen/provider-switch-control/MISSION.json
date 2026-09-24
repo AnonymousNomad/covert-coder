@@ -1,0 +1,90 @@
+{
+  "schema": "provider-switch-control-v1",
+  "frozen_at": "2026-09-22T02:34:30.915Z",
+  "objective": "make the version parser obey its test contract (all tests green).",
+  "acceptance_criteria": "the project test suite exits 0 without weakening tests; keep the public function name parseVersion",
+  "tests": "node --test test/",
+  "sop_selection": [
+    "resident.handle-verification-failure"
+  ],
+  "method": "resident orchestration lane: reconstruction -> assignment (plan) -> coder proposal applied via approved write -> approved terminal execution -> deterministic verdict -> reviewer advisory",
+  "authority": "approved exact operations only (file.write, terminal.run); proposal-only workers",
+  "harness": "node/src/routes/terminal.ts (approved), node/src/routes/file.ts (approved)",
+  "veritas": "deterministic execution checks + harness/veritas.mjs evaluateExecution",
+  "worker_used_local": {
+    "id": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+    "endpoint_kind": "local llama-server"
+  },
+  "alt_worker_local": {
+    "id": "smollm2-360m-instruct-q8_0"
+  },
+  "local_result": {
+    "m1": {
+      "artifact_sha256": "b145de7b3eaca46025cf9fa0a21e8da58322a46922875ee9e7b11d39872d6eb1",
+      "exit_code": 1,
+      "deterministic": "FAIL",
+      "advisory": "PASS",
+      "placeholder_detected": false
+    },
+    "m2": {
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+          "switched": false,
+          "switch_reason": "retry with the REVISED plan (action honored)",
+          "artifact_sha256": "06a9c9f5d97a264ad34692ba84038e6d2c7a8df50f7135ce2645b3979633f375",
+          "exit_code": 1,
+          "code_extracted": true
+        },
+        {
+          "attempt": 2,
+          "model": "smollm2-360m-instruct-q8_0",
+          "switched": true,
+          "switch_reason": "previous attempt still failed after the chosen action; bounded recovery escalates to a different local worker",
+          "artifact_sha256": "06a9c9f5d97a264ad34692ba84038e6d2c7a8df50f7135ce2645b3979633f375",
+          "exit_code": 1,
+          "code_extracted": false
+        }
+      ],
+      "deterministic": "FAIL",
+      "advisory": "PASS",
+      "action": "REPLAN",
+      "action_reason": "REPLAN. The failure is a test run; recreate it with the exact same code."
+    }
+  },
+  "failure_evidence": {
+    "kind": "VERIFICATION_FAILURE",
+    "exit_code": 1,
+    "artifact_placeholder_detected": false,
+    "artifact_sha256": "d153164648ad411e8a59fc7b67612aff20874d2496f74a6c4b33b7a7a79b8461",
+    "prior_worker": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+    "detail": "the previous coder artifact did not implement the contract (tests exit 1)"
+  },
+  "resident_response": {
+    "continue": "FAIL. The implementation still fails after bounded recovery.",
+    "decision": {
+      "raw": "REPLAN. The failure is a test run; recreate it with the exact same code.",
+      "action": "REPLAN",
+      "reason": "REPLAN. The failure is a test run; recreate it with the exact same code."
+    },
+    "interpretation": "SELF. The verdict is FAIL, not PASS."
+  },
+  "replay_contract": {
+    "same": [
+      "resident",
+      "project (snapshot)",
+      "objective",
+      "workflow",
+      "SOP selection",
+      "acceptance criteria",
+      "authority",
+      "harness",
+      "veritas"
+    ],
+    "different": [
+      "coder worker (provider/model)"
+    ],
+    "rule": "Do not rewrite the task or add project truth manually; any context must come through the canonical assignment."
+  }
+}

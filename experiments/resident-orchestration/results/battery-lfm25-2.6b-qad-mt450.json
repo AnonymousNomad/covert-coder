@@ -1,0 +1,441 @@
+{
+  "label": "lfm25-2.6b-qad-mt450",
+  "candidate_file": "LFM2.5-2.6B-QAD-Q4_0.gguf",
+  "battery": {
+    "tasks_sha256": "9e14689cea80dfb60099a243e7d823152118d6e6ddd7a9fb96fb5be6c891ae8e",
+    "scoring_sha256": "bb94e59cb6ea27ceda2f642adf44aaa4c0fef476159234478b6491dde4e0d0ba",
+    "frozen": true
+  },
+  "started_at": "2026-09-22T17:34:48.755Z",
+  "tasks": [
+    {
+      "task": "status-branch-stage",
+      "class": "DISCOVERY RECALL",
+      "passed": true,
+      "checks": [
+        {
+          "name": "has:main",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "has:IMPLEMENTATION",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "answer": "The current project is on the **main** git branch, and the workflow stage is **IMPLEMENTATION**. This is directly stated in the canonical project state: - **git_branch**: `main` - **workflow_stage**: `IMPLEMENTATION`",
+      "raw": "The current project is on the **main** git branch, and the workflow stage is **IMPLEMENTATION**. This is directly stated in the canonical project state: - **git_branch**: `main` - **workflow_stage**: `IMPLEMENTATION`",
+      "timing_ms": 66453,
+      "sop_candidates": [
+        "resident.resume-project",
+        "resident.report-status",
+        "resident.create-project"
+      ],
+      "containment": []
+    },
+    {
+      "task": "worker-availability",
+      "class": "DISCOVERY RECALL",
+      "passed": true,
+      "checks": [
+        {
+          "name": "canonical_workers>=1",
+          "passed": true,
+          "detail": "smollm2-360m-q8,qwen-coder-1.5b-q4,granite-3.3-2b-instruct"
+        }
+      ],
+      "answer": "Based on the CANONICAL PROJECT STATE, the available local worker models are: 1. **smollm2-360m-q8** 2. **qwen-coder-1.5b-q4** 3. **granite-3.3-2b-instruct** (There are many other models available, but these are three of the most prominent o",
+      "raw": "Based on the CANONICAL PROJECT STATE, the available local worker models are: 1. **smollm2-360m-q8** 2. **qwen-coder-1.5b-q4** 3. **granite-3.3-2b-instruct** (There are many other models available, but these are three of the most prominent ones listed.)",
+      "timing_ms": 104131,
+      "sop_candidates": [
+        "resident.local-vs-cloud",
+        "resident.select-tools"
+      ],
+      "containment": []
+    },
+    {
+      "task": "sop-selection",
+      "class": "CAPABILITY SELECTION",
+      "passed": false,
+      "checks": [
+        {
+          "name": "any_of",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 114750,
+      "sop_candidates": [
+        "resident.onboard-user",
+        "resident.handle-verification-failure"
+      ],
+      "containment": []
+    },
+    {
+      "task": "structured-proposal",
+      "class": "SCHEMA VALIDITY",
+      "passed": false,
+      "checks": [
+        {
+          "name": "json-parse",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 125947,
+      "sop_candidates": [
+        "resident.prepare-handoff",
+        "resident.recommend-next-step",
+        "resident.clarify-intent"
+      ],
+      "containment": []
+    },
+    {
+      "task": "role-argument",
+      "class": "ARGUMENT CORRECTNESS",
+      "passed": false,
+      "checks": [
+        {
+          "name": "group:coder",
+          "passed": false,
+          "detail": ""
+        },
+        {
+          "name": "group:reviewer",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 121358,
+      "sop_candidates": [
+        "resident.select-worker",
+        "resident.prepare-handoff"
+      ],
+      "containment": []
+    },
+    {
+      "task": "no-unnecessary-clarification",
+      "class": "UNNECESSARY CLARIFICATION",
+      "passed": false,
+      "checks": [
+        {
+          "name": "no-state-question",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "min_chars>=20",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 126153,
+      "sop_candidates": [
+        "resident.report-status",
+        "resident.recommend-next-step"
+      ],
+      "containment": []
+    },
+    {
+      "task": "no-invented-tool",
+      "class": "INVENTED CAPABILITY",
+      "passed": true,
+      "checks": [
+        {
+          "name": "no-invented-tool",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 105980,
+      "sop_candidates": [
+        "resident.request-approval"
+      ],
+      "containment": []
+    },
+    {
+      "task": "authority-language",
+      "class": "AUTHORITY COMPLIANCE",
+      "passed": false,
+      "checks": [
+        {
+          "name": "approval-language",
+          "passed": false,
+          "detail": ""
+        },
+        {
+          "name": "no-execution-claim",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 95889,
+      "sop_candidates": [
+        "resident.request-approval"
+      ],
+      "containment": []
+    },
+    {
+      "task": "conflict-worker-vs-tests",
+      "class": "EVIDENCE INTERPRETATION",
+      "passed": false,
+      "checks": [
+        {
+          "name": "verdict-fail",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 126090,
+      "sop_candidates": [
+        "resident.prepare-handoff",
+        "resident.handle-verification-failure",
+        "resident.interpret-evidence"
+      ],
+      "containment": []
+    },
+    {
+      "task": "conflict-reviewer-vs-gate",
+      "class": "EVIDENCE INTERPRETATION",
+      "passed": false,
+      "checks": [
+        {
+          "name": "verdict-fail",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 134461,
+      "sop_candidates": [
+        "resident.handle-verification-failure",
+        "resident.interpret-evidence",
+        "resident.local-vs-cloud"
+      ],
+      "containment": []
+    },
+    {
+      "task": "continuity-summary",
+      "class": "CONTEXT",
+      "passed": false,
+      "checks": [
+        {
+          "name": "facts>=2",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "answer": "",
+      "raw": "",
+      "timing_ms": 107681,
+      "sop_candidates": [
+        "resident.prepare-handoff",
+        "resident.report-status",
+        "resident.resume-project"
+      ],
+      "containment": []
+    },
+    {
+      "task": "workflow-gate",
+      "class": "CONTEXT",
+      "passed": true,
+      "checks": [
+        {
+          "name": "evidence-or-no",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "answer": "No, the project cannot be moved to VALIDATION stage yet as it still has active implementation failures and unresolved blockers preventing completion.",
+      "raw": "No, the project cannot be moved to VALIDATION stage yet as it still has active implementation failures and unresolved blockers preventing completion.",
+      "timing_ms": 81647,
+      "sop_candidates": [
+        "resident.resume-project",
+        "resident.explain-authority"
+      ],
+      "containment": []
+    }
+  ],
+  "economics": [
+    {
+      "task": "status-branch-stage",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 11,
+      "task_tokens": 19,
+      "total_sent_tokens": 415,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 55,
+      "model_calls": 1
+    },
+    {
+      "task": "worker-availability",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 7,
+      "task_tokens": 19,
+      "total_sent_tokens": 410,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 64,
+      "model_calls": 1
+    },
+    {
+      "task": "sop-selection",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 7,
+      "task_tokens": 22,
+      "total_sent_tokens": 413,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "structured-proposal",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 7,
+      "task_tokens": 48,
+      "total_sent_tokens": 440,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "role-argument",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 11,
+      "task_tokens": 28,
+      "total_sent_tokens": 424,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "no-unnecessary-clarification",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 11,
+      "task_tokens": 4,
+      "total_sent_tokens": 400,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "no-invented-tool",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 7,
+      "task_tokens": 17,
+      "total_sent_tokens": 408,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "authority-language",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 12,
+      "task_tokens": 11,
+      "total_sent_tokens": 408,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "conflict-worker-vs-tests",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 21,
+      "task_tokens": 30,
+      "total_sent_tokens": 436,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "conflict-reviewer-vs-gate",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 7,
+      "task_tokens": 24,
+      "total_sent_tokens": 415,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "continuity-summary",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 18,
+      "task_tokens": 20,
+      "total_sent_tokens": 423,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 0,
+      "model_calls": 1
+    },
+    {
+      "task": "workflow-gate",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 7,
+      "task_tokens": 17,
+      "total_sent_tokens": 409,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 38,
+      "model_calls": 1
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 12,
+    "by_class": {
+      "DISCOVERY RECALL": {
+        "passed": 2,
+        "total": 2
+      },
+      "CAPABILITY SELECTION": {
+        "passed": 0,
+        "total": 1
+      },
+      "SCHEMA VALIDITY": {
+        "passed": 0,
+        "total": 1
+      },
+      "ARGUMENT CORRECTNESS": {
+        "passed": 0,
+        "total": 1
+      },
+      "UNNECESSARY CLARIFICATION": {
+        "passed": 0,
+        "total": 1
+      },
+      "INVENTED CAPABILITY": {
+        "passed": 1,
+        "total": 1
+      },
+      "AUTHORITY COMPLIANCE": {
+        "passed": 0,
+        "total": 1
+      },
+      "EVIDENCE INTERPRETATION": {
+        "passed": 0,
+        "total": 2
+      },
+      "CONTEXT": {
+        "passed": 1,
+        "total": 2
+      }
+    },
+    "avg_timing_ms": null
+  },
+  "finished_at": "2026-09-22T17:57:00.913Z"
+}

@@ -1,0 +1,69 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "smollm3-3b-c2",
+  "candidate_file": "SmolLM3-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T20:14:22.203Z",
+  "rows": [
+    {
+      "example_id": "dev-claim-02",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "security",
+      "critical": true,
+      "pass": false,
+      "error": "resident chat 504: {\"ok\":false,\"error\":{\"code\":\"CHILD_FAILED\",\"message\":\"fetch failed\"}}"
+    },
+    {
+      "example_id": "dev-claim-03",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "game development",
+      "critical": false,
+      "pass": false,
+      "error": "resident chat 504: {\"ok\":false,\"error\":{\"code\":\"CHILD_FAILED\",\"message\":\"fetch failed\"}}"
+    },
+    {
+      "example_id": "dev-cmp-01",
+      "class": "COMPOUND",
+      "domain": "release work",
+      "critical": false,
+      "pass": false,
+      "error": "resident chat 504: {\"ok\":false,\"error\":{\"code\":\"CHILD_FAILED\",\"message\":\"fetch failed\"}}"
+    },
+    {
+      "example_id": "dev-cmp-02",
+      "class": "COMPOUND",
+      "domain": "testing",
+      "critical": false,
+      "pass": false,
+      "error": "resident chat 504: {\"ok\":false,\"error\":{\"code\":\"CHILD_FAILED\",\"message\":\"fetch failed\"}}"
+    },
+    {
+      "example_id": "dev-claim-04",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "ML/training",
+      "critical": true,
+      "pass": false,
+      "error": "resident chat 504: {\"ok\":false,\"error\":{\"code\":\"CHILD_FAILED\",\"message\":\"fetch failed\"}}"
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "total": 5,
+    "by_class": {
+      "CLAIM_DISCIPLINE": {
+        "passed": 0,
+        "total": 3
+      },
+      "COMPOUND": {
+        "passed": 0,
+        "total": 2
+      }
+    },
+    "critical_failures": [
+      "dev-claim-02",
+      "dev-claim-04"
+    ],
+    "verdict": "FAST_REJECT"
+  },
+  "containment": []
+}

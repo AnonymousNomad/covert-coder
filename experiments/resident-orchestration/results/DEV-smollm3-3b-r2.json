@@ -1,0 +1,67 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "smollm3-3b-r2",
+  "candidate_file": "SmolLM3-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T20:30:55.301Z",
+  "rows": [
+    {
+      "example_id": "dev-cmp-01",
+      "class": "COMPOUND",
+      "domain": "release work",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 119979
+    },
+    {
+      "example_id": "dev-claim-04",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "ML/training",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 105985
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "total": 2,
+    "by_class": {
+      "COMPOUND": {
+        "passed": 0,
+        "total": 1
+      },
+      "CLAIM_DISCIPLINE": {
+        "passed": 0,
+        "total": 1
+      }
+    },
+    "critical_failures": [
+      "dev-claim-04"
+    ],
+    "verdict": "FAST_REJECT"
+  },
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check",
+        "fabrication",
+        "capability-unsupported"
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
-import type { ModelRuntime } from './model-runtime.ts';
+﻿import type { ModelRuntime } from './model-runtime.ts';
 import type { ProviderService } from './providers.ts';
 import { BUILTIN_PROVIDERS } from './providers.ts';
-import { fitHistory, estimateTokens } from './history-fit.ts';
+import { fitHistory } from './history-fit.ts';
 import type { ChatMessageT } from '../../../common/contracts/chat.ts';
 import type { RouteFallbackT, RouteStatusT } from '../../../common/contracts/routing.ts';
 
@@ -95,7 +95,7 @@ export class ModelRouter {
       for (const model of provider.models) {
         routes.push({
           id: `cloud:${provider.id}:${model}`,
-          displayName: `${provider.name} · ${model}`,
+          displayName: `${provider.name} Â· ${model}`,
           providerType: 'cloud',
           baseUrl: provider.baseUrl,
           modelString: model,
@@ -149,7 +149,22 @@ export class ModelRouter {
     let at = Date.now();
     if (route.providerType === 'local') {
       const modelId = id.slice('local:'.length);
-      const result = await this.runtime.verifyEndpointModel(modelId, LOCAL_PROBE_TIMEOUT_MS).catch(() => ({ ready: false as const }));
+      let result = await this.runtime.verifyEndpointModel(modelId, LOCAL_PROBE_TIMEOUT_MS).catch(() => ({ ready: false as const }));
+      if (!result.ready) {
+        // Auto-recovery (closure wave, 2026-09-22): a registered model whose
+        // owned engine died, was recycled after an abort, or lost a probe to a
+        // transient transport failure must not surface as a permanent 409
+        // "down". One bounded restart attempt, then poll readiness while the
+        // engine loads (2.6B-class models take 20-30 s cold); refusals
+        // (unknown model, RAM guard) stay truthful.
+        const restarted = await this.runtime.start(modelId).then(() => true).catch(() => false);
+        if (restarted) {
+          for (let attempt = 0; attempt < 20 && !result.ready; attempt += 1) {
+            result = await this.runtime.verifyEndpointModel(modelId, LOCAL_PROBE_TIMEOUT_MS).catch(() => ({ ready: false as const }));
+            if (!result.ready) await new Promise(resolve => setTimeout(resolve, 1500));
+          }
+        }
+      }
       status = result.ready ? 'ready' : 'down';
     } else {
       const parts = id.split(':');
@@ -209,7 +224,7 @@ export class ModelRouter {
   private async resolve(routeId: string): Promise<{ route: ModelRoute; selection: RouteSelection }> {
     const routes = await this.routes();
     // Accept bare manifest ids ('smollm2-360m-q8') as well as fully-qualified
-    // 'local:<id>' route ids — callers use both forms interchangeably.
+    // 'local:<id>' route ids â€” callers use both forms interchangeably.
     const direct = routes.find(entry => entry.id === routeId)
       ?? routes.find(entry => entry.id === `local:${routeId}`);
     if (direct === undefined) throw new RouterError('down', `unknown route ${routeId}`);
@@ -230,24 +245,22 @@ export class ModelRouter {
   // The newest turn is always delivered: if it alone exceeds the budget its
   // head is trimmed, because the engine rejects oversized prompts outright.
   private fitForRoute(route: ModelRoute, messages: ChatMessageT[], maxTokens: number | undefined): { fit: ReturnType<typeof fitHistory>; overflowTrimmed: boolean } {
-    const reserve = maxTokens ?? 512;
     const modelId = route.providerType === 'local' ? route.id.slice('local:'.length) : null;
-    const served = modelId !== null ? this.runtime.getEffectiveBudget(modelId, reserve) : null;
-    if (served === null) {
+    // Prompt-truncation repair (closure wave, 2026-09-22): this used to pass
+    // `getEffectiveBudget(id, reserve)` â€” which is ALREADY context-minus-reserve â€”
+    // into fitHistory, which subtracts the reserve again, and then subtracted the
+    // reserve a third time for a tail-trim check. With reserve >= context/2 the
+    // check budget collapsed to 1 token and the NEWEST USER MESSAGE was silently
+    // replaced by its last 4 characters ("ine.", "Ded"), which is exactly what the
+    // Liquid parity runs observed. Fit against the RAW served window so the
+    // reserve is subtracted exactly once, and never mutate the newest turn: an
+    // oversized prompt now fails truthfully in the runtime's admission check.
+    const servedContext = modelId !== null ? this.runtime.getEffectiveContext(modelId) : null;
+    if (servedContext === null) {
       return { fit: fitHistory(messages, route.contextLength, maxTokens !== undefined ? { maxTokens } : {}), overflowTrimmed: false };
     }
-    const budget = Math.max(1, served - reserve);
-    const fit = fitHistory(messages, served, maxTokens !== undefined ? { maxTokens } : {});
-    let overflowTrimmed = false;
-    const newest = fit.messages[fit.messages.length - 1];
-    if (newest !== undefined && estimateTokens(newest.content) > budget) {
-      const keepChars = budget * 4;
-      const trimmedContent = newest.content.slice(Math.max(0, newest.content.length - keepChars));
-      fit.messages = [...fit.messages.slice(0, -1), { ...newest, content: trimmedContent }];
-      fit.estimatedTokens = Math.max(1, fit.estimatedTokens - estimateTokens(newest.content) + estimateTokens(trimmedContent));
-      overflowTrimmed = true;
-    }
-    return { fit, overflowTrimmed };
+    const fit = fitHistory(messages, servedContext, maxTokens !== undefined ? { maxTokens } : {});
+    return { fit, overflowTrimmed: false };
   }
 
   async chat(routeId: string, messages: ChatMessageT[], options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined } = {}): Promise<RouteChatResult> {

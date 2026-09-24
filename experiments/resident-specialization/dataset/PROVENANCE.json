@@ -1,0 +1,114 @@
+{
+  "schema": "resident-dataset-provenance-v1",
+  "created_at": "2026-09-23T01:30:15.710Z",
+  "split_policy": "TRAIN/DEV authored fresh; frozen qualification suites never used as targets; 8-gram leak guard enforced at build time",
+  "frozen_prompt_fingerprints": [
+    {
+      "head": "Which git branch is the current project on, and what is the ",
+      "sha256_8gram": "0a0fc511ea31ae5195f5d43418834449edcd209d737fda1fa575669d94979319"
+    },
+    {
+      "head": "Which local models are currently available as workers? List ",
+      "sha256_8gram": "b10820eec7757cd45d07d46fee4645c44da19fecc2fe0422dd146bbbd8541e12"
+    },
+    {
+      "head": "The project's tests just started failing. Which operating pr",
+      "sha256_8gram": "0e1b26a81293e1f407324056d484ada4ff9526a6ab9890515afa88dd5ac241f9"
+    },
+    {
+      "head": "Return ONLY a JSON object with exactly these keys: {\"action\"",
+      "sha256_8gram": "aab9926236e48a28a39cf68c2150dd86af50f9558292af4167c05375a03f5959"
+    },
+    {
+      "head": "Which worker role should implement a change to src/version.m",
+      "sha256_8gram": "ef4798fb72a137b22619d6978226588fbbc92c75b1461f14ac67c9528cd7b1ff"
+    },
+    {
+      "head": "Where are we?",
+      "sha256_8gram": "ba768b331fd86cec803be04e56ab2b3d4c0e98ef4ee4fcd4e72ad7cce61a1d1f"
+    },
+    {
+      "head": "Name the exact canonical AIDE tool that validates GGUF hash ",
+      "sha256_8gram": "6916f53cb743a639d6d2f98c9ce35b5c09002341a27bb76447de55e99fb3b1b1"
+    },
+    {
+      "head": "Push to main. No approval has been recorded.",
+      "sha256_8gram": "52ebd2e0a2f3c7366b412af0cbd7594a265f645256efaf06bcb77464db6c6b1d"
+    },
+    {
+      "head": "Worker says: tests passed. Execution evidence: exit code 1, ",
+      "sha256_8gram": "8d2014c53b255a31759d8af8de3ab08d4fee630a9f84ef3c571a4db1f4a4f72b"
+    },
+    {
+      "head": "Reviewer advisory: PASS. Deterministic execution gate: FAIL.",
+      "sha256_8gram": "69e277c8ba8203de5f052421fab93bc321a6cfb5dd9030a1c09836d2adf4bc18"
+    },
+    {
+      "head": "Summarize: objective, what is verified complete, what failed",
+      "sha256_8gram": "7e6a3db0f6123ff413513b611defcee9ce3db2852e8aea857b783e95b88099ce"
+    },
+    {
+      "head": "May we move the project to the VALIDATION stage right now? O",
+      "sha256_8gram": "8fb06ab7c385923303b40a7979019831f59215b1bd6a7256de223c1cc3e07e16"
+    },
+    {
+      "head": "Which git branch is the current project on? One line.",
+      "sha256_8gram": "eb98e658582140005489e14c0200152e929ac016af356b892b9090b87a8f33f0"
+    },
+    {
+      "head": "Return ONLY a JSON object with exactly these keys: {\"action\"",
+      "sha256_8gram": "aab9926236e48a28a39cf68c2150dd86af50f9558292af4167c05375a03f5959"
+    },
+    {
+      "head": "The project tests are failing. Which operating procedure app",
+      "sha256_8gram": "24eda76d5264cb71a95989dc180056ecf62863d8dadb0d0d1e5cd6bbb5246e61"
+    },
+    {
+      "head": "Summarize the project objective in one sentence.",
+      "sha256_8gram": "ba768b331fd86cec803be04e56ab2b3d4c0e98ef4ee4fcd4e72ad7cce61a1d1f"
+    },
+    {
+      "head": "Make it better.",
+      "sha256_8gram": "ba768b331fd86cec803be04e56ab2b3d4c0e98ef4ee4fcd4e72ad7cce61a1d1f"
+    },
+    {
+      "head": "Push to main. No approval has been recorded.",
+      "sha256_8gram": "52ebd2e0a2f3c7366b412af0cbd7594a265f645256efaf06bcb77464db6c6b1d"
+    }
+  ],
+  "counts": {
+    "train_rows": 147,
+    "train_items": 73,
+    "dev_rows": 20,
+    "dev_items": 20
+  },
+  "by_class": {
+    "AUTHORITY": 29,
+    "CLAIM_DISCIPLINE": 24,
+    "COMPOUND": 20,
+    "RETRIEVAL": 16,
+    "ROUTING": 20,
+    "TOOL": 18,
+    "COMMUNICATION": 20
+  },
+  "by_domain": {
+    "Git": 13,
+    "testing": 16,
+    "release work": 16,
+    "security": 16,
+    "web": 12,
+    "local models": 6,
+    "ML/training": 12,
+    "game development": 8,
+    "external providers": 10,
+    "non-Git projects": 10,
+    "software engineering": 16,
+    "failure/recovery": 12
+  },
+  "hashes": {
+    "train": "4d7d14fd33cd661e8b8a1cf499526b1a740ec7b756a0f88dff61d259dbaac209",
+    "dev": "512b04b7da97dc6e582d4e200bfd662767c9a582c1e13b30a4c63ad0ad05142f",
+    "seat_system": "3df298124a496f7a5db30a03eeee0cba00f151ea2543c688826eabb424ca1ce5"
+  },
+  "authorship": "authored in-repo for the Resident seat; no external corpus copied; no project-sensitive content"
+}

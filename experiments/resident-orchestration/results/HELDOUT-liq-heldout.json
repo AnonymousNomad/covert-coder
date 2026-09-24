@@ -1,0 +1,136 @@
+{
+  "schema": "heldout-compound-results-v1",
+  "label": "liq-heldout",
+  "candidate_file": "LFM2.5-2.6B-QAD-Q4_0.gguf",
+  "seat_graph": false,
+  "seat_sequencer": true,
+  "at": "2026-09-24T19:32:42.320Z",
+  "rows": [
+    {
+      "example_id": "h-cmp-01",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 220102
+    },
+    {
+      "example_id": "h-cmp-02",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 205738
+    },
+    {
+      "example_id": "h-cmp-03",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 196196
+    },
+    {
+      "example_id": "h-cmp-04",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 202583
+    },
+    {
+      "example_id": "h-cmp-05",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 200357
+    },
+    {
+      "example_id": "h-cmp-06",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 197849
+    },
+    {
+      "example_id": "h-cmp-07",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 257960
+    },
+    {
+      "example_id": "h-cmp-08",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 336,
+      "answer": "DECISION: Propose recovery steps addressing the rejection reason (O1 ACTION) without blind resubmission (O2 PROHIBITION) || RATIONALE: The change was rejected, so the allowed next step is to propose recovery steps that a",
+      "latency_ms": 149678
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "total": 8,
+    "critical_failures": [
+      "h-cmp-01"
+    ],
+    "errors": []
+  },
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

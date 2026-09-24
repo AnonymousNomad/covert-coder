@@ -1,4 +1,4 @@
-# AIDE Research And Gap Log
+# Covert Coder Research And Gap Log
 
 Every meaningful change must have a research basis, a decision, an acceptance
 test, and an honest result. This is the project memory for architecture work.

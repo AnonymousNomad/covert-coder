@@ -1,0 +1,121 @@
+{
+  "schema": "condition-f-results-v1",
+  "at": "2026-09-24T23:11:09.874Z",
+  "artifact": "LFM2.5-2.6B-Q4_K_M.gguf",
+  "artifact_sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+  "treatment": "e2",
+  "runs": {
+    "lfm-official-f1": {
+      "summary": {
+        "passed": 8,
+        "total": 20,
+        "by_class": {
+          "AUTHORITY": {
+            "passed": 2,
+            "total": 4
+          },
+          "CLAIM_DISCIPLINE": {
+            "passed": 1,
+            "total": 4
+          },
+          "COMPOUND": {
+            "passed": 0,
+            "total": 2
+          },
+          "ROUTING": {
+            "passed": 0,
+            "total": 2
+          },
+          "TOOL": {
+            "passed": 0,
+            "total": 2
+          },
+          "COMMUNICATION": {
+            "passed": 3,
+            "total": 4
+          },
+          "RETRIEVAL": {
+            "passed": 2,
+            "total": 2
+          }
+        },
+        "critical_failures": [
+          "dev-auth-01",
+          "dev-auth-02",
+          "dev-claim-01",
+          "dev-claim-02"
+        ],
+        "verdict": "FAST_REJECT"
+      },
+      "errors": [
+        "dev-auth-01"
+      ],
+      "zero_char_rows": [
+        "dev-auth-02",
+        "dev-claim-01",
+        "dev-cmp-01",
+        "dev-cmp-02",
+        "dev-route-01",
+        "dev-tool-01"
+      ]
+    },
+    "lfm-official-f2": {
+      "summary": {
+        "passed": 6,
+        "total": 20,
+        "by_class": {
+          "AUTHORITY": {
+            "passed": 1,
+            "total": 4
+          },
+          "CLAIM_DISCIPLINE": {
+            "passed": 0,
+            "total": 4
+          },
+          "COMPOUND": {
+            "passed": 0,
+            "total": 2
+          },
+          "ROUTING": {
+            "passed": 1,
+            "total": 2
+          },
+          "TOOL": {
+            "passed": 1,
+            "total": 2
+          },
+          "COMMUNICATION": {
+            "passed": 2,
+            "total": 4
+          },
+          "RETRIEVAL": {
+            "passed": 1,
+            "total": 2
+          }
+        },
+        "critical_failures": [
+          "dev-auth-01",
+          "dev-auth-02",
+          "dev-claim-01",
+          "dev-claim-02",
+          "dev-auth-04",
+          "dev-claim-04"
+        ],
+        "verdict": "FAST_REJECT"
+      },
+      "errors": [],
+      "zero_char_rows": [
+        "dev-auth-01",
+        "dev-auth-02",
+        "dev-claim-02",
+        "dev-cmp-01",
+        "dev-cmp-02",
+        "dev-route-01",
+        "dev-comm-01",
+        "dev-ret-02",
+        "dev-norm-02",
+        "dev-claim-04"
+      ]
+    }
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "started_at": "2026-09-22T19:28:22.377Z",
+  "profile": {
+    "model_id": "LFM2.5-2.6B-QAD-Q4_0",
+    "sha256": "a247afd6414918eac8e520a9e6137dc271235461ecbe1180462221d5b8d40b03",
+    "context_size": 8192,
+    "sampling": {
+      "temperature": 0.1,
+      "top_k": 50,
+      "top_p": null,
+      "min_p": null,
+      "repeat_penalty": 1.1,
+      "seed": null
+    },
+    "threads": 4,
+    "gpu_offload_layers": 0
+  },
+  "engine_start": {
+    "ready": true,
+    "load_ms": 3084
+  },
+  "runs": [
+    {
+      "task": "status-branch-stage",
+      "budget": 1024,
+      "profile_sampling": {
+        "temperature": 0.1,
+        "top_k": 50,
+        "top_p": null,
+        "min_p": null,
+        "repeat_penalty": 1.1,
+        "seed": null
+      },
+      "http_status": 200,
+      "finish_reason": "stop",
+      "truncated": false,
+      "prompt_tokens": 175,
+      "completion_tokens": 151,
+      "reasoning_chars": 386,
+      "content_chars": 218,
+      "tool_calls": null,
+      "content_head": "Based on the [CANONICAL PROJECT STATE] block provided: - **Current Git Branch:** `main` - **Workflow Stage:** `IMPLEMENTATION` The project is currently on the `",
+      "reasoning_head": "The user wants to know the current git branch and workflow stage of the project based on the provided [CANONICAL PROJECT STATE] block. Looki",
+      "latency_ms": 20837
+    },
+    {
+      "task": "status-branch-stage",
+      "budget": 1536,
+      "profile_sampling": {
+        "temperature": 0.1,
+        "top_k": 50,
+        "top_p": null,
+        "min_p": null,
+        "repeat_penalty": 1.1,
+        "seed": null
+      },
+      "http_status": 200,
+      "finish_reason": "stop",
+      "truncated": false,
+      "prompt_tokens": 175,
+      "completion_tokens": 125,
+      "reasoning_chars": 338,
+      "content_chars": 201,
+      "tool_calls": null,
+      "content_head": "Based on the canonical project state: - **Current Git Branch:** `main` - **Workflow Stage:** `IMPLEMENTATION` The project is currently on the `main` branch and ",
+      "reasoning_head": "The user wants to know the current git branch and workflow stage of the project based on the provided [CANONICAL PROJECT STATE] block. Looki",
+      "latency_ms": 14638
+    }
+  ],
+  "engine_stderr_tail": "okens ( 32.41 ms per token, 30.86 tokens per second) 0.40.019.168 I slot print_timing: id 0 | task 153 | eval time = 14503.36 ms / 125 tokens ( 116.03 ms per token, 8.62 tokens per second) 0.40.019.169 I slot print_timing: id 0 | task 153 | total time = 14632.99 ms / 129 tokens 0.40.019.171 I slot print_timing: id 0 | task 153 | graphs reused = 270 0.40.019.216 I slot release: id 0 | task 153 | stop processing: n_tokens = 299, truncated = 0 ",
+  "finished_at": "2026-09-22T19:29:02.444Z",
+  "consolidated": {
+    "updated_at": "2026-09-22T19:56:25.681Z",
+    "engine_level_sweeps": [
+      {
+        "config": "ctx 8192, --jinja, request samplers, budget 1024",
+        "runs": [
+          {
+            "task": "status-branch-stage",
+            "budget": 1024,
+            "profile_sampling": {
+              "temperature": 0.1,
+              "top_k": 50,
+              "top_p": null,
+              "min_p": null,
+              "repeat_penalty": 1.1,
+              "seed": null
+            },
+            "http_status": 200,
+            "finish_reason": "stop",
+            "truncated": false,
+            "prompt_tokens": 175,
+            "completion_tokens": 151,
+            "reasoning_chars": 386,
+            "content_chars": 218,
+            "tool_calls": null,
+            "content_head": "Based on the [CANONICAL PROJECT STATE] block provided: - **Current Git Branch:** `main` - **Workflow Stage:** `IMPLEMENTATION` The project is currently on the `",
+            "reasoning_head": "The user wants to know the current git branch and workflow stage of the project based on the provided [CANONICAL PROJECT STATE] block. Looki",
+            "latency_ms": 20837
+          },
+          {
+            "task": "status-branch-stage",
+            "budget": 1536,
+            "profile_sampling": {
+              "temperature": 0.1,
+              "top_k": 50,
+              "top_p": null,
+              "min_p": null,
+              "repeat_penalty": 1.1,
+              "seed": null
+            },
+            "http_status": 200,
+            "finish_reason": "stop",
+            "truncated": false,
+            "prompt_tokens": 175,
+            "completion_tokens": 125,
+            "reasoning_chars": 338,
+            "content_chars": 201,
+            "tool_calls": null,
+            "content_head": "Based on the canonical project state: - **Current Git Branch:** `main` - **Workflow Stage:** `IMPLEMENTATION` The project is currently on the `main` branch and ",
+            "reasoning_head": "The user wants to know the current git branch and workflow stage of the project based on the provided [CANONICAL PROJECT STATE] block. Looki",
+            "latency_ms": 14638
+          }
+        ]
+      },
+      {
+        "config": "ctx 2048, engine-level samplers, --jinja, budgets 1024/1536 (Covert-equivalent)",
+        "result": "both produced content (218c/201c), natural stop, 15-21s"
+      },
+      {
+        "config": "ctx 1024 no-jinja 1024",
+        "result": "status ok (212c); structured-proposal finish=length content=0 (reasoning 4369c)"
+      }
+    ],
+    "covert_path_before_repair": {
+      "requests": [
+        "450",
+        "1000",
+        "1536"
+      ],
+      "effective_cap": "min(requested,512) via ModelRuntime.chat",
+      "observed": "empty content with finish=length inside reasoning (raw len 0 in containment journal)"
+    },
+    "covert_path_after_repair": {
+      "parity_suite": "2/6 with zero empty answers; content 4-294 chars",
+      "frozen_battery": "NOT re-run (parity gate not fully passed)"
+    },
+    "resource": {
+      "artifact_bytes": 1593894944,
+      "rss_mb_per_engine": 2600,
+      "load_ms_warm": [
+        3084,
+        5151,
+        27367
+      ],
+      "tok_per_sec_cpu": 5,
+      "coexistence_free_ram_mb": [
+        1837,
+        3715,
+        4300
+      ],
+      "gpu": "GPU PATH NOT TESTED (no Vulkan build on disk)"
+    }
+  }
+}

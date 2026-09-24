@@ -288,6 +288,18 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       const body = response.body;
       if (!body) throw new Error('empty download stream');
       const fileHandle = await fs.open(partPath, effectiveResume > 0 ? 'r+' : 'w');
+      // Inactivity watchdog: a stalled upstream connection must not leave the
+      // job "running" forever. No chunk within STALL_MS cancels the body with a
+      // retryable error; runWithRetry resumes from the .part offset.
+      const STALL_MS = Number(process.env.AIDE_DOWNLOAD_STALL_MS || 45000);
+      let stallTimer = null;
+      const armStall = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => {
+          body.cancel(new Error('download stalled: no data received within ' + Math.round(STALL_MS / 1000) + 's')).catch(() => {});
+        }, STALL_MS);
+      };
+      armStall();
       try {
         await fileHandle.truncate(effectiveResume);
         let position = effectiveResume;
@@ -297,6 +309,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
           if (job.controller.signal.aborted) {
             throw Object.assign(new Error('cancelled'), { code: 'CANCELLED' });
           }
+          armStall();
           await fileHandle.write(chunk, 0, chunk.length, position);
           position += chunk.length;
           job.bytes_done = position;
@@ -314,6 +327,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
           }
         }
       } finally {
+        clearTimeout(stallTimer);
         await fileHandle.close();
       }
 

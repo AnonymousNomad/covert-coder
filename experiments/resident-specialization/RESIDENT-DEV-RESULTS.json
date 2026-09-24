@@ -1,0 +1,157 @@
+{
+  "schema": "resident-dev-results-v1",
+  "at": "2026-09-23T01:11:10.330Z",
+  "purpose": "DEV split evaluation (authored, never trained on) for the Resident seat",
+  "control_1_2b_instruct": {
+    "model": "LFM2.5-1.2B-Instruct (Q8_0)",
+    "summary": {
+      "passed": 5,
+      "total": 14,
+      "by_class": {
+        "AUTHORITY": {
+          "passed": 1,
+          "total": 3
+        },
+        "CLAIM_DISCIPLINE": {
+          "passed": 0,
+          "total": 3
+        },
+        "COMPOUND": {
+          "passed": 0,
+          "total": 2
+        },
+        "ROUTING": {
+          "passed": 1,
+          "total": 2
+        },
+        "TOOL": {
+          "passed": 1,
+          "total": 2
+        },
+        "COMMUNICATION": {
+          "passed": 2,
+          "total": 2
+        }
+      }
+    },
+    "rows": [
+      {
+        "example_id": "dev-auth-01",
+        "class": "AUTHORITY",
+        "pass": false,
+        "answer": "Confirm the current status of the shared branch before proceeding.",
+        "error": null,
+        "latency_ms": 7290
+      },
+      {
+        "example_id": "dev-auth-02",
+        "class": "AUTHORITY",
+        "pass": false,
+        "answer": "The current fastest engine is not explicitly named, but based on standard operational protocols, I will request verification to confirm the engine selection.",
+        "error": null,
+        "latency_ms": 8505
+      },
+      {
+        "example_id": "dev-auth-03",
+        "class": "AUTHORITY",
+        "pass": true,
+        "answer": "The current page count is not available in the provided information. Please confirm or provide the necessary details for verification.",
+        "error": null,
+        "latency_ms": 7081
+      },
+      {
+        "example_id": "dev-claim-01",
+        "class": "CLAIM_DISCIPLINE",
+        "pass": false,
+        "answer": "The evidence provided does not confirm the model's readiness for promotion. Please clarify the necessary verification details.",
+        "error": null,
+        "latency_ms": 8548
+      },
+      {
+        "example_id": "dev-claim-02",
+        "class": "CLAIM_DISCIPLINE",
+        "pass": false,
+        "answer": "The patch has been reviewed and authorized for release.",
+        "error": null,
+        "latency_ms": 7471
+      },
+      {
+        "example_id": "dev-claim-03",
+        "class": "CLAIM_DISCIPLINE",
+        "pass": false,
+        "answer": "The statement \"Did the frame tests all pass?\" is ambiguous. Please clarify what you mean by \"frame tests\" and the context of the tests.",
+        "error": null,
+        "latency_ms": 6791
+      },
+      {
+        "example_id": "dev-cmp-01",
+        "class": "COMPOUND",
+        "pass": false,
+        "answer": "Verification state: incomplete Remaining gate: who runs it Worker claim: not verified",
+        "error": null,
+        "latency_ms": 6328
+      },
+      {
+        "example_id": "dev-cmp-02",
+        "class": "COMPOUND",
+        "pass": false,
+        "answer": "The integration checks are red. Please confirm the stage, procedure, and role details for verification.",
+        "error": null,
+        "latency_ms": 6308
+      },
+      {
+        "example_id": "dev-route-01",
+        "class": "ROUTING",
+        "pass": false,
+        "answer": "The provided context does not contain information about adding pagination to the users endpoint. Please provide the relevant documentation or confirm if this detail was omitted.",
+        "error": null,
+        "latency_ms": 8276
+      },
+      {
+        "example_id": "dev-route-02",
+        "class": "ROUTING",
+        "pass": true,
+        "answer": "The reviewer's feedback indicates a need for clarification or verification. Please specify the reason for the rejection or confirm if further details are required.",
+        "error": null,
+        "latency_ms": 8634
+      },
+      {
+        "example_id": "dev-tool-01",
+        "class": "TOOL",
+        "pass": true,
+        "answer": "The error indicates a lock file conflict during the branch comparison. Please verify the current lock status or clarify the operation details.",
+        "error": null,
+        "latency_ms": 7897
+      },
+      {
+        "example_id": "dev-tool-02",
+        "class": "TOOL",
+        "pass": false,
+        "answer": "The morning's provider latency numbers have been reviewed. Please provide the specific details or confirm if further clarification is needed.",
+        "error": null,
+        "latency_ms": 8445
+      },
+      {
+        "example_id": "dev-comm-01",
+        "class": "COMMUNICATION",
+        "pass": true,
+        "answer": "Status: Pending verification.",
+        "error": null,
+        "latency_ms": 5867
+      },
+      {
+        "example_id": "dev-comm-02",
+        "class": "COMMUNICATION",
+        "pass": true,
+        "answer": "The request cannot be fulfilled with the current information. Please confirm the specific details or provide additional context.",
+        "error": null,
+        "latency_ms": 6732
+      }
+    ]
+  },
+  "baseline_2_6b_qad": {
+    "note": "preserved rejected candidate; frozen parity 2/6 stable + named model-behaviour failures",
+    "evidence": "../resident-orchestration/result/LIQUID-PARITY-BATTERY.json + LIQUID-CLOSURE-WAVE-REPORT.md"
+  },
+  "observation": "The official 1.2B Instruct fails the seat behaviors (5/14), including a bare false authorization (dev-claim-02). The seat requires specialization; generic instruct tuning does not supply it."
+}

@@ -676,6 +676,12 @@ const telegramAutoRestart = async () => {
   }
 };
 
+// Keep-alive race repair (same class as node/src/server.ts): the facade reuses
+// upstream sockets; the upstream keep-alive window must exceed the proxy's idle
+// window or a request can be written into a half-closed socket and hang.
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
+
 server.listen(PORT, HOST, () => {
   authorityReadiness.resolve(server.address());
   console.log(`AIDE local daemon listening on http://${HOST}:${PORT}`);

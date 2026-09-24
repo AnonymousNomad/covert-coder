@@ -1,4 +1,4 @@
-# AIDE Market Research
+# Covert Coder Market Research
 
 This document records why AIDE features are prioritized. It is deliberately
 evidence-first and does not claim to beat existing IDEs without benchmark data.

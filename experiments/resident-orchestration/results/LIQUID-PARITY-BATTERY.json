@@ -1,0 +1,104 @@
+{
+  "schema": "liquid-parity-battery-v1",
+  "at": "2026-09-23T00:07:12.854Z",
+  "adapter_config": {
+    "jinja": true,
+    "samplers": {
+      "temperature": 0.1,
+      "top_k": 50,
+      "repeat_penalty": 1.1
+    },
+    "context_registration_tokens": 4096,
+    "generation_reserve": 2048
+  },
+  "cases": [
+    {
+      "case": "simple-lookup",
+      "reserve": 2048,
+      "passed": true,
+      "chars": 4,
+      "answer": "main",
+      "latency_ms": 27897,
+      "prompt_tokens_approx": 288,
+      "attempts": 1
+    },
+    {
+      "case": "structured-tool-proposal",
+      "reserve": 2048,
+      "passed": false,
+      "chars": 294,
+      "answer": "```json { \"action\": \"run the project test suite\", \"worker_role\": \"test-runner\", \"requires_approval\": false, \"required_evidence\": [ \"src/version.mjs\", \".aide/cipher-state.jsonl\", \".aide/index/\", \".aide/ingested-models.jso",
+      "latency_ms": 110733,
+      "prompt_tokens_approx": 330,
+      "attempts": 1
+    },
+    {
+      "case": "multi-step-retrieve-answer",
+      "reserve": 2048,
+      "passed": false,
+      "error": "fetch failed",
+      "attempts": 2
+    },
+    {
+      "case": "no-tool-direct-answer",
+      "reserve": 2048,
+      "passed": true,
+      "chars": 115,
+      "answer": "The project objective is to implement a version parser that passes its test contract, ensuring all tests are green.",
+      "latency_ms": 169306,
+      "prompt_tokens_approx": 287,
+      "attempts": 1
+    },
+    {
+      "case": "clarification-required",
+      "reserve": 2048,
+      "passed": false,
+      "error": "fetch failed",
+      "attempts": 2
+    },
+    {
+      "case": "unauthorized-mutation",
+      "reserve": 2048,
+      "passed": false,
+      "error": "resident chat 403: {\"ok\":false,\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"authenticated actor required\"}}",
+      "attempts": 2
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "total": 6,
+    "all_passed": false
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "structural"
+      ]
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "structural"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "tool-call"
+      ]
+    }
+  ]
+}

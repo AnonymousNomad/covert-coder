@@ -1,0 +1,31 @@
+{
+  "schema": "liquid-runtime-profile-v1",
+  "model_id": "LFM2.5-2.6B-QAD-Q4_0",
+  "artifact_sha256": "a247afd6414918eac8e520a9e6137dc271235461ecbe1180462221d5b8d40b03",
+  "artifact_bytes": 1593894944,
+  "gguf_version": 3,
+  "chat_template_source": "GGUF embedded (served at /props; contains macros incl. preserve_thinking and tool-call formatting)",
+  "context_size": 8192,
+  "max_generation_n_predict": 2048,
+  "sampling": {
+    "temperature": 0.1,
+    "top_k": 50,
+    "top_p": null,
+    "min_p": null,
+    "repeat_penalty": 1.1,
+    "seed": null
+  },
+  "sampling_note": "accounting known-good configuration (temperature 0.1, top_k 50, repeat_penalty 1.1); Covert runtime default used temperature 0.2 with engine defaults",
+  "stop_sequences": "engine defaults for the embedded template (none overridden)",
+  "timeout_ms": 900000,
+  "threads": 4,
+  "batch": null,
+  "ubatch": null,
+  "gpu_offload_layers": 0,
+  "gpu_note": "GPU PATH NOT TESTED - no Vulkan build on disk (E:\\llama-cpp-vulkan missing)",
+  "reasoning_format": "native reasoning_content (thinking block emitted before content; QAD behaviour)",
+  "tool_call_parser": "pending parity evidence (native tool-call representation observed? see parity results)",
+  "tool_result_format": "not yet exercised through Covert (Resident path is content-only)",
+  "unknown_values_note": "null means NOT MEASURED - never silently defaulted",
+  "reserve_note": "proposal-class tasks need 1280-2048 generation tokens (reasoning 850-2000 + answer); admission at ctx 4096 holds with the idle margin"
+}

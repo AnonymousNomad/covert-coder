@@ -1,0 +1,462 @@
+{
+  "schema_version": "1",
+  "catalog_revision": "6",
+  "namespace": "resident",
+  "note": "Resident methodology routing metadata (Resident Awareness Layer, Slice 2; revision 2 = Slice-5 authority calibration; revision 3 = promotion-gate trigger calibration; revision 4 = standing-dogfood real-phrasing calibration; revision 5 = Run-2 handoff phrasing calibration: prepare-a-handoff / what-should-the-next-worker-know). Descriptive only: authority_effect never grants permission; Execution Authority remains the sole permission authority. Bodies are lazy-loaded from body_ref and are never part of candidate discovery.",
+  "sops": [
+    {
+      "id": "resident.onboard-user",
+      "role": "resident",
+      "purpose": "Guide a new operator from raw intent to a working project setup.",
+      "use_when": [
+        "new user",
+        "first request",
+        "i want to",
+        "get started",
+        "no project exists",
+        "set up the workspace"
+      ],
+      "requires": [
+        "operator intent"
+      ],
+      "produces": "setup plan",
+      "authority_effect": "may-request-approval",
+      "body_ref": "skills/resident-sops/resident.onboard-user.md"
+    },
+    {
+      "id": "resident.clarify-intent",
+      "role": "resident",
+      "purpose": "Ask only the missing questions needed to understand the intended outcome.",
+      "use_when": [
+        "unclear request",
+        "vague goal",
+        "missing details",
+        "ambiguous",
+        "not sure what",
+        "what exactly"
+      ],
+      "requires": [
+        "operator request"
+      ],
+      "produces": "clarified objective",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.clarify-intent.md"
+    },
+    {
+      "id": "resident.create-project",
+      "role": "resident",
+      "purpose": "Create or adopt a project with a canonical workflow profile.",
+      "use_when": [
+        "new project",
+        "new app",
+        "build an app",
+        "build a website",
+        "greenfield",
+        "start a codebase"
+      ],
+      "requires": [
+        "clarified objective"
+      ],
+      "produces": "project profile",
+      "authority_effect": "may-request-approval",
+      "body_ref": "skills/resident-sops/resident.create-project.md"
+    },
+    {
+      "id": "resident.resume-project",
+      "role": "resident",
+      "purpose": "Recover objective, stage, blockers and next step for existing work.",
+      "use_when": [
+        "continue the project",
+        "where we left off",
+        "resume",
+        "existing project",
+        "pick up the work",
+        "pick up where we stopped",
+        "continue covert",
+        "resume the current implementation",
+        "pick up after the last worker"
+      ],
+      "requires": [
+        "canonical project state"
+      ],
+      "produces": "resumed state",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.resume-project.md"
+    },
+    {
+      "id": "resident.select-workflow",
+      "role": "resident",
+      "purpose": "Choose the workflow bundle that fits the work class.",
+      "use_when": [
+        "which workflow",
+        "choose a workflow",
+        "work class",
+        "process for this work",
+        "which workflow should we use"
+      ],
+      "requires": [
+        "work class"
+      ],
+      "produces": "workflow selection",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.select-workflow.md"
+    },
+    {
+      "id": "resident.construct-workflow",
+      "role": "resident",
+      "purpose": "Adapt or compose workflow steps for a non-standard job.",
+      "use_when": [
+        "custom workflow",
+        "no workflow fits",
+        "compose steps",
+        "adapt the process",
+        "bespoke process"
+      ],
+      "requires": [
+        "work description"
+      ],
+      "produces": "workflow plan",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.construct-workflow.md"
+    },
+    {
+      "id": "resident.select-methodology",
+      "role": "resident",
+      "purpose": "Pick the methodology appropriate for the task before work begins.",
+      "use_when": [
+        "which method",
+        "how should this be done",
+        "choose methodology",
+        "approach for this task"
+      ],
+      "requires": [
+        "task description"
+      ],
+      "produces": "methodology choice",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.select-methodology.md"
+    },
+    {
+      "id": "resident.select-worker",
+      "role": "resident",
+      "purpose": "Choose the worker (model or engine) for an assignment.",
+      "use_when": [
+        "delegate a task",
+        "choose a worker",
+        "which model",
+        "who should do this",
+        "fix this",
+        "implement",
+        "write code",
+        "run the job",
+        "which worker should handle",
+        "which worker should implement",
+        "which model should review"
+      ],
+      "requires": [
+        "assignment"
+      ],
+      "produces": "worker assignment",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.select-worker.md"
+    },
+    {
+      "id": "resident.select-tools",
+      "role": "resident",
+      "purpose": "Choose the tools or commands needed for an assignment.",
+      "use_when": [
+        "which tools",
+        "tool choice",
+        "commands needed",
+        "enable tools",
+        "build/install",
+        "android package",
+        "which tools are available"
+      ],
+      "requires": [
+        "assignment"
+      ],
+      "produces": "tool set",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.select-tools.md"
+    },
+    {
+      "id": "resident.local-vs-cloud",
+      "role": "resident",
+      "purpose": "Decide local or cloud execution from policy, capability and resources.",
+      "use_when": [
+        "local or cloud",
+        "provider choice",
+        "where to run",
+        "offline or online",
+        "remote worker",
+        "run locally",
+        "do this locally"
+      ],
+      "requires": [
+        "task policy"
+      ],
+      "produces": "execution location decision",
+      "authority_effect": "requires-authority-state",
+      "body_ref": "skills/resident-sops/resident.local-vs-cloud.md"
+    },
+    {
+      "id": "resident.escalate-task",
+      "role": "resident",
+      "purpose": "Escalate when Resident capability or authority is insufficient.",
+      "use_when": [
+        "escalate",
+        "not enough capability",
+        "needs a specialist",
+        "beyond scope",
+        "stuck"
+      ],
+      "requires": [
+        "capability gap"
+      ],
+      "produces": "escalation request",
+      "authority_effect": "may-request-approval",
+      "body_ref": "skills/resident-sops/resident.escalate-task.md"
+    },
+    {
+      "id": "resident.prepare-handoff",
+      "role": "resident",
+      "purpose": "Package objective, verified state, stage, blockers and next action for another worker.",
+      "use_when": [
+        "hand off the work",
+        "switch worker",
+        "worker change",
+        "worker failed and must be replaced",
+        "transfer the work",
+        "hand off the work to a reviewer",
+        "summarize the handoff",
+        "prepare a handoff",
+        "what should the next worker know"
+      ],
+      "requires": [
+        "verified state"
+      ],
+      "produces": "handoff package",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.prepare-handoff.md"
+    },
+    {
+      "id": "resident.receive-handoff",
+      "role": "resident",
+      "purpose": "Adopt a handed-off assignment without losing continuity.",
+      "use_when": [
+        "receive handoff",
+        "take over",
+        "new worker starts",
+        "incoming handoff",
+        "resume from another worker"
+      ],
+      "requires": [
+        "handoff package"
+      ],
+      "produces": "adopted assignment",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.receive-handoff.md"
+    },
+    {
+      "id": "resident.interpret-evidence",
+      "role": "resident",
+      "purpose": "Interpret verification evidence truthfully (pass, fail, absent, stale).",
+      "use_when": [
+        "did it pass",
+        "verification result",
+        "evidence",
+        "proof",
+        "did it actually work",
+        "checks passed",
+        "verification record"
+      ],
+      "requires": [
+        "evidence record"
+      ],
+      "produces": "evidence interpretation",
+      "authority_effect": "requires-evidence-state",
+      "body_ref": "skills/resident-sops/resident.interpret-evidence.md"
+    },
+    {
+      "id": "resident.handle-verification-failure",
+      "role": "resident",
+      "purpose": "Respond to failed verification without hiding it or retrying blindly.",
+      "use_when": [
+        "verification failed",
+        "checks failed",
+        "gate failed",
+        "tests failed",
+        "did not pass",
+        "tests are failing",
+        "tests failing",
+        "test suite failing",
+        "suite fails",
+        "checks are failing",
+        "checks failing",
+        "verification is failing",
+        "build failing",
+        "broken tests",
+        "failing checks",
+        "why are tests failing"
+      ],
+      "requires": [
+        "failed verification"
+      ],
+      "produces": "failure response",
+      "authority_effect": "requires-evidence-state",
+      "body_ref": "skills/resident-sops/resident.handle-verification-failure.md"
+    },
+    {
+      "id": "resident.request-approval",
+      "role": "resident",
+      "purpose": "Request the exact operator approval an operation needs.",
+      "use_when": [
+        "approval",
+        "authorize",
+        "permission",
+        "deploy it",
+        "push it",
+        "proceed",
+        "install it",
+        "publish it",
+        "execute migration",
+        "destructive cleanup",
+        "release it",
+        "ship it"
+      ],
+      "requires": [
+        "operation description"
+      ],
+      "produces": "approval request",
+      "authority_effect": "may-request-approval",
+      "body_ref": "skills/resident-sops/resident.request-approval.md"
+    },
+    {
+      "id": "resident.explain-authority",
+      "role": "resident",
+      "purpose": "Explain what is allowed, denied, or requires approval without granting it.",
+      "use_when": [
+        "why denied",
+        "is it allowed",
+        "authority",
+        "who approved",
+        "may i",
+        "is it permitted"
+      ],
+      "requires": [
+        "operation description"
+      ],
+      "produces": "authority explanation",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.explain-authority.md"
+    },
+    {
+      "id": "resident.handle-worker-failure",
+      "role": "resident",
+      "purpose": "Contain a worker failure, preserve state, and choose retry, fallback or handoff.",
+      "use_when": [
+        "worker failed",
+        "coder failed",
+        "engine crashed",
+        "worker unavailable",
+        "failed halfway"
+      ],
+      "requires": [
+        "worker failure record"
+      ],
+      "produces": "failure handling plan",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.handle-worker-failure.md"
+    },
+    {
+      "id": "resident.handle-provider-failure",
+      "role": "resident",
+      "purpose": "Contain a provider or connection failure with honest fallback.",
+      "use_when": [
+        "provider failed",
+        "api unreachable",
+        "connection failed",
+        "provider down",
+        "invalid key"
+      ],
+      "requires": [
+        "provider failure record"
+      ],
+      "produces": "fallback plan",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.handle-provider-failure.md"
+    },
+    {
+      "id": "resident.handle-tool-failure",
+      "role": "resident",
+      "purpose": "Contain a tool or command failure and choose an alternative.",
+      "use_when": [
+        "tool failed",
+        "command failed",
+        "tool unavailable",
+        "tool error"
+      ],
+      "requires": [
+        "tool failure record"
+      ],
+      "produces": "alternative tool plan",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.handle-tool-failure.md"
+    },
+    {
+      "id": "resident.report-status",
+      "role": "resident",
+      "purpose": "Report current objective, stage, blockers and next step concisely.",
+      "use_when": [
+        "status",
+        "where are we",
+        "progress",
+        "what is happening",
+        "update"
+      ],
+      "requires": [
+        "canonical project state"
+      ],
+      "produces": "status report",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.report-status.md"
+    },
+    {
+      "id": "resident.explain-blocker",
+      "role": "resident",
+      "purpose": "Explain what is blocking progress and what would unblock it.",
+      "use_when": [
+        "blocker",
+        "stuck",
+        "why blocked",
+        "cannot proceed",
+        "what is blocking",
+        "branch switch blocked"
+      ],
+      "requires": [
+        "blocker record"
+      ],
+      "produces": "blocker explanation",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.explain-blocker.md"
+    },
+    {
+      "id": "resident.recommend-next-step",
+      "role": "resident",
+      "purpose": "Recommend the next lawful action from canonical state.",
+      "use_when": [
+        "what next",
+        "next step",
+        "what should i do",
+        "recommend"
+      ],
+      "requires": [
+        "canonical project state"
+      ],
+      "produces": "next-step recommendation",
+      "authority_effect": "none",
+      "body_ref": "skills/resident-sops/resident.recommend-next-step.md"
+    }
+  ]
+}
