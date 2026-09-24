@@ -1494,3 +1494,15 @@ oUnusedParameters: true + erbatimModuleSyntax: true + rasableSyntaxOnly: true;
 - Runner: condition-d-run-all.mjs LIVE (detached) — sequential Liquid -> Granite -> SmolLM3 -> Phi-4 -> Terminal-SFT -> Macaw (fable5 excluded, pre-R-9 reserve caution). Each writes DEV-<label>-d.json (labels liq-d, granite-d, smollm3-d, phi4-d, terminal-d, macaw-d).
 - Liquid D PARTIAL (11/20 rows): A->D 3->9 passes on those rows; claims 3/3 rows (A 1/3), route 0/2->2/2, tool 0/1->1/1, auth-01 F->P; compound still 0/2; auth-02 0c (budget apparatus). Pre-registered signal forming on ONE model; multi-model decides.
 - RESUME: wait for runner completion (log E:\pip_temp\opencode\condition-d.log) -> run experiments/resident-specialization/condition-d-analyze.mjs (A-vs-D matrix + verdict rules) -> append results to CONDITION-D doc -> verdict commit (RQ-D2..RQ-D4). Checkpoint evidence mapping: RQ-D0=569c174; RQ-D1..D4 pending.
+
+### 2026-09-24 — website design skill-gap research
+- Created seven reusable global web-design skills under C:\Users\Grey_\.agents\skills based on the existing web-builder/design/accessibility/security/QC guidance and primary W3C, MDN, web.dev, and Playwright references: site information architecture, art direction/differentiation, component state contracts, visual regression/evidence, performance/asset engineering, immersive graphics fallback, and design-skill routing.
+- Scope is research and reusable SOP creation only. No website, runtime, Resident, Liquid, H3, or production Harness behavior was changed.
+- Validation: all seven new SKILL.md files have matching frontmatter names, descriptions, required SOP sections, and no credential-shaped values; the project audit is docs/design/WEB-DESIGN-SKILL-GAP-AUDIT.md. Targeted git diff check completed with no whitespace errors.
+
+### 2026-09-23 — RQ chain live (D -> analysis -> E1)
+- Commits: 569c174 RQ-D0 · 41d4fd2 RQ-D1 · ea70ebc RQ-E0/E1 (contract, graph fixtures, leakage PASS, E runner, rq-chain).
+- Liquid D COMPLETE: 14/20 (A 8/20) — claims 1->3/4, routing 0->2/2, auth 2->3/4, tool 0->1/2, comm 4->3/4, retrieval 1->2/2, COMPOUND 0/2; criticals A[auth-01,claim-01,auth-04,claim-04] -> D[auth-02(0c budget),claim-04].
+- condition-d-run-all LIVE (pid 8404): Granite running; then SmolLM3, Phi-4, Terminal-SFT, Macaw (~4h).
+- rq-chain LIVE (pid 25784): waits for D marker -> condition-d-analyze.mjs -> launches E1 runner (6 models, labels <m>-e1). Logs: E:\pip_temp\opencode\rq-chain.log, d-analysis.txt, condition-e1.txt.
+- RESUME (post-D): RQ-D2/D3/D4 commits (append D results + verdict to docs/resident/CONDITION-D-EXTERNALIZED-EXECUTIVE-STATE.md) -> wait for E1 completion -> build E analysis (A/D/E1 matrix) -> RQ-E2 verdict; E2 only if E1 weak on compound -> held-out battery -> research note RQ-E6 -> skill extraction RQ-E7 only if held-out passes.
