@@ -25,7 +25,11 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
   ExecutionEnvelope,
+  AttemptJournalEvent,
   type AttemptDetailT,
+  type AttemptEventIntegrityT,
+  type AttemptEventStreamResponseT,
+  type AttemptJournalEventT,
   type AttemptFailureClassT,
   type AttemptListResponseT,
   type AttemptStateT,
@@ -45,12 +49,38 @@ export function redactSecrets(text: string): string {
   return result;
 }
 
+type EventValue = string | number | boolean | null;
+
 interface JournalEvent {
+  event_id: string;
   seq: number;
   ts: string;
   attempt_id: string;
+  mission_id: string;
+  project_id: string;
+  source: string;
   event: string;
-  data: Record<string, string | number | boolean | null>;
+  data: Record<string, EventValue>;
+  redacted: boolean;
+}
+
+interface LegacyJournalEvent {
+  event_id?: unknown;
+  seq?: unknown;
+  ts?: unknown;
+  attempt_id?: unknown;
+  mission_id?: unknown;
+  project_id?: unknown;
+  source?: unknown;
+  event?: unknown;
+  data?: unknown;
+  redacted?: unknown;
+}
+
+interface JournalRead {
+  events: JournalEvent[];
+  corrupt: number;
+  integrity: AttemptEventIntegrityT;
 }
 
 export interface AttemptAdmissionInput {
@@ -65,6 +95,7 @@ export interface AttemptAdmissionInput {
   handoff_id: string | null;
   authority_owner: string;
   authority_operation_kind: string;
+  authority_permit_identity?: string;
   max_iterations: number | null;
   effective_context_tokens: number | null;
   resource_decision: { decision: 'START' | 'QUEUE' | 'REFUSE_RESOURCE'; reason: string } | null;
@@ -88,32 +119,109 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
   const idFactory = options.idFactory ?? (() => randomUUID());
   const mutationsInFlight = new Map<string, Set<string>>();
   const uncertainAttempts = new Set<string>();
+  // All journal appends are serialized.  Without this chain two concurrent
+  // tool/event paths can calculate the same attempt-local sequence number and
+  // create an ambiguous stream.
+  let appendChain: Promise<unknown> = Promise.resolve();
+  // Envelope binding and sealing are serialized separately from journal
+  // appends.  Without this lock, a late bindContext call could race a seal
+  // and either lose the bound context or rewrite an already sealed envelope.
+  let envelopeChain: Promise<unknown> = Promise.resolve();
+  const serializeEnvelope = <T>(operation: () => Promise<T>): Promise<T> => {
+    const result = envelopeChain.then(operation);
+    envelopeChain = result.catch(() => undefined);
+    return result;
+  };
 
-  const readJournal = async (): Promise<JournalEvent[]> => {
+  const normalizeData = (value: unknown): Record<string, EventValue> | null => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+    const result: Record<string, EventValue> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      if (typeof entry === 'string' || typeof entry === 'number' || typeof entry === 'boolean' || entry === null) result[key] = entry;
+      else result[key] = redactSecrets(String(entry)).slice(0, 1000);
+    }
+    return result;
+  };
+
+  const readJournal = async (): Promise<JournalRead> => {
     let raw: string;
     try {
       raw = await fs.readFile(journalPath, 'utf8');
     } catch {
-      return [];
+      return { events: [], corrupt: 0, integrity: 'OK' };
     }
     const events: JournalEvent[] = [];
+    let corrupt = 0;
+    let integrity: AttemptEventIntegrityT = 'OK';
+    const lastSeq = new Map<string, number>();
     for (const line of raw.split('\n')) {
       const trimmed = line.trim();
       if (trimmed.length === 0) continue;
       try {
-        events.push(JSON.parse(trimmed) as JournalEvent);
+        const parsed = JSON.parse(trimmed) as LegacyJournalEvent;
+        const attemptId = typeof parsed.attempt_id === 'string' ? parsed.attempt_id : '';
+        const seq = typeof parsed.seq === 'number' && Number.isInteger(parsed.seq) ? parsed.seq : -1;
+        const data = normalizeData(parsed.data);
+        if (attemptId.length === 0 || seq < 0 || typeof parsed.event !== 'string' || data === null) throw new Error('invalid journal record');
+        const previous = lastSeq.get(attemptId);
+        if (previous !== undefined && seq <= previous) integrity = 'OUT_OF_ORDER';
+        lastSeq.set(attemptId, seq);
+        events.push({
+          event_id: typeof parsed.event_id === 'string' && parsed.event_id.length > 0 ? parsed.event_id : `${attemptId}:${seq}`,
+          seq,
+          ts: typeof parsed.ts === 'string' ? parsed.ts : 'UNKNOWN',
+          attempt_id: attemptId,
+          mission_id: typeof parsed.mission_id === 'string' ? parsed.mission_id : 'UNKNOWN',
+          project_id: typeof parsed.project_id === 'string' ? parsed.project_id : 'UNKNOWN',
+          source: typeof parsed.source === 'string' ? parsed.source : 'legacy',
+          event: parsed.event,
+          data,
+          redacted: parsed.redacted === true
+        });
       } catch {
-        // Corrupt lines are skipped; reads never fabricate.
+        corrupt += 1;
       }
     }
-    return events;
+    if (corrupt > 0 && integrity === 'OK') integrity = 'CORRUPT';
+    return { events, corrupt, integrity };
   };
 
-  const append = async (attemptId: string, event: string, data: Record<string, string | number | boolean | null> = {}): Promise<void> => {
-    const events = await readJournal();
-    const seq = events.filter(entry => entry.attempt_id === attemptId).length;
-    await fs.mkdir(admissionDir, { recursive: true });
-    await fs.appendFile(journalPath, `${JSON.stringify({ seq, ts: now().toISOString(), attempt_id: attemptId, event, data })}\n`, 'utf8');
+  const append = async (attemptId: string, event: string, data: Record<string, EventValue> = {}, source = 'harness'): Promise<AttemptJournalEventT> => {
+    const operation = appendChain.then(async () => {
+      const journal = await readJournal();
+      const own = journal.events.filter(entry => entry.attempt_id === attemptId);
+      const seq = own.length === 0 ? 0 : Math.max(...own.map(entry => entry.seq)) + 1;
+      const envelope = await readEnvelope(attemptId);
+      const missionId = envelope?.mission_id ?? String(data.mission_id ?? 'UNKNOWN');
+      const projectId = envelope?.project_id ?? String(data.project_id ?? 'UNKNOWN');
+      const redactedData = Object.fromEntries(Object.entries(data).map(([key, value]) => [
+        key,
+        typeof value === 'string' ? redactSecrets(value).slice(0, 1000) : value
+      ])) as Record<string, EventValue>;
+      const record: JournalEvent = {
+        event_id: `${attemptId}:${seq}`,
+        seq,
+        ts: now().toISOString(),
+        attempt_id: attemptId,
+        mission_id: missionId.slice(0, 200),
+        project_id: projectId.slice(0, 1000),
+        source: source.slice(0, 80),
+        event: event.slice(0, 60),
+        data: redactedData,
+        redacted: true
+      };
+      await fs.mkdir(admissionDir, { recursive: true });
+      const handle = await fs.open(journalPath, 'a');
+      try {
+        await handle.writeFile(`${JSON.stringify(record)}\n`, 'utf8');
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
+      return AttemptJournalEvent.parse(record) as AttemptJournalEventT;
+    });
+    appendChain = operation.catch(() => undefined);
+    return operation;
   };
 
   const envelopePath = (attemptId: string): string => path.join(attemptsDir, `${attemptId}.json`);
@@ -127,30 +235,34 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
     }
   };
 
-  const writeEnvelopeSealed = async (envelope: ExecutionEnvelopeT): Promise<void> => {
+  const writeEnvelope = async (envelope: ExecutionEnvelopeT): Promise<void> => {
     await fs.mkdir(attemptsDir, { recursive: true });
     const temp = path.join(attemptsDir, `.${envelope.attempt_id}.tmp`);
-    await fs.writeFile(temp, JSON.stringify(envelope, null, 2), 'utf8');
+    const handle = await fs.open(temp, 'w');
+    try {
+      await handle.writeFile(JSON.stringify(envelope, null, 2), 'utf8');
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
     await fs.rename(temp, envelopePath(envelope.attempt_id));
   };
 
   // Durable admission check: BOTH artifacts must exist. Fail closed.
-  const assertAdmitted = async (attemptId: string): Promise<{ admitted: boolean; reason: string }> => {
+  const assertAdmitted = async (attemptId: string, expectedProjectId?: string): Promise<{ admitted: boolean; reason: string }> => {
     const envelope = await readEnvelope(attemptId);
     if (envelope === null || envelope.sealed !== true) return { admitted: false, reason: 'execution envelope is absent or unsealed' };
-    const events = await readJournal();
-    const admitted = events.some(entry => entry.attempt_id === attemptId && entry.event === 'ATTEMPT_ADMITTED');
+    if (expectedProjectId !== undefined && envelope.project_id !== expectedProjectId) return { admitted: false, reason: 'execution envelope project binding mismatch' };
+    const journal = await readJournal();
+    if (journal.integrity !== 'OK') return { admitted: false, reason: `journal integrity is ${journal.integrity}` };
+    const admitted = journal.events.some(entry => entry.attempt_id === attemptId && entry.event === 'ATTEMPT_ADMITTED');
     if (!admitted) return { admitted: false, reason: 'journal has no durable ATTEMPT_ADMITTED record' };
     return { admitted: true, reason: 'durable admission established' };
   };
 
-  // Two-phase admission. Returns the sealed envelope. Any failure between the
-  // phases leaves RECOVERED_INCOMPLETE_ADMISSION (not admitted) after restart.
-  const admit = async (input: AttemptAdmissionInput): Promise<ExecutionEnvelopeT> => {
-    const attemptId = idFactory();
-    const createdAt = now().toISOString();
+  const buildEnvelope = (input: AttemptAdmissionInput, attemptId: string, createdAt: string): ExecutionEnvelopeT => {
     const objective = redactSecrets(input.task).slice(0, 2000);
-    const envelope: ExecutionEnvelopeT = {
+    return {
       schema: 'covert.attempt.v1',
       attempt_id: attemptId,
       sealed: false,
@@ -184,7 +296,7 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
         owner: input.authority_owner,
         operation_kind: input.authority_operation_kind,
         workspace: input.workspace,
-        permit_identity: 'one-use execution context (agent.start)'
+        permit_identity: input.authority_permit_identity ?? 'NOT_RECORDED'
       },
       mutation_scope: input.mutation_scope,
       budget: {
@@ -196,17 +308,57 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
       mode: input.mode,
       started_by: 'agent-loop'
     };
+  };
+
+  // Prepare writes an unsealed envelope and its validation observations.  It
+  // is intentionally not admissible: mutation guards require the later
+  // durable ATTEMPT_ADMITTED event.  This lets the live loop bind the actual
+  // context/Skills before the immutable envelope is sealed.
+  const prepare = async (input: AttemptAdmissionInput): Promise<ExecutionEnvelopeT> => {
+    const attemptId = idFactory();
+    const createdAt = now().toISOString();
+    const envelope = buildEnvelope(input, attemptId, createdAt);
+    if (await readEnvelope(attemptId) !== null) throw new Error(`attempt ${attemptId} already exists`);
+    await writeEnvelope(envelope);
     await append(attemptId, 'ATTEMPT_CREATED', { task_id: input.task_id, mode: input.mode });
     await append(attemptId, 'VALIDATION_COMPLETED', { binding: 'start-binding-ok' });
-    await append(attemptId, 'RESOURCE_ADMITTED', {
-      decision: envelope.resource_admission.decision,
-      reason: envelope.resource_admission.reason
-    });
-    await append(attemptId, 'AUTHORITY_GRANTED', { owner: input.authority_owner, operation_kind: input.authority_operation_kind });
+    if (envelope.resource_admission.decision === 'QUEUE') {
+      await append(attemptId, 'RESOURCE_QUEUED', { reason: envelope.resource_admission.reason });
+    } else if (envelope.resource_admission.decision === 'REFUSE_RESOURCE') {
+      await append(attemptId, 'RESOURCE_REFUSED', { reason: envelope.resource_admission.reason });
+    } else {
+      await append(attemptId, 'RESOURCE_ADMITTED', { decision: envelope.resource_admission.decision, reason: envelope.resource_admission.reason });
+    }
+    await append(attemptId, 'AUTHORITY_GRANTED', { owner: input.authority_owner, operation_kind: input.authority_operation_kind, operation_id: envelope.authority_scope.permit_identity });
+    return envelope;
+  };
+
+  // Seal is the only transition that makes an attempt mutation-admissible.
+  // The envelope is atomically replaced first, then ATTEMPT_ADMITTED is
+  // durably appended.  A crash between those operations remains fail-closed:
+  // assertAdmitted requires both artifacts and recovery classifies the attempt
+  // as incomplete admission.
+  const seal = async (attemptId: string): Promise<ExecutionEnvelopeT> => serializeEnvelope(async () => {
+    const envelope = await readEnvelope(attemptId);
+    if (envelope === null) throw new Error(`attempt ${attemptId} envelope not found`);
+    if (envelope.sealed) {
+      const admission = await assertAdmitted(attemptId);
+      if (!admission.admitted) throw new Error(`attempt ${attemptId} is sealed without durable admission`);
+      return envelope;
+    }
     const sealed: ExecutionEnvelopeT = { ...envelope, sealed: true, sealed_at: now().toISOString() };
-    await writeEnvelopeSealed(sealed);
+    await writeEnvelope(sealed);
+    await append(attemptId, 'ATTEMPT_SEALED', { sealed_at: sealed.sealed_at });
     await append(attemptId, 'ATTEMPT_ADMITTED', { sealed_at: sealed.sealed_at });
     return sealed;
+  });
+
+  // Compatibility helper for isolated callers/tests that have all bindings at
+  // creation time.  The live AgentLoop uses prepare -> bind -> seal so the
+  // final envelope contains the exact context that entered the model call.
+  const admit = async (input: AttemptAdmissionInput): Promise<ExecutionEnvelopeT> => {
+    const envelope = await prepare(input);
+    return seal(envelope.attempt_id);
   };
 
   const rejectAdmission = async (attemptId: string, failureClass: AttemptFailureClassT, reason: string): Promise<void> => {
@@ -214,28 +366,30 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
   };
 
   const executionStarted = async (attemptId: string): Promise<void> => {
+    const admission = await assertAdmitted(attemptId);
+    if (!admission.admitted) throw new Error(`execution cannot start: ${admission.reason}`);
     await append(attemptId, 'EXECUTION_STARTED', {});
   };
 
-  const bindContext = async (attemptId: string, contextSha256: string, blocks: string[]): Promise<{ drift: boolean }> => {
+  const bindContext = async (attemptId: string, contextSha256: string, blocks: string[]): Promise<{ drift: boolean }> => serializeEnvelope(async () => {
     const envelope = await readEnvelope(attemptId);
     if (envelope === null) return { drift: false };
     const previous = envelope.context_envelope.sha256;
-    if (previous === null) {
+    if (previous === null && envelope.sealed === false) {
       const bound: ExecutionEnvelopeT = {
         ...envelope,
         context_envelope: { identity: `sha256:${contextSha256.slice(0, 16)}`, sha256: contextSha256, blocks: blocks.slice(0, 32), bound_at: now().toISOString() }
       };
-      await writeEnvelopeSealed(bound);
+      await writeEnvelope(bound);
       await append(attemptId, 'CONTEXT_BOUND', { sha256: contextSha256, blocks: blocks.join(',').slice(0, 400) });
       return { drift: false };
     }
-    if (previous !== contextSha256) {
-      await append(attemptId, 'CONTEXT_DRIFT', { previous: previous.slice(0, 16), observed: contextSha256.slice(0, 16), blocks: blocks.join(',').slice(0, 400) });
+    if (previous === null || previous !== contextSha256) {
+      await append(attemptId, 'CONTEXT_DRIFT', { previous: previous === null ? 'NOT_RECORDED' : previous.slice(0, 16), observed: contextSha256.slice(0, 16), blocks: blocks.join(',').slice(0, 400) });
       return { drift: true };
     }
     return { drift: false };
-  };
+  });
 
   const effectObserved = async (attemptId: string, data: { tool: string; path: string | null; sha256: string | null; bytes: number | null }): Promise<void> => {
     await append(attemptId, 'EFFECT_OBSERVED', { tool: data.tool, path: data.path, sha256: data.sha256, bytes: data.bytes });
@@ -269,7 +423,11 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
       return;
     }
     await append(attemptId, 'ATTEMPT_COMPLETED', { verification_state: data.verification_state, accepted: data.accepted });
-    if (data.accepted) await append(attemptId, 'ATTEMPT_ACCEPTED', { verification_state: data.verification_state });
+    if (data.accepted) {
+      await append(attemptId, 'ATTEMPT_ACCEPTED', { verification_state: data.verification_state });
+    } else {
+      await append(attemptId, 'ATTEMPT_REJECTED', { verification_state: data.verification_state, reason: 'independent evidence did not support acceptance' });
+    }
   };
 
   const stateOf = (events: JournalEvent[], attemptId: string): { state: AttemptStateT; failure_class: AttemptFailureClassT | null; recovery_note: string | null } => {
@@ -282,9 +440,10 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
       return { state: classification as AttemptStateT, failure_class: null, recovery_note: recoveryNote };
     }
     if (has('ATTEMPT_ACCEPTED')) return { state: 'ACCEPTED', failure_class: null, recovery_note: null };
+    if (has('ATTEMPT_REJECTED')) return { state: 'REJECTED', failure_class: 'VERIFICATION_FAILURE', recovery_note: 'completion was not independently supported' };
     if (has('ATTEMPT_COMPLETED')) return { state: 'COMPLETED', failure_class: null, recovery_note: null };
     if (has('ATTEMPT_ABORTED')) return { state: 'ABORTED', failure_class: null, recovery_note: null };
-    if (has('ATTEMPT_FAILED')) {
+    if (has('ATTEMPT_FAILED') || has('ATTEMPT_REJECTED')) {
       const failed = own.filter(entry => entry.event === 'ATTEMPT_FAILED').pop();
       return { state: 'FAILED', failure_class: (failed?.data.failure_class ?? 'UNKNOWN') as AttemptFailureClassT, recovery_note: null };
     }
@@ -306,7 +465,8 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
   };
 
   const recover = async (): Promise<Array<{ attempt_id: string; classification: AttemptStateT; note: string }>> => {
-    const events = await readJournal();
+    const journal = await readJournal();
+    const events = journal.events;
     const ids = [...new Set(events.map(entry => entry.attempt_id))];
     const results: Array<{ attempt_id: string; classification: AttemptStateT; note: string }> = [];
     for (const attemptId of ids) {
@@ -338,7 +498,8 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
   const get = async (attemptId: string): Promise<AttemptDetailT | null> => {
     const envelope = await readEnvelope(attemptId);
     if (envelope === null) return null;
-    const events = await readJournal();
+    const journal = await readJournal();
+    const events = journal.events;
     const { state, failure_class, recovery_note } = stateOf(events, attemptId);
     return {
       envelope,
@@ -346,12 +507,15 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
       retry_safety: retrySafetyOf(events, attemptId, state),
       failure_class,
       recovery_note,
-      events: events.filter(entry => entry.attempt_id === attemptId).slice(-500)
+      integrity: journal.integrity,
+      corrupt_records: journal.corrupt,
+      events: events.filter(entry => entry.attempt_id === attemptId).slice(-1000)
     };
   };
 
   const list = async (taskId?: string): Promise<AttemptListResponseT> => {
-    const events = await readJournal();
+    const journal = await readJournal();
+    const events = journal.events;
     const ids = [...new Set(events.map(entry => entry.attempt_id))];
     const attempts: AttemptListResponseT['attempts'] = [];
     for (const attemptId of ids) {
@@ -371,6 +535,33 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
     return { attempts: attempts.slice(-500), total: attempts.length };
   };
 
+  // Cursor-based read API for Live Execution.  It is a projection of the
+  // durable journal, not a second UI event cache.  `after` is the last
+  // attempt-local sequence the client has processed; a reconnect asks for
+  // strictly greater sequences and can de-duplicate by event_id.
+  const stream = async (attemptId: string, after = -1, limit = 100): Promise<AttemptEventStreamResponseT | null> => {
+    const envelope = await readEnvelope(attemptId);
+    if (envelope === null) return null;
+    const journal = await readJournal();
+    const all = journal.events.filter(entry => entry.attempt_id === attemptId);
+    const boundedLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+    const events = all.filter(entry => entry.seq > after).slice(0, boundedLimit);
+    const nextAfter = events.length === 0 ? after : (events[events.length - 1]?.seq ?? after);
+    const terminal = all.some(entry => ['ATTEMPT_ACCEPTED', 'ATTEMPT_REJECTED', 'ATTEMPT_FAILED', 'ATTEMPT_ABORTED'].includes(entry.event));
+    return {
+      attempt_id: attemptId,
+      mission_id: envelope.mission_id,
+      project_id: envelope.project_id,
+      after,
+      next_after: nextAfter,
+      has_more: all.some(entry => entry.seq > nextAfter),
+      terminal,
+      integrity: journal.integrity,
+      corrupt_records: journal.corrupt,
+      events
+    };
+  };
+
   // Live-path hooks used by the agent loop.
   const noteMutationDispatch = (attemptId: string, tool: string): void => {
     const set = mutationsInFlight.get(attemptId) ?? new Set<string>();
@@ -385,6 +576,12 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
   return {
     journalPath,
     attemptsDir,
+    recordEvent: async (attemptId: string, event: string, data: Record<string, EventValue> = {}, source = 'harness') => {
+      if (await readEnvelope(attemptId) === null) throw new Error(`attempt ${attemptId} envelope not found`);
+      return append(attemptId, event, data, source);
+    },
+    prepare,
+    seal,
     admit,
     rejectAdmission,
     assertAdmitted,
@@ -397,6 +594,7 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
     recover,
     get,
     list,
+    stream,
     noteMutationDispatch,
     clearMutationDispatch,
     uncertainAttempts,

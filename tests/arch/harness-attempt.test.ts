@@ -114,6 +114,31 @@ test('admission incomplete (unsealed envelope) -> DENY', async () => {
   assert.equal(check.admitted, false);
 });
 
+test('execution cannot start before the attempt is sealed and durably admitted', async () => {
+  const ws = await workspace();
+  const journal = createAttemptJournal({ workspace: ws, idFactory: () => ATTEMPT_A });
+  await journal.prepare(admissionInput({ workspace: ws }));
+  await assert.rejects(() => journal.executionStarted(ATTEMPT_A), /execution cannot start/);
+  const beforeSeal = await journal.get(ATTEMPT_A);
+  assert.ok(!beforeSeal?.events.some(event => event.event === 'EXECUTION_STARTED'));
+  await journal.seal(ATTEMPT_A);
+  await journal.executionStarted(ATTEMPT_A);
+  const afterSeal = await journal.get(ATTEMPT_A);
+  assert.ok(afterSeal?.events.some(event => event.event === 'EXECUTION_STARTED'));
+});
+
+test('concurrent seal calls are idempotent and do not duplicate admission truth', async () => {
+  const ws = await workspace();
+  const journal = createAttemptJournal({ workspace: ws, idFactory: () => ATTEMPT_A });
+  await journal.prepare(admissionInput({ workspace: ws }));
+  await journal.bindContext(ATTEMPT_A, 'a'.repeat(64), ['CONTEXT']);
+  await Promise.all([journal.seal(ATTEMPT_A), journal.seal(ATTEMPT_A)]);
+  const detail = await journal.get(ATTEMPT_A);
+  assert.equal(detail?.integrity, 'OK');
+  assert.equal(detail?.events.filter(event => event.event === 'ATTEMPT_SEALED').length, 1);
+  assert.equal(detail?.events.filter(event => event.event === 'ATTEMPT_ADMITTED').length, 1);
+});
+
 test('admission persistence failure -> admit throws, nothing executed', async () => {
   const ws = await workspace();
   // Make the attempts path unwritable: a FILE where the directory must be.
@@ -140,9 +165,10 @@ test('duplicate attempt start -> deterministic distinct identities', async () =>
 test('same attempt envelope mutation attempted -> drift journaled, envelope unchanged', async () => {
   const ws = await workspace();
   const journal = createAttemptJournal({ workspace: ws, idFactory: () => ATTEMPT_A });
-  await journal.admit(admissionInput({ workspace: ws }));
+  await journal.prepare(admissionInput({ workspace: ws }));
   const first = await journal.bindContext(ATTEMPT_A, 'a'.repeat(64), ['SKILL CONTEXT']);
   assert.equal(first.drift, false);
+  await journal.seal(ATTEMPT_A);
   const second = await journal.bindContext(ATTEMPT_A, 'b'.repeat(64), ['SKILL CONTEXT', 'WORKSPACE CONTEXT']);
   assert.equal(second.drift, true);
   const detail = await journal.get(ATTEMPT_A);
@@ -208,6 +234,12 @@ test('secret safety: secrets in task and reasons are redacted before persistence
     task: 'use key sk-supersecret12345678 and Authorization: Bearer abcdef123456 to call the API',
     resource_decision: { decision: 'START', reason: 'api_key=sk-anothersecret99 accepted' }
   }));
+  await journal.recordEvent(ATTEMPT_A, 'COMMAND_OBSERVED', {
+    output: 'Authorization: Bearer terminal-secret-123456789 and token=provider-secret-123456'
+  }, 'harness');
+  await journal.recordEvent(ATTEMPT_A, 'MODEL_RESPONSE_RECEIVED', {
+    error: 'provider error: api_key=provider-secret-987654321'
+  }, 'model-router');
   const raw = await fs.readFile(journal.journalPath, 'utf8');
   const envelopeRaw = await fs.readFile(path.join(journal.attemptsDir, `${ATTEMPT_A}.json`), 'utf8');
   for (const text of [raw, envelopeRaw]) {
@@ -216,6 +248,36 @@ test('secret safety: secrets in task and reasons are redacted before persistence
     assert.ok(!/Bearer abcdef123456/.test(text));
   }
   assert.match(redactSecrets('token=abc12345678'), /\[REDACTED\]/);
+});
+
+test('canonical event stream serializes concurrent observations with unique ordered cursors', async () => {
+  const ws = await workspace();
+  const journal = createAttemptJournal({ workspace: ws, idFactory: () => ATTEMPT_A });
+  await journal.admit(admissionInput({ workspace: ws }));
+  await Promise.all(Array.from({ length: 12 }, (_, index) => journal.recordEvent(ATTEMPT_A, 'TOOL_OBSERVED', { index }, 'test')));
+  const stream = await journal.stream(ATTEMPT_A, -1, 200);
+  assert.ok(stream);
+  assert.equal(stream.integrity, 'OK');
+  const observed = stream.events.filter(event => event.event === 'TOOL_OBSERVED');
+  assert.equal(observed.length, 12);
+  assert.equal(new Set(observed.map(event => event.event_id)).size, observed.length);
+  assert.ok(observed.every((event, index) => event.seq === index + 6));
+});
+
+test('out-of-order event stream is explicit and cannot authorize mutation', async () => {
+  const ws = await workspace();
+  const journal = createAttemptJournal({ workspace: ws, idFactory: () => ATTEMPT_A });
+  await journal.admit(admissionInput({ workspace: ws }));
+  await writeRawJournal(ws, [
+    { seq: 0, attempt_id: ATTEMPT_A, event: 'ATTEMPT_CREATED' },
+    { seq: 1, attempt_id: ATTEMPT_A, event: 'ATTEMPT_ADMITTED' },
+    { seq: 1, attempt_id: ATTEMPT_A, event: 'EXECUTION_STARTED' }
+  ]);
+  const stream = await journal.stream(ATTEMPT_A, -1, 200);
+  assert.equal(stream?.integrity, 'OUT_OF_ORDER');
+  const check = await journal.assertAdmitted(ATTEMPT_A);
+  assert.equal(check.admitted, false);
+  assert.match(check.reason, /integrity/);
 });
 
 test('performance: admission and durability checks are bounded (measured, not asserted as SLA)', async () => {
@@ -335,7 +397,7 @@ test('LIVE: real session seals a complete envelope, binds context, observes effe
     assert.equal(list.data.total, 1);
     const attemptId = list.data.attempts[0].attempt_id as string;
     assert.equal(list.data.attempts[0].sealed, true);
-    const detail = await (await owner.request(`/api/harness/attempt?id=${encodeURIComponent(attemptId)}`, { signal: AbortSignal.timeout(30000) })).json();
+  const detail = await (await owner.request(`/api/harness/attempt?id=${encodeURIComponent(attemptId)}`, { signal: AbortSignal.timeout(30000) })).json();
     const events = (detail.data.events as Array<{ event: string }>).map(event => event.event);
     for (const required of ['ATTEMPT_CREATED', 'VALIDATION_COMPLETED', 'RESOURCE_ADMITTED', 'AUTHORITY_GRANTED', 'ATTEMPT_ADMITTED', 'EXECUTION_STARTED', 'CONTEXT_BOUND', 'EFFECT_OBSERVED', 'VERIFICATION_STARTED', 'ATTEMPT_COMPLETED']) {
       assert.ok(events.includes(required), `journal must contain ${required}`);
@@ -345,6 +407,20 @@ test('LIVE: real session seals a complete envelope, binds context, observes effe
     assert.match(String(detail.data.envelope.context_envelope.sha256), /^[0-9a-f]{64}$/);
     assert.ok(detail.data.envelope.context_envelope.blocks.length >= 1);
     assert.equal(detail.data.retry_safety, 'NEW_ATTEMPT_REQUIRED');
+    assert.equal(detail.data.integrity, 'OK');
+    const detailedEvents = detail.data.events as Array<{ event_id: string; seq: number; mission_id: string; project_id: string; source: string; redacted: boolean }>;
+    assert.equal(new Set(detailedEvents.map(event => event.event_id)).size, detailedEvents.length);
+    assert.ok(detailedEvents.every((event, index) => event.seq === index));
+    assert.ok(detailedEvents.every(event => event.mission_id === sessionId && event.project_id === ws && event.redacted === true));
+    assert.ok(detailedEvents.every(event => event.mission_id !== attemptId));
+    const firstPage = await (await owner.request(`/api/harness/attempt/events?id=${encodeURIComponent(attemptId)}&limit=5`, { signal: AbortSignal.timeout(30000) })).json();
+    assert.ok(firstPage.data, JSON.stringify(firstPage));
+    assert.equal(firstPage.data.integrity, 'OK');
+    assert.equal(firstPage.data.events.length, 5);
+    const secondPage = await (await owner.request(`/api/harness/attempt/events?id=${encodeURIComponent(attemptId)}&after=${firstPage.data.next_after}&limit=200`, { signal: AbortSignal.timeout(30000) })).json();
+    const streamed = [...firstPage.data.events, ...secondPage.data.events];
+    assert.equal(new Set(streamed.map(event => event.event_id)).size, streamed.length);
+    assert.deepEqual(streamed.map(event => event.event_id), detailedEvents.map(event => event.event_id));
     const runs = await (await owner.request('/api/provenance/runs', { signal: AbortSignal.timeout(30000) })).json();
     assert.equal(runs.data.runs[0].attempt_id, attemptId);
   } finally {

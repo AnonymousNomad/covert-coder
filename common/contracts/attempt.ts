@@ -33,6 +33,7 @@ export const AttemptState = z.enum([
   'RUNNING',
   'COMPLETED',
   'ACCEPTED',
+  'REJECTED',
   'FAILED',
   'ABORTED',
   'RECOVERED_NOT_STARTED',
@@ -114,12 +115,70 @@ export const ExecutionEnvelope = z.strictObject({
 });
 export type ExecutionEnvelopeT = z.infer<typeof ExecutionEnvelope>;
 
+// Event names describe observed execution facts.  They are deliberately not
+// model-claim events: a worker saying "done" cannot create a terminal event.
+// Keep the string-valued event field forward-compatible for recovery of older
+// journals, while new writers use this vocabulary.
+export const AttemptEventName = z.enum([
+  'ATTEMPT_CREATED',
+  'VALIDATION_COMPLETED',
+  'RESOURCE_ADMITTED',
+  'RESOURCE_QUEUED',
+  'RESOURCE_REFUSED',
+  'AUTHORITY_GRANTED',
+  'AUTHORITY_DENIED',
+  'ATTEMPT_SEALED',
+  'ATTEMPT_ADMITTED',
+  'CONTEXT_BOUND',
+  'CONTEXT_DRIFT',
+  'SKILL_SELECTED',
+  'WORKFLOW_BOUND',
+  'MODEL_REQUEST_STARTED',
+  'MODEL_RESPONSE_RECEIVED',
+  'EXECUTION_STARTED',
+  'ACTION_REQUESTED',
+  'ACTION_PERMITTED',
+  'ACTION_DENIED',
+  'TOOL_REQUESTED',
+  'TOOL_PERMITTED',
+  'TOOL_STARTED',
+  'TOOL_OBSERVED',
+  'FILE_READ',
+  'FILE_MUTATION_OBSERVED',
+  'EFFECT_OBSERVED',
+  'EFFECT_UNCERTAIN',
+  'COMMAND_STARTED',
+  'COMMAND_OBSERVED',
+  'VERIFICATION_STARTED',
+  'VERIFICATION_RESULT',
+  'PROVENANCE_RECORDED',
+  'REPAIR_REQUESTED',
+  'CONTINUATION_CREATED',
+  'HANDOFF_CREATED',
+  'HANDOFF_CONSUMED',
+  'ATTEMPT_COMPLETED',
+  'ATTEMPT_ACCEPTED',
+  'ATTEMPT_REJECTED',
+  'ATTEMPT_FAILED',
+  'ATTEMPT_ABORTED',
+  'RECOVERY_CLASSIFIED'
+]);
+export type AttemptEventNameT = z.infer<typeof AttemptEventName>;
+
+export const AttemptEventIntegrity = z.enum(['OK', 'CORRUPT', 'OUT_OF_ORDER']);
+export type AttemptEventIntegrityT = z.infer<typeof AttemptEventIntegrity>;
+
 export const AttemptJournalEvent = z.strictObject({
+  event_id: z.string().min(1).max(300),
   seq: z.number().int().gte(0),
   ts: z.string(),
   attempt_id: z.string().uuid(),
+  mission_id: z.string().max(200),
+  project_id: z.string().max(1000),
+  source: z.string().max(80),
   event: z.string().max(60),
-  data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+  data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
+  redacted: z.boolean()
 });
 export type AttemptJournalEventT = z.infer<typeof AttemptJournalEvent>;
 
@@ -129,9 +188,31 @@ export const AttemptDetail = z.strictObject({
   retry_safety: RetrySafety,
   failure_class: AttemptFailureClass.nullable(),
   recovery_note: z.string().max(600).nullable(),
-  events: z.array(AttemptJournalEvent).max(500)
+  integrity: AttemptEventIntegrity,
+  corrupt_records: z.number().int().gte(0),
+  events: z.array(AttemptJournalEvent).max(1000)
 });
 export type AttemptDetailT = z.infer<typeof AttemptDetail>;
+
+export const AttemptEventsQuery = z.strictObject({
+  id: z.string().uuid(),
+  after: z.string().regex(/^\d+$/).optional(),
+  limit: z.string().regex(/^\d+$/).optional()
+});
+
+export const AttemptEventStreamResponse = z.strictObject({
+  attempt_id: z.string().uuid(),
+  mission_id: z.string().max(200),
+  project_id: z.string().max(1000),
+  after: z.number().int().gte(-1),
+  next_after: z.number().int().gte(-1),
+  has_more: z.boolean(),
+  terminal: z.boolean(),
+  integrity: AttemptEventIntegrity,
+  corrupt_records: z.number().int().gte(0),
+  events: z.array(AttemptJournalEvent).max(200)
+});
+export type AttemptEventStreamResponseT = z.infer<typeof AttemptEventStreamResponse>;
 
 export const AttemptListResponse = z.strictObject({
   attempts: z.array(z.strictObject({

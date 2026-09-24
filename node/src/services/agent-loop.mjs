@@ -348,10 +348,36 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
           const contextSha256 = createHash('sha256').update(systemText, 'utf8').digest('hex');
           const blockNames = [...new Set((systemText.match(/\[[A-Z][A-Z /-]{2,40}\]/g) ?? []))].map(name => name.slice(1, -1));
           await attemptJournal.bindContext(session.attempt_id, contextSha256, blockNames);
+          await attemptJournal.recordEvent(session.attempt_id, 'SKILL_SELECTED', {
+            status: contexts[4]?.status ?? 'UNKNOWN',
+            block_count: blockNames.length
+          }, 'skill-intelligence');
+          await attemptJournal.seal(session.attempt_id);
+          await attemptJournal.executionStarted(session.attempt_id);
         } catch {
-          // Context binding must never break execution; absence stays visible.
+          // A missing sealed attempt is a hard execution boundary failure.  Do
+          // not continue to a model call or permit a mutation with an
+          // unsealed/ambiguous execution identity.
+          throw new Error('execution attempt could not be sealed before model execution');
         }
       }
+
+      const invokeModel = async (messages) => {
+        if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+          await attemptJournal.recordEvent(session.attempt_id, 'MODEL_REQUEST_STARTED', {
+            iteration: session.iterations,
+            message_count: messages.length
+          }, 'model-router');
+        }
+        const response = await (session.chatFn ?? chatFn)(messages);
+        if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+          await attemptJournal.recordEvent(session.attempt_id, 'MODEL_RESPONSE_RECEIVED', {
+            iteration: session.iterations,
+            output_chars: String(response).length
+          }, 'model-router');
+        }
+        return response;
+      };
 
       while (session.iterations < maxIterations && session.state === 'running') {
         authority.assertActor(session.actor);
@@ -370,7 +396,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
           // the plan-then-edit contract is preserved across turns).
           transcriptForCall.push({ role: 'user', content: ARCHITECT_PROMPT_SUFFIX });
         }
-        let reply = await (session.chatFn ?? chatFn)(transcriptForCall);
+        let reply = await invokeModel(transcriptForCall);
         // Architect/Editor second call: if the architect produced a
         // plan and no tool calls, call again as the editor with the
         // plan as a system-prefix. The plan is also surfaced as an
@@ -393,7 +419,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
             emit({ event: 'plan', session_id: session.id, plan, cycle: session.architectCycles, max_cycles: MAX_ARCHITECT_CYCLES });
             const editorTranscript = session.transcript.map(message => ({ role: message.role, content: message.content }));
             editorTranscript.push({ role: 'user', content: EDITOR_PROMPT_PREFIX + plan });
-            reply = await (session.chatFn ?? chatFn)(editorTranscript);
+            reply = await invokeModel(editorTranscript);
           }
         }
         session.transcript.push({ role: 'assistant', content: reply });
@@ -469,17 +495,22 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     // HARNESS vNEXT H3 — mutation dispatch requires durable admission.
     // If the attempt identity is missing, unsealed, or the journal has no
     // ATTEMPT_ADMITTED record, the mutation is DENIED (fail closed).
-    if (attemptJournal !== null && !tool.readOnly) {
+    if (attemptJournal !== null) {
       if (typeof session.attempt_id !== 'string') {
         await recordMistake(session, `mutation denied: no attempt identity (${call.name})`);
         return 'mistake';
       }
-      const admission = await attemptJournal.assertAdmitted(session.attempt_id);
-      if (!admission.admitted) {
-        await recordMistake(session, `mutation denied: ${admission.reason} (${call.name})`);
-        return 'mistake';
+      if (!tool.readOnly) {
+        const admission = await attemptJournal.assertAdmitted(session.attempt_id, rootAbs);
+        if (!admission.admitted) {
+          await recordMistake(session, `mutation denied: ${admission.reason} (${call.name})`);
+          return 'mistake';
+        }
+        await attemptJournal.recordEvent(session.attempt_id, 'TOOL_REQUESTED', { tool: call.name }, 'agent-loop');
+        attemptJournal.noteMutationDispatch(session.attempt_id, call.name);
+      } else {
+        await attemptJournal.recordEvent(session.attempt_id, 'TOOL_REQUESTED', { tool: call.name, read_only: true }, 'agent-loop');
       }
-      attemptJournal.noteMutationDispatch(session.attempt_id, call.name);
     }
 
     emit({ event: 'tool_call', session_id: session.id, tool: call.name, args: previewArgs(args) });
@@ -498,21 +529,44 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     }
 
     const toolInput = { workspace: rootAbs, taskId: session.id, kind: 'agent.tool', args: { body: { name: call.name, args } } };
+    if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+      await attemptJournal.recordEvent(session.attempt_id, 'ACTION_REQUESTED', { tool: call.name, risk_count: risks.length }, 'execution-authority');
+    }
     let toolOperation;
     if (requiresToolApproval(rootAbs, tool, args)) {
       const decision = await requestApproval(session, call.name, args, risks, toolInput);
-      if (decision === 'abort') return 'abort';
+      if (decision === 'abort') {
+        if (attemptJournal !== null && typeof session.attempt_id === 'string') await attemptJournal.recordEvent(session.attempt_id, 'ACTION_DENIED', { tool: call.name, reason: 'operator_aborted' }, 'execution-authority');
+        return 'abort';
+      }
       if (decision === 'reject') {
+        if (attemptJournal !== null && typeof session.attempt_id === 'string') await attemptJournal.recordEvent(session.attempt_id, 'ACTION_DENIED', { tool: call.name, reason: 'operator_rejected' }, 'execution-authority');
         session.toolLog.push({ tool: call.name, ok: false, skipped: true, output: 'user rejected action' });
         session.transcript.push({ role: 'user', content: dataWrap(call.name, false, 'the user REJECTED this action. Ask what to do differently or adjust your approach.') });
         return 'continue';
       }
-      if (decision !== 'approve') return 'abort';
+      if (decision !== 'approve') {
+        if (attemptJournal !== null && typeof session.attempt_id === 'string') await attemptJournal.recordEvent(session.attempt_id, 'ACTION_DENIED', { tool: call.name, reason: 'unknown_decision' }, 'execution-authority');
+        return 'abort';
+      }
       toolOperation = session.authorityOperation.operation_id;
+      if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+        await attemptJournal.recordEvent(session.attempt_id, 'TOOL_PERMITTED', {
+          tool: call.name,
+          operation_id: toolOperation,
+          risk_count: risks.length
+        }, 'execution-authority');
+      }
+    } else if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+      await attemptJournal.recordEvent(session.attempt_id, 'TOOL_PERMITTED', { tool: call.name, policy: 'read_only' }, 'execution-authority');
     }
 
     let result;
     try {
+      if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+        await attemptJournal.recordEvent(session.attempt_id, 'TOOL_STARTED', { tool: call.name }, 'harness');
+        if (call.name === 'run_command') await attemptJournal.recordEvent(session.attempt_id, 'COMMAND_STARTED', { command: String(args.command ?? '') }, 'harness');
+      }
       result = toolOperation
         ? await authority.execute(session.actor, toolOperation, toolInput, (_, execution) => tool.execute(args, execution))
         : await tool.execute(args);
@@ -534,10 +588,18 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
             }
           }
           await attemptJournal.effectObserved(session.attempt_id, { tool: call.name, path: relPath, sha256: effectSha256, bytes: effectBytes });
+          await attemptJournal.recordEvent(session.attempt_id, 'FILE_MUTATION_OBSERVED', { tool: call.name, path: relPath, sha256: effectSha256, bytes: effectBytes }, 'harness');
         } catch {
           // Effect observation must never break execution.
         }
         attemptJournal.clearMutationDispatch(session.attempt_id, call.name);
+      }
+      if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+        await attemptJournal.recordEvent(session.attempt_id, 'TOOL_OBSERVED', { tool: call.name, ok: true }, 'harness');
+        if (call.name === 'run_command') await attemptJournal.recordEvent(session.attempt_id, 'COMMAND_OBSERVED', { command: String(args.command ?? ''), ok: true, output: String(result?.output ?? '').slice(0, 500) }, 'harness');
+        if (['read_file', 'list_dir', 'search'].includes(call.name)) {
+          await attemptJournal.recordEvent(session.attempt_id, 'FILE_READ', { tool: call.name, path: typeof args.path === 'string' ? args.path : null, query: typeof args.query === 'string' ? args.query : null }, 'harness');
+        }
       }
     } catch (error) {
       const code = error?.code ? `[${error.code}] ` : '';
@@ -550,6 +612,8 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
           path: typeof args.path === 'string' ? args.path : null,
           error: message
         }).catch(() => {});
+        await attemptJournal.recordEvent(session.attempt_id, 'TOOL_OBSERVED', { tool: call.name, ok: false, error: message }, 'harness').catch(() => {});
+        if (call.name === 'run_command') await attemptJournal.recordEvent(session.attempt_id, 'COMMAND_OBSERVED', { command: String(args.command ?? ''), ok: false, error: message }, 'harness').catch(() => {});
         attemptJournal.clearMutationDispatch(session.attempt_id, call.name);
       }
       session.transcript.push({ role: 'user', content: dataWrap(call.name, false, message) });
@@ -751,6 +815,13 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       session.evidenceErrors.push(`verification event: ${published.error}`);
       verification.state = 'errored';
     }
+    if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+      await attemptJournal.recordEvent(session.attempt_id, 'VERIFICATION_RESULT', {
+        state: verification.state,
+        passed: verification.passed,
+        evidence_file: verification.evidence_file
+      }, 'veritas').catch(error => session.evidenceErrors.push(`attempt event verification: ${String(error?.message ?? error)}`));
+    }
     if (provenanceLedger !== null && typeof provenanceLedger.record === 'function') {
       try {
         await provenanceLedger.record({
@@ -768,9 +839,13 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
           trajectory_file: verification.trajectory_file ?? null,
           iterations: session.iterations,
           attempt_id: typeof session.attempt_id === 'string' ? session.attempt_id : null,
+          attempt_event_stream_ref: typeof session.attempt_id === 'string' ? `attempt:${session.attempt_id}` : null,
           started_at: session.startedAt,
           finished_at: new Date().toISOString()
         });
+        if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+          await attemptJournal.recordEvent(session.attempt_id, 'PROVENANCE_RECORDED', { run_id: session.id }, 'provenance').catch(() => {});
+        }
       } catch (error) {
         session.evidenceErrors.push(`provenance ledger: ${String(error?.message ?? error)}`);
       }
@@ -910,7 +985,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         }
         try {
           const workerDescriptor = typeof request.worker === 'object' && request.worker !== null ? request.worker : null;
-          const envelope = await attemptJournal.admit({
+          const envelope = await attemptJournal.prepare({
             task,
             mode: session.mode,
             task_id: session.id,
@@ -922,6 +997,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
             handoff_id: session.handoff_id,
             authority_owner: String(context.owner?.id ?? context.owner?.name ?? 'owner'),
             authority_operation_kind: String(context.operation?.kind ?? 'agent.start'),
+            authority_permit_identity: String(context.operation?.operation_id ?? 'NOT_RECORDED'),
             max_iterations: Number.isFinite(maxIterations) ? maxIterations : null,
             effective_context_tokens: typeof session.effectiveContextTokens === 'number' ? session.effectiveContextTokens : null,
             resource_decision: resourceDecision === null ? null : { decision: resourceDecision.decision, reason: resourceDecision.reason },
@@ -929,7 +1005,6 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
             capabilities: [...registry.keys()]
           });
           session.attempt_id = envelope.attempt_id;
-          await attemptJournal.executionStarted(envelope.attempt_id);
         } catch (error) {
           throw new AuthorityError('FORBIDDEN', `attempt admission failed: ${String(error?.message ?? error)}`);
         }

@@ -26,6 +26,9 @@ export const ProvenanceRun = z.strictObject({
   trajectory_file: z.string().max(500).nullable(),
   iterations: z.number().int().gte(0),
   attempt_id: z.string().max(200).nullable().optional(),
+  // Logical reference into the canonical Harness event stream. This is a
+  // pointer, never an inline transcript or private model reasoning trace.
+  attempt_event_stream_ref: z.string().max(500).nullable().optional(),
   started_at: z.string(),
   finished_at: z.string()
 });

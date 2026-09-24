@@ -98,7 +98,7 @@ export function createProvenanceLedger(options: ProvenanceLedgerOptions) {
     if (missionRuns.length === 0) limitations.push('no provenance runs recorded for this mission');
     if (missionRuns.length > 0 && !states.includes('verified')) limitations.push('no run reached verified state; committed process exit is not test evidence');
     if (handoffs.length === 0) limitations.push('no canonical worker handoffs recorded for this mission');
-    const evidenceRefs = [...new Set(missionRuns.flatMap(run => [run.evidence_file, run.trajectory_file].filter((ref): ref is string => ref !== null && ref.length > 0)))];
+    const evidenceRefs = [...new Set(missionRuns.flatMap(run => [run.evidence_file, run.trajectory_file, run.attempt_event_stream_ref ?? null].filter((ref): ref is string => ref !== null && ref.length > 0)))];
     const verified = states.includes('verified');
     return {
       mission_id: missionId,

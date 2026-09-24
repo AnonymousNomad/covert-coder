@@ -766,3 +766,233 @@ The first implementation owner remains DeepSeek #1 for backend event emission,
 streaming, redaction, Provenance/Authority/Veritas integration and lifecycle
 semantics. Luna owns the UX contract, event requirements and independent
 certification. No implementation was performed in this review.
+
+## Addendum — Model Working Memory / Attempt Sandbox (Review Only)
+
+Status: **ARCHITECTURE / RESEARCH ONLY — IMPLEMENTATION NOT AUTHORIZED**
+
+This addendum evaluates whether a Resident or worker needs a first-class,
+attempt-scoped operational working area. It does not authorize a new runtime
+store, a transcript redesign, hidden-reasoning retention, or any change to the
+certified candidate. The current Liquid Resident operational-awareness
+experiment must complete and supply evidence before this question can become an
+implementation slice.
+
+### 1. Does an equivalent capability already exist?
+
+Partially, but not as one canonical Model Working Memory / Attempt Sandbox.
+Current repository pieces include:
+
+```text
+AgentLoop session state and bounded transcript
+Context Control projections for skills, memory, index, evidence and workflow
+worker-handoff envelopes with bounded continuity fields
+workflow state and stage context
+trajectory/evidence files
+Provenance observations and Mission Receipt projections
+```
+
+These are related inputs or records, not interchangeable working memory. The
+AgentLoop transcript is execution conversation state and may contain model
+output; it must not be silently reclassified as safe operational memory. A
+trajectory is historical evidence, not a mutable scratchpad. A worker handoff is
+the closest existing structured projection, because it already separates
+verified facts, assumptions, open questions, artifacts and next action from raw
+transcript transfer.
+
+### 2. Where is the capability partial, and what gap remains?
+
+The capability is partial in the following paths:
+
+| Existing path | What it supplies | What it does not prove |
+| --- | --- | --- |
+| Context Control / AgentLoop context | selected facts and stage-aware prompt inputs | an attempt-owned mutable operational state with write attribution and retention |
+| AgentLoop transcript | conversational continuity for one session | safe separation of explicit notes from private reasoning, cross-worker isolation, or canonical promotion |
+| Worker handoff | bounded continuity and lineage | a general per-attempt working state, live updates, or complete sandbox lifecycle |
+| Workflow state | stage and obligation state | worker hypotheses, tool observations, or attempt-local scratch state |
+| Provenance / trajectory | attributable historical observations | temporary state management, pruning, or permission to promote a claim |
+| Veritas / Mission Receipt | independent acceptance and release projection | model working state |
+
+The missing capability is a bounded, explicit, attributable operational-state
+contract keyed to a concrete execution scope. It would need lifecycle,
+ownership, size limits, redaction, cleanup, handoff projection, and a strict
+non-promotion boundary. The absence of this contract is not a justification
+for storing more transcript.
+
+### 3. Recommended ownership: subsystem or Harness state?
+
+The recommended future separation is:
+
+```text
+Context Control:
+  selects relevant canonical information and constructs the Context Envelope
+
+Workflow:
+  owns stage obligations and transitions
+
+Harness:
+  owns attempt-scoped operational-state lifecycle and records what the attempt
+  explicitly observed or wrote, if the capability is later approved
+
+Resident / Orchestrator:
+  decides what situation should be presented and what strategic continuation
+  is requested
+
+Provenance:
+  records attributable historical events/observations
+
+Veritas:
+  decides whether evidence supports acceptance
+
+Helix:
+  receives only verified, explicitly eligible durable truth
+```
+
+This does not make Harness a second Context Control Engine. The Harness should
+not retrieve arbitrary project knowledge, decide relevance, summarize the
+world, select Skills, or redefine workflow truth. If implementation evidence
+shows that the state requires a broader durable service, it should be proposed
+as a separately owned contract rather than smuggled into the event journal.
+
+### 4. Proposed scope and isolation key
+
+The minimum safe ownership key is:
+
+```text
+project_id
+mission_id
+workflow_id (nullable only where the canonical workflow is absent)
+stage_id (nullable only where the canonical stage is absent)
+attempt_id
+worker identity / role
+model fingerprint when model-specific state is present
+```
+
+An attempt sandbox must never be addressed only by project or mission. A new
+attempt, repair, continuation, or worker must receive a distinct state scope.
+The default handoff operation is a structured projection, not access to the
+previous worker's raw sandbox. Cross-project and cross-mission reads must fail
+closed. Writes must carry actor, attempt, field/category, timestamp and a
+bounded value/reference; unscoped writes are invalid.
+
+Candidate explicit categories are:
+
+```text
+objective
+workflow/stage
+retrieved_facts
+known_facts
+hypotheses
+todos
+open_questions
+artifact_refs
+tool_observations
+execution_results
+explicit_working_notes
+handoff_state
+repair_state
+skill/capability_refs
+```
+
+The category is an operational classification, not a truth verdict. In
+particular, `known_facts`, `hypotheses`, and model-authored notes must remain
+typed and visibly distinguishable. No category grants Authority or creates a
+Veritas result.
+
+### 5. Required relationship to existing canonical contracts
+
+| Contract | Working-memory relationship |
+| --- | --- |
+| Context Envelope | immutable input identity for an attempt; may seed a sandbox, but the sandbox cannot rewrite the envelope or silently expand context |
+| Provenance | records attributable sandbox writes/reads and references; it is the history, not the mutable state store |
+| Veritas | independently checks claims/evidence derived from the sandbox; sandbox contents are never proof by themselves |
+| Helix | promotion target only after execution observation, evidence and Veritas eligibility; no direct sandbox promotion |
+| Ghost Code / replay | may reconstruct explicit operational state and its events; must not imply deterministic replay of hidden model reasoning |
+| Workflow | supplies stage and obligations; sandbox records working status but cannot advance canonical stage by assertion |
+| Resident | consumes a bounded situation projection and reports continuity; it does not gain unrestricted access to every worker sandbox |
+| Harness event stream | records durable operational facts and references; it is not a replacement for the sandbox lifecycle or a UI scratch cache |
+| Worker handoff | emits a least-privilege structured projection such as completed, discovered, verified, unverified, open questions, artifacts and next action |
+
+The Resident input hypothesis remains plausible but unproven:
+
+```text
+stable Resident operating doctrine
++ current Situation Frame
++ current capability/Skill surface
++ scoped working-memory projection
+```
+
+This may reduce transcript replay and state reconstruction, but only the
+Liquid experiment can establish whether it improves operational awareness
+without increasing stale-context or speculation leakage.
+
+### 6. Non-promotion and security invariants
+
+Any future implementation must preserve all of these invariants:
+
+```text
+working observation/hypothesis != execution fact
+execution fact != Veritas acceptance
+Veritas acceptance != automatic Helix promotion
+model-authored note != Authority
+worker A sandbox != worker B sandbox
+attempt A sandbox != attempt B sandbox
+project A sandbox != project B sandbox
+raw transcript/private reasoning is not sandbox content by default
+secrets are rejected or redacted before persistence and projection
+context/Skill/model/budget changes create a new attempt or explicit new scope
+size, write rate, retention and cleanup are bounded and deterministic
+unverified state remains visibly UNVERIFIED/UNKNOWN
+```
+
+Promotion, if ever approved, must follow:
+
+```text
+working observation or hypothesis
+→ governed execution / observation
+→ independent Veritas verification
+→ evidence reference
+→ explicit eligibility decision
+→ Helix promotion, if the canonical Helix contract permits it
+```
+
+### 7. Harness Sync and calibration relationship
+
+Harness Sync may eventually learn a model-specific presentation policy from
+verified evidence, including working-memory size, structure, refresh cadence,
+summarization thresholds, retrieved-fact density, active-hypothesis limits or
+handoff verbosity. Such policy is a derived execution preference, not model
+truth. It must never alter Authority, Veritas standards, acceptance criteria,
+project isolation, or the requirement to label uncertainty.
+
+The Standard Harness path must remain available so Standard versus
+Synchronized behavior can be compared against the same acceptance contract.
+
+### 8. Smallest coherent later slice
+
+Only after the Liquid Resident operational-awareness experiment is complete,
+and only if its evidence justifies the capability, the smallest candidate
+slice would be:
+
+```text
+define a versioned, explicit operational-state contract
+→ scope it to one sealed attempt
+→ permit bounded typed writes and reads
+→ persist attributable records without raw CoT
+→ expose a least-privilege handoff projection
+→ reject cross-project/mission/attempt access
+→ enforce size, secret-redaction and retention limits
+→ record state events in the canonical attempt stream
+→ prove no direct Veritas/Helix promotion
+```
+
+Acceptance would require isolation, restart/recovery, cleanup, redaction,
+handoff, replay-observation, and false-promotion adversarial tests. The slice
+must not alter the current Context Control owner, add a competing provenance
+store, or make a UI cache canonical.
+
+**Decision:** equivalent ingredients exist, but a first-class Model Working
+Memory / Attempt Sandbox is currently a **PARTIAL / NOT_IMPLEMENTED** contract.
+It remains **WAITING_FOR_LIQUID_RESIDENT_EVIDENCE** and is explicitly outside
+the authorized Slice 1 implementation. No runtime implementation was made by
+this addendum.

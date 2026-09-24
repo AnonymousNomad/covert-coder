@@ -40,8 +40,11 @@ export declare function createAgentLoop(options: {
   onSessionEnd?(info: { session_id: string; outcome: string; passed: boolean; status: string; evidence_file: string | null }): Promise<void> | void;
   provenanceLedger?: { record(run: unknown): Promise<unknown> | unknown } | null;
   attemptJournal?: {
+    prepare(input: unknown): Promise<{ attempt_id: string; sealed: boolean }>;
+    seal(attemptId: string): Promise<{ attempt_id: string; sealed: boolean }>;
     admit(input: unknown): Promise<{ attempt_id: string }>;
-    assertAdmitted(attemptId: string): Promise<{ admitted: boolean; reason: string }>;
+    recordEvent(attemptId: string, event: string, data?: Record<string, string | number | boolean | null>, source?: string): Promise<unknown>;
+    assertAdmitted(attemptId: string, expectedProjectId?: string): Promise<{ admitted: boolean; reason: string }>;
     executionStarted(attemptId: string): Promise<void>;
     bindContext(attemptId: string, sha256: string, blocks: string[]): Promise<{ drift: boolean }>;
     effectObserved(attemptId: string, data: { tool: string; path: string | null; sha256: string | null; bytes: number | null }): Promise<void>;
