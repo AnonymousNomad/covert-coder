@@ -949,6 +949,17 @@ body {
 .mm-note-card p,
 .mm-advisory-card p { color: var(--covert-muted); font-size: 10px; line-height: 1.55; }
 .mm-install-disabled { width: 100%; margin-top: 10px; }
+.mm-create-selection,
+.mm-pack-install { min-height: 27px; padding: 4px 8px; color: var(--covert-blue); background: var(--covert-bg-graphite); border: 1px solid var(--covert-line); cursor: pointer; font: 9px var(--covert-mono); }
+.mm-create-selection:disabled,
+.mm-pack-install:disabled { opacity: .55; cursor: not-allowed; }
+.mm-selection-result,
+.mm-install-result { margin: 9px 0; padding: 9px; border-left: 2px solid var(--covert-blue); background: var(--covert-bg-panel, var(--covert-bg-graphite)); overflow-wrap: anywhere; }
+.mm-install-result p { margin: 5px 0; font-size: 10px; }
+.mm-pack-path-label { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; color: var(--covert-muted); font: 9px var(--covert-mono); }
+.mm-pack-source-path { min-width: 0; min-height: 28px; padding: 5px 7px; color: var(--covert-text); background: var(--covert-bg-graphite); border: 1px solid var(--covert-line); font: 10px var(--covert-mono); }
+.mm-special-purpose { padding-left: 7px; border-left: 2px solid var(--covert-blue); }
+.mm-special-category { color: var(--covert-muted); font: 9px var(--covert-mono); }
 .mm-special-card { border-top: 2px solid var(--covert-blue); }
 .mm-special-card small { color: var(--covert-muted); font: 9px var(--covert-mono); }
 .mm-guidance-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }

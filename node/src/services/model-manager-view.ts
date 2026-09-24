@@ -1,4 +1,3 @@
-import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ModelManagerSnapshotResponse, type ModelManagerSnapshotResponseT } from '../../../common/contracts/model-manager.ts';
@@ -8,21 +7,9 @@ import { discoverLocalModels, probeCloudProviders, type CloudProviderProbe, type
 import { IntelligenceRegistry, type IntelligenceEntry } from './intelligence-registry.ts';
 import { recommend } from './recommendation-engine.ts';
 import type { RuntimeAdapter, RuntimeAdapterRegistry } from './runtime-adapter.ts';
+import { projectModelPackBundles, readModelPackCatalog, type ModelPackArtifactCandidate } from './model-packs.ts';
 
-interface PackManifestEntry {
-  id: string;
-  name: string;
-  role: string;
-  license: string;
-  download_bytes_approx: number | null;
-  source_repo: string;
-  file: string | null;
-  sha256?: string;
-}
-
-interface PackManifest { packs: PackManifestEntry[] }
-
-const SECRET_RE = /(api[_-]?key|access[_-]?token|secret|password|authorization\s*:)/i;
+const SECRET_RE = /(api[_-]?key|access[_-]?token|refresh[_-]?token|secret|password|authorization\s*:|\btoken\s*[:=])/i;
 const SECRET_VALUE_RE = /(?:\b(?:sk|rk|pk)-[A-Za-z0-9_-]{16,}\b|\bgh[pousr]_[A-Za-z0-9]{20,}\b|\bBearer\s+\S+)/i;
 const ABSOLUTE_PATH_RE = /(?:^[a-z]:[\\/]|^\\\\|^\/(?:users|home)\/)/i;
 const SAFE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
@@ -98,31 +85,6 @@ function mergeRegistryAndDiscovery(saved: IntelligenceEntry[], discovered: Intel
 
 function safeProviderId(value: string): string | null {
   return safeText(value, 80);
-}
-
-async function readPackManifest(file: string): Promise<PackManifest | null> {
-  try {
-    const raw: unknown = JSON.parse(await fs.readFile(file, 'utf8'));
-    if (typeof raw !== 'object' || raw === null || !('packs' in raw) || !Array.isArray((raw as { packs?: unknown }).packs)) return null;
-    const packs: PackManifestEntry[] = [];
-    for (const candidate of (raw as { packs: unknown[] }).packs) {
-      if (typeof candidate !== 'object' || candidate === null) continue;
-      const item = candidate as Record<string, unknown>;
-      const id = safeModelId(item.id);
-      const name = safeText(item.name);
-      const role = safeText(item.role, 80);
-      const license = safeText(item.license, 120);
-      const sourceRepo = safeText(item.source_repo);
-      const fileLabel = item.file === null ? null : safeText(item.file, 240);
-      const size = typeof item.download_bytes_approx === 'number' && Number.isFinite(item.download_bytes_approx) && item.download_bytes_approx >= 0 ? item.download_bytes_approx : null;
-      const hash = typeof item.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(item.sha256) ? item.sha256.toLowerCase() : undefined;
-      if (!id || !name || !role || !license || !sourceRepo || (item.file !== null && fileLabel === null)) continue;
-      packs.push({ id, name, role, license, source_repo: sourceRepo, file: fileLabel, download_bytes_approx: size, ...(hash ? { sha256: hash } : {}) });
-    }
-    return { packs };
-  } catch {
-    return null;
-  }
 }
 
 function providerStateFor(entry: IntelligenceEntry, providers: CloudProviderProbe[]): CloudProviderProbe['state'] | null {
@@ -218,7 +180,7 @@ function recommendationEntry(model: ModelManagerSnapshotResponseT['models'][numb
   };
 }
 
-function matchPackEntry(pack: PackManifestEntry, entries: IntelligenceEntry[]): IntelligenceEntry | undefined {
+function matchPackEntry(pack: ModelPackArtifactCandidate, entries: IntelligenceEntry[]): IntelligenceEntry | undefined {
   const expectedFile = pack.file?.toLocaleLowerCase();
   return entries.find(entry => entry.id === pack.id) ?? entries.find(entry => artifactLabel(entry)?.toLocaleLowerCase() === expectedFile);
 }
@@ -232,9 +194,9 @@ function installationState(entry: IntelligenceEntry | undefined, providerAuthent
   return 'MISSING';
 }
 
-function makePackItems(manifest: PackManifest | null, entries: IntelligenceEntry[], models: ModelManagerSnapshotResponseT['models'], providers: CloudProviderProbe[]): ModelManagerSnapshotResponseT['model_packs']['items'] {
+function makePackItems(manifest: { items: ModelPackArtifactCandidate[] } | null, entries: IntelligenceEntry[], models: ModelManagerSnapshotResponseT['models'], providers: CloudProviderProbe[]): ModelManagerSnapshotResponseT['model_packs']['items'] {
   if (!manifest) return [];
-  return manifest.packs.map(pack => {
+  return manifest.items.map(pack => {
     const matched = matchPackEntry(pack, entries);
     const view = matched ? models.find(model => model.id === matched.id) : undefined;
     const providerAuthenticated = matched?.locality !== 'CLOUD' || providerStateFor(matched, providers) === 'AUTHENTICATED';
@@ -245,7 +207,7 @@ function makePackItems(manifest: PackManifest | null, entries: IntelligenceEntry
       source_repo: pack.source_repo,
       declared_license: pack.license,
       artifact_label: pack.file,
-      expected_sha256: pack.sha256 ?? null,
+      expected_sha256: pack.sha256,
       expected_size_bytes: pack.download_bytes_approx,
       installation_state: installationState(matched, providerAuthenticated, pack.file !== null),
       qualification_state: view?.qualification.state ?? null,
@@ -313,8 +275,8 @@ async function runtimeView(registry?: RuntimeAdapterRegistry): Promise<ModelMana
     registered: true,
     health,
     health_detail: healthResult.status === 'fulfilled' ? safeText(healthResult.value.detail, 240) : 'Health query failed; details withheld.',
-    version: null,
-    ownership: null,
+    version: safeText(adapter.version, 80),
+    ownership: safeText(adapter.ownership, 80),
     loaded_models: loadedModels,
     metrics,
     capabilities: {
@@ -371,7 +333,7 @@ export async function buildModelManagerSnapshot(options: ModelManagerViewOptions
     }
   }).sort((a, b) => a.display_name.localeCompare(b.display_name));
 
-  const packManifest = await readPackManifest(options.modelPacksPath);
+  const packManifest = await readModelPackCatalog(options.modelPacksPath);
   const packItems = makePackItems(packManifest, merged, safeModels, providers);
   const runtime = await runtimeView(options.runtimeAdapters);
   const role = safeText(options.role ?? 'IMPLEMENTER', 64) ?? 'IMPLEMENTER';
@@ -410,6 +372,21 @@ export async function buildModelManagerSnapshot(options: ModelManagerViewOptions
   }
   const developerNotes = SEED_NOTES.filter(note => note.active).map(note => ({ ...note, trigger: note.trigger }));
   const discoveryStatus = discoveryFailed ? 'FAILED' : discovery.errors.length > 0 ? 'PARTIAL' : 'AVAILABLE';
+  const providerViews = providers.flatMap(provider => {
+    const id = safeProviderId(provider.id);
+    if (!id) return [];
+    const modelIds = safeModels.filter(model => model.locality === 'CLOUD' && model.provider.toLocaleLowerCase() === id.toLocaleLowerCase()).map(model => model.id);
+    return [{ id, state: provider.state, model_ids: modelIds }];
+  });
+  const modelPackBundles = projectModelPackBundles({
+    definitions: packManifest?.bundles ?? [],
+    catalogItems: packManifest?.items ?? [],
+    models: safeModels,
+    providers: providerViews,
+    runtime,
+    discoveredEntries: discovery.entries,
+    availableRamMb
+  });
   return ModelManagerSnapshotResponse.parse({
     generated_at: new Date().toISOString(),
     public_safe: true,
@@ -432,6 +409,7 @@ export async function buildModelManagerSnapshot(options: ModelManagerViewOptions
     model_packs: {
       catalog_status: packManifest ? 'AVAILABLE' : 'UNAVAILABLE',
       items: packItems,
+      bundles: modelPackBundles,
       offline_bundle: makeOfflineBundle(packItems),
       hybrid_setup: makeHybridSetup(safeModels)
     },

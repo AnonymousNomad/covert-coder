@@ -4,8 +4,8 @@
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
-import type { ModelManagerEntryT, ModelManagerSnapshotResponseT } from '../../../common/contracts/model-manager.ts';
-import { modelQualificationForRole, overrideBlockReason } from './model-manager-logic.ts';
+import type { ModelManagerEntryT, ModelManagerSnapshotResponseT, ModelPackInstallResponseT, ModelSelectionRequestResponseT } from '../../../common/contracts/model-manager.ts';
+import { modelQualificationForRole, overrideBlockReason, selectionRequestBlockReasons } from './model-manager-logic.ts';
 import { DEVELOPER_SPECIALS } from './developer-specials.ts';
 
 export interface PanelHandles { dispose(): void }
@@ -30,9 +30,9 @@ function appendField(parent: HTMLElement, label: string, value: string, extraCla
 }
 
 function statusClass(value: string): string {
-  if (['INSTALLED', 'LOADABLE', 'CONNECTED', 'QUALIFIED', 'HEALTHY', 'FIT'].includes(value)) return 'good';
-  if (['STALE', 'INVALID_EVIDENCE', 'NOT_QUALIFIED', 'AUTH_FAILURE', 'UNAVAILABLE', 'UNHEALTHY', 'FAILED', 'INCOMPATIBLE', 'RESOURCE_INCOMPATIBLE', 'BLOCKING'].includes(value)) return 'bad';
-  if (['UNTESTED', 'TESTED', 'DISCOVERED', 'AVAILABLE', 'CONFIGURED_NOT_VERIFIED', 'UNKNOWN', 'MISSING', 'MISSING_DEPENDENCY', 'PROVIDER_CONNECTION_REQUIRED', 'QUALIFICATION_MISSING', 'CAUTION'].includes(value)) return 'caution';
+  if (['INSTALLED', 'LOADABLE', 'CONNECTED', 'QUALIFIED', 'HEALTHY', 'FIT', 'READY'].includes(value)) return 'good';
+  if (['STALE', 'INVALID_EVIDENCE', 'NOT_QUALIFIED', 'AUTH_FAILURE', 'UNAVAILABLE', 'UNHEALTHY', 'FAILED', 'INCOMPATIBLE', 'RESOURCE_INCOMPATIBLE', 'MISSING_ARTIFACT', 'MISSING_PROVIDER', 'BLOCKING', 'SYSTEM_BLOCKED'].includes(value)) return 'bad';
+  if (['UNTESTED', 'TESTED', 'DISCOVERED', 'AVAILABLE', 'PARTIALLY_INSTALLED', 'CONFIGURED_NOT_VERIFIED', 'UNKNOWN', 'MISSING', 'MISSING_DEPENDENCY', 'PROVIDER_CONNECTION_REQUIRED', 'QUALIFICATION_MISSING', 'QUALIFICATION_REQUIRED', 'NOT_RUN', 'CAUTION'].includes(value)) return 'caution';
   return 'neutral';
 }
 
@@ -122,6 +122,12 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   let activeView: View = 'ALL';
   let query = '';
   let selectedOverrideId: string | null = null;
+  let selectionResult: ModelSelectionRequestResponseT | null = null;
+  let selectionError: string | null = null;
+  let selectionBusyId: string | null = null;
+  let packInstallBusyId: string | null = null;
+  let packInstallResult: ModelPackInstallResponseT | null = null;
+  let packInstallError: string | null = null;
   const dismissed = readDismissed();
 
   function effectiveOffline(): boolean { return offline.checked || activeView === 'LOCAL'; }
@@ -164,6 +170,61 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     if (overrideBlockReason(model) !== null) return;
     selectedOverrideId = modelId;
     render();
+  }
+
+  async function createSelectionRequest(modelId: string): Promise<void> {
+    const model = snapshot?.models.find(item => item.id === modelId);
+    if (!snapshot || selectionRequestBlockReasons(model, snapshot).length > 0) return;
+    selectionBusyId = modelId;
+    selectionResult = null;
+    selectionError = null;
+    render();
+    try {
+      selectionResult = await api.modelSelectionRequest({
+        requested_role: role.value,
+        selected_model_id: modelId,
+        operator_override: snapshot.recommendation.recommended[0]?.id !== modelId
+      });
+    } catch {
+      selectionResult = null;
+      selectionError = 'Selection request could not be created. No routing state was changed.';
+    } finally {
+      selectionBusyId = null;
+      render();
+    }
+  }
+
+  async function installPackArtifact(modelId: string, sourcePath: string): Promise<void> {
+    if (!sourcePath.trim()) return;
+    packInstallBusyId = modelId;
+    packInstallResult = null;
+    packInstallError = null;
+    render();
+    try {
+      packInstallResult = await api.modelPackInstall({ model_id: modelId, source_path: sourcePath.trim() });
+      await load();
+    } catch {
+      packInstallError = 'The local artifact was not registered. Check the exact catalog filename, license/source metadata, GGUF validity, and Authority decision.';
+    } finally {
+      packInstallBusyId = null;
+      render();
+    }
+  }
+
+  function renderSelectionResult(): HTMLElement | null {
+    if (selectionError) return el('section', 'mm-selection-result mm-danger-text', selectionError);
+    if (!selectionResult) return null;
+    const region = el('section', 'mm-selection-result');
+    region.appendChild(el('strong', '', selectionResult.decision.replaceAll('_', ' ')));
+    if (selectionResult.block_reasons.length) {
+      region.appendChild(el('p', 'mm-danger-text', `Blocked: ${selectionResult.block_reasons.join(', ')}`));
+    } else if (selectionResult.selection_request) {
+      const request = selectionResult.selection_request;
+      region.appendChild(el('p', '', `${request.selected_intelligence_id} · ${request.requested_role} · ${request.artifact_identity.locality}`));
+      region.appendChild(el('p', 'mm-inline-note', 'Selection request created. It is scoped to this project and has not changed mission routing, evaluated Authority, or admitted resources.'));
+      region.appendChild(el('small', '', `Project reference: ${request.scope.project_id}`));
+    }
+    return region;
   }
 
   function renderRuntime(): HTMLElement {
@@ -292,7 +353,15 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     choose.title = block === 'RESOURCE_INCOMPATIBLE' ? 'Blocked by current resource fit.' : block === 'PROVIDER_NOT_AUTHENTICATED' ? 'The provider is not verified as authenticated.' : block === 'UNAVAILABLE' ? 'Model is unavailable.' : 'View-only choice; does not change execution routing.';
     choose.addEventListener('click', () => chooseOverride(model.id));
     actions.append(choose, el('span', 'mm-action-note', block ? block.replaceAll('_', ' ') : 'Selection is a view-only override'));
+    const selectionBlocks = selectionRequestBlockReasons(model, snapshot!);
+    const request = el('button', 'mm-create-selection', selectionBusyId === model.id ? 'CREATING REQUEST…' : 'CREATE ROLE SELECTION REQUEST') as HTMLButtonElement;
+    request.type = 'button';
+    request.disabled = selectionBusyId !== null || selectionBlocks.length > 0;
+    request.title = selectionBlocks.length ? `Blocked: ${selectionBlocks.join(', ')}` : 'Creates a project-scoped request only; it does not change mission routing.';
+    request.addEventListener('click', () => { void createSelectionRequest(model.id); });
+    actions.appendChild(request);
     card.appendChild(actions);
+    if (selectionBlocks.length) card.appendChild(el('small', 'mm-blocked-label', `Selection request blocked: ${selectionBlocks.join(', ')}`));
     return card;
   }
 
@@ -318,7 +387,41 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
 
   function renderModelPacks(): HTMLElement {
     const page = el('div', 'mm-pack-page');
-    page.appendChild(el('p', 'mm-page-lede', 'Pack metadata is read from the existing model manifest and reconciled against the Intelligence Registry. Presence, qualification, and resource fit remain separate. This panel does not download or install weights.'));
+    page.appendChild(el('p', 'mm-page-lede', 'Pack definitions reference the existing model manifest and Intelligence Registry. Import is local-only: Covert does not download or execute model artifacts here. Installation never implies qualification.'));
+
+    if (snapshot!.model_packs.bundles.length === 0) page.appendChild(el('p', 'mm-empty', 'No versioned Model Pack definitions are present in the existing catalog.'));
+    for (const definition of snapshot!.model_packs.bundles) {
+      const bundleCard = el('section', 'mm-pack-bundle');
+      bundleCard.dataset.testid = `model-pack-${definition.id}`;
+      const bundleHead = el('div', 'mm-section-heading');
+      bundleHead.appendChild(el('h3', '', definition.display_name));
+      bundleHead.append(badge(definition.state), badge(definition.installation_state), badge(definition.qualification_state));
+      bundleCard.appendChild(bundleHead);
+      bundleCard.appendChild(el('p', 'mm-pack-explainer', `${definition.summary} · Version ${definition.version}`));
+      const requirements = el('div', 'mm-facts');
+      appendField(requirements, 'Roles', [...definition.required_models, ...definition.optional_models].flatMap(member => member.roles).filter((value, index, all) => all.indexOf(value) === index).join(', ') || 'Not specified');
+      appendField(requirements, 'Provider dependencies', definition.provider_dependencies.join(', ') || 'None');
+      appendField(requirements, 'Runtime requirements', definition.runtime_requirements.map(item => `${item.runtime_id}${item.health_required ? ' · health required' : ''}${item.capabilities.length ? ` · ${item.capabilities.join(', ')}` : ''}`).join('; ') || 'None');
+      appendField(requirements, 'Resource expectations', definition.resource_expectations.ram_mb === null ? 'Not recorded; current fit is estimated only' : `${definition.resource_expectations.ram_mb} MB RAM expected`);
+      bundleCard.appendChild(requirements);
+      const members = el('div', 'mm-pack-list');
+      for (const member of definition.members) {
+        const row = el('div', 'mm-pack-row');
+        const identity = el('div', 'mm-pack-identity');
+        identity.appendChild(el('strong', '', member.display_name ?? member.model_id));
+        identity.appendChild(el('span', 'mm-pack-role', `${member.required ? 'Required' : 'Optional'} · ${member.roles.join(', ')}`));
+        identity.appendChild(el('small', '', [member.artifact_filename, member.artifact_revision, member.declared_license].filter(Boolean).join(' · ') || 'Catalog artifact metadata incomplete'));
+        const statuses = el('div', 'mm-pack-states');
+        statuses.append(badge(member.installation_state), badge(member.qualification_state ?? 'UNTESTED'), badge(member.resource_fit));
+        statuses.appendChild(el('span', 'mm-pack-roles', `Qualified roles: ${member.qualified_roles.join(', ') || 'none recorded'}`));
+        row.append(identity, statuses);
+        members.appendChild(row);
+      }
+      bundleCard.append(requirements, members);
+      if (definition.block_reasons.length) bundleCard.appendChild(el('p', 'mm-blocked-label', `Readiness conditions: ${definition.block_reasons.join(', ')}`));
+      bundleCard.appendChild(el('p', 'mm-inline-note', 'Resource fit is an estimate, not Resource Admission. READY is a pack projection, not permission to start a mission.'));
+      page.appendChild(bundleCard);
+    }
 
     const bundle = snapshot!.model_packs.offline_bundle;
     const bundleCard = el('section', 'mm-pack-bundle');
@@ -326,7 +429,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     bundleHead.appendChild(el('h3', '', bundle.display_name));
     bundleHead.appendChild(badge(bundle.state));
     bundleCard.appendChild(bundleHead);
-    bundleCard.appendChild(el('p', 'mm-pack-explainer', `Installation: ${bundle.state.replaceAll('_', ' ')} · Qualification: ${bundle.qualification_state.replaceAll('_', ' ')}. A present bundle has not earned any role automatically.`));
+    bundleCard.appendChild(el('p', 'mm-pack-explainer', `Legacy offline setup projection: ${bundle.state.replaceAll('_', ' ')} · Qualification: ${bundle.qualification_state.replaceAll('_', ' ')}. Installation and qualification remain independent.`));
     const dependencies = el('div', 'mm-pack-list');
     const dependencyItems = snapshot!.model_packs.items.filter(item => bundle.dependency_ids.includes(item.id));
     if (dependencyItems.length === 0) dependencies.appendChild(el('p', 'mm-empty', 'No artifact-backed model packs were found in the local manifest.'));
@@ -343,11 +446,17 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       dependencies.appendChild(row);
     }
     bundleCard.appendChild(dependencies);
-    const unavailable = el('button', 'mm-install-disabled', 'INSTALLER NOT AVAILABLE IN MODEL MANAGER') as HTMLButtonElement;
-    unavailable.type = 'button';
-    unavailable.disabled = true;
-    bundleCard.appendChild(unavailable);
     page.appendChild(bundleCard);
+
+    if (packInstallResult) {
+      const result = el('section', 'mm-install-result');
+      result.setAttribute('role', 'status');
+      result.appendChild(el('strong', '', 'LOCAL ARTIFACT VERIFIED AND REGISTERED'));
+      result.appendChild(el('p', '', `${packInstallResult.model_id} · ${packInstallResult.destination_filename} · SHA-256 ${packInstallResult.artifact_sha256}`));
+      result.appendChild(el('p', 'mm-inline-note', `Availability: ${packInstallResult.availability} · Qualification: ${packInstallResult.qualification_state}. No runtime was started.`));
+      page.appendChild(result);
+    }
+    if (packInstallError) page.appendChild(el('p', 'mm-danger-text', packInstallError));
 
     const candidates = el('section', 'mm-pack-candidates');
     candidates.appendChild(el('h3', 'mm-section-title', 'MODEL PACK CATALOG'));
@@ -370,6 +479,23 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       appendField(data, 'Resource fit', item.resource_fit);
       card.appendChild(data);
       card.appendChild(el('p', 'mm-pack-footer', 'Installing or discovering this artifact does not qualify it. Qualification remains bound to its exact artifact/runtime evidence.'));
+      if (item.artifact_label && item.installation_state !== 'INSTALLED') {
+        const pathLabel = el('label', 'mm-pack-path-label', `EXISTING LOCAL FILE · EXACT NAME: ${item.artifact_label}`);
+        const sourcePath = el('input', 'mm-pack-source-path') as HTMLInputElement;
+        sourcePath.type = 'text';
+        sourcePath.autocomplete = 'off';
+        sourcePath.spellcheck = false;
+        sourcePath.placeholder = 'Paste the absolute path to this local GGUF';
+        sourcePath.setAttribute('aria-label', `Local artifact path for ${item.display_name}`);
+        pathLabel.appendChild(sourcePath);
+        card.appendChild(pathLabel);
+        const install = el('button', 'mm-pack-install', packInstallBusyId === item.id ? 'VERIFYING / IMPORTING…' : 'VERIFY AND IMPORT LOCAL GGUF') as HTMLButtonElement;
+        install.type = 'button';
+        install.disabled = packInstallBusyId !== null || !item.source_repo || !item.declared_license;
+        install.title = 'Copies a user-selected local GGUF after exact source/hash/format verification. Does not download, load, or qualify the model.';
+        install.addEventListener('click', () => { void installPackArtifact(item.id, sourcePath.value); });
+        card.appendChild(install);
+      }
       cards.appendChild(card);
     }
     candidates.appendChild(cards);
@@ -391,10 +517,19 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     const specialGrid = el('div', 'mm-special-grid');
     for (const special of DEVELOPER_SPECIALS) {
       const card = el('article', 'mm-special-card');
+      card.dataset.testid = `developer-special-${special.id}`;
       card.appendChild(el('span', 'mm-special-kicker', 'DEVELOPER WORKFLOW'));
-      card.appendChild(el('h4', '', special.category));
+      card.appendChild(el('h4', '', special.name));
+      card.appendChild(el('span', 'mm-special-category', special.category.replaceAll('_', ' ')));
+      card.appendChild(el('p', 'mm-special-purpose', special.purpose));
       card.appendChild(el('p', '', special.summary));
-      card.appendChild(el('small', '', 'MODEL MEMBERSHIP: PENDING VERIFIED DATA'));
+      appendField(card, 'Roles', special.roles.join(', '));
+      appendField(card, 'Models / providers', special.model_ids.length || special.providers.length ? [...special.model_ids, ...special.providers].join(', ') : 'None assigned; evidence required');
+      appendField(card, 'Placement / artifact', `${special.placement} · ${special.artifact ?? 'Not specified'}`);
+      appendField(card, 'Why used', special.why_used);
+      appendField(card, 'Cost / context', `${special.cost_notes} ${special.context_notes}`);
+      appendField(card, 'Known limitations', special.known_limitations.join('; '));
+      card.appendChild(el('small', '', `Developer Special · last reviewed ${special.last_reviewed}`));
       specialGrid.appendChild(card);
     }
     specials.appendChild(specialGrid);
@@ -490,6 +625,8 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     }
     content.appendChild(renderRuntime());
     content.appendChild(renderRecommendation());
+    const selection = renderSelectionResult();
+    if (selection) content.appendChild(selection);
     const models = visibleModels();
     const section = el('section', 'mm-model-list-section');
     const heading = el('div', 'mm-section-heading');

@@ -33,6 +33,10 @@ export interface RuntimeCapabilities {
 
 export interface RuntimeAdapter {
   readonly name: string;
+  // Optional factual metadata. Adapters that cannot verify these values leave
+  // them absent; the Model Manager never infers them from a backend name.
+  readonly version?: string | null;
+  readonly ownership?: string | null;
   readonly capabilities: RuntimeCapabilities;
   discover(): Promise<RuntimeModelInfo[]>;
   status(modelId: string): Promise<RuntimeModelInfo | null>;

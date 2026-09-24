@@ -10,7 +10,7 @@ import { WorkspaceListResponse, WorkspaceTreeResponse } from '../../common/contr
 import { routeForFileRead, routeForFileWrite, routeForSearch, routeForSearchReplace, routeForPatchApply } from './routes/fs.ts';
 import { routeForSessionGet, routeForSessionPut } from './routes/session.ts';
 import { routeForModelStatus, routeForModelStart, routeForModelStop, routeForModelIngest, routeForModelReady, routeForModelRegister, routeForModelProfile } from './routes/models.ts';
-import { routeForModelManager } from './routes/model-manager.ts';
+import { routeForModelManager, routeForModelPackInstall, routeForModelSelectionRequest } from './routes/model-manager.ts';
 import type { RuntimeAdapterRegistry } from './services/runtime-adapter.ts';
 import { routeForRoutes, routeForRoute, routeForFit } from './routes/routing.ts';
 import { routeForChat, routeForChatStream, routeForChatHistory, routeForChatHistorySave } from './routes/chat.ts';
@@ -552,6 +552,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
     resident: async () => renderResidentContext(await residentService.context()),
     skills: (task: string) => skillProvider(task)
   };
+  const modelManagerOptions = {
+    workspace,
+    modelPacksPath: path.join(repoRoot, 'models', 'manifest.json'),
+    ...(options.runtimeAdapters ? { runtimeAdapters: options.runtimeAdapters } : {})
+  };
   const core: Route[] = [
     ...routesForAuthority(),
     makeHealthRoute(workspace, version),
@@ -573,11 +578,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForModelReady(modelRuntime),
     routeForModelRegister(modelRuntime),
     routeForModelProfile(modelRuntime),
-    routeForModelManager({
-      workspace,
-      modelPacksPath: path.join(repoRoot, 'models', 'manifest.json'),
-      ...(options.runtimeAdapters ? { runtimeAdapters: options.runtimeAdapters } : {})
-    }),
+    routeForModelManager(modelManagerOptions),
+    routeForModelPackInstall(modelManagerOptions),
+    routeForModelSelectionRequest(modelManagerOptions),
     routeForRoutes(modelRouter),
     routeForRoute(modelRouter),
     routeForFit(),

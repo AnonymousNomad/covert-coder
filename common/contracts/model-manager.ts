@@ -77,8 +77,73 @@ export const ModelManagerProvider = z.strictObject({
 });
 
 export const ModelPackInstallationState = z.enum([
-  'INSTALLED', 'AVAILABLE_LOCALLY', 'MISSING', 'PROVIDER_CONNECTION_REQUIRED', 'SOURCE_ONLY'
+  'INSTALLED', 'AVAILABLE_LOCALLY', 'MISSING', 'MISSING_ARTIFACT', 'PROVIDER_CONNECTION_REQUIRED', 'SOURCE_ONLY'
 ]);
+
+export const ModelPackMemberReference = z.strictObject({
+  model_id: z.string().min(1).max(128),
+  roles: z.array(z.string().min(1).max(64))
+});
+
+export const ModelPackRuntimeRequirement = z.strictObject({
+  runtime_id: z.string().min(1).max(80),
+  health_required: z.boolean(),
+  capabilities: z.array(z.enum(['tools', 'metrics', 'unload']))
+});
+
+export const ModelPackResourceExpectations = z.strictObject({
+  ram_mb: z.number().nonnegative().nullable(),
+  vram_mb: z.number().nonnegative().nullable(),
+  disk_mb: z.number().nonnegative().nullable()
+});
+
+// Bundle composition references artifact candidates in the existing
+// models/manifest.json catalog. Artifact, source, and license facts remain in
+// that catalog; model identity, availability, and qualification remain in the
+// Intelligence Registry.
+export const ModelPackDefinition = z.strictObject({
+  id: z.string().min(1).max(128),
+  version: z.string().min(1).max(80),
+  display_name: z.string().min(1).max(240),
+  summary: z.string().max(500),
+  required_models: z.array(ModelPackMemberReference).min(1),
+  optional_models: z.array(ModelPackMemberReference),
+  provider_dependencies: z.array(z.string().min(1).max(80)),
+  runtime_requirements: z.array(ModelPackRuntimeRequirement),
+  qualification_requirements: z.array(ModelPackMemberReference),
+  resource_expectations: ModelPackResourceExpectations
+});
+
+export const ModelPackLifecycleState = z.enum([
+  'AVAILABLE', 'PARTIALLY_INSTALLED', 'INSTALLED', 'MISSING_ARTIFACT',
+  'MISSING_PROVIDER', 'RESOURCE_INCOMPATIBLE', 'QUALIFICATION_REQUIRED',
+  'RUNTIME_UNAVAILABLE', 'READY'
+]);
+
+export const ModelPackBundleMember = z.strictObject({
+  model_id: z.string().min(1).max(128),
+  required: z.boolean(),
+  roles: z.array(z.string().min(1).max(64)),
+  display_name: z.string().max(240).nullable(),
+  source_repo: z.string().max(240).nullable(),
+  artifact_filename: z.string().max(240).nullable(),
+  artifact_revision: z.string().max(240).nullable(),
+  expected_sha256: z.string().regex(/^[a-f0-9]{64}$/i).nullable(),
+  declared_license: z.string().max(120).nullable(),
+  installation_state: ModelPackInstallationState,
+  qualification_state: z.enum(['UNTESTED', 'TESTED', 'QUALIFIED', 'NOT_QUALIFIED', 'INVALID_EVIDENCE', 'STALE']).nullable(),
+  qualified_roles: z.array(z.string().max(64)),
+  resource_fit: ModelManagerResourceFit,
+  evidence_refs: z.array(SafeRef)
+});
+
+export const ModelPackBundleView = ModelPackDefinition.extend({
+  state: ModelPackLifecycleState,
+  installation_state: z.enum(['AVAILABLE', 'PARTIALLY_INSTALLED', 'INSTALLED']),
+  qualification_state: z.enum(['QUALIFIED', 'QUALIFICATION_REQUIRED', 'NOT_QUALIFIED', 'UNKNOWN']),
+  members: z.array(ModelPackBundleMember),
+  block_reasons: z.array(z.string().max(80))
+});
 
 export const ModelPackItem = z.strictObject({
   id: z.string().min(1).max(128),
@@ -104,6 +169,63 @@ export const ModelPackBundle = z.strictObject({
   qualification_state: z.enum(['QUALIFIED', 'QUALIFICATION_MISSING', 'UNKNOWN']),
   dependency_ids: z.array(z.string().max(128)),
   installation_available: z.literal(false)
+});
+
+export const ModelPackInstallRequest = z.strictObject({
+  model_id: z.string().min(1).max(128),
+  source_path: z.string().min(1).max(2048)
+});
+
+export const ModelPackInstallResponse = z.strictObject({
+  model_id: z.string().min(1).max(128),
+  installed: z.literal(true),
+  idempotent: z.boolean(),
+  destination_filename: z.string().min(1).max(240),
+  artifact_sha256: z.string().regex(/^[a-f0-9]{64}$/i),
+  identity_verification: z.enum(['EXPECTED_HASH_MATCH', 'SOURCE_COPY_HASH_MATCH']),
+  availability: z.literal('INSTALLED'),
+  qualification_state: z.enum(['UNTESTED', 'TESTED', 'QUALIFIED', 'NOT_QUALIFIED', 'INVALID_EVIDENCE', 'STALE']),
+  qualification_changed: z.boolean(),
+  runtime: z.literal('UNSLOTH')
+});
+
+export const ModelSelectionRequestInput = z.strictObject({
+  requested_role: z.string().min(1).max(64),
+  selected_model_id: z.string().min(1).max(128),
+  operator_override: z.boolean()
+});
+
+export const ModelSelectionBlockReason = z.enum([
+  'MODEL_UNAVAILABLE', 'MISSING_ARTIFACT', 'MISSING_PROVIDER',
+  'RESOURCE_INCOMPATIBLE', 'RUNTIME_UNAVAILABLE',
+  'QUALIFICATION_INVALID_OR_STALE'
+]);
+
+export const ModelSelectionRequest = z.strictObject({
+  requested_role: z.string().min(1).max(64),
+  selected_intelligence_id: z.string().min(1).max(128),
+  artifact_identity: z.strictObject({
+    locality: z.enum(['LOCAL', 'CLOUD']),
+    artifact_id: z.string().min(1).max(240),
+    revision: z.string().max(240).nullable(),
+    sha256: z.string().max(128).nullable(),
+    hash_status: z.enum(['verified', 'not_computed', 'mismatch']).nullable()
+  }),
+  qualification_state: z.enum(['UNTESTED', 'TESTED', 'QUALIFIED', 'NOT_QUALIFIED', 'INVALID_EVIDENCE', 'STALE']),
+  operator_override: z.boolean(),
+  recommendation_evidence: z.array(SafeRef),
+  reason_codes: z.array(ModelManagerRecommendationReason),
+  scope: z.strictObject({ project_id: z.string().regex(/^sha256:[a-f0-9]{64}$/), mission_id: z.null() }),
+  created_at: z.string().datetime()
+});
+
+export const ModelSelectionRequestResponse = z.strictObject({
+  decision: z.enum(['RECOMMENDED', 'OPERATOR_SELECTED', 'SYSTEM_BLOCKED']),
+  selection_request: ModelSelectionRequest.nullable(),
+  block_reasons: z.array(ModelSelectionBlockReason),
+  routing_applied: z.literal(false),
+  authority_evaluated: z.literal(false),
+  resource_admission_evaluated: z.literal(false)
 });
 
 export const ModelPackHybridSetup = z.strictObject({
@@ -147,6 +269,28 @@ export const ModelManagerSystemAdvisory = z.strictObject({
   evidence_refs: z.array(SafeRef)
 });
 
+// Curated developer workflow guidance is kept distinct from evidence-driven
+// recommendations and system-state advisories.
+export const ModelManagerDeveloperSpecial = z.strictObject({
+  kind: z.literal('developer-special'),
+  source: z.literal('DEVELOPER_SPECIALS — James Ferrell'),
+  id: z.string().min(1).max(120),
+  name: z.string().min(1).max(200),
+  category: z.enum(['HIGH_VOLUME_ENGINEERING', 'LOW_COST_DEVELOPMENT', 'LOCAL_FIRST', 'PLANNING', 'INDEPENDENT_REVIEW', 'OFFLINE_WORK']),
+  purpose: z.string().min(1).max(600),
+  roles: z.array(z.string().min(1).max(64)),
+  model_ids: z.array(SafeRef),
+  providers: z.array(SafeRef),
+  placement: z.enum(['LOCAL', 'CLOUD', 'MIXED', 'UNSPECIFIED']),
+  artifact: SafeRef.nullable(),
+  summary: z.string().min(1).max(600),
+  why_used: z.string().min(1).max(600),
+  cost_notes: z.string().min(1).max(600),
+  context_notes: z.string().min(1).max(600),
+  known_limitations: z.array(z.string().min(1).max(300)),
+  last_reviewed: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+});
+
 export const ModelManagerSnapshotResponse = z.strictObject({
   generated_at: z.string().datetime(),
   public_safe: z.literal(true),
@@ -159,6 +303,7 @@ export const ModelManagerSnapshotResponse = z.strictObject({
   model_packs: z.strictObject({
     catalog_status: z.enum(['AVAILABLE', 'UNAVAILABLE']),
     items: z.array(ModelPackItem),
+    bundles: z.array(ModelPackBundleView),
     offline_bundle: ModelPackBundle,
     hybrid_setup: ModelPackHybridSetup
   }),
@@ -169,3 +314,12 @@ export const ModelManagerSnapshotResponse = z.strictObject({
 
 export type ModelManagerEntryT = z.infer<typeof ModelManagerEntry>;
 export type ModelManagerSnapshotResponseT = z.infer<typeof ModelManagerSnapshotResponse>;
+export type ModelManagerProviderT = z.infer<typeof ModelManagerProvider>;
+export type ModelManagerRuntimeT = z.infer<typeof ModelManagerRuntime>;
+export type ModelPackDefinitionT = z.infer<typeof ModelPackDefinition>;
+export type ModelPackBundleViewT = z.infer<typeof ModelPackBundleView>;
+export type ModelPackInstallRequestT = z.infer<typeof ModelPackInstallRequest>;
+export type ModelPackInstallResponseT = z.infer<typeof ModelPackInstallResponse>;
+export type ModelSelectionRequestInputT = z.infer<typeof ModelSelectionRequestInput>;
+export type ModelSelectionRequestResponseT = z.infer<typeof ModelSelectionRequestResponse>;
+export type ModelManagerDeveloperSpecialT = z.infer<typeof ModelManagerDeveloperSpecial>;

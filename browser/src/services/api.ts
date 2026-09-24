@@ -56,7 +56,13 @@ import {
 import {
   ModelManagerQuery,
   ModelManagerSnapshotResponse,
-  type ModelManagerSnapshotResponseT
+  type ModelManagerSnapshotResponseT,
+  ModelPackInstallRequest,
+  ModelPackInstallResponse,
+  type ModelPackInstallResponseT,
+  ModelSelectionRequestInput,
+  ModelSelectionRequestResponse,
+  type ModelSelectionRequestResponseT
 } from '../../../common/contracts/model-manager.ts';
 import {
   ClosedLoopStatusResponse,
@@ -339,6 +345,16 @@ export const api = {
     const query = ModelManagerQuery.safeParse({ role, offline: String(offline) });
     if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid model manager query');
     return call('/api/models/manager', { query: query.data, schema: ModelManagerSnapshotResponse });
+  },
+  modelPackInstall(input: { model_id: string; source_path: string }): Promise<ModelPackInstallResponseT> {
+    const body = ModelPackInstallRequest.safeParse(input);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid local Model Pack installation request');
+    return call('/api/models/manager/packs/install', { method: 'POST', body: body.data, schema: ModelPackInstallResponse });
+  },
+  modelSelectionRequest(input: { requested_role: string; selected_model_id: string; operator_override: boolean }): Promise<ModelSelectionRequestResponseT> {
+    const body = ModelSelectionRequestInput.safeParse(input);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid model selection request');
+    return call('/api/models/manager/selection-request', { method: 'POST', body: body.data, schema: ModelSelectionRequestResponse });
   },
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });

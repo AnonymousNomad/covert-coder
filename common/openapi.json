@@ -12146,6 +12146,7 @@
                                   "INSTALLED",
                                   "AVAILABLE_LOCALLY",
                                   "MISSING",
+                                  "MISSING_ARTIFACT",
                                   "PROVIDER_CONNECTION_REQUIRED",
                                   "SOURCE_ONLY"
                                 ]
@@ -12218,6 +12219,412 @@
                               "resource_fit",
                               "matched_model_id",
                               "evidence_refs"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "bundles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "version": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "summary": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required_models": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "model_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 128
+                                    },
+                                    "roles": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "model_id",
+                                    "roles"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "optional_models": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "model_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 128
+                                    },
+                                    "roles": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "model_id",
+                                    "roles"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "provider_dependencies": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                }
+                              },
+                              "runtime_requirements": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "runtime_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 80
+                                    },
+                                    "health_required": {
+                                      "type": "boolean"
+                                    },
+                                    "capabilities": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "enum": [
+                                          "tools",
+                                          "metrics",
+                                          "unload"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "runtime_id",
+                                    "health_required",
+                                    "capabilities"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "qualification_requirements": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "model_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 128
+                                    },
+                                    "roles": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "model_id",
+                                    "roles"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "resource_expectations": {
+                                "type": "object",
+                                "properties": {
+                                  "ram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "vram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "disk_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "ram_mb",
+                                  "vram_mb",
+                                  "disk_mb"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "AVAILABLE",
+                                  "PARTIALLY_INSTALLED",
+                                  "INSTALLED",
+                                  "MISSING_ARTIFACT",
+                                  "MISSING_PROVIDER",
+                                  "RESOURCE_INCOMPATIBLE",
+                                  "QUALIFICATION_REQUIRED",
+                                  "RUNTIME_UNAVAILABLE",
+                                  "READY"
+                                ]
+                              },
+                              "installation_state": {
+                                "type": "string",
+                                "enum": [
+                                  "AVAILABLE",
+                                  "PARTIALLY_INSTALLED",
+                                  "INSTALLED"
+                                ]
+                              },
+                              "qualification_state": {
+                                "type": "string",
+                                "enum": [
+                                  "QUALIFIED",
+                                  "QUALIFICATION_REQUIRED",
+                                  "NOT_QUALIFIED",
+                                  "UNKNOWN"
+                                ]
+                              },
+                              "members": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "model_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 128
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "roles": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "display_name": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "maxLength": 240
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "source_repo": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "maxLength": 240
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "artifact_filename": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "maxLength": 240
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "artifact_revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "maxLength": 240
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "expected_sha256": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "pattern": "^[a-f0-9]{64}$"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "declared_license": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "maxLength": 120
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "installation_state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "INSTALLED",
+                                        "AVAILABLE_LOCALLY",
+                                        "MISSING",
+                                        "MISSING_ARTIFACT",
+                                        "PROVIDER_CONNECTION_REQUIRED",
+                                        "SOURCE_ONLY"
+                                      ]
+                                    },
+                                    "qualification_state": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "UNTESTED",
+                                            "TESTED",
+                                            "QUALIFIED",
+                                            "NOT_QUALIFIED",
+                                            "INVALID_EVIDENCE",
+                                            "STALE"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "qualified_roles": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "maxLength": 64
+                                      }
+                                    },
+                                    "resource_fit": {
+                                      "type": "string",
+                                      "enum": [
+                                        "FIT",
+                                        "INCOMPATIBLE",
+                                        "UNKNOWN"
+                                      ]
+                                    },
+                                    "evidence_refs": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 240
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "model_id",
+                                    "required",
+                                    "roles",
+                                    "display_name",
+                                    "source_repo",
+                                    "artifact_filename",
+                                    "artifact_revision",
+                                    "expected_sha256",
+                                    "declared_license",
+                                    "installation_state",
+                                    "qualification_state",
+                                    "qualified_roles",
+                                    "resource_fit",
+                                    "evidence_refs"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "block_reasons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 80
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "version",
+                              "display_name",
+                              "summary",
+                              "required_models",
+                              "optional_models",
+                              "provider_dependencies",
+                              "runtime_requirements",
+                              "qualification_requirements",
+                              "resource_expectations",
+                              "state",
+                              "installation_state",
+                              "qualification_state",
+                              "members",
+                              "block_reasons"
                             ],
                             "additionalProperties": false
                           }
@@ -12315,6 +12722,7 @@
                       "required": [
                         "catalog_status",
                         "items",
+                        "bundles",
                         "offline_bundle",
                         "hybrid_setup"
                       ],
@@ -12639,6 +13047,367 @@
             }
           }
         ]
+      }
+    },
+    "/api/models/manager/packs/install": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "model_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "installed": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "idempotent": {
+                      "type": "boolean"
+                    },
+                    "destination_filename": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 240
+                    },
+                    "artifact_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "identity_verification": {
+                      "type": "string",
+                      "enum": [
+                        "EXPECTED_HASH_MATCH",
+                        "SOURCE_COPY_HASH_MATCH"
+                      ]
+                    },
+                    "availability": {
+                      "type": "string",
+                      "const": "INSTALLED"
+                    },
+                    "qualification_state": {
+                      "type": "string",
+                      "enum": [
+                        "UNTESTED",
+                        "TESTED",
+                        "QUALIFIED",
+                        "NOT_QUALIFIED",
+                        "INVALID_EVIDENCE",
+                        "STALE"
+                      ]
+                    },
+                    "qualification_changed": {
+                      "type": "boolean"
+                    },
+                    "runtime": {
+                      "type": "string",
+                      "const": "UNSLOTH"
+                    }
+                  },
+                  "required": [
+                    "model_id",
+                    "installed",
+                    "idempotent",
+                    "destination_filename",
+                    "artifact_sha256",
+                    "identity_verification",
+                    "availability",
+                    "qualification_state",
+                    "qualification_changed",
+                    "runtime"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "source_path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                },
+                "required": [
+                  "model_id",
+                  "source_path"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/manager/selection-request": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "decision": {
+                      "type": "string",
+                      "enum": [
+                        "RECOMMENDED",
+                        "OPERATOR_SELECTED",
+                        "SYSTEM_BLOCKED"
+                      ]
+                    },
+                    "selection_request": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "requested_role": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "selected_intelligence_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            "artifact_identity": {
+                              "type": "object",
+                              "properties": {
+                                "locality": {
+                                  "type": "string",
+                                  "enum": [
+                                    "LOCAL",
+                                    "CLOUD"
+                                  ]
+                                },
+                                "artifact_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                },
+                                "revision": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 240
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "sha256": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 128
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "hash_status": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "verified",
+                                        "not_computed",
+                                        "mismatch"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "locality",
+                                "artifact_id",
+                                "revision",
+                                "sha256",
+                                "hash_status"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "qualification_state": {
+                              "type": "string",
+                              "enum": [
+                                "UNTESTED",
+                                "TESTED",
+                                "QUALIFIED",
+                                "NOT_QUALIFIED",
+                                "INVALID_EVIDENCE",
+                                "STALE"
+                              ]
+                            },
+                            "operator_override": {
+                              "type": "boolean"
+                            },
+                            "recommendation_evidence": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              }
+                            },
+                            "reason_codes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "ROLE_QUALIFIED",
+                                  "ROLE_NOT_QUALIFIED",
+                                  "LOCAL_AVAILABLE",
+                                  "OFFLINE_CAPABLE",
+                                  "LOW_RESOURCE_FIT",
+                                  "RESOURCE_INCOMPATIBLE",
+                                  "LOWER_COST",
+                                  "PAST_PROJECT_SUCCESS",
+                                  "LOW_OPERATOR_INTERVENTION",
+                                  "KNOWN_TOOL_RELIABILITY",
+                                  "KNOWN_REVIEW_STRENGTH",
+                                  "INSUFFICIENT_EVIDENCE",
+                                  "PROVIDER_NOT_AUTHENTICATED"
+                                ]
+                              }
+                            },
+                            "scope": {
+                              "type": "object",
+                              "properties": {
+                                "project_id": {
+                                  "type": "string",
+                                  "pattern": "^sha256:[a-f0-9]{64}$"
+                                },
+                                "mission_id": {
+                                  "type": "null"
+                                }
+                              },
+                              "required": [
+                                "project_id",
+                                "mission_id"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "created_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "requested_role",
+                            "selected_intelligence_id",
+                            "artifact_identity",
+                            "qualification_state",
+                            "operator_override",
+                            "recommendation_evidence",
+                            "reason_codes",
+                            "scope",
+                            "created_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "block_reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "MODEL_UNAVAILABLE",
+                          "MISSING_ARTIFACT",
+                          "MISSING_PROVIDER",
+                          "RESOURCE_INCOMPATIBLE",
+                          "RUNTIME_UNAVAILABLE",
+                          "QUALIFICATION_INVALID_OR_STALE"
+                        ]
+                      }
+                    },
+                    "routing_applied": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "authority_evaluated": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "resource_admission_evaluated": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "decision",
+                    "selection_request",
+                    "block_reasons",
+                    "routing_applied",
+                    "authority_evaluated",
+                    "resource_admission_evaluated"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requested_role": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "selected_model_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "operator_override": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "requested_role",
+                  "selected_model_id",
+                  "operator_override"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
       }
     },
     "/api/models/profile": {

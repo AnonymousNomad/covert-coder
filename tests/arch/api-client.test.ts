@@ -84,6 +84,7 @@ test('api.modelsManager requests the typed local Registry projection with role a
     model_packs: {
       catalog_status: 'AVAILABLE',
       items: [],
+      bundles: [],
       offline_bundle: { id: 'offline', display_name: 'Offline', state: 'MISSING_DEPENDENCY', qualification_state: 'UNKNOWN', dependency_ids: [], installation_available: false },
       hybrid_setup: { state: 'LOCAL_MODEL_REQUIRED', qualified_local_implementers: 0, qualified_connected_cloud_reviewers: 0, configuration_only: true }
     },
@@ -102,6 +103,32 @@ test('api.modelsManager requests the typed local Registry projection with role a
   } finally {
     mock.restoreAll();
   }
+});
+
+test('Model Pack install and selection requests use typed local Model Manager routes', async () => {
+  const seen: Array<{ path: string; method: string; body: unknown; format: string | null }> = [];
+  mock.method(globalThis, 'fetch', async (url: string | URL | Request, init?: RequestInit) => {
+    const parsed = new URL(String(url));
+    const body = typeof init?.body === 'string' ? JSON.parse(init.body) as unknown : undefined;
+    seen.push({ path: parsed.pathname, method: init?.method ?? 'GET', body, format: new Headers(init?.headers).get('X-AIDE-API-Format') });
+    const response = parsed.pathname.endsWith('/packs/install')
+      ? { model_id: 'qwen-local', installed: true, idempotent: false, destination_filename: 'qwen.gguf', artifact_sha256: 'a'.repeat(64), identity_verification: 'EXPECTED_HASH_MATCH', availability: 'INSTALLED', qualification_state: 'UNTESTED', qualification_changed: false, runtime: 'UNSLOTH' }
+      : { decision: 'SYSTEM_BLOCKED', selection_request: null, block_reasons: ['RUNTIME_UNAVAILABLE'], routing_applied: false, authority_evaluated: false, resource_admission_evaluated: false };
+    return new Response(JSON.stringify(ok(response)), { status: 200 });
+  });
+  try {
+    const installed = await api.modelPackInstall({ model_id: 'qwen-local', source_path: 'C:\\models\\qwen.gguf' });
+    assert.equal(installed.qualification_state, 'UNTESTED');
+    const blocked = await api.modelSelectionRequest({ requested_role: 'IMPLEMENTER', selected_model_id: 'qwen-local', operator_override: false });
+    assert.equal(blocked.decision, 'SYSTEM_BLOCKED');
+    assert.equal(blocked.routing_applied, false);
+    assert.deepEqual(seen.map(item => [item.path, item.method]), [
+      ['/api/models/manager/packs/install', 'POST'],
+      ['/api/models/manager/selection-request', 'POST']
+    ]);
+    assert.deepEqual(seen[0]?.body, { model_id: 'qwen-local', source_path: 'C:\\models\\qwen.gguf' });
+    assert.ok(seen.every(item => item.format === 'envelope-v1'));
+  } finally { mock.restoreAll(); }
 });
 
 test('api.chatStream uses the shared versioned transport and propagates cancellation', async () => {

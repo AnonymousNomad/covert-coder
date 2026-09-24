@@ -6,11 +6,12 @@ import path from 'node:path';
 import type { IntelligenceEntry } from '../../node/src/services/intelligence-registry.ts';
 import { IntelligenceRegistry, IntelligenceEntrySchema } from '../../node/src/services/intelligence-registry.ts';
 import { buildModelManagerSnapshot } from '../../node/src/services/model-manager-view.ts';
-import { RuntimeAdapterRegistry, UnimplementedRuntimeAdapter } from '../../node/src/services/runtime-adapter.ts';
+import { RuntimeAdapterRegistry, UnimplementedRuntimeAdapter, type RuntimeAdapter } from '../../node/src/services/runtime-adapter.ts';
 import { routeForModelManager } from '../../node/src/routes/model-manager.ts';
 import { overrideBlockReason } from '../../browser/src/panels/model-manager-logic.ts';
-import { ModelManagerDeveloperNote, ModelManagerSystemAdvisory } from '../../common/contracts/model-manager.ts';
+import { ModelManagerDeveloperNote, ModelManagerDeveloperSpecial, ModelManagerSystemAdvisory } from '../../common/contracts/model-manager.ts';
 import { httpOperationKind } from '../../common/security/operation-policy.mjs';
+import { DEVELOPER_SPECIALS } from '../../browser/src/panels/developer-specials.ts';
 
 interface Pack {
   id: string;
@@ -231,6 +232,15 @@ test('Developer Notes and System Advisories remain distinct tagged surfaces', as
   });
 });
 
+test('Developer Specials use a public-safe workflow-recipe contract, separate from recommendations and advisories', () => {
+  assert.ok(DEVELOPER_SPECIALS.length > 0);
+  for (const special of DEVELOPER_SPECIALS) {
+    assert.equal(ModelManagerDeveloperSpecial.safeParse(special).success, true);
+    assert.equal(ModelManagerSystemAdvisory.safeParse(special).success, false);
+    assert.equal(ModelManagerDeveloperNote.safeParse(special).success, false);
+  }
+});
+
 test('Unsloth RuntimeAdapter read state is shown without implementing a runtime', async () => {
   await withWorkspace(async (workspace, modelPacksPath) => {
     const adapters = new RuntimeAdapterRegistry();
@@ -242,6 +252,37 @@ test('Unsloth RuntimeAdapter read state is shown without implementing a runtime'
     assert.match(snapshot.runtime.health_detail ?? '', /not implemented/i);
     assert.equal(snapshot.runtime.version, null);
     assert.equal(snapshot.runtime.ownership, null);
+  });
+});
+
+test('RuntimeAdapter metadata is projected only when supplied and unsafe values are withheld', async () => {
+  await withWorkspace(async (workspace, modelPacksPath) => {
+    const adapter: RuntimeAdapter = {
+      name: 'Unsloth', version: 'fixture-2.1', ownership: 'externally managed',
+      capabilities: { tools: true, metrics: true, unload: false },
+      async discover() { return [{ id: 'qwen-fixture', loaded: true, context_tokens: 4096 }]; },
+      async status(model_id) { return { id: model_id, loaded: true }; },
+      async load(model_id) { return { id: model_id, status: 'loaded' }; },
+      async unload(model_id) { return { id: model_id, status: 'unloaded' }; },
+      async health() { return { ok: true }; },
+      async generate() { return { content: '', finish_reason: 'stop', latency_ms: 0 }; },
+      async tools() { return []; },
+      async metrics() { return { memory_mb: 512 }; }
+    };
+    const adapters = new RuntimeAdapterRegistry();
+    adapters.register(adapter);
+    const snapshot = await buildModelManagerSnapshot({ workspace, modelPacksPath, runtimeAdapters: adapters, localDiscovery: emptyDiscovery, availableRamMb: 4096 });
+    assert.equal(snapshot.runtime.version, 'fixture-2.1');
+    assert.equal(snapshot.runtime.ownership, 'externally managed');
+    assert.deepEqual(snapshot.runtime.loaded_models, [{ id: 'qwen-fixture', loaded: true, context_tokens: 4096 }]);
+    assert.deepEqual(snapshot.runtime.capabilities, { tools: true, metrics: true, unload: false });
+    assert.deepEqual(snapshot.runtime.metrics, { memory_mb: 512 });
+
+    const unsafe = new RuntimeAdapterRegistry();
+    unsafe.register({ ...adapter, version: 'C:\\Users\\operator\\runtime', ownership: 'token=private-value' });
+    const safeProjection = await buildModelManagerSnapshot({ workspace, modelPacksPath, runtimeAdapters: unsafe, localDiscovery: emptyDiscovery, availableRamMb: 4096 });
+    assert.equal(safeProjection.runtime.version, null);
+    assert.equal(safeProjection.runtime.ownership, null);
   });
 });
 
