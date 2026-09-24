@@ -811,3 +811,582 @@ LIQUID AWARENESS: IN PROGRESS / FINAL EVIDENCE NOT AVAILABLE
 H4: NOT AUTHORIZED
 IMPLEMENTATION AUTHORIZED: NO
 ~~~
+
+## 21. Final research-integration addendum
+
+This addendum incorporates the final research findings without changing the
+prior ownership decisions or authorizing implementation.
+
+### 21.1 Specification Acquisition
+
+#### FACT
+
+The repository has several sources of task-local correctness information:
+
+- Workflow stages, artifacts and obligations in common/contracts/workflow.ts.
+- Agent objective/task and acceptance/verification placeholders in
+  common/contracts/agent.ts and common/contracts/attempt.ts.
+- Skill/SOP descriptions and stage-aware selection in skills-loader.mjs.
+- Bounded handoff fields for verified facts, claims, assumptions, constraints,
+  open questions, artifacts and evidence in worker-handoff.ts.
+- Authority operation scope and risk rules.
+- Veritas and failure-taxonomy documentation.
+- Project retrieval, memory and evidence providers in AgentLoop and
+  chat-context.ts.
+
+These are not one unified specification acquisition contract. In particular,
+repository conventions, negative requirements, completeness conditions and
+local architecture invariants may be present in Skills, Workflow artifacts or
+documentation without being versioned as one attempt-bound specification.
+
+#### INFERENCE
+
+Content acquisition and specification acquisition are different operations:
+
+~text
+CONTENT ACQUISITION
+Which files, facts, artifacts and observations are relevant?
+
+SPECIFICATION ACQUISITION
+Which local rules determine what correct means here?
+~
+
+A complete file set does not prove that the model has the local acceptance rules.
+A specification may also constrain what must not be changed, not merely what
+should be produced.
+
+#### RECOMMENDATION
+
+Add a bounded Local Specification section to a future ContextManifest rather
+than creating a persistent specification service. The section should contain
+references and digests where possible:
+
+~text
+LocalSpecification {
+  identity/version/hash
+  source references and source revisions
+  architectural invariants
+  repository conventions
+  format and compatibility requirements
+  completeness conditions
+  negative requirements and forbidden mutations
+  behavioral obligations
+  acceptance/verification references
+  unknown or unresolved specification items
+}
+~
+
+Context Control compiles the section from canonical owners. It does not invent
+rules from model preference. Workflow owns stage obligations, Skills own
+methodology, Authority owns permitted effects, Veritas owns acceptance, and
+project/Helix sources own eligible verified facts.
+
+#### STATUS TABLE
+
+| Candidate concern | Existing source | Disposition |
+| --- | --- | --- |
+| Objective | Agent task and H3 envelope objective | EXISTS, but mission-level identity can remain partial |
+| Workflow obligations | Workflow contract and stage projection | EXISTS / PARTIAL projection |
+| Acceptance requirements | Attempt marker and Veritas/failure contracts | PARTIAL |
+| Repository conventions | Skills, project retrieval and documentation | PARTIAL, no unified digest |
+| Architectural invariants | Doctrine/Skills/docs and selected contracts | PARTIAL, not attempt-bound |
+| Negative requirements | Authority/tool restrictions and Skill stop conditions | PARTIAL |
+| Completeness conditions | Veritas/evidence policy where configured | PARTIAL |
+| LocalSpecification identity/hash | No current manifest field | MISSING / CANDIDATE |
+| Separate specification service | No evidence of need | DUPLICATE / DEFER |
+
+An explicit field is preferable to hiding normative rules inside verified_facts.
+Facts describe the world; a LocalSpecification describes the rules by which the
+world and result are judged. The two may reference the same source but must not
+be conflated.
+
+### 21.2 System Uncertainty
+
+#### FACT
+
+Current contracts already represent several uncertainty forms:
+
+- UNKNOWN, NOT_RECORDED and NOT_APPLICABLE markers in attempt.ts.
+- CONTEXT_DRIFT and RECOVERY_CLASSIFIED H3 events.
+- UNKNOWN effect certainty and RECOVERED_UNCERTAIN /
+  RECOVERED_MUTATED_UNVERIFIED attempt states.
+- failure taxonomy entries for missing lifecycle/evidence/cleanup facts.
+- handoff assumptions, open questions and unknown side effects.
+- provider/resource/verification states that can be unavailable or incomplete.
+
+There is no single aggregate system uncertainty state that explains why current
+knowledge is unsafe to rely upon.
+
+#### INFERENCE
+
+Worker-reported confidence is not an authoritative uncertainty signal. A
+worker can be confident while the system has stale context, contradictory test
+evidence, missing provenance, or an unknown side effect. Conversely, a worker's
+uncertainty can be useful evidence without being a system verdict.
+
+#### RECOMMENDATION
+
+A future ContextManifest/Situation Frame may contain a non-canonical
+Uncertainty State, derived from observable conditions:
+
+~text
+UncertaintyState {
+  status: CLEAR | QUALIFIED | BLOCKING | UNKNOWN
+  dimensions:
+    - unverified_assumption
+    - contradictory_evidence
+    - missing_provenance
+    - verification_disagreement
+    - failed_recovery
+    - dependency_unknown
+    - specification_incomplete
+    - resource_uncertainty
+    - stale_context
+    - effect_uncertainty
+  source references
+  freshness
+  blocking reasons
+}
+~
+
+This is a knowledge-state projection, not a confidence score and not an
+acceptance verdict. Each source retains authority over its own fact. Harness
+can record observed uncertainty; Context Control can project it; Orchestrator
+can use it to pause or request a new attempt; Veritas can refuse to accept
+insufficient evidence. No uncertainty state can promote or demote Helix truth
+by itself.
+
+The aggregate must not hide the dimension that caused it. A single HIGH number
+would be insufficient for recovery and would invite false precision.
+
+### 21.3 Early epistemic-failure signals
+
+#### FACT
+
+H3 already records facts that can support early divergence analysis:
+
+~text
+CONTEXT_BOUND / CONTEXT_DRIFT
+MODEL_REQUEST_STARTED / MODEL_RESPONSE_RECEIVED
+ACTION and TOOL request/permit/start/observation events
+FILE_READ / FILE_MUTATION_OBSERVED / EFFECT_UNCERTAIN
+COMMAND_STARTED / COMMAND_OBSERVED
+VERIFICATION_STARTED / VERIFICATION_RESULT
+RECOVERY_CLASSIFIED
+~
+
+The existing failure taxonomy also explicitly requires upstream context,
+adapter, workflow, Authority, execution and evaluator causes to be excluded
+before assigning a model failure.
+
+#### INFERENCE
+
+The current stream is sufficient as raw evidence for some deterministic
+signals, but not sufficient to prove a worker's hidden belief state. “Ignored
+tool output” and “reasoned from an assumption” are not directly observable
+unless the relevant claim/action and evidence references are captured.
+
+#### RECOMMENDATION
+
+Begin with a derived diagnostic analyzer over canonical events and observable
+claims, not another continuously running reviewer agent. Candidate signals:
+
+| Signal | Evidence pattern | Safe interpretation |
+| --- | --- | --- |
+| Contradictory evidence followed by continued mutation | failing/contradictory observation followed by mutation without a new accepted attempt or explicit repair | DIVERGENCE_SUSPECTED |
+| Repeated identical recovery | same failure class, hypothesis/reference and action shape across a bounded chain | RECOVERY_LOOP_SUSPECTED |
+| Claim/file mismatch | attributable claim conflicts with current canonical file/effect observation | CLAIM_OBSERVATION_MISMATCH |
+| Stale context use | CONTEXT_DRIFT or expired source used after refresh boundary | STALE_CONTEXT_RISK |
+| Missing specification | attempt reaches acceptance with unresolved required specification items | SPECIFICATION_GAP |
+| Tool-result ambiguity | tool started but terminal effect/result is unknown | EFFECT_UNCERTAINTY |
+
+These are diagnostic observations. They must not emit ATTEMPT_ACCEPTED, a Veritas
+verdict or Helix truth.
+
+Ownership should remain layered:
+
+- Harness telemetry derives signals from event/effect facts.
+- Orchestrator consumes signals when selecting recovery.
+- Context Control may refresh or rebuild a manifest when a typed signal says it
+  is stale or incomplete.
+- Veritas uses relevant signals as preconditions/evidence quality, not as a
+  substitute for verification.
+
+The first implementation, if ever authorized, should be deterministic event
+analysis with explicit false-positive handling. No model-generated reviewer is
+required by this finding.
+
+### 21.4 Diagnosis-specific recovery
+
+#### FACT
+
+The proposed classes substantially overlap existing repository contracts. The
+canonical HARNESS-FAILURE-TAXONOMY.md already includes DISCOVERY_FAILURE,
+CONTEXT_FAILURE, CONTRACT_FAILURE, SOP_FAILURE, SCHEMA_FAILURE,
+WORKFLOW_FAILURE, ORCHESTRATION_FAILURE, MODEL_FAILURE, ADAPTER_FAILURE,
+AUTHORITY_FAILURE, RESOURCE_FAILURE, EXECUTION_FAILURE, TOOL_FAILURE,
+VERIFICATION_FAILURE, HARNESS_FAILURE, EVALUATOR_FAILURE and RUNTIME_FAILURE.
+common/contracts/continuation.ts separately includes transport, provider,
+runtime, timeout, output, context, handoff, verification, authority and
+operator failure classes.
+
+#### RECOMMENDATION
+
+Do not create a second top-level failure enum. Extend the existing taxonomy
+through evidence-bearing subreason/diagnostic dimensions if a later contract
+requires the new distinctions:
+
+| Research label | Existing owner/classification |
+| --- | --- |
+| MISSING_CONTEXT | CONTEXT_FAILURE or DISCOVERY_FAILURE |
+| MISSING_SPECIFICATION | CONTEXT_FAILURE / SOP_FAILURE / VERIFICATION precondition; candidate subreason |
+| INVALID_ACTION | AUTHORITY_FAILURE, TOOL_FAILURE or EXECUTION_FAILURE |
+| TOOL_FAILURE | Existing TOOL_FAILURE |
+| RESOURCE_FAILURE | Existing RESOURCE_FAILURE |
+| AUTHORITY_DENIAL | Existing AUTHORITY_FAILURE |
+| FAILED_ASSUMPTION | Context/Workflow/Orchestration/SOP; model only after exclusions |
+| FORMAT_VIOLATION | SCHEMA_FAILURE or INVALID_OUTPUT |
+| VERIFICATION_FAILURE | Existing VERIFICATION_FAILURE |
+| DEPENDENCY_FAILURE | CONTRACT, RUNTIME, RESOURCE or provider-specific cause |
+| HANDOFF_FAILURE | Existing HANDOFF_FAILURE / continuation contract |
+| CONTEXT_STALENESS | CONTEXT_FAILURE plus CONTEXT_DRIFT evidence |
+| CAPABILITY_MISMATCH | Discovery, routing, tool or resource subreason |
+
+Recovery should be selected by diagnosis and effect certainty:
+
+| Diagnosis | Possible bounded response | Forbidden default |
+| --- | --- | --- |
+| Missing context | rebuild a narrower/new manifest and new attempt | automatically widen the aperture |
+| Missing specification | acquire or resolve the local rule source, then new attempt | ask the model to guess the rule |
+| Invalid/denied action | issue a new exact Authority request if appropriate | replay or bypass the denied operation |
+| Tool/execution failure | inspect effect certainty; repair or handoff | blind retry after UNKNOWN effect |
+| Resource failure | wait or re-admit a fresh envelope | treat a prior probe as a reservation |
+| Failed assumption | expose contradiction, revise hypothesis, new attempt | silently preserve stale hypothesis |
+| Verification failure | repair against evidence or reject | convert model claim into success |
+| Handoff failure | reconstruct from bounded canonical refs | transfer raw private reasoning |
+
+Recovery ownership remains:
+
+~text
+Harness         classifies lifecycle/effect safety and enforces attempt boundaries
+Orchestrator    chooses a bounded recovery strategy
+Context Control  compiles changed context/specification only when justified
+Resource        re-admits resource conditions
+Authority       evaluates fresh effects/permits
+Veritas         evaluates the repaired result
+~
+
+Diagnosis must be proportional. More context, higher reasoning, more agents and
+more retries are different treatments, not interchangeable remedies.
+
+### 21.5 Causal Harness Sync
+
+#### FACT
+
+Harness Sync, Passport and Synthesis are currently design-only. Existing docs
+record fingerprints, treatment versions, outcomes, confidence and evidence
+references, but do not establish causal support.
+
+#### INFERENCE
+
+“Profile X was present during successful runs” is an association. It becomes
+causally supported only when the treatment was varied under matched conditions
+and the result survives independent evaluation and held-out comparison.
+
+#### RECOMMENDATION
+
+Future Passport observations should distinguish evidence strength:
+
+~~~text
+ASSOCIATIONAL
+CAUSALLY_SUPPORTED
+INSUFFICIENT_EVIDENCE
+INVALID_COMPARISON
+~~~
+
+A causal-support record would need, at minimum:
+
+- exact model/runtime/provider fingerprint;
+- frozen task, starting repository and acceptance contract;
+- control and treatment IDs;
+- one declared changed treatment dimension;
+- Context/Skill/tool/profile/Harness versions;
+- attempt isolation and execution order;
+- resource, token, latency and cost conditions;
+- independent Veritas outcome and failure class;
+- sample count, variance/confidence and limitations;
+- held-out tasks or perturbation strata;
+- treatment application and removal/ablation evidence.
+
+Candidate experimental families:
+
+~~~text
+standard versus synchronized profile
+compact versus verbose Skill projection
+three versus six tool candidates
+context treatment variation
+delegation versus no delegation
+recovery-policy variation
+orientation/frame treatment variation
+~~~
+
+Counterfactual replay is limited for stochastic model calls. Exact replay may
+be unavailable; controlled reruns, treatment ablation and observation replay
+must not be described as exact reconstruction of hidden reasoning.
+
+The Passport should preserve raw observations and label causal support. A
+derived Profile may consume causally supported evidence preferentially, but
+Authority, Veritas, acceptance and project isolation remain invariant.
+
+### 21.6 Offline Harness Evolution
+
+#### STATUS: RESEARCH ONLY / DEFERRED
+
+The proposed loop belongs under Harness Sync and the benchmark/research lane,
+not inside the live Harness:
+
+~~~text
+verified failure corpus
+        ↓
+failure clustering
+        ↓
+candidate deterministic treatment
+        ↓
+offline experiment
+        ↓
+Raw / Standard / Synchronized comparison
+        ↓
+held-out regression suite
+        ↓
+operator review
+        ↓
+new versioned profile or runtime rule
+~~~
+
+The live system must never rewrite its own critical prompt, routing,
+acceptance, Authority or recovery policy from one mission. Every candidate
+treatment must have:
+
+- an immutable identifier and version;
+- source failure/evidence references;
+- declared intended mechanism;
+- declared scope and non-goals;
+- reproducible control/treatment experiment;
+- held-out regression results;
+- security and privacy review;
+- rollback path;
+- operator approval before production use.
+
+A production Harness may consume an approved versioned treatment. It must not
+generate or activate one implicitly during execution.
+
+### 21.7 Benchmark anti-overfitting
+
+#### FACT
+
+The existing benchmark protocol already requires matched model, task,
+acceptance, tool budget, timeout, context budget and evaluator. It also requires
+repeated runs, isolation and failure-injection families as future controls.
+
+#### RECOMMENDATION
+
+Add validity-preserving perturbation strata before using benchmark results to
+claim general Harness advantage:
+
+~~~text
+equivalent context ordering
+non-semantic file-name changes
+tool-description phrasing changes
+irrelevant directory noise
+equivalent acceptance wording
+equivalent repository layouts
+Skill advertisement ordering
+tool ordering
+restart/interruption
+provider swap
+model swap
+~~~
+
+The model/provider swap strata change the fingerprint and must be analyzed as
+separate comparison groups, not pooled as if identical. Every perturbation needs
+a semantic-equivalence check and a frozen acceptance evaluator.
+
+Anti-overfitting requirements:
+
+1. Keep task content, treatment assignment and evaluator versions hidden from
+   the treatment generator where practical.
+2. Separate calibration/development, validation and held-out task sets.
+3. Randomize task and arm order where environment permits.
+4. Reset repository, process, resource and evidence state for every run.
+5. Report both aggregate and per-perturbation outcomes.
+6. Preserve raw results and negative results.
+7. Prohibit benchmark-specific trigger strings, Skill selection hacks or
+   treatment rules keyed to fixture names.
+8. Record all Context, Skill, tool, profile and Harness versions.
+9. Require generalization to at least one unseen but semantically equivalent
+   presentation before calling a treatment causal.
+10. Keep acceptance, Authority and false-success policy identical across arms.
+
+The purpose is to distinguish general advantage from optimization for one frozen
+benchmark presentation.
+
+### 21.8 Revised ContextManifest assessment
+
+The prior candidate remains valid as a shape, but LocalSpecification and
+UncertaintyState refine it. They do not change Context Intelligence ownership.
+
+| Candidate field | Repository evidence | Disposition |
+| --- | --- | --- |
+| identity | H3 attempt identity and context hash; no manifest identity | PARTIAL |
+| doctrine | AgentLoop doctrine/scaffold and Skills | PARTIAL |
+| role | AgentStart role and worker descriptor | PARTIAL |
+| objective | Agent task and H3 envelope objective | EXISTS / scope may be partial |
+| situation_frame | provider projections, handoff and workflow context; no schema | PARTIAL |
+| verified_facts | handoff verified_facts and evidence/Helix references | PARTIAL |
+| retrieved_facts | index, memory and evidence providers | PARTIAL |
+| unknowns | attempt markers, handoff questions and effect states | PARTIAL |
+| local_specification | Workflow/Skills/acceptance fragments, no unified digest | MISSING / CANDIDATE |
+| uncertainty_state | distributed UNKNOWN/drift/effect/failure signals, no aggregate | PARTIAL / CANDIDATE |
+| relevant_artifacts | Workflow artifacts, handoff artifact refs and project retrieval | PARTIAL |
+| skill_projection | bounded Skills selection and H3 metadata | PARTIAL |
+| capability_aperture | registry/capability fields, no complete per-attempt aperture | PARTIAL |
+| working_memory_projection | memory recall/handoff only; runtime WMS absent | DEFER |
+| workflow_obligations | Workflow stages and obligations | PARTIAL projection |
+| authority_surface | Authority operation/permit references | PARTIAL |
+| resource_surface | Resource decision and hardware snapshot | PARTIAL |
+| acceptance_contract | attempt verification marker and Veritas policy | PARTIAL |
+| evidence_refs | Provenance, handoff and verification references | PARTIAL |
+| provenance_refs | H3 event-stream and ledger references | PARTIAL |
+| context_hash | H3 bound hash/block identity | EXISTS for current H3 binding; not proof of manifest completeness |
+
+No field above authorizes a new runtime owner. The manifest remains a Context
+Control product bound and recorded by Harness.
+
+### 21.9 Revised conceptual feedback loop
+
+The research loop is architecturally compatible when interpreted as ownership,
+not as one new controller:
+
+~~~text
+UNDERSTAND
+  Resident / Orchestrator / Context Control
+
+ACQUIRE CONTENT AND LOCAL SPECIFICATION
+  Context Control from canonical owners
+
+COMPILE SITUATION AND SYSTEM UNCERTAINTY
+  Context Control projection; source owners retain authority
+
+EXPOSE MINIMUM SUFFICIENT CAPABILITY
+  Context Control / Skill Intelligence; Authority still separate
+
+SELECT INTELLIGENCE
+  Orchestrator / Model Router
+
+SPECIALIZE ONLY IF REQUIRED
+  Orchestrator decision; future Expert Cell contract
+
+ADMIT RESOURCES
+  Resource Admission
+
+AUTHORIZE EFFECTS
+  Authority
+
+EXECUTE SEALED ATTEMPT
+  Harness
+
+RECORD EVENTS
+  Harness / Provenance relationship
+
+DETECT EARLY DIVERGENCE
+  derived Harness telemetry from canonical observations
+
+CLASSIFY AND RECOVER
+  existing failure taxonomy; Orchestrator policy; fresh attempt
+
+ACCEPT
+  Veritas
+
+PRESERVE VERIFIED TRUTH
+  Helix promotion rules
+
+UPDATE EMPIRICAL EVIDENCE
+  Provenance/Passport research projection
+~~~
+
+The current implementation satisfies the Workflow, Skills, Authority, H3
+sealing/event and fail-closed verification portions only partially or on the
+exercised path. Specification acquisition, aggregate uncertainty, diagnosis
+signals, causal evidence and empirical update remain future design work.
+
+### 21.10 Duplications and conflicts introduced by the research
+
+| Proposal | Risk | Disposition |
+| --- | --- | --- |
+| Persistent LocalSpecification service | duplicates Workflow, Skills, project facts and Veritas | Keep only as a ContextManifest section |
+| Model confidence as routing truth | conflicts with system-level evidence and fail-closed policy | Reject |
+| Continuous epistemic reviewer agent | duplicates Veritas and adds orchestration/context cost | Defer; derive deterministic signals first |
+| New failure enum | duplicates HARNESS-FAILURE-TAXONOMY.md and continuation.ts | Extend existing taxonomy by subreason/evidence if needed |
+| Passport as history store | duplicates Provenance | Reject |
+| Live self-modifying Harness | violates reviewability, rollback and H3 stability | Reject |
+| Benchmark-specific treatment | invalidates causal/general claims | Reject |
+| System Uncertainty projection | no conflict if non-canonical and source-attributed | Candidate |
+| LocalSpecification manifest section | no conflict if source-owned and hashed | Candidate |
+| Causal treatment metadata | no conflict if stored as research evidence, not runtime authority | Defer / Candidate |
+
+### 21.11 Explicitly deferred
+
+The following remain deferred while Liquid is unresolved:
+
+~~~text
+LocalSpecification runtime field and producer
+System Uncertainty runtime aggregate
+early-divergence detector runtime
+diagnosis-specific recovery implementation
+causal Passport fields/runtime
+offline Harness Evolution tooling
+benchmark perturbation runner
+ContextManifest implementation
+Context Aperture implementation
+Working Memory / Attempt Sandbox
+Expert Cells
+Harness Sync
+Capability Passport persistence
+Cross-Model Synthesis
+H4
+~~~
+
+Documentation may describe these concepts. No runtime code or production schema
+is authorized by this addendum.
+
+### 21.12 Next-slice disposition
+
+The conditional next slice remains **Context Manifest Binding after Liquid
+evidence**. The recommendation is refined, not replaced:
+
+- If Liquid demonstrates a verified benefit from operational orientation or a
+  Situation Frame, bind a minimal manifest on one real AgentLoop path.
+- If LocalSpecification is shown to be the missing variable, include only a
+  source-attributed, bounded specification section.
+- If system uncertainty is needed to keep the attempt honest, bind its
+  evidence references and blocking reasons, not a model confidence score.
+- Do not include Working Memory, Expert Cells, causal Sync, live self-evolution
+  or a broad recovery engine in that slice.
+- If Liquid is negative or inconclusive, do not start the slice.
+
+Before authorization, require the evidence list in section 18 plus a held-out
+semantic-perturbation comparison for any claim that a treatment generalizes.
+
+## Updated final disposition
+
+~~~text
+RESEARCH INTEGRATION: COMPLETE
+H3 SEMANTICS CHANGED: NO
+CONTEXT INTELLIGENCE OWNERSHIP CHANGED: NO
+CONTEXTMANIFEST CANDIDATE: REFINED, NOT IMPLEMENTED
+RECOMMENDED NEXT SLICE: UNCHANGED — CONTEXT MANIFEST BINDING AFTER LIQUID EVIDENCE
+LIQUID AWARENESS: IN PROGRESS / FINAL EVIDENCE NOT AVAILABLE
+MODEL WORKING MEMORY: NOT IMPLEMENTED
+H4: NOT AUTHORIZED
+IMPLEMENTATION AUTHORIZED: NO
+~~~
