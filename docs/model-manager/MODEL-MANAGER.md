@@ -82,10 +82,11 @@ evidence stale, runtime owned by another lane.
 
 `node/src/services/runtime-adapter.ts` — the stable contract every backend must
 satisfy (`discover · status · load · unload · health · generate · tools ·
-metrics`) plus a registry. **No backend winner is chosen here** (llama.cpp /
-Unsloth / Ollama / LM Studio belong to the runtime-lab lane); backend-specific
-implementations remain explicit `UnimplementedRuntimeAdapter` stubs. `AUTO`
-backend selection is designed for but intentionally not implemented.
+metrics`) plus a registry. The product decision now names **Unsloth as the
+canonical local runtime**. This Model Manager consumes it only through the
+RuntimeAdapter interface; runtime implementation and lifecycle remain owned by
+the Unsloth lane. Alternative RuntimeAdapters are an advanced extension path,
+not a normal four-backend selector. This UI does not load, unload, or generate.
 
 ## Offline-first and provider failure
 
@@ -104,3 +105,35 @@ recommendation determinism + role filtering + resource exclusion + cost
 tie-break + no-ranking, notes triggers/dismissal/attribution/isolation,
 advisory severities, user override semantics, public-safe serialization leak
 checks.
+
+## Operator-facing Model Manager
+
+The existing `MODELS` cockpit panel now presents the Registry projection through
+the read-only `GET /api/models/manager` contract. Views are ALL, LOCAL, CLOUD,
+and MODEL PACKS. Model cards keep availability, role qualification, local/cloud
+placement, offline status, estimated resource fit, runtime, artifact identity,
+Capability Passport reference, and evidence references separate.
+
+Recommendation results remain deterministic and role-scoped. A chosen model in
+this panel is explicitly a **view-only override**: the current execution router
+does not consume this panel selection. Unavailable, resource-incompatible, and
+cloud models without authenticated provider state cannot be selected. An
+installed model may remain visible with `UNTESTED`, `STALE`, or another
+non-qualified state.
+
+Model Pack cards read the existing `models/manifest.json` and reconcile it
+against the Intelligence Registry; there is no second model database. They
+distinguish installed artifacts, locally available artifacts, missing
+dependencies, provider-required entries, and source-only candidates. Installer
+actions remain disabled because a download/install service is not part of this
+slice. Installation status never implies qualification. Developer Specials are
+workflow recipes with no model membership asserted until evidence exists.
+
+Developer Notes are rendered in a separately tagged/attributed section from
+System Advisories. Note dismissal is session-only. Runtime status is read only;
+the adapter interface currently does not expose version or ownership metadata,
+so those fields correctly display as not reported.
+
+The endpoint uses the existing central `capability.read` policy enrollment. It
+does not perform cloud requests, persist discovery results, expose local paths,
+or change Resource Admission, routing, Authority, or runtime state.

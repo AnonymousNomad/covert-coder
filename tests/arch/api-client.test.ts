@@ -4,6 +4,7 @@ import { mock } from 'node:test';
 import { ApiError, api } from '../../browser/src/services/api.ts';
 import { egressFetch } from '../../browser/src/services/egress.ts';
 import { ok, fail } from '../../common/errors.ts';
+import { ModelManagerSnapshotResponse } from '../../common/contracts/model-manager.ts';
 import { healthFixtures, fileReadFixtures, fileWriteFixtures, searchFixtures, searchReplaceFixtures, sessionFixtures, lspFixtures } from '../fixtures/index.ts';
 
 function mockFetch(payload: unknown, status = 200): { seen: { url: string; method: string; format: string | null }[] } {
@@ -68,6 +69,39 @@ test('api.fileRead serializes the query and validates the response', async () =>
   assert.equal(seen[0]?.url, '/api/file?path=src%2Fa.ts');
   assert.equal(seen[0]?.format, 'envelope-v1');
   mock.restoreAll();
+});
+
+test('api.modelsManager requests the typed local Registry projection with role and offline filters', async () => {
+  const snapshot = ModelManagerSnapshotResponse.parse({
+    generated_at: new Date().toISOString(),
+    public_safe: true,
+    available_ram_mb: null,
+    local_discovery: { status: 'AVAILABLE', scanned_dirs: 0, discovered_count: 0, error_count: 0 },
+    provider_probe: 'AVAILABLE',
+    models: [],
+    providers: [],
+    recommendation: { role: 'REVIEWER', offline_only: true, recommended: [], alternatives: [], excluded: [] },
+    model_packs: {
+      catalog_status: 'AVAILABLE',
+      items: [],
+      offline_bundle: { id: 'offline', display_name: 'Offline', state: 'MISSING_DEPENDENCY', qualification_state: 'UNKNOWN', dependency_ids: [], installation_available: false },
+      hybrid_setup: { state: 'LOCAL_MODEL_REQUIRED', qualified_local_implementers: 0, qualified_connected_cloud_reviewers: 0, configuration_only: true }
+    },
+    runtime: { canonical_name: 'UNSLOTH', registered: false, health: 'UNKNOWN', health_detail: null, version: null, ownership: null, loaded_models: [], metrics: {}, capabilities: null },
+    developer_notes: [],
+    system_advisories: []
+  });
+  const { seen } = mockFetch(ok(snapshot));
+  try {
+    const result = await api.modelsManager('REVIEWER', true);
+    assert.equal(result.recommendation.role, 'REVIEWER');
+    assert.equal(result.recommendation.offline_only, true);
+    assert.equal(seen[0]?.method, 'GET');
+    assert.equal(seen[0]?.url, '/api/models/manager?role=REVIEWER&offline=true');
+    assert.equal(seen[0]?.format, 'envelope-v1');
+  } finally {
+    mock.restoreAll();
+  }
 });
 
 test('api.chatStream uses the shared versioned transport and propagates cancellation', async () => {

@@ -11439,6 +11439,1208 @@
         }
       }
     },
+    "/api/models/manager": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "generated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "public_safe": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "available_ram_mb": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "local_discovery": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "AVAILABLE",
+                            "PARTIAL",
+                            "FAILED"
+                          ]
+                        },
+                        "scanned_dirs": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "discovered_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "error_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "scanned_dirs",
+                        "discovered_count",
+                        "error_count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "provider_probe": {
+                      "type": "string",
+                      "enum": [
+                        "AVAILABLE",
+                        "FAILED"
+                      ]
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "display_name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "family": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 120
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "provider": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "locality": {
+                            "type": "string",
+                            "enum": [
+                              "LOCAL",
+                              "CLOUD"
+                            ]
+                          },
+                          "availability": {
+                            "type": "string",
+                            "enum": [
+                              "UNAVAILABLE",
+                              "DISCOVERED",
+                              "AVAILABLE",
+                              "INSTALLED",
+                              "CONNECTED",
+                              "LOADABLE"
+                            ]
+                          },
+                          "provider_state": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "CONFIGURED_NOT_VERIFIED",
+                                  "AUTHENTICATED",
+                                  "AUTH_FAILURE",
+                                  "UNAVAILABLE"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "offline_capable": {
+                            "type": "boolean"
+                          },
+                          "qualification": {
+                            "type": "object",
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "UNTESTED",
+                                  "TESTED",
+                                  "QUALIFIED",
+                                  "NOT_QUALIFIED",
+                                  "INVALID_EVIDENCE",
+                                  "STALE"
+                                ]
+                              },
+                              "qualified_roles": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 64
+                                }
+                              },
+                              "unqualified_roles": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 64
+                                }
+                              },
+                              "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                }
+                              },
+                              "stale": {
+                                "type": "boolean"
+                              },
+                              "stale_reasons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 80
+                                }
+                              }
+                            },
+                            "required": [
+                              "state",
+                              "qualified_roles",
+                              "unqualified_roles",
+                              "evidence_refs",
+                              "stale",
+                              "stale_reasons"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "artifact": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 240
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "revision": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 240
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "hash": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "hash_status": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "verified",
+                                      "not_computed",
+                                      "mismatch"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "format": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 40
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "quantization": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 40
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "revision",
+                              "hash",
+                              "hash_status",
+                              "format",
+                              "quantization"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "runtime_backend": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "resource_requirements": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "ram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "vram_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "disk_mb": {
+                                    "anyOf": [
+                                      {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "ram_mb",
+                                  "vram_mb",
+                                  "disk_mb"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "resource_fit": {
+                            "type": "string",
+                            "enum": [
+                              "FIT",
+                              "INCOMPATIBLE",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "passport_ref": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "evidence_refs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            }
+                          },
+                          "known_strengths": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 240
+                            }
+                          },
+                          "known_failures": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 240
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "display_name",
+                          "family",
+                          "provider",
+                          "locality",
+                          "availability",
+                          "provider_state",
+                          "offline_capable",
+                          "qualification",
+                          "artifact",
+                          "runtime_backend",
+                          "resource_requirements",
+                          "resource_fit",
+                          "passport_ref",
+                          "evidence_refs",
+                          "known_strengths",
+                          "known_failures"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "CONFIGURED_NOT_VERIFIED",
+                              "AUTHENTICATED",
+                              "AUTH_FAILURE",
+                              "UNAVAILABLE"
+                            ]
+                          },
+                          "model_ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 128
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "state",
+                          "model_ids"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "recommendation": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "offline_only": {
+                          "type": "boolean"
+                        },
+                        "recommended": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "reasons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ROLE_QUALIFIED",
+                                    "ROLE_NOT_QUALIFIED",
+                                    "LOCAL_AVAILABLE",
+                                    "OFFLINE_CAPABLE",
+                                    "LOW_RESOURCE_FIT",
+                                    "RESOURCE_INCOMPATIBLE",
+                                    "LOWER_COST",
+                                    "PAST_PROJECT_SUCCESS",
+                                    "LOW_OPERATOR_INTERVENTION",
+                                    "KNOWN_TOOL_RELIABILITY",
+                                    "KNOWN_REVIEW_STRENGTH",
+                                    "INSUFFICIENT_EVIDENCE",
+                                    "PROVIDER_NOT_AUTHENTICATED"
+                                  ]
+                                }
+                              },
+                              "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                }
+                              },
+                              "confidence": {
+                                "type": "string",
+                                "enum": [
+                                  "QUALIFIED",
+                                  "SUPPORTED_BY_LIMITED_EVIDENCE",
+                                  "EXPERIMENTAL",
+                                  "NO_QUALIFICATION_DATA"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "display_name",
+                              "reasons",
+                              "evidence_refs",
+                              "confidence"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "alternatives": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "reasons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ROLE_QUALIFIED",
+                                    "ROLE_NOT_QUALIFIED",
+                                    "LOCAL_AVAILABLE",
+                                    "OFFLINE_CAPABLE",
+                                    "LOW_RESOURCE_FIT",
+                                    "RESOURCE_INCOMPATIBLE",
+                                    "LOWER_COST",
+                                    "PAST_PROJECT_SUCCESS",
+                                    "LOW_OPERATOR_INTERVENTION",
+                                    "KNOWN_TOOL_RELIABILITY",
+                                    "KNOWN_REVIEW_STRENGTH",
+                                    "INSUFFICIENT_EVIDENCE",
+                                    "PROVIDER_NOT_AUTHENTICATED"
+                                  ]
+                                }
+                              },
+                              "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                }
+                              },
+                              "confidence": {
+                                "type": "string",
+                                "enum": [
+                                  "QUALIFIED",
+                                  "SUPPORTED_BY_LIMITED_EVIDENCE",
+                                  "EXPERIMENTAL",
+                                  "NO_QUALIFICATION_DATA"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "display_name",
+                              "reasons",
+                              "evidence_refs",
+                              "confidence"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "excluded": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "reasons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ROLE_QUALIFIED",
+                                    "ROLE_NOT_QUALIFIED",
+                                    "LOCAL_AVAILABLE",
+                                    "OFFLINE_CAPABLE",
+                                    "LOW_RESOURCE_FIT",
+                                    "RESOURCE_INCOMPATIBLE",
+                                    "LOWER_COST",
+                                    "PAST_PROJECT_SUCCESS",
+                                    "LOW_OPERATOR_INTERVENTION",
+                                    "KNOWN_TOOL_RELIABILITY",
+                                    "KNOWN_REVIEW_STRENGTH",
+                                    "INSUFFICIENT_EVIDENCE",
+                                    "PROVIDER_NOT_AUTHENTICATED"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "reasons"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "role",
+                        "offline_only",
+                        "recommended",
+                        "alternatives",
+                        "excluded"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "model_packs": {
+                      "type": "object",
+                      "properties": {
+                        "catalog_status": {
+                          "type": "string",
+                          "enum": [
+                            "AVAILABLE",
+                            "UNAVAILABLE"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "intended_role": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "source_repo": {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              "declared_license": {
+                                "type": "string",
+                                "maxLength": 120
+                              },
+                              "artifact_label": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 240
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "expected_sha256": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "expected_size_bytes": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "installation_state": {
+                                "type": "string",
+                                "enum": [
+                                  "INSTALLED",
+                                  "AVAILABLE_LOCALLY",
+                                  "MISSING",
+                                  "PROVIDER_CONNECTION_REQUIRED",
+                                  "SOURCE_ONLY"
+                                ]
+                              },
+                              "qualification_state": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "UNTESTED",
+                                      "TESTED",
+                                      "QUALIFIED",
+                                      "NOT_QUALIFIED",
+                                      "INVALID_EVIDENCE",
+                                      "STALE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "qualified_roles": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 64
+                                }
+                              },
+                              "resource_fit": {
+                                "type": "string",
+                                "enum": [
+                                  "FIT",
+                                  "INCOMPATIBLE",
+                                  "UNKNOWN"
+                                ]
+                              },
+                              "matched_model_id": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "display_name",
+                              "intended_role",
+                              "source_repo",
+                              "declared_license",
+                              "artifact_label",
+                              "expected_sha256",
+                              "expected_size_bytes",
+                              "installation_state",
+                              "qualification_state",
+                              "qualified_roles",
+                              "resource_fit",
+                              "matched_model_id",
+                              "evidence_refs"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "offline_bundle": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            "display_name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "INSTALLED",
+                                "AVAILABLE_LOCALLY",
+                                "MISSING_DEPENDENCY",
+                                "PROVIDER_CONNECTION_REQUIRED",
+                                "RESOURCE_INCOMPATIBLE"
+                              ]
+                            },
+                            "qualification_state": {
+                              "type": "string",
+                              "enum": [
+                                "QUALIFIED",
+                                "QUALIFICATION_MISSING",
+                                "UNKNOWN"
+                              ]
+                            },
+                            "dependency_ids": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 128
+                              }
+                            },
+                            "installation_available": {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "display_name",
+                            "state",
+                            "qualification_state",
+                            "dependency_ids",
+                            "installation_available"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "hybrid_setup": {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "READY",
+                                "LOCAL_MODEL_REQUIRED",
+                                "PROVIDER_CONNECTION_REQUIRED",
+                                "QUALIFICATION_MISSING",
+                                "RESOURCE_INCOMPATIBLE"
+                              ]
+                            },
+                            "qualified_local_implementers": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "qualified_connected_cloud_reviewers": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "configuration_only": {
+                              "type": "boolean",
+                              "const": true
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "qualified_local_implementers",
+                            "qualified_connected_cloud_reviewers",
+                            "configuration_only"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "catalog_status",
+                        "items",
+                        "offline_bundle",
+                        "hybrid_setup"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "runtime": {
+                      "type": "object",
+                      "properties": {
+                        "canonical_name": {
+                          "type": "string",
+                          "const": "UNSLOTH"
+                        },
+                        "registered": {
+                          "type": "boolean"
+                        },
+                        "health": {
+                          "type": "string",
+                          "enum": [
+                            "HEALTHY",
+                            "UNHEALTHY",
+                            "UNKNOWN",
+                            "UNAVAILABLE"
+                          ]
+                        },
+                        "health_detail": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 240
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 120
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "ownership": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 120
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "loaded_models": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "loaded": {
+                                "type": "boolean"
+                              },
+                              "context_tokens": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "loaded",
+                              "context_tokens"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "metrics": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "number"
+                          }
+                        },
+                        "capabilities": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "tools": {
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "metrics": {
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "unload": {
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "tools",
+                                "metrics",
+                                "unload"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "canonical_name",
+                        "registered",
+                        "health",
+                        "health_detail",
+                        "version",
+                        "ownership",
+                        "loaded_models",
+                        "metrics",
+                        "capabilities"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "developer_notes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "developer-note"
+                          },
+                          "source": {
+                            "type": "string",
+                            "const": "DEVELOPER_NOTES — James Ferrell"
+                          },
+                          "note_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "body": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1200
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "CONTEXT",
+                              "MODELS",
+                              "COST",
+                              "LOCAL_AI",
+                              "WORKFLOW",
+                              "VERIFICATION",
+                              "DEBUGGING"
+                            ]
+                          },
+                          "trigger": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "priority": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "dismissible": {
+                            "type": "boolean",
+                            "const": true
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "const": true
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "source",
+                          "note_id",
+                          "title",
+                          "body",
+                          "category",
+                          "trigger",
+                          "priority",
+                          "dismissible",
+                          "active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "system_advisories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "system-advisory"
+                          },
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "INFO",
+                              "CAUTION",
+                              "BLOCKING"
+                            ]
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "detail": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 600
+                          },
+                          "evidence_refs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "severity",
+                          "title",
+                          "detail",
+                          "evidence_refs"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "generated_at",
+                    "public_safe",
+                    "available_ram_mb",
+                    "local_discovery",
+                    "provider_probe",
+                    "models",
+                    "providers",
+                    "recommendation",
+                    "model_packs",
+                    "runtime",
+                    "developer_notes",
+                    "system_advisories"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "offline",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ]
+      }
+    },
     "/api/models/profile": {
       "post": {
         "responses": {

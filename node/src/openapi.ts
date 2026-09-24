@@ -10,6 +10,8 @@ import { WorkspaceListResponse, WorkspaceTreeResponse } from '../../common/contr
 import { routeForFileRead, routeForFileWrite, routeForSearch, routeForSearchReplace, routeForPatchApply } from './routes/fs.ts';
 import { routeForSessionGet, routeForSessionPut } from './routes/session.ts';
 import { routeForModelStatus, routeForModelStart, routeForModelStop, routeForModelIngest, routeForModelReady, routeForModelRegister, routeForModelProfile } from './routes/models.ts';
+import { routeForModelManager } from './routes/model-manager.ts';
+import type { RuntimeAdapterRegistry } from './services/runtime-adapter.ts';
 import { routeForRoutes, routeForRoute, routeForFit } from './routes/routing.ts';
 import { routeForChat, routeForChatStream, routeForChatHistory, routeForChatHistorySave } from './routes/chat.ts';
 import { ChatStore } from './services/chat-store.ts';
@@ -124,6 +126,10 @@ export interface BuildRoutesOptions {
   lspManager?: LspManager;
   dapManager?: DapManager;
   modelRuntime?: ModelRuntime;
+  // Optional read-only Model Manager projection source. The Unsloth adapter
+  // implementation is owned by its runtime lane; absent registration is
+  // represented explicitly and never replaced with a second backend.
+  runtimeAdapters?: RuntimeAdapterRegistry;
   providerService?: ProviderService;
   // Optional interactive terminal session service. When provided, the PTY
   // routes are registered; when absent (tests/CLI), no PTY code path exists.
@@ -567,6 +573,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForModelReady(modelRuntime),
     routeForModelRegister(modelRuntime),
     routeForModelProfile(modelRuntime),
+    routeForModelManager({
+      workspace,
+      modelPacksPath: path.join(repoRoot, 'models', 'manifest.json'),
+      ...(options.runtimeAdapters ? { runtimeAdapters: options.runtimeAdapters } : {})
+    }),
     routeForRoutes(modelRouter),
     routeForRoute(modelRouter),
     routeForFit(),

@@ -54,6 +54,11 @@ import {
   type ModelStatusResponseT
 } from '../../../common/contracts/models.ts';
 import {
+  ModelManagerQuery,
+  ModelManagerSnapshotResponse,
+  type ModelManagerSnapshotResponseT
+} from '../../../common/contracts/model-manager.ts';
+import {
   ClosedLoopStatusResponse,
   type ClosedLoopStatusT
 } from '../../../common/contracts/closed-loop.ts';
@@ -329,6 +334,11 @@ export const api = {
   },
   modelsStatus(): Promise<ModelStatusResponseT> {
     return call('/api/models/status', { schema: ModelStatusResponse });
+  },
+  modelsManager(role = 'IMPLEMENTER', offline = false): Promise<ModelManagerSnapshotResponseT> {
+    const query = ModelManagerQuery.safeParse({ role, offline: String(offline) });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid model manager query');
+    return call('/api/models/manager', { query: query.data, schema: ModelManagerSnapshotResponse });
   },
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });
