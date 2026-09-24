@@ -1,0 +1,141 @@
+{
+  "schema": "heldout-compound-results-v1",
+  "label": "smollm3-heldout",
+  "candidate_file": "SmolLM3-Q4_K_M.gguf",
+  "seat_graph": false,
+  "seat_sequencer": true,
+  "at": "2026-09-24T20:04:29.462Z",
+  "rows": [
+    {
+      "example_id": "h-cmp-01",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 35721
+    },
+    {
+      "example_id": "h-cmp-02",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 429,
+      "answer": " DECISION: O1 ACTION add logging to the upload handler; O2 PRESERVE existing retry behavior remains unchanged || RATIONALE: The objective is to maintain the current functionality of the upload handler while adding necess",
+      "latency_ms": 20269
+    },
+    {
+      "example_id": "h-cmp-03",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 279,
+      "answer": " DECISION: I will fix the config typo and provide a status update. || RATIONALE: The configuration file has been reviewed to identify and correct the typo. || OPERATOR_STATUS: Status is now green, all tests pass. (Note: ",
+      "latency_ms": 260080
+    },
+    {
+      "example_id": "h-cmp-04",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 546,
+      "answer": " DECISION: I will improve the CLI help text by reorganizing and refining existing content to make it more concise, clear, and user-friendly without introducing any new dependencies. RATIONALE: The current help text is so",
+      "latency_ms": 25087
+    },
+    {
+      "example_id": "h-cmp-05",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 772,
+      "answer": " DECISION: Validation must pass before release; release waits for approval. RATIONALE: The validation process ensures that all tests are green before deploying a new version to production. Once validated, the release can",
+      "latency_ms": 34119
+    },
+    {
+      "example_id": "h-cmp-06",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 279865
+    },
+    {
+      "example_id": "h-cmp-07",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 33083
+    },
+    {
+      "example_id": "h-cmp-08",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 509,
+      "answer": " DECISION: The operator should resubmit the changed code with an updated test case that addresses the rejection reason || RATIONALE: To address the reviewer's concerns, a new test case or modification to the existing one",
+      "latency_ms": 25083
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 8,
+    "critical_failures": [
+      "h-cmp-01"
+    ],
+    "errors": []
+  },
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "structural",
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "structural"
+      ]
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

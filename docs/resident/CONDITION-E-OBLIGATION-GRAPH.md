@@ -71,3 +71,16 @@ validation passes (otherwise `SKILL EXTRACTED: NO` with reason).
 
 (Pending: E1 first — Compound rows + controls across Liquid, Granite, SmolLM3, Phi-4-mini,
 Terminal-SFT, Macaw; A and D columns already frozen.)
+
+## Results (frozen 2026-09-23)
+
+- **E1 (obligation graph):** compound-passing families 1/6 (Macaw only) → per frozen rule, E2 ran.
+  Screens: Liquid 14→13 · Granite 15→14 · SmolLM3 15→13 · Phi-4 15→15 · Terminal-SFT 11→**15** · Macaw 15→14.
+- **E2 (deterministic sequencer):** compound-passing families 2/6 (SmolLM3 cmp-02, Macaw cmp-02).
+  Screens: Liquid 13→15 (claims 4/4) · Terminal 15→14 · others flat. Control regressions 1–4/model.
+- **Held-out battery (8 rows × 6 models, E2 treatment):** Liquid 1/8 (crit h-cmp-01) · Granite 4/8 ·
+  SmolLM3 4/8 (crit h-cmp-01) · Phi-4-mini 7/8 (crit h-cmp-01) · Terminal-SFT 5/8 (apparatus h-cmp-04) ·
+  Macaw 4/8 (apparatus h-cmp-03). Recurring critical: **h-cmp-01 ACTION+VERIFY acceptance discipline** (3 models).
+- **Cross-family verdict: `MODEL_SPECIFIC_INTERACTION`** (both treatments below the ≥3-family bar).
+- **E ACCEPTED: NO · SKILL EXTRACTED: NO** (held-out did not cleanly pass; no manufactured skill).
+- Research note: `docs/resident/COMPOUND-OBLIGATION-RESOLUTION.md`.
