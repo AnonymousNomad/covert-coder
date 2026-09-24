@@ -1,0 +1,21 @@
+{
+  "owner": "covert",
+  "exclusive_resource_clearance": false,
+  "backend_id": "SET_AFTER_OWNERSHIP_CHECK",
+  "backend_version": "SET_EXACT_VERSION",
+  "runtime_engine": "SET_EXACT_ENGINE",
+  "engine_version": "SET_EXACT_VERSION",
+  "endpoint": "http://127.0.0.1:18097",
+  "model_id": "SET_LOCAL_MODEL_ALIAS",
+  "load_state": "loaded",
+  "api_key_environment_variable": null,
+  "artifact_path": "SET_ALREADY_OWNED_GGUF_PATH",
+  "artifact_sha256": "SET_64_HEX_SHA256",
+  "runtime_pids": [],
+  "context": 4096,
+  "gpu_offload": "SET_EFFECTIVE_SETTING",
+  "cpu_threads": 6,
+  "kv_profile": "SET_EFFECTIVE_SETTING",
+  "metrics_url": null,
+  "lease_id": "SET_UNIQUE_RUN_ID"
+}
