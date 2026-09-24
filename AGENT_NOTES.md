@@ -1488,3 +1488,9 @@ oUnusedParameters: true + erbatimModuleSyntax: true + rasableSyntaxOnly: true;
 
 ### 2026-09-23 — operational-awareness experiment COMPLETE
 - Verdict: MIXED — MODEL CAPABILITY dominant; OPERATIONAL ORIENTATION gap real but non-sufficient. Screen A 8/20 / B 6/20 / C 7/20; comprehension 0.542/0.458/0.417 (monotonic decline — prompt dilution). Classification per pre-registered rules: MODEL_CAPABILITY_LIMIT_EVIDENCE. Apparatus errors in B + 119c checker artifact documented, excluded from causal verdict. Results: docs/resident/LIQUID-RESIDENT-AWARENESS-RESULTS.json + experiment doc §5. Do NOT wire Map/Frame into production prompt; preserve as Passport/Harness-Sync evidence.
+
+### 2026-09-23 — Condition D launched (RQ-D0/RQ-D1)
+- Decision Packet frozen (state-only, leakage audit PASS, context D 409t < A 421t): experiments/resident-specialization/decision-packet.mjs; run-dev AIDE_SEAT_PACKET=1. Doc: docs/resident/CONDITION-D-EXTERNALIZED-EXECUTIVE-STATE.md. Commit 569c174 (RQ-D0).
+- Runner: condition-d-run-all.mjs LIVE (detached) — sequential Liquid -> Granite -> SmolLM3 -> Phi-4 -> Terminal-SFT -> Macaw (fable5 excluded, pre-R-9 reserve caution). Each writes DEV-<label>-d.json (labels liq-d, granite-d, smollm3-d, phi4-d, terminal-d, macaw-d).
+- Liquid D PARTIAL (11/20 rows): A->D 3->9 passes on those rows; claims 3/3 rows (A 1/3), route 0/2->2/2, tool 0/1->1/1, auth-01 F->P; compound still 0/2; auth-02 0c (budget apparatus). Pre-registered signal forming on ONE model; multi-model decides.
+- RESUME: wait for runner completion (log E:\pip_temp\opencode\condition-d.log) -> run experiments/resident-specialization/condition-d-analyze.mjs (A-vs-D matrix + verdict rules) -> append results to CONDITION-D doc -> verdict commit (RQ-D2..RQ-D4). Checkpoint evidence mapping: RQ-D0=569c174; RQ-D1..D4 pending.
