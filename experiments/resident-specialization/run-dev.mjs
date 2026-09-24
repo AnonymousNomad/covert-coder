@@ -6,6 +6,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { bootOrchestration, residentSay, writeJson, readContainmentTail, PROJECT_DIR, reconstructProject, selectMethodology, authorityContextLine } from '../resident-orchestration/lib.mjs';
 import { projectObligations, projectRetrievalState } from './projections.mjs';
+import { buildPacket, PACKET_OUTPUT_CONTRACT } from './decision-packet.mjs';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\//, ''));
 const CANDIDATE_FILE = process.env.AIDE_CANDIDATE_FILE;
@@ -57,7 +58,12 @@ const USE_FRAME = process.env.AIDE_SEAT_FRAME === '1';
 // content â€” a RIG artifact, never scored as a model result). Applied equally
 // to every condition of the awareness experiment.
 const MAX_TOKENS = Number(process.env.AIDE_DEV_MAXTOKENS ?? 1024);
-const result = { schema: 'resident-dev-results-v1', label: LABEL, candidate_file: CANDIDATE_FILE, seat_doctrine: USE_DOCTRINE, seat_map: MAP_FILE ?? null, seat_frame: USE_FRAME, at: new Date().toISOString(), rows: [], summary: {} };
+// Condition D — Externalized Executive State (experimental, 2026-09-23):
+// replace the scattered canonical-state/procedure lines with a compact
+// deterministic Decision Packet (state only; no doctrine, no answers). The
+// frozen tasks/checks/thresholds are untouched.
+const USE_PACKET = process.env.AIDE_SEAT_PACKET === '1';
+const result = { schema: 'resident-dev-results-v1', label: LABEL, candidate_file: CANDIDATE_FILE, seat_doctrine: USE_DOCTRINE, seat_map: MAP_FILE ?? null, seat_frame: USE_FRAME, seat_packet: USE_PACKET, at: new Date().toISOString(), rows: [], summary: {} };
 const containmentBefore = (await readContainmentTail(PROJECT_DIR, 0)).length;
 const orch = await bootOrchestration({ models: ['candidate'], candidateFile: CANDIDATE_FILE, skipResident: true });
 try {
@@ -105,11 +111,13 @@ try {
       ? [projectObligations(user), projectRetrievalState({ hasSuppliedContext: true, repositoryAvailable: true, removedRecords: /removed|deleted|rebased away/i.test(user) })].filter(Boolean).join('\n\n')
       : '';
     const message = (USE_DOCTRINE ? row.messages[0].content + '\n\n' : '')
-      + (MAP ? MAP + '\n\n' : '')
-      + baseContext + '\n' + sopLine + '\n'
-      + (situationFrame ? '\n' + situationFrame + '\n' : '')
-      + (projections ? '\n' + projections + '\n' : '')
-      + '\n[TASK]\n' + user;
+      + (USE_PACKET
+        ? buildPacket(row.example_id) + '\n' + PACKET_OUTPUT_CONTRACT + '\n\n[TASK]\n' + user
+        : (MAP ? MAP + '\n\n' : '')
+          + baseContext + '\n' + sopLine + '\n'
+          + (situationFrame ? '\n' + situationFrame + '\n' : '')
+          + (projections ? '\n' + projections + '\n' : '')
+          + '\n[TASK]\n' + user);
     let record = { example_id: row.example_id, class: row.behavior_class, domain: row.domain, critical: check.critical === true };
     try {
       let answer;
