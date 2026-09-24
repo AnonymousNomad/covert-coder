@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "checkpoint": "MM8",
+  "source_sha": "89d52fd5cafda61fa76d21da8b2f85300ea59247",
+  "implementation_sha": "fe7e0c067828980296161abc313f076251ebc014",
+  "recorded_on": "2026-09-24",
+  "scoped_verification": [
+    {
+      "name": "Model Manager, Registry, and API client tests",
+      "command": "node --experimental-strip-types --no-warnings --test --test-concurrency=1 tests/arch/model-manager.test.ts tests/arch/model-manager-view.test.ts tests/arch/api-client.test.ts",
+      "status": "PASS",
+      "total": 44,
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "Node TypeScript",
+      "command": "npx tsc -p tsconfig.node.json",
+      "status": "PASS"
+    },
+    {
+      "name": "Browser TypeScript",
+      "command": "npx tsc -p browser/tsconfig.browser.json (also completed in npm run check:arch)",
+      "status": "PASS"
+    },
+    {
+      "name": "Targeted ESLint",
+      "command": "npx eslint browser/src/panels/models.ts browser/src/panels/model-manager-logic.ts browser/src/panels/developer-specials.ts browser/src/services/api.ts node/src/routes/model-manager.ts node/src/services/model-manager-view.ts common/contracts/model-manager.ts tests/arch/model-manager-view.test.ts tests/arch/api-client.test.ts",
+      "status": "PASS",
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "name": "Frontend production build",
+      "command": "npm run build:frontend",
+      "status": "PASS",
+      "notes": [
+        "Vite reports the existing 4.5 MB application JavaScript chunk above its 500 kB advisory threshold."
+      ]
+    },
+    {
+      "name": "OpenAPI generation",
+      "command": "npm run contracts",
+      "status": "PASS",
+      "notes": [
+        "Generated OpenAPI includes the read-only Model Manager route."
+      ]
+    },
+    {
+      "name": "OpenAPI drift, route authority, model routes, and contracts",
+      "command": "node --experimental-strip-types --no-warnings --test --test-concurrency=1 tests/arch/openapi-drift.test.ts tests/arch/route-authority-coverage.test.ts tests/arch/model-routes.test.ts tests/arch/contracts.test.ts",
+      "status": "PASS_WITH_EXPECTED_SKIPS",
+      "total": 17,
+      "passed": 13,
+      "failed": 0,
+      "skipped": 4
+    },
+    {
+      "name": "Git whitespace check",
+      "command": "git diff --cached --check",
+      "status": "PASS"
+    }
+  ],
+  "full_architecture_gate": {
+    "command": "npm run check:arch",
+    "status": "FAIL_ENVIRONMENTAL_BASELINE",
+    "exit_code": 1,
+    "tests": {
+      "total": 649,
+      "passed": 622,
+      "failed": 16,
+      "skipped": 11
+    },
+    "failures": [
+      {
+        "suite": "tests/arch/bucket-c-routes.test.ts",
+        "first_causal_test": "GET /api/academy returns the catalog with progress under the envelope",
+        "signature": "Fetch operation aborted at the fixture request timeout; test duration 5160.8995 ms.",
+        "cascaded_failures": 15,
+        "classification": "ENVIRONMENTAL_OR_RESOURCE_LIMITED; likely, not proven by a baseline comparison",
+        "evidence": [
+          "The fixture defaults each request deadline to 5000 ms.",
+          "The fixture source documents a memory-starved development machine where subprocess/audit stalls can exceed that deadline.",
+          "Resident-lane processes in a separate worktree were active during the broad run and were not modified.",
+          "No files in the failing Bucket-C route suite were changed by MM8."
+        ],
+        "disposition": "Deferred; broad gate is not green and this checkpoint is not release-certified."
+      }
+    ],
+    "skip_breakdown": [
+      {
+        "count": 1,
+        "reason": "GGUF test requires an artifact not present in the checkout."
+      },
+      {
+        "count": 1,
+        "reason": "Model route test requires the absent bundled Qwen GGUF artifact."
+      },
+      {
+        "count": 6,
+        "reason": "Model runtime tests require the absent bundled Qwen GGUF artifact."
+      },
+      {
+        "count": 3,
+        "reason": "Model ingest, chat, and chat-stream assertions are explicitly migration-waived pending route enrollment."
+      }
+    ],
+    "suite_typescript_and_lint": "Node and browser TypeScript checks completed; full ESLint completed with 0 errors and 60 warnings before the architecture test runner failed."
+  },
+  "not_run": [
+    {
+      "name": "Browser end-to-end panel interaction",
+      "reason": "Existing E2E setup hooks remove chat-history and scratch fixtures; they were not run because the target data was not established as disposable."
+    }
+  ],
+  "known_limitations": [
+    "Model choice in this panel is view-only; current mission routing has no Model Manager override contract.",
+    "Model Pack catalog is manifest-backed and read-only; artifact download and installation are not implemented.",
+    "Resource fit is an estimate and does not replace Resource Admission.",
+    "Unsloth is represented through the RuntimeAdapter boundary; this slice does not implement the runtime.",
+    "RuntimeAdapter currently does not provide version or ownership metadata.",
+    "No provider requests were made; cloud state is local configuration/provider-state representation only."
+  ],
+  "protected_semantics_changed": {
+    "resident": false,
+    "resident_experiments": false,
+    "runtime_internals": false,
+    "h3": false,
+    "harness_sync": false,
+    "h4": false,
+    "authority_veritas_helix": false
+  }
+}
