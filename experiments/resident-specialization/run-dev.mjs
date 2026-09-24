@@ -7,6 +7,7 @@ import path from 'node:path';
 import { bootOrchestration, residentSay, writeJson, readContainmentTail, PROJECT_DIR, reconstructProject, selectMethodology, authorityContextLine } from '../resident-orchestration/lib.mjs';
 import { projectObligations, projectRetrievalState } from './projections.mjs';
 import { buildPacket, PACKET_OUTPUT_CONTRACT } from './decision-packet.mjs';
+import { buildGraph, buildSequencer } from './obligation-graph.mjs';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\//, ''));
 const CANDIDATE_FILE = process.env.AIDE_CANDIDATE_FILE;
@@ -63,7 +64,11 @@ const MAX_TOKENS = Number(process.env.AIDE_DEV_MAXTOKENS ?? 1024);
 // deterministic Decision Packet (state only; no doctrine, no answers). The
 // frozen tasks/checks/thresholds are untouched.
 const USE_PACKET = process.env.AIDE_SEAT_PACKET === '1';
-const result = { schema: 'resident-dev-results-v1', label: LABEL, candidate_file: CANDIDATE_FILE, seat_doctrine: USE_DOCTRINE, seat_map: MAP_FILE ?? null, seat_frame: USE_FRAME, seat_packet: USE_PACKET, at: new Date().toISOString(), rows: [], summary: {} };
+// Condition E — Obligation Graph (E1) and Graph + Sequencer (E2). Additive,
+// default-off; applies to the Compound rows only (controls run unchanged).
+const USE_GRAPH = process.env.AIDE_SEAT_GRAPH === '1';
+const USE_SEQUENCER = process.env.AIDE_SEAT_SEQUENCER === '1';
+const result = { schema: 'resident-dev-results-v1', label: LABEL, candidate_file: CANDIDATE_FILE, seat_doctrine: USE_DOCTRINE, seat_map: MAP_FILE ?? null, seat_frame: USE_FRAME, seat_packet: USE_PACKET, seat_graph: USE_GRAPH, seat_sequencer: USE_SEQUENCER, at: new Date().toISOString(), rows: [], summary: {} };
 const containmentBefore = (await readContainmentTail(PROJECT_DIR, 0)).length;
 const orch = await bootOrchestration({ models: ['candidate'], candidateFile: CANDIDATE_FILE, skipResident: true });
 try {
@@ -112,7 +117,11 @@ try {
       : '';
     const message = (USE_DOCTRINE ? row.messages[0].content + '\n\n' : '')
       + (USE_PACKET
-        ? buildPacket(row.example_id) + '\n' + PACKET_OUTPUT_CONTRACT + '\n\n[TASK]\n' + user
+        ? buildPacket(row.example_id) + '\n'
+          + (USE_GRAPH || USE_SEQUENCER
+            ? '\n' + (USE_SEQUENCER ? buildSequencer(row.example_id) : buildGraph(row.example_id)) + '\n'
+            : '')
+          + PACKET_OUTPUT_CONTRACT + '\n\n[TASK]\n' + user
         : (MAP ? MAP + '\n\n' : '')
           + baseContext + '\n' + sopLine + '\n'
           + (situationFrame ? '\n' + situationFrame + '\n' : '')
