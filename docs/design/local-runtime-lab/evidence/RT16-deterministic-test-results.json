@@ -1,0 +1,72 @@
+{
+  "checkpoint": "RT16",
+  "recorded_on": "2026-09-24",
+  "branch": "research/local-runtime-bakeoff",
+  "tested_commit": "9f0a9847c48d0f11ebe7cfd2dcc972a583369dd7",
+  "implementation_checkpoint": "a5e35070416d30f8f71ee903d427acd1ff31c3d1",
+  "working_tree_at_test": "clean",
+  "runtime_adapter_tests": {
+    "command": "node --experimental-strip-types --test tests/arch/runtime-broker.test.ts",
+    "exit_code": 0,
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0
+  },
+  "strict_typecheck": {
+    "exit_code": 0,
+    "compiler": "worktree-local TypeScript pinned by the canonical package lockfile",
+    "options": [
+      "strict",
+      "isolatedModules",
+      "verbatimModuleSyntax",
+      "noUncheckedIndexedAccess",
+      "exactOptionalPropertyTypes",
+      "noFallthroughCasesInSwitch",
+      "noImplicitOverride",
+      "noUnusedLocals",
+      "noUnusedParameters",
+      "forceConsistentCasingInFileNames",
+      "erasableSyntaxOnly",
+      "NodeNext"
+    ],
+    "targets": [
+      "common/contracts/runtime.ts",
+      "node/src/services/runtime-adapter.ts",
+      "node/src/services/unsloth-runtime-adapter.ts",
+      "node/src/services/llama-cpp-runtime-adapter.ts",
+      "tests/arch/runtime-broker.test.ts"
+    ]
+  },
+  "covered_contracts": [
+    "runtime status, capability, fallback-event, and tool-evidence Zod schemas",
+    "unknown capability preservation",
+    "rejection of malformed ownership, unauthorized fallback, and private model-path fields",
+    "Unsloth absent, stopped, unhealthy, and authentication-failure behavior",
+    "Bearer credential-store use and secret non-disclosure",
+    "loopback health, model enumeration, artifact identity, inference, streaming, and tool evidence",
+    "model-switch loaded identity update",
+    "unknown structured-output fail-closed behavior",
+    "foreign listener and unknown ownership protection",
+    "Covert-owned lifecycle controls",
+    "explicit-only fallback journaling",
+    "artifact/runtime qualification invalidation",
+    "direct llama.cpp owned-process recovery lifecycle"
+  ],
+  "baseline_comparison": {
+    "baseline_commit": "a5e35070416d30f8f71ee903d427acd1ff31c3d1",
+    "baseline_status": "NOT_RUN_AT_RT11",
+    "comparison": "No pass-rate delta is available because deterministic tests were not run at the implementation checkpoint. The current committed contract suite passes 13/13."
+  },
+  "live_qualification": {
+    "status": "BLOCKED",
+    "unsloth_installed": false,
+    "model_loaded": false,
+    "reason": "The official installer detected an elevated process and the execution policy rejected an unelevated launch probe. A foreign llama-server remained active on 127.0.0.1:8099; it was not contacted or modified."
+  },
+  "process_hygiene": {
+    "new_node_processes_remaining_after_test": 0,
+    "installer_tree": "terminated and verified absent",
+    "foreign_runtime": "left untouched"
+  }
+}
