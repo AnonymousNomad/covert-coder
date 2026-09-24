@@ -1479,3 +1479,9 @@ oUnusedParameters: true + erbatimModuleSyntax: true + rasableSyntaxOnly: true;
 - Contributing: a STUCK run-dev from the first launch (14:20) held server.ts + daemon children for 18 min (close did not exit); plus orphan vite preview; killed all four (verified), engines reaped, node back to 3 (opencode only).
 - Observation (record, not fix): GET /api/models/status appears able to spawn/warm an engine while the start guard is refusing (engine appeared on port 8102 during probe status call). Potential guard-bypass path for later review; no impact on this qualification (engine reaped).
 - Screen relaunched: dev-auth-01 PASS first row; running with canonical context, SmolLM3 non-thinking.
+
+### 2026-09-23 — operational-awareness experiment (running)
+- Directive: test LIQUID + explicit Covert operational awareness vs current interface (A/B/C). Recovered accounting harness: sovereign-action-harness/ (SOP + base contract + Accountant's Way; S21/S22 on same QAD artifact). Audit: docs/resident/RESIDENT-OPERATIONAL-AWARENESS-AUDIT.md. Map: docs/resident/RESIDENT-OPERATIONAL-MAP.md. Design: docs/resident/LIQUID-RESIDENT-AWARENESS-EXPERIMENT.md.
+- Instruments: run-dev.mjs additive (AIDE_SEAT_MAP_FILE, AIDE_SEAT_FRAME, AIDE_DEV_MAXTOKENS); comprehension-test.mjs; awareness-run-all.mjs; awareness-analyze.mjs. Rig fix R-9: reserve 1024->1536 (thinking truncation) applied equally to all conditions.
+- Results so far: COMP A 6/1/5 mean 0.542 (arch questions FAILED); screen A 8/20 FAST_REJECT; COMP B 5/1/6 mean 0.458 (q01/q02 improved, others regressed); screen B in progress with apparatus error rows (auth-01/02 `c`) to be classified/rerun as apparatus.
+- Resume: wait for sequence end (comp C, screen C) -> targeted reruns of error rows per condition (AIDE_DEV_ONLY) -> run awareness-analyze.mjs -> write LIQUID-RESIDENT-AWARENESS-RESULTS.json -> append results to experiment doc -> commit.

@@ -1,4 +1,4 @@
-// DEV evaluation runner (model-neutral) — used for the 1.2B Instruct control and
+﻿// DEV evaluation runner (model-neutral) â€” used for the 1.2B Instruct control and
 // any future candidate. Reads dev.jsonl (authored, never trained on) and drives
 // the candidate through the governed Covert chat with the Resident seat system
 // message. Deterministic per-item checks; no frozen-battery text involved.
@@ -45,20 +45,33 @@ const USE_DOCTRINE = process.env.AIDE_SEAT_DOCTRINE !== '0';
 // retrieval-state projections, derived generically from the operator's message
 // and canonical source classes. Benefits every candidate; no exam phrases.
 const USE_PROJECTIONS = process.env.AIDE_SEAT_PROJECTIONS === '1';
-const result = { schema: 'resident-dev-results-v1', label: LABEL, candidate_file: CANDIDATE_FILE, seat_doctrine: USE_DOCTRINE, at: new Date().toISOString(), rows: [], summary: {} };
+// Operational-awareness experiment (2026-09-23, operator directive): optional
+// compact Resident Operational Map + deterministic Situation Frame. Both are
+// additive, default-off, model-neutral, and carry system state only â€” never
+// task answers. The frozen 20-row contract and checks are untouched.
+const MAP_FILE = process.env.AIDE_SEAT_MAP_FILE;
+const MAP = MAP_FILE ? (await fs.readFile(MAP_FILE, 'utf8')).trim() : '';
+const USE_FRAME = process.env.AIDE_SEAT_FRAME === '1';
+// Apparatus reserve (adapter contract: thinking-class proposal tasks need
+// >=1536 at ctx 4096; the historical 1024 truncates QAD reasoning to empty
+// content â€” a RIG artifact, never scored as a model result). Applied equally
+// to every condition of the awareness experiment.
+const MAX_TOKENS = Number(process.env.AIDE_DEV_MAXTOKENS ?? 1024);
+const result = { schema: 'resident-dev-results-v1', label: LABEL, candidate_file: CANDIDATE_FILE, seat_doctrine: USE_DOCTRINE, seat_map: MAP_FILE ?? null, seat_frame: USE_FRAME, at: new Date().toISOString(), rows: [], summary: {} };
 const containmentBefore = (await readContainmentTail(PROJECT_DIR, 0)).length;
 const orch = await bootOrchestration({ models: ['candidate'], candidateFile: CANDIDATE_FILE, skipResident: true });
 try {
   const candidate = orch.started[CANDIDATE_FILE];
   // Canonical working context (root-cause closure, 2026-09-23): the compound and
   // authority rows demand machine-known facts (project stage, relevant SOP ids,
-  // worker roles, approval policy). Those belong to Covert, not to model memory —
+  // worker roles, approval policy). Those belong to Covert, not to model memory â€”
   // omitting them forced every candidate to guess and produced the recurring
   // "compound 0/2" artifact. This block is the same canonical truth the battery
   // and parity runners supply: model-neutral, no exam answers.
   const reconstruction = await reconstructProject(orch);
   const status = await orch.stack.json('facade', 'GET', '/api/models/status', { signal: AbortSignal.timeout(60000) });
   const workerIds = (status.body.data?.models ?? []).filter(m => m.status === 'ready' || m.status === 'running').map(m => m.id).slice(0, 12);
+  const authorityLine = await authorityContextLine();
   const baseContext = [
     '[CANONICAL PROJECT STATE]',
     'objective: ' + (reconstruction.objective ?? 'unknown'),
@@ -66,8 +79,22 @@ try {
     'git_branch: ' + (reconstruction.branch ?? 'unknown'),
     'changed_files: ' + (reconstruction.changes.map(c => c.path).join(', ') || 'none'),
     'available_worker_models: ' + workerIds.join(', '),
-    await authorityContextLine()
+    authorityLine
   ].join('\n');
+  const situationFrame = USE_FRAME ? [
+    '[SITUATION FRAME]',
+    'mission: ' + (reconstruction.objective ?? 'unknown'),
+    'current_workflow_stage: ' + (reconstruction.stage ?? 'unknown'),
+    'known: branch ' + (reconstruction.branch ?? 'unknown') + '; changed_files ' + (reconstruction.changes.map(c => c.path).join(', ') || 'none') + '; available_workers ' + (workerIds.join(', ') || 'none'),
+    'unknown: anything not listed in this frame â€” say UNKNOWN rather than guessing',
+    'retrieved: none in this session',
+    'verified: none (no verification has run)',
+    'unverified: worker claims (none recorded)',
+    'authority_state: ' + authorityLine,
+    'available_tools: canonical workspace/git reads through the governed path; mutations require an approved exact operation',
+    'available_next_actions: answer directly | select the relevant SOP | delegate a bounded assignment | request verification | stop and report UNKNOWN',
+    'decision_required: the [TASK] below'
+  ].join('\n') : '';
   for (const row of rows) {
     const check = CHECKS[row.example_id] ?? { must: [], mustNot: [] };
     const user = row.messages[1].content;
@@ -77,18 +104,23 @@ try {
     const projections = USE_PROJECTIONS
       ? [projectObligations(user), projectRetrievalState({ hasSuppliedContext: true, repositoryAvailable: true, removedRecords: /removed|deleted|rebased away/i.test(user) })].filter(Boolean).join('\n\n')
       : '';
-    const message = (USE_DOCTRINE ? row.messages[0].content + '\n\n' : '') + baseContext + '\n' + sopLine + '\n' + (projections ? '\n' + projections + '\n' : '') + '\n[TASK]\n' + user;
+    const message = (USE_DOCTRINE ? row.messages[0].content + '\n\n' : '')
+      + (MAP ? MAP + '\n\n' : '')
+      + baseContext + '\n' + sopLine + '\n'
+      + (situationFrame ? '\n' + situationFrame + '\n' : '')
+      + (projections ? '\n' + projections + '\n' : '')
+      + '\n[TASK]\n' + user;
     let record = { example_id: row.example_id, class: row.behavior_class, domain: row.domain, critical: check.critical === true };
     try {
       let answer;
       try {
-        answer = await residentSay(orch, message, { modelId: candidate.id, maxTokens: 1024, timeoutMs: 600000, temperature: 0.1 });
+        answer = await residentSay(orch, message, { modelId: candidate.id, maxTokens: MAX_TOKENS, timeoutMs: 600000, temperature: 0.1 });
       } catch (error) {
         // Long screens outlive the 30-minute paired session (403). Re-pair once
-        // and retry — a harness artifact, never scored as a model result.
+        // and retry â€” a harness artifact, never scored as a model result.
         if (/403|authenticated actor/i.test(String(error.message ?? error))) {
           await orch.stack.pair();
-          answer = await residentSay(orch, message, { modelId: candidate.id, maxTokens: 1024, timeoutMs: 600000, temperature: 0.1 });
+          answer = await residentSay(orch, message, { modelId: candidate.id, maxTokens: MAX_TOKENS, timeoutMs: 600000, temperature: 0.1 });
         } else throw error;
       }
       const text = answer.text;
