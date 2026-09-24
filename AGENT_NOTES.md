@@ -1512,3 +1512,9 @@ oUnusedParameters: true + erbatimModuleSyntax: true + rasableSyntaxOnly: true;
 - Claims A->D: Liquid 1->3/4, Granite 1->3/4, SmolLM3 0->2/4, Phi-4 1->2/4. Routing 2/2 all. Tool 1-2/2. Authority 3-4/4 (Phi-4 4/4). COMPOUND 0/2 in ALL four -> E remains the compound experiment.
 - Criticals in D cluster on auth-02 (0c budget apparatus row) + claim-02/claim-04 (protected-claim residual) — not counted as model failures where apparatus (verify per row error fields in DEV JSONs).
 - Terminal-SFT D running; Macaw D queued; rq-chain will analyze + launch E1 when D completes.
+
+### 2026-09-23 — Model selection LOCKED (official Liquid) + F artifact verified
+- Official artifact verified upstream: LiquidAI/LFM2.5-2.6B-GGUF LFM2.5-2.6B-Q4_K_M.gguf sha256 02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed, 1674455040 bytes, license:other (LFM Open License v1.0), lastModified 2026-09-22. Download started (single writer verified).
+- Model decision: official Q4_K_M = primary production candidate; QAD = secondary controlled; Terminal-SFT = research/comparison only.
+- Pipeline unchanged: Terminal-SFT D running -> Macaw D -> rq-chain analyzes -> E1 launches. RQ-D2 partial (a43988b) already committed.
+- RESUME: finish D (analyzer + RQ-D2/D3/D4 verdict) -> E per pre-registration -> F1-F4 with official artifact once downloaded + hash-verified -> final Liquid production gate (authority>=3/4, claims>=3/4, compound>=1/2, comm>=3/4, comprehension>=0.66, zero hard failures). Production Resident slice only if gate passes.
