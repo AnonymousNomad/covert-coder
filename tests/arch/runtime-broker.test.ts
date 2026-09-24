@@ -11,6 +11,7 @@ import type {
   RuntimeModelIdentityT,
   RuntimeStatusResponseT
 } from '../../common/contracts/runtime.ts';
+import { RuntimeFallbackEvent, RuntimeStatusResponse, RuntimeToolEvidence } from '../../common/contracts/runtime.ts';
 import {
   RuntimeAdapterError,
   RuntimeBroker,
@@ -53,6 +54,37 @@ function baseStatus(backend: 'UNSLOTH' | 'LLAMA_CPP', health: RuntimeHealthT, lo
     updated_at: FIXED_TIME.toISOString()
   };
 }
+
+test('Runtime Broker payload schemas preserve UNKNOWN and reject malformed or private fields', () => {
+  const status = baseStatus('UNSLOTH', 'UNKNOWN');
+  const parsedStatus = RuntimeStatusResponse.parse(status);
+  assert.equal(parsedStatus.capabilities.tool_repair, 'UNKNOWN');
+  assert.equal(RuntimeStatusResponse.safeParse({ ...status, ownership: 'UNVERIFIED' }).success, false);
+  assert.equal(RuntimeStatusResponse.safeParse({ ...status, model_path: 'C:\\private\\fixture.gguf' }).success, false);
+
+  const fallback = {
+    event_id: 'runtime-event-1',
+    from_backend: 'UNSLOTH' as const,
+    to_backend: 'LLAMA_CPP' as const,
+    reason: 'operator-authorized recovery',
+    explicit_operator_action: true as const,
+    model_id: null,
+    artifact_sha256: null,
+    at: FIXED_TIME.toISOString()
+  };
+  assert.deepEqual(RuntimeFallbackEvent.parse(fallback), fallback);
+  assert.equal(RuntimeFallbackEvent.safeParse({ ...fallback, explicit_operator_action: false }).success, false);
+
+  const toolEvidence = {
+    raw_model_output: null,
+    runtime_adjusted_output: null,
+    executed_tool_call: null,
+    attribution: 'UNKNOWN' as const,
+    limitation: 'raw output unavailable'
+  };
+  assert.deepEqual(RuntimeToolEvidence.parse(toolEvidence), toolEvidence);
+  assert.equal(RuntimeToolEvidence.safeParse({ ...toolEvidence, attribution: 'REPAIRED' }).success, false);
+});
 
 function makeUserServer(fetcher: typeof fetch, overrides: Partial<UnslothRuntimeAdapterOptions> = {}): UnslothRuntimeAdapter {
   return new UnslothRuntimeAdapter({
@@ -227,9 +259,18 @@ test('Unsloth loopback API health, model list, local artifact identity, inferenc
       (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'CAPABILITY_UNKNOWN'
     );
     assert.equal(calls.length, beforeUnknown, 'unknown structured output is rejected before any API request');
+
+    const secondArtifact = path.join(dir, 'fixture-switched.gguf');
+    await writeFile(secondArtifact, 'second fixed artifact bytes');
+    const switched = await adapter.load({ modelId: 'fixture-model-switched', modelPath: secondArtifact, contextTokens: 1024 }, true);
+    const switchedStatus = await adapter.status();
+    assert.equal(switchedStatus.loaded_model?.model_id, 'fixture-model-switched');
+    assert.equal(switchedStatus.loaded_model?.artifact_sha256, switched.artifact_sha256);
+    assert.notEqual(switched.artifact_sha256, loaded.artifact_sha256);
+
     const beforeUnload = calls.length;
-    await assert.rejects(() => adapter.unload('fixture-model'), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'OPERATOR_ACTION_REQUIRED');
-    await adapter.unload('fixture-model', true);
+    await assert.rejects(() => adapter.unload('fixture-model-switched'), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'OPERATOR_ACTION_REQUIRED');
+    await adapter.unload('fixture-model-switched', true);
     await assert.rejects(() => adapter.shutdown(), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'OPERATOR_ACTION_REQUIRED');
     await assert.rejects(() => adapter.shutdown(true), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'USER_RUNTIME_STOP_UNAVAILABLE');
     assert.ok(calls.slice(beforeUnload).some(call => call.url.endsWith('/api/inference/unload')));

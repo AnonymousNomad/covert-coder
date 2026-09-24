@@ -77,12 +77,12 @@ Values describe the API surface currently wired in the adapter, not model qualit
 
 | Capability | Adapter value | Boundary |
 |---|---|---|
-| OpenAI Chat Completions | PARTIAL | Local `/v1/chat/completions` transport is wired; token acquisition is injectable but no credential source is connected, and live protocol behavior is unverified |
+| OpenAI Chat Completions | PARTIAL | Local `/v1/chat/completions` transport is wired; Bearer credentials come from the `unsloth-local-runtime` slot in Covert's DPAPI-backed `CredentialStore`; live protocol behavior is unverified |
 | Responses API | UNKNOWN | Not advertised to Covert clients |
 | Anthropic Messages | UNKNOWN | Not advertised to Covert clients |
 | Embeddings | UNKNOWN | No endpoint adapter or local qualification |
 | Model discovery | PARTIAL | `/v1/models` reports runtime-visible identities; no online catalog scan |
-| Load / unload | PARTIAL | Documented Studio API; padded responses and deferred errors are validated, but authentication is not wired by default |
+| Load / unload | PARTIAL | Documented Studio API; Bearer authentication, padded responses, and deferred-error validation are wired; live endpoint behavior remains unverified |
 | Model switching | PARTIAL | Load request updates identity only after successful completion; hot-switch semantics are unknown |
 | Streaming | PARTIAL | OpenAI Chat Completions SSE parser exists; authenticated live stream behavior is not qualified |
 | Cancellation | PARTIAL | Covert aborts the request; backend work cancellation is not yet independently measured |

@@ -6,11 +6,24 @@
 
 ## Safety and stop condition
 
-A final non-destructive pre-commit check found one active, unqualified llama-server process. System commit was 25,379,328,000 / 31,443,066,880 bytes (80.7%), available physical RAM was 3,225,481,216 bytes, and the GTX 1060 had 933 MiB in use. Runtime installs, model loads, and benchmarks remain deferred. The local runner refuses to execute without a same-run lease file declaring exclusive resource clearance, an owner, runtime PID set, local endpoint, artifact path, and expected SHA-256. It checks well-known runtime processes and listeners before sending any inference request; resource clearance and ownership remain operator-attested, not inferred by the runner. The runner refuses adjacent-lane ports 8097 and 8104 and requires the endpoint to be a literal loopback IP.
+A final non-destructive pre-commit check found one active, unqualified llama-server process. System commit was 25,379,328,000 / 31,443,066,880 bytes (80.7%), available physical RAM was 3,225,481,216 bytes, and the GTX 1060 had 933 MiB in use. Model loads and benchmarks remain deferred. A later installation-only attempt is recorded below. The local runner refuses to execute without a same-run lease file declaring exclusive resource clearance, an owner, runtime PID set, local endpoint, artifact path, and expected SHA-256. It checks well-known runtime processes and listeners before sending any inference request; resource clearance and ownership remain operator-attested, not inferred by the runner. The runner refuses adjacent-lane ports 8097 and 8104 and requires the endpoint to be a literal loopback IP.
 
 That snapshot is historical evidence from the research pass, not a current resource clearance. Recheck process ownership, port ownership, RAM, commit, and VRAM before any live run. Do not include the Resident process or model in the lease. Do not attach to or query a foreign endpoint. Do not use a remembered port until an updated listener check establishes that it is free and assigned to this experiment.
 
 The 2026-09-24 implementation-lane recheck found a foreign/unclaimed `llama-server` process (PID 28468; working set 3,083,182,080 bytes) without inspecting its command line, model, or endpoint. Available physical memory was 4,505,948 KiB (~4.30 GiB), Windows commit was 24,760,803,328 / 31,443,066,880 bytes (~78.7%), and port 18888 was free. Unsloth was not found on PATH and the configured `AIDE_UNSLOTH_CLI` path did not exist. No process was queried, attached to, started, or stopped. This is still insufficient for a live run: the foreign runtime remains untouched and resource ownership is not cleared for this lane.
+
+## RT22 native Windows installation attempt
+
+- **Result:** BLOCKED before a usable Unsloth runtime was installed. The installer process was elevated; Unsloth's official installer warned that the runtime root would be Administrator-owned and inaccessible to the normal account. Studio setup did not complete.
+- **Official source:** `install.ps1` was staged from the official Unsloth repository at SHA-256 `5C6F0AFD0306A6461F346DD772D5A8BDE97780716507AA5824974375B1649A6C` (654,179 bytes). This hash identifies the downloaded script snapshot, not an Unsloth release.
+- **Requested install configuration:** `UNSLOTH_STUDIO_HOME=E:\Unsloth-Studio-runtime-lab`; GGUF-only (`UNSLOTH_NO_TORCH=1`); skip autostart; isolated UV cache; requested llama.cpp backend `auto`; no persistent User PATH edit; install temp on E:. No model load or API server start was requested.
+- **Observed before starting:** foreign/unclaimed `llama-server.exe` PID 8628, listener `127.0.0.1:8099`, working set 3,214,917,632 bytes; free physical RAM 3.23 GiB; free commit 5.02 GiB; GTX 1060 reported 900 MiB in use and 23% utilization. The process/endpoint/model were not queried or modified.
+- **Observed installer output:** the installer reported `Running as administrator` and instructed the operator to stop and rerun unelevated. It had begun a Winget download for UV 0.12.18. The installer process tree was terminated; the installed `uv` still reports 0.5.9 and the User PATH value remained unchanged.
+- **Process result:** the installer tree was terminated by its retained PID; subsequent checks found no installer descendants or Winget process. Resident PID 8628 remained present and untouched.
+- **Partial files:** the installer created only `.unsloth-install.lock` and `.unsloth-studio-owned` in the target root. Its dedicated E: temp contains Winget metadata and a zero-byte download temp file. An execution-policy rejection blocked the verified cleanup command before it ran; those exact partial paths remain for a later non-elevated session/operator cleanup. Installer logs are at `E:\Unsloth-Install-RT13.stdout.log` and `E:\Unsloth-Install-RT13.stderr.log`.
+- **Unsloth status:** not installed; version, CLI path, Studio/API path, selected engine/backend, health, API key, and live authentication are UNKNOWN. The requested `auto` backend never reached llama.cpp selection. No API endpoint was contacted.
+- **Tool boundary:** an attempt to run a harmless elevation probe through `Shell.Application.ShellExecute` was rejected by the execution policy before a process started. No alternate process-launch/token route will be attempted. Native installation requires a non-elevated session supported by the execution environment.
+- **Qualification consequence:** GTX 1060 CUDA/Vulkan/CPU profile, official Liquid hash/load/inference, performance, streaming, tool repair, structured output, cancellation, recovery, runtime metrics, and Runtime Passport remain unqualified. Do not treat this checkpoint as Unsloth incompatibility or product-selection evidence.
 
 ## RT4 apparatus
 
@@ -167,7 +180,7 @@ Track startup success, request success, crash count, recovery duration, and cont
 - **Deterministic tests:** NOT YET RUN.
 - **Live qualification:** BLOCKED pending dependency-backed tests, native Unsloth installation/authentication resolution, and a safe resource window.
 - This checkpoint preserves the Runtime Broker and adapters for review. It is not production accepted.
-- **Post-commit test follow-up:** the focused strict TypeScript check passed and all 12 deterministic runtime contract tests passed; see RT16 below.
+- **Initial post-commit test follow-up:** strict TypeScript and 12/12 runtime contract tests passed. The later RT16 suite added explicit Zod schema/privacy checks and model-switch identity coverage.
 
 | Checkpoint | Status | Evidence |
 |---|---|---|
@@ -175,13 +188,14 @@ Track startup success, request success, crash count, recovery duration, and cont
 | RT12 Unsloth adapter | Implemented, deterministic-only in this slice | `node/src/services/unsloth-runtime-adapter.ts` |
 | RT13 ownership/lifecycle | Implemented with fail-closed PID/port checks | Unsloth adapter and direct recovery wrapper |
 | RT14 Model Manager handoff | Contract frozen; implementation/worktree untouched | `common/contracts/runtime.ts` plus [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md); no route or Model Manager code changed |
-| RT15 installation/bootstrap | External user install documented; no automatic installer | AGPL Studio source is not bundled |
-| RT16 deterministic contract tests | PASS — 12/12 | `node --experimental-strip-types --test tests/arch/runtime-broker.test.ts`; focused strict TypeScript check passed after replacing non-erasable parameter properties |
-| RT17 GTX 1060 qualification | Blocked | Unsloth Core documents CUDA CC 7.0 minimum; Studio GGUF CUDA compatibility remains unproven; CPU profile not installed/run and Vulkan not run |
-| RT18 Liquid GGUF qualification | Not run | Foreign llama-server and memory ownership prevent safe load |
+| RT15 installation/bootstrap | External user install path selected; not installed | Official Studio source is not bundled; installer preflight/launch was blocked by elevated token and execution-policy rejection |
+| RT16 deterministic contract tests | PASS — 13/13 | `node --experimental-strip-types --test tests/arch/runtime-broker.test.ts`; focused strict TypeScript check passed; includes adapter, broker, ownership, explicit fallback, credential handling, Zod contract/schema, artifact identity, and model-switch identity checks |
+| RT17 GTX 1060 qualification | Blocked | No Unsloth build installed; CUDA/Vulkan/CPU ladder not run |
+| RT18 Liquid GGUF qualification | Not run | Foreign runtime is active and artifact ownership/resource clearance is not established |
 | RT19 recovery validation | Deterministic contract added; live recovery not run | No foreign runtime contacted or changed |
 | RT20 acceptance candidate | Not accepted | Deterministic tests pass; native install, live auth, official Liquid qualification, and resource-safe runtime checks remain pending |
 | RT21 authentication contract | Adapter support implemented; live authentication unqualified | DPAPI credential slot, Bearer header, and explicit 401/403 handling are covered by deterministic tests; no installed Unsloth version/API key exists in this lane |
+| RT22 native Windows install attempt | Blocked | Official installer stopped on elevated-token warning; no Unsloth version or backend was installed/resolved |
 
 ## Primary references
 
