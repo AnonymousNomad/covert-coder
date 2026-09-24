@@ -1506,3 +1506,9 @@ oUnusedParameters: true + erbatimModuleSyntax: true + rasableSyntaxOnly: true;
 - condition-d-run-all LIVE (pid 8404): Granite running; then SmolLM3, Phi-4, Terminal-SFT, Macaw (~4h).
 - rq-chain LIVE (pid 25784): waits for D marker -> condition-d-analyze.mjs -> launches E1 runner (6 models, labels <m>-e1). Logs: E:\pip_temp\opencode\rq-chain.log, d-analysis.txt, condition-e1.txt.
 - RESUME (post-D): RQ-D2/D3/D4 commits (append D results + verdict to docs/resident/CONDITION-D-EXTERNALIZED-EXECUTIVE-STATE.md) -> wait for E1 completion -> build E analysis (A/D/E1 matrix) -> RQ-E2 verdict; E2 only if E1 weak on compound -> held-out battery -> research note RQ-E6 -> skill extraction RQ-E7 only if held-out passes.
+
+### 2026-09-23 — Condition D partial results (cross-model, 4/6 complete)
+- DEV-liq-d 14/20 (A 8) · DEV-granite-d 15/20 (A 9) · DEV-smollm3-d 15/20 (A 10) · DEV-phi4-d 15/20 (A 9).
+- Claims A->D: Liquid 1->3/4, Granite 1->3/4, SmolLM3 0->2/4, Phi-4 1->2/4. Routing 2/2 all. Tool 1-2/2. Authority 3-4/4 (Phi-4 4/4). COMPOUND 0/2 in ALL four -> E remains the compound experiment.
+- Criticals in D cluster on auth-02 (0c budget apparatus row) + claim-02/claim-04 (protected-claim residual) — not counted as model failures where apparatus (verify per row error fields in DEV JSONs).
+- Terminal-SFT D running; Macaw D queued; rq-chain will analyze + launch E1 when D completes.
