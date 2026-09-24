@@ -2,9 +2,11 @@ import { createHash } from 'node:crypto';
 import { createReadStream, existsSync } from 'node:fs';
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
+import { CredentialStore } from './credentials.ts';
 import {
   RuntimeCapabilityState,
   type RuntimeCapabilityDescriptorT,
+  type RuntimeCapabilityStateT,
   type RuntimeHealthT,
   type RuntimeMetricsT,
   type RuntimeModelIdentityT,
@@ -24,6 +26,7 @@ import {
 const STUDIO_SERVICE_MARKER = 'Unsloth UI Backend';
 const DEFAULT_PORT = 18_888;
 const DEFAULT_START_TIMEOUT_MS = 20_000;
+export const UNSLOTH_API_KEY_CREDENTIAL_ID = 'unsloth-local-runtime';
 
 type PortInspection = { state: 'FREE' } | { state: 'LISTENING'; pid: number } | { state: 'UNKNOWN' };
 type AuthTokenProvider = () => Promise<string | null>;
@@ -45,6 +48,7 @@ export interface UnslothRuntimeAdapterOptions {
   processTreeContains?: ProcessTreeProbe;
   terminateProcessTree?: (child: ChildProcess, pid: number) => Promise<void>;
   authTokenProvider?: AuthTokenProvider;
+  credentialStore?: Pick<CredentialStore, 'get'>;
   discoverVersion?: (cliPath: string) => Promise<string | null>;
   startupTimeoutMs?: number;
   now?: () => Date;
@@ -224,7 +228,7 @@ function sha256(file: string): Promise<string> {
   });
 }
 
-function state(value: 'SUPPORTED' | 'PARTIAL' | 'UNKNOWN' | 'UNSUPPORTED'): RuntimeCapabilityState {
+function state(value: RuntimeCapabilityStateT): RuntimeCapabilityStateT {
   return RuntimeCapabilityState.parse(value);
 }
 
@@ -248,6 +252,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   private readonly terminateProcessTree: (child: ChildProcess, pid: number) => Promise<void>;
   private readonly versionProbe: (cliPath: string) => Promise<string | null>;
   private readonly now: () => Date;
+  private readonly credentialStore: Pick<CredentialStore, 'get'>;
   private readonly endpoint: URL;
   private readonly externallyManaged: boolean;
   private readonly startupTimeoutMs: number;
@@ -280,7 +285,10 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     this.startupTimeoutMs = options.startupTimeoutMs ?? DEFAULT_START_TIMEOUT_MS;
     this.now = options.now ?? (() => new Date());
     this.cliPath = options.cliPath ?? null;
-    this.authTokenProvider = options.authTokenProvider;
+    this.credentialStore = options.credentialStore ?? new CredentialStore(this.workspace);
+    this.authTokenProvider = options.authTokenProvider ?? (async () =>
+      (await this.credentialStore.get(UNSLOTH_API_KEY_CREDENTIAL_ID)) ?? null
+    );
     if (options.port !== undefined && (options.port < 1 || options.port > 65535 || !Number.isInteger(options.port))) {
       throw new RuntimeAdapterError('INVALID_PORT', 'Unsloth port must be an integer from 1 to 65535');
     }
@@ -383,7 +391,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       } catch {
         throw new RuntimeAdapterError('AUTH_PROVIDER_FAILED', 'configured Unsloth token provider failed');
       }
-      if (token) headers.set('Authorization', `Bearer ${token}`);
+      if (token?.trim()) headers.set('Authorization', `Bearer ${token.trim()}`);
     }
     let response: Response;
     try {
@@ -450,7 +458,9 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     const health = await this.health();
     if (health !== 'HEALTHY') return [];
     const response = await this.fetchNoRedirect('/v1/models', { method: 'GET', headers: { Accept: 'application/json' } }, true);
-    if (!response.ok) throw new RuntimeAdapterError(response.status === 401 ? 'AUTH_REQUIRED' : 'MODEL_DISCOVERY_FAILED', `Unsloth model enumeration returned HTTP ${response.status}`);
+    if (response.status === 401) throw new RuntimeAdapterError('AUTH_REQUIRED', 'Unsloth model enumeration requires a valid local API key');
+    if (response.status === 403) throw new RuntimeAdapterError('AUTH_FORBIDDEN', 'Unsloth denied the local API key for model enumeration');
+    if (!response.ok) throw new RuntimeAdapterError('MODEL_DISCOVERY_FAILED', `Unsloth model enumeration returned HTTP ${response.status}`);
     const payload = await response.json().catch(() => null) as { data?: ApiModel[] } | null;
     if (!Array.isArray(payload?.data)) throw new RuntimeAdapterError('INVALID_MODEL_RESPONSE', 'Unsloth model enumeration returned an invalid response');
     return payload.data.flatMap(model => typeof model.id === 'string' && model.id.length > 0 ? [{
@@ -509,6 +519,8 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   }
 
   private async readLifecycleResponse(response: Response, action: string): Promise<Record<string, unknown> | null> {
+    if (response.status === 401) throw new RuntimeAdapterError('AUTH_REQUIRED', `Unsloth ${action} requires a valid local API key`);
+    if (response.status === 403) throw new RuntimeAdapterError('AUTH_FORBIDDEN', `Unsloth denied the local API key for ${action}`);
     if (!response.ok) throw new RuntimeAdapterError(action === 'load' ? 'MODEL_LOAD_FAILED' : 'MODEL_UNLOAD_FAILED', `Unsloth ${action} returned HTTP ${response.status}`);
     const body = await response.json().catch(() => null) as Record<string, unknown> | null;
     if (body === null || typeof body !== 'object' || Array.isArray(body)) {
@@ -570,7 +582,9 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
         body: JSON.stringify(payload),
         signal: controller.signal
       }, true);
-      if (!response.ok) throw new RuntimeAdapterError(response.status === 401 ? 'AUTH_REQUIRED' : 'INFERENCE_FAILED', `Unsloth inference returned HTTP ${response.status}`);
+      if (response.status === 401) throw new RuntimeAdapterError('AUTH_REQUIRED', 'Unsloth inference requires a valid local API key');
+      if (response.status === 403) throw new RuntimeAdapterError('AUTH_FORBIDDEN', 'Unsloth denied the local API key for inference');
+      if (!response.ok) throw new RuntimeAdapterError('INFERENCE_FAILED', `Unsloth inference returned HTTP ${response.status}`);
       if (streaming) {
         if (response.body === null) throw new RuntimeAdapterError('STREAM_UNAVAILABLE', 'Unsloth returned no streaming body');
         return await this.readStream(response, request.modelId, onDelta, startedAt);
@@ -737,7 +751,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     };
   }
 
-  private readonly authTokenProvider?: AuthTokenProvider;
+  private readonly authTokenProvider: AuthTokenProvider;
 
   private async cleanupFailedStart(child: ChildProcess): Promise<void> {
     const pid = child.pid;

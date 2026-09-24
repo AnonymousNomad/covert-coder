@@ -142,12 +142,18 @@ export class RuntimeBroker {
   private active: RuntimeAdapter;
   private fallbackEventId: string | null = null;
   private lastError: RuntimeStatusResponseT['last_error'] = null;
+  private readonly canonical: RuntimeAdapter;
+  private readonly recovery: RuntimeAdapter | null;
+  private readonly workspace: string;
 
   constructor(
-    private readonly canonical: RuntimeAdapter,
-    private readonly recovery: RuntimeAdapter | null,
-    private readonly workspace: string
+    canonical: RuntimeAdapter,
+    recovery: RuntimeAdapter | null,
+    workspace: string
   ) {
+    this.canonical = canonical;
+    this.recovery = recovery;
+    this.workspace = workspace;
     if (canonical.backendId !== 'UNSLOTH') throw new Error('the canonical Runtime Broker adapter must be Unsloth');
     if (recovery !== null && recovery.backendId !== 'LLAMA_CPP') throw new Error('the recovery adapter must be direct llama.cpp');
     this.active = canonical;

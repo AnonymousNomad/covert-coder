@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import type { ChildProcess } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -24,7 +23,7 @@ import {
   type RuntimeInferenceResult,
   type RuntimeLoadRequest
 } from '../../node/src/services/runtime-adapter.ts';
-import { processIsInTree, UnslothRuntimeAdapter, type UnslothRuntimeAdapterOptions } from '../../node/src/services/unsloth-runtime-adapter.ts';
+import { processIsInTree, UNSLOTH_API_KEY_CREDENTIAL_ID, UnslothRuntimeAdapter, type UnslothRuntimeAdapterOptions } from '../../node/src/services/unsloth-runtime-adapter.ts';
 import { LlamaCppRuntimeAdapter } from '../../node/src/services/llama-cpp-runtime-adapter.ts';
 
 const FIXED_TIME = new Date('2026-09-24T16:00:00.000Z');
@@ -60,6 +59,7 @@ function makeUserServer(fetcher: typeof fetch, overrides: Partial<UnslothRuntime
     workspace: os.tmpdir(),
     endpoint: 'http://127.0.0.1:18888',
     fetcher,
+    ...(overrides.authTokenProvider === undefined && overrides.credentialStore === undefined ? { authTokenProvider: async () => null } : {}),
     inspectPort: async () => ({ state: 'UNKNOWN' }),
     findExecutable: async () => null,
     now: () => FIXED_TIME,
@@ -122,6 +122,56 @@ test('an installed but unhealthy Unsloth server is not queried for model enumera
   assert.equal(await adapter.health(), 'UNHEALTHY');
   assert.deepEqual(await adapter.models(), []);
   assert.equal(modelRequests, 0);
+});
+
+test('Unsloth bearer auth reads the dedicated credential slot without exposing the key', async () => {
+  const secret = 'sk-unsloth-test-secret';
+  let requestedSlot = '';
+  let authorization = '';
+  const adapter = makeUserServer(async (input, init) => {
+    const pathname = new URL(String(input)).pathname;
+    if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+    authorization = new Headers(init?.headers).get('Authorization') ?? '';
+    return jsonResponse({ data: [{ id: 'default' }] });
+  }, {
+    credentialStore: {
+      get: async slot => {
+        requestedSlot = slot;
+        return secret;
+      }
+    }
+  });
+  await adapter.discover();
+  assert.equal((await adapter.models())[0]?.model_id, 'default');
+  assert.equal(requestedSlot, UNSLOTH_API_KEY_CREDENTIAL_ID);
+  assert.equal(authorization, `Bearer ${secret}`);
+  assert.equal(JSON.stringify(await adapter.status()).includes(secret), false);
+});
+
+test('Unsloth reports authentication failures explicitly for discovery, load, and inference', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-auth-'));
+  const artifact = path.join(dir, 'fixture.gguf');
+  await writeFile(artifact, 'fixture');
+  let rejectLoad = true;
+  const adapter = makeUserServer(async input => {
+    const pathname = new URL(String(input)).pathname;
+    if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+    if (pathname === '/api/inference/load' && !rejectLoad) return jsonResponse({ completed: true });
+    if (pathname === '/api/inference/unload') return jsonResponse({ detail: 'denied' }, 401);
+    return jsonResponse({ detail: 'denied' }, 401);
+  }, { authTokenProvider: async () => null });
+  try {
+    await adapter.discover();
+    await assert.rejects(() => adapter.models(), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'AUTH_REQUIRED');
+    await assert.rejects(() => adapter.load({ modelId: 'm', modelPath: artifact }, true), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'AUTH_REQUIRED');
+    rejectLoad = false;
+    await adapter.load({ modelId: 'm', modelPath: artifact }, true);
+    await assert.rejects(() => adapter.unload('m', true), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'AUTH_REQUIRED');
+    await assert.rejects(() => adapter.infer({ modelId: 'm', messages: [] }), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'AUTH_REQUIRED');
+    assert.equal(JSON.stringify(await adapter.status()).includes('denied'), false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test('Unsloth loopback API health, model list, local artifact identity, inference, streaming, and tool evidence', async () => {
@@ -224,7 +274,7 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
   let requests = 0;
   let terminateCalls = 0;
   let launchArgs: string[] = [];
-  const fakeChild = Object.assign(new EventEmitter(), { pid: 50001, exitCode: null, kill: () => true }) as unknown as ChildProcess;
+  const fakeChild = Object.assign(new EventEmitter(), { pid: 50001, exitCode: null as number | null, kill: () => true });
   try {
     const adapter = new UnslothRuntimeAdapter({
       workspace: dir,
@@ -275,8 +325,12 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
 
 class AdapterStub implements RuntimeAdapter {
   private loaded: RuntimeModelIdentityT | null = null;
+  private readonly state: RuntimeHealthT;
   readonly backendId: 'UNSLOTH' | 'LLAMA_CPP';
-  constructor(backend: 'UNSLOTH' | 'LLAMA_CPP', private readonly state: RuntimeHealthT) { this.backendId = backend; }
+  constructor(backend: 'UNSLOTH' | 'LLAMA_CPP', state: RuntimeHealthT) {
+    this.backendId = backend;
+    this.state = state;
+  }
   async discover(): Promise<void> {}
   async health(): Promise<RuntimeHealthT> { return this.state; }
   capabilities(): RuntimeCapabilityDescriptorT { return unknownCapabilities(); }

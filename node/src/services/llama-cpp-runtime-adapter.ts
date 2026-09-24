@@ -33,13 +33,15 @@ function artifactHash(file: string): Promise<string> {
 
 export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
   readonly backendId = 'LLAMA_CPP' as const;
+  private readonly options: LlamaCppRuntimeAdapterOptions;
   private readonly now: () => Date;
   private loaded: RuntimeModelIdentityT | null = null;
   private loadedModelId: string | null = null;
   private startedAt: string | null = null;
   private controllers = new Set<AbortController>();
 
-  constructor(private readonly options: LlamaCppRuntimeAdapterOptions) {
+  constructor(options: LlamaCppRuntimeAdapterOptions) {
+    this.options = options;
     this.now = options.now ?? (() => new Date());
   }
 
@@ -124,7 +126,11 @@ export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
     if (request.tools !== undefined) throw new RuntimeAdapterError('CAPABILITY_UNKNOWN', 'tool-call behavior is not exposed by the direct recovery adapter');
     if (request.responseFormat !== undefined) throw new RuntimeAdapterError('CAPABILITY_UNKNOWN', 'structured output is not exposed by the direct recovery adapter');
     if (this.loadedModelId !== request.modelId || !this.options.isOwned(request.modelId)) throw new RuntimeAdapterError('MODEL_NOT_LOADED', 'requested direct llama.cpp model is not Covert-owned and loaded');
-    const result = await this.options.chat(request.modelId, request.messages, { maxTokens: request.maxTokens, temperature: request.temperature });
+    const generationOptions = {
+      ...(request.maxTokens === undefined ? {} : { maxTokens: request.maxTokens }),
+      ...(request.temperature === undefined ? {} : { temperature: request.temperature })
+    };
+    const result = await this.options.chat(request.modelId, request.messages, generationOptions);
     return {
       text: result.text,
       model: this.loaded ?? unknownModelIdentity(request.modelId),
@@ -148,7 +154,11 @@ export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
     let text = '';
     try {
       const started = Date.now();
-      await this.options.chatStream(request.modelId, request.messages, delta => { text += delta; onDelta(delta); }, controller.signal, { maxTokens: request.maxTokens, temperature: request.temperature });
+      const generationOptions = {
+        ...(request.maxTokens === undefined ? {} : { maxTokens: request.maxTokens }),
+        ...(request.temperature === undefined ? {} : { temperature: request.temperature })
+      };
+      await this.options.chatStream(request.modelId, request.messages, delta => { text += delta; onDelta(delta); }, controller.signal, generationOptions);
       return {
         text,
         model: this.loaded ?? unknownModelIdentity(request.modelId),

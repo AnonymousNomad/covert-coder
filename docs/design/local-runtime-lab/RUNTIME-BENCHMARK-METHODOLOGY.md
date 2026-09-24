@@ -167,6 +167,7 @@ Track startup success, request success, crash count, recovery duration, and cont
 - **Deterministic tests:** NOT YET RUN.
 - **Live qualification:** BLOCKED pending dependency-backed tests, native Unsloth installation/authentication resolution, and a safe resource window.
 - This checkpoint preserves the Runtime Broker and adapters for review. It is not production accepted.
+- **Post-commit test follow-up:** the focused strict TypeScript check passed and all 12 deterministic runtime contract tests passed; see RT16 below.
 
 | Checkpoint | Status | Evidence |
 |---|---|---|
@@ -175,11 +176,12 @@ Track startup success, request success, crash count, recovery duration, and cont
 | RT13 ownership/lifecycle | Implemented with fail-closed PID/port checks | Unsloth adapter and direct recovery wrapper |
 | RT14 Model Manager handoff | Contract frozen; implementation/worktree untouched | `common/contracts/runtime.ts` plus [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md); no route or Model Manager code changed |
 | RT15 installation/bootstrap | External user install documented; no automatic installer | AGPL Studio source is not bundled |
-| RT16 deterministic contract tests | Added; execution blocked because this worktree has no installed dependencies | `tests/arch/runtime-broker.test.ts`; no install performed |
+| RT16 deterministic contract tests | PASS — 12/12 | `node --experimental-strip-types --test tests/arch/runtime-broker.test.ts`; focused strict TypeScript check passed after replacing non-erasable parameter properties |
 | RT17 GTX 1060 qualification | Blocked | Unsloth Core documents CUDA CC 7.0 minimum; Studio GGUF CUDA compatibility remains unproven; CPU profile not installed/run and Vulkan not run |
 | RT18 Liquid GGUF qualification | Not run | Foreign llama-server and memory ownership prevent safe load |
 | RT19 recovery validation | Deterministic contract added; live recovery not run | No foreign runtime contacted or changed |
-| RT20 acceptance candidate | Not accepted | Contract tests were added but not executed; typecheck/live qualification unavailable in this worktree |
+| RT20 acceptance candidate | Not accepted | Deterministic tests pass; native install, live auth, official Liquid qualification, and resource-safe runtime checks remain pending |
+| RT21 authentication contract | Adapter support implemented; live authentication unqualified | DPAPI credential slot, Bearer header, and explicit 401/403 handling are covered by deterministic tests; no installed Unsloth version/API key exists in this lane |
 
 ## Primary references
 
