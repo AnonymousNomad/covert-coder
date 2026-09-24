@@ -94,6 +94,17 @@ async function get<T>(pathName: string): Promise<{ status: number; body: Envelop
   return { status: response.status, body: (await response.json()) as Envelope<T> };
 }
 
+async function waitForSessionTerminal(sessionId: string): Promise<void> {
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    const status = await get<{ state?: string }>(`/api/agent/status?id=${encodeURIComponent(sessionId)}`);
+    const state = status.body.data?.state;
+    if (state === 'done' || state === 'error' || state === 'aborted') return;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.fail(`agent session ${sessionId} did not reach a terminal state before the fixture boundary`);
+}
+
 async function anonymousPost(pathName: string, payload: unknown): Promise<Response> {
   return fetch(`${base}${pathName}`, {
     method: 'POST',
@@ -188,6 +199,10 @@ test('secret-bearing transcript is still scanned under an approved export', asyn
   const allowed = await post<{ bundle_id: string; message_count: number }>('/api/handoff/export', allowBody, allowHeaders);
   assert.equal(allowed.status, 200, 'acknowledgement elects to publish the scanned content');
   assert.ok((allowed.body.data?.message_count ?? 0) >= 2, 'the capture still produced the transcript');
+  // The start route is intentionally asynchronous.  Await its terminal state
+  // so its trajectory/verification persistence cannot race the next test's
+  // inert-import artifact snapshot.
+  await waitForSessionTerminal(sessionId);
 });
 
 test('containment stays authoritative over approved operations', async () => {

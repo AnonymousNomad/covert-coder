@@ -88,6 +88,16 @@ cursors/reconnect, tamper denial, live mutation observation, and Provenance
 linkage. Node and browser typechecks, changed-file lint, OpenAPI generation,
 contract drift, and route-authority coverage pass on this worktree.
 
+The affected handoff route battery now passes **7/7** after its fixture was
+made to await the intentionally asynchronous session it starts. The prior
+`148/149` result was an H3-exposed test-isolation race, reproduced as absent on
+parent `eb324c8`, and fixed without changing runtime semantics. See:
+
+```text
+docs/harness/HARNESS-H3-CONSOLIDATION.md
+docs/harness/RESIDENT-AWARENESS-INTEGRATION-GATE.md
+```
+
 ## Rollback
 
 Rollback is a branch-level revert of the post-candidate Harness-vNext commit.

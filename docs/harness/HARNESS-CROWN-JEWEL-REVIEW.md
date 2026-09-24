@@ -996,3 +996,24 @@ Memory / Attempt Sandbox is currently a **PARTIAL / NOT_IMPLEMENTED** contract.
 It remains **WAITING_FOR_LIQUID_RESIDENT_EVIDENCE** and is explicitly outside
 the authorized Slice 1 implementation. No runtime implementation was made by
 this addendum.
+
+## Post-review H3 consolidation checkpoint
+
+The post-candidate H3 implementation is recorded separately from this
+architecture review. The evidence map, requirement trace, event-quality review,
+future attempt-input contract and the 148/149 regression classification are in:
+
+```text
+docs/harness/HARNESS-H3-CONSOLIDATION.md
+```
+
+The Resident-awareness decision gate is:
+
+```text
+docs/harness/RESIDENT-AWARENESS-INTEGRATION-GATE.md
+```
+
+H3 remains frozen at `993df08`. The current evidence distinguishes focused
+slice passes from release certification. No H4 implementation, Situation Frame,
+Capability Surface or Model Working Memory runtime is authorized while the
+Liquid Resident experiment is incomplete.
