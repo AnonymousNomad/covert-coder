@@ -97,10 +97,10 @@ export function recommend(entries: IntelligenceEntry[], input: RecommendationInp
     if (a.cost !== b.cost) return a.cost - b.cost;
     return a.entry.id < b.entry.id ? -1 : a.entry.id > b.entry.id ? 1 : 0;
   });
-  if (scored.length >= 2 && scored[0].cost === scored[1].cost) {
-    // equal cost across the top pair: no evidence-backed cost preference
-  } else if (scored.length >= 2 && Number.isFinite(scored[1].cost) && scored[1].cost > scored[0].cost) {
-    scored[0].reasons.push('LOWER_COST');
+  const top = scored[0];
+  const second = scored[1];
+  if (top && second && Number.isFinite(second.cost) && second.cost > top.cost) {
+    top.reasons.push('LOWER_COST');
   }
 
   const toCandidate = (row: (typeof scored)[number]): CandidateRecommendation => ({

@@ -67,9 +67,11 @@ test('local discovery: bounded GGUF scan with quant detection; no full hashing',
   await fs.writeFile(path.join(dir, 'models', 'notes.txt'), 'ignore me');
   const result = await discoverLocalModels(dir);
   assert.equal(result.entries.length, 1);
-  assert.equal(result.entries[0].artifact?.quantization, 'Q4_K_M');
-  assert.equal(result.entries[0].artifact?.hash_status, 'not_computed');
-  assert.equal(result.entries[0].availability, 'INSTALLED');
+  const first = result.entries[0];
+  assert.ok(first, 'one discovered entry');
+  assert.equal(first.artifact?.quantization, 'Q4_K_M');
+  assert.equal(first.artifact?.hash_status, 'not_computed');
+  assert.equal(first.availability, 'INSTALLED');
   assert.equal(detectQuantization('x-QAD-Q4_0.gguf'), 'Q4_0');
 });
 
@@ -97,9 +99,11 @@ test('recommendation: deterministic, role-filtered, resource-aware, no global ra
   const one = recommend(entries, input);
   const two = recommend(entries, input);
   assert.deepEqual(one, two, 'same inputs must produce identical recommendations');
-  assert.equal(one.recommended[0].id, 'bm'); // qualified beats tested, local fits
-  assert.ok(one.recommended[0].reasons.includes('ROLE_QUALIFIED'));
-  assert.ok(one.recommended[0].reasons.includes('LOW_RESOURCE_FIT'));
+  const top = one.recommended[0];
+  assert.ok(top, 'a recommendation exists');
+  assert.equal(top.id, 'bm'); // qualified beats tested, local fits
+  assert.ok(top.reasons.includes('ROLE_QUALIFIED'));
+  assert.ok(top.reasons.includes('LOW_RESOURCE_FIT'));
   assert.ok(!one.recommended.some(r => r.id === 'cm'), 'unqualified role excluded');
   assert.ok(one.excluded.some(e => e.id === 'cm' && e.reasons.includes('ROLE_NOT_QUALIFIED')));
 
@@ -118,7 +122,9 @@ test('recommendation: cost tie-break and past-success evidence', async () => {
     entry({ id: 'p2', provider: 'provB', qualification: { state: 'QUALIFIED', qualified_roles: ['REVIEWER'], unqualified_roles: [], evidence_refs: [], basis: { artifact_hash: 'b' } } })
   ];
   const result = recommend(entries, { role: 'REVIEWER', costByProvider: { provA: 3, provB: 1 }, history: { p1: { accepted: 5, failed: 1 } } });
-  assert.equal(result.recommended[0].id, 'p2', 'cheaper provider wins the tie at equal qualification');
+  const topRec = result.recommended[0];
+  assert.ok(topRec, 'a recommendation exists');
+  assert.equal(topRec.id, 'p2', 'cheaper provider wins the tie at equal qualification');
   const withHistory = recommend(entries, { role: 'REVIEWER', costByProvider: { provA: 3, provB: 1 }, history: { p1: { accepted: 5, failed: 1 } } });
   const p1 = [...withHistory.recommended, ...withHistory.alternatives].find(c => c.id === 'p1');
   assert.ok(p1?.reasons.includes('PAST_PROJECT_SUCCESS'));

@@ -10,7 +10,8 @@ export const GGUF_QUANT_RE = /(?:^|[.\-_])((?:Q\d(?:_[A-Z0-9]+)*(?:_[A-Z])?|IQ\d
 
 export function detectQuantization(filename: string): string | undefined {
   const match = GGUF_QUANT_RE.exec(filename);
-  return match ? match[1].toUpperCase() : undefined;
+  const captured = match?.[1];
+  return captured ? captured.toUpperCase() : undefined;
 }
 
 export function configuredModelDirs(workspace: string): string[] {
