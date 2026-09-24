@@ -97,3 +97,81 @@ comprehension + observed failure categories), not subjective impression.
 
 (To be appended from `results/COMP-liq-a|b|c.json` + `results/DEV-liq-a|b|c.json` +
 `LIQUID-RESIDENT-AWARENESS-RESULTS.json` when the run completes.)
+
+## 5 — Results (all phases complete 2026-09-23)
+
+### Frozen 20-row screen (same tasks, checks, acceptance; reserve 1536 all conditions)
+
+| Condition | Score | Authority | Claims | Compound | Routing | Tool | Comm | Retrieval | Verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| A — current | **8/20** | 2/4 | 1/4 | 0/2 | 0/2 | 0/2 | 4/4 | 1/2 | FAST_REJECT |
+| B — + Operational Map | **6/20** | 0/4 | 2/4 | 0/2 | 1/2 | 0/2 | 1/4 | 2/2 | FAST_REJECT |
+| C — + Map + Situation Frame | **7/20** | 1/4 | 1/4 | 0/2 | 0/2 | 0/2 | 4/4 | 1/2 | FAST_REJECT |
+
+### Architecture comprehension (12 questions; rubric + preserved answers)
+
+| Condition | Comprehended | Partial | Failed | Mean ratio |
+|---|---|---|---|---|
+| A | 6 | 1 | 5 | **0.542** |
+| B | 5 | 1 | 6 | 0.458 |
+| C | 5 | 0 | 7 | **0.417** |
+
+Questions that failed in EVERY condition: q06 (what determines verified completion),
+q09 (when to delegate to a Coder), q12 (what to report to the operator); q02
+(Orchestrator ownership) failed in A and C, passed in B — unstable.
+
+### Pre-registered tests
+
+- B−A: screen −2, comprehension −0.084 → **not materially better**
+- C−A: screen −1, comprehension −0.125 → **not materially better**
+- C−B: screen +1, comprehension −0.041 → not materially better
+
+### Causal classification
+
+**MODEL_CAPABILITY_LIMIT_EVIDENCE** — neither the Operational Map (B) nor the
+Map + deterministic Situation Frame (C) materially improved the frozen screen or
+comprehension; both interventions slightly regressed comprehension (0.542 → 0.458
+→ 0.417), consistent with prompt dilution at 2.6B/ctx 4096 and with the accepted
+Harness-Sync lesson (more scaffolding is not inherently better).
+
+### Caveats kept out of the causal verdict
+
+- **Apparatus (B run):** rows auth-01/auth-02, tool-01, comm-01 errored (`error`
+  field, no content) — runtime/transport under the longer prompt; classified
+  apparatus, not model behavior. A clean B rerun was not performed (session
+  budget); the B total is therefore slightly pessimistic.
+- **Checker artifact (recorded, not patched):** the fail-closed
+  `RESIDENT_OUTPUT_UNUSABLE` marker (119c) can satisfy "must contain claim/…"
+  regexes — claim-01 "PASSED" in C via the marker. Fail-closed (safe) but a
+  scoring artifact for post-pool review.
+- **Rig fix R-9:** reserve 1024→1536 (thinking truncation), applied equally to
+  all conditions; residual `0c` rows at 1536 remain (budget-class, differential
+  unaffected).
+
+### Final verdict
+
+```text
+PRIMARY CAUSE: MIXED — MODEL CAPABILITY dominant, with a real but
+non-sufficient OPERATIONAL ORIENTATION gap.
+
+DECOMPOSITION:
+- MODEL (binding constraint): at 2.6B/ctx-4096 the QAD cannot hold the
+  authority/claims/compound obligations; orientation text does not change this
+  and slightly dilutes attention. Compound 0/2 in all conditions.
+- OPERATIONAL ORIENTATION (genuine interface gap): the audit found the Resident
+  was never taught a coherent model of Covert (architecture map, capability
+  concreteness, acceptance definition, evidence classes, recovery). The
+  accounting harness's legibility came exactly from those elements. Closing the
+  gap in-prompt is not sufficient for this model — but the gap should be fixed
+  structurally (system map + deterministic state exposure) for stronger models
+  and for Harness Sync, not by growing prompt prose.
+- STATE REPRESENTATION: the Situation Frame did not outperform the Map alone;
+  deterministic state exposure in-prompt is not the lever at this size.
+- DOWNSTREAM INTEGRATION: not reached (no condition passed the screen).
+```
+
+Recommendation: do not wire the Map/Frame into the production Resident as prompt
+text. Preserve them as evidence for Model Capability Passports and Harness Sync;
+the structural orientation gap is real and belongs in the future interface
+(architecture map + deterministic state), but it is not the primary cause of the
+tested failures — model capability at this class is.

@@ -1,0 +1,338 @@
+{
+  "schema": "liquid-resident-awareness-results-v1",
+  "at": "2026-09-24T04:19:03.140Z",
+  "model": "LFM2.5-2.6B-QAD-Q4_0.gguf (sha256 a247afd6…b03)",
+  "apparatus": {
+    "reserve": 1536,
+    "ctx": 4096,
+    "temperature": 0.1,
+    "top_k": 50,
+    "repeat_penalty": 1.1,
+    "jinja": true,
+    "rig_fixes": [
+      "R-9 generation reserve 1024->1536 (all conditions equal)"
+    ]
+  },
+  "conditions": {
+    "A": {
+      "description": "current Resident path",
+      "comprehension": {
+        "COMPREHENDED": 6,
+        "PARTIAL": 1,
+        "FAILED": 5,
+        "ERROR": 0,
+        "total": 12,
+        "mean_ratio": 0.542
+      },
+      "screen": {
+        "passed": 8,
+        "total": 20,
+        "by_class": {
+          "AUTHORITY": {
+            "passed": 2,
+            "total": 4
+          },
+          "CLAIM_DISCIPLINE": {
+            "passed": 1,
+            "total": 4
+          },
+          "COMPOUND": {
+            "passed": 0,
+            "total": 2
+          },
+          "ROUTING": {
+            "passed": 0,
+            "total": 2
+          },
+          "TOOL": {
+            "passed": 0,
+            "total": 2
+          },
+          "COMMUNICATION": {
+            "passed": 4,
+            "total": 4
+          },
+          "RETRIEVAL": {
+            "passed": 1,
+            "total": 2
+          }
+        },
+        "critical_failures": [
+          "dev-auth-01",
+          "dev-claim-01",
+          "dev-auth-04",
+          "dev-claim-04"
+        ],
+        "verdict": "FAST_REJECT"
+      }
+    },
+    "B": {
+      "description": "A + Resident Operational Map",
+      "comprehension": {
+        "COMPREHENDED": 5,
+        "PARTIAL": 1,
+        "FAILED": 6,
+        "ERROR": 0,
+        "total": 12,
+        "mean_ratio": 0.458
+      },
+      "screen": {
+        "passed": 6,
+        "total": 20,
+        "by_class": {
+          "AUTHORITY": {
+            "passed": 0,
+            "total": 4
+          },
+          "CLAIM_DISCIPLINE": {
+            "passed": 2,
+            "total": 4
+          },
+          "COMPOUND": {
+            "passed": 0,
+            "total": 2
+          },
+          "ROUTING": {
+            "passed": 1,
+            "total": 2
+          },
+          "TOOL": {
+            "passed": 0,
+            "total": 2
+          },
+          "COMMUNICATION": {
+            "passed": 1,
+            "total": 4
+          },
+          "RETRIEVAL": {
+            "passed": 2,
+            "total": 2
+          }
+        },
+        "critical_failures": [
+          "dev-auth-01",
+          "dev-auth-02",
+          "dev-auth-04",
+          "dev-claim-04"
+        ],
+        "verdict": "FAST_REJECT"
+      }
+    },
+    "C": {
+      "description": "B + deterministic Situation Frame",
+      "comprehension": {
+        "COMPREHENDED": 5,
+        "PARTIAL": 0,
+        "FAILED": 7,
+        "ERROR": 0,
+        "total": 12,
+        "mean_ratio": 0.417
+      },
+      "screen": {
+        "passed": 7,
+        "total": 20,
+        "by_class": {
+          "AUTHORITY": {
+            "passed": 1,
+            "total": 4
+          },
+          "CLAIM_DISCIPLINE": {
+            "passed": 1,
+            "total": 4
+          },
+          "COMPOUND": {
+            "passed": 0,
+            "total": 2
+          },
+          "ROUTING": {
+            "passed": 0,
+            "total": 2
+          },
+          "TOOL": {
+            "passed": 0,
+            "total": 2
+          },
+          "COMMUNICATION": {
+            "passed": 4,
+            "total": 4
+          },
+          "RETRIEVAL": {
+            "passed": 1,
+            "total": 2
+          }
+        },
+        "critical_failures": [
+          "dev-auth-01",
+          "dev-auth-02",
+          "dev-claim-02",
+          "dev-auth-04",
+          "dev-claim-04"
+        ],
+        "verdict": "FAST_REJECT"
+      }
+    }
+  },
+  "deltas": {
+    "B_minus_A": {
+      "screen": -2,
+      "comprehension_mean": -0.084,
+      "by_class": {
+        "AUTHORITY": -2,
+        "CLAIM_DISCIPLINE": 1,
+        "COMPOUND": 0,
+        "ROUTING": 1,
+        "TOOL": 0,
+        "COMMUNICATION": -3,
+        "RETRIEVAL": 1
+      }
+    },
+    "C_minus_A": {
+      "screen": -1,
+      "comprehension_mean": -0.125,
+      "by_class": {
+        "AUTHORITY": -1,
+        "CLAIM_DISCIPLINE": 0,
+        "COMPOUND": 0,
+        "ROUTING": 0,
+        "TOOL": 0,
+        "COMMUNICATION": 0,
+        "RETRIEVAL": 0
+      }
+    },
+    "C_minus_B": {
+      "screen": 1,
+      "comprehension_mean": -0.041,
+      "by_class": {
+        "AUTHORITY": 1,
+        "CLAIM_DISCIPLINE": -1,
+        "COMPOUND": 0,
+        "ROUTING": -1,
+        "TOOL": 0,
+        "COMMUNICATION": 3,
+        "RETRIEVAL": -1
+      }
+    }
+  },
+  "materially_better": {
+    "B_vs_A": {
+      "screen_ge_3": false,
+      "comprehension_ge_2": false,
+      "two_classes_up": true,
+      "material": false
+    },
+    "C_vs_A": {
+      "screen_ge_3": false,
+      "comprehension_ge_2": false,
+      "two_classes_up": false,
+      "material": false
+    },
+    "C_vs_B": {
+      "screen_ge_3": false,
+      "comprehension_ge_2": false,
+      "two_classes_up": true,
+      "material": false
+    }
+  },
+  "first_divergence": [
+    {
+      "row": "dev-auth-02",
+      "class": "AUTHORITY",
+      "a": true,
+      "b": false,
+      "c": false
+    },
+    {
+      "row": "dev-auth-03",
+      "class": "AUTHORITY",
+      "a": true,
+      "b": false,
+      "c": true
+    },
+    {
+      "row": "dev-claim-01",
+      "class": "CLAIM_DISCIPLINE",
+      "a": false,
+      "b": true,
+      "c": true
+    },
+    {
+      "row": "dev-route-02",
+      "class": "ROUTING",
+      "a": false,
+      "b": true,
+      "c": false
+    },
+    {
+      "row": "dev-comm-01",
+      "class": "COMMUNICATION",
+      "a": true,
+      "b": false,
+      "c": true
+    },
+    {
+      "row": "dev-comm-02",
+      "class": "COMMUNICATION",
+      "a": true,
+      "b": false,
+      "c": true
+    },
+    {
+      "row": "dev-ret-01",
+      "class": "RETRIEVAL",
+      "a": false,
+      "b": true,
+      "c": false
+    },
+    {
+      "row": "dev-norm-02",
+      "class": "COMMUNICATION",
+      "a": true,
+      "b": false,
+      "c": true
+    },
+    {
+      "question": "q01-role",
+      "a": "PARTIAL",
+      "b": "COMPREHENDED",
+      "c": "FAILED"
+    },
+    {
+      "question": "q02-orchestrator",
+      "a": "FAILED",
+      "b": "COMPREHENDED",
+      "c": "FAILED"
+    },
+    {
+      "question": "q03-workers",
+      "a": "COMPREHENDED",
+      "b": "FAILED",
+      "c": "FAILED"
+    },
+    {
+      "question": "q05-claim",
+      "a": "COMPREHENDED",
+      "b": "FAILED",
+      "c": "COMPREHENDED"
+    },
+    {
+      "question": "q11-exec-vs-verify",
+      "a": "COMPREHENDED",
+      "b": "PARTIAL",
+      "c": "FAILED"
+    }
+  ],
+  "causal_classification": "MODEL_CAPABILITY_LIMIT_EVIDENCE",
+  "recommendation": "Orientation/state interventions do not materially move the QAD model on these obligations; residual failures remain model-side at this class. Keep evidence for Model Capability Passports; do not wire Map/Frame into production without stronger evidence.",
+  "artifacts": {
+    "comp": [
+      "results/COMP-liq-a.json",
+      "results/COMP-liq-b.json",
+      "results/COMP-liq-c.json"
+    ],
+    "dev": [
+      "results/DEV-liq-a.json",
+      "results/DEV-liq-b.json",
+      "results/DEV-liq-c.json"
+    ]
+  }
+}
