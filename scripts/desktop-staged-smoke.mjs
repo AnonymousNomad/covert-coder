@@ -1,9 +1,11 @@
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readWindowsProcessIdentity, sameWindowsProcessIdentity, waitForWindowsProcessIdentity } from './desktop-process-identity.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runtimeNode = path.join(root, 'desktop', 'resources', 'runtime', process.platform === 'win32' ? 'node.exe' : 'node');
@@ -34,11 +36,19 @@ const child = spawn(runtimeNode, [launcher], {
   windowsHide: true,
   stdio: ['ignore', 'pipe', 'pipe']
 });
+try { await once(child, 'spawn'); }
+catch (error) {
+  await rm(workspace, { recursive: true, force: true }).catch(() => {});
+  throw error;
+}
+const childIdentity = process.platform === 'win32'
+  ? await waitForWindowsProcessIdentity(child.pid, { expectedExecutablePath: runtimeNode })
+  : null;
 child.stdout.on('data', chunk => process.stdout.write(`[staged] ${chunk}`));
 child.stderr.on('data', chunk => process.stderr.write(`[staged] ${chunk}`));
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const alive = () => child.exitCode === null;
+const alive = () => child.exitCode === null && child.signalCode === null;
 const tryFetch = async url => {
   try {
     const res = await fetch(url);
@@ -94,15 +104,52 @@ for (const check of checks) {
 const passed = checks.length > 0 && checks.every(check => check.pass);
 console.log(passed ? 'staged stack smoke PASSED' : 'staged stack smoke FAILED');
 
-await rm(workspace, { recursive: true, force: true }).catch(() => {});
+let cleanupOk = true;
 if (alive()) {
-  child.kill('SIGTERM');
-  await new Promise(resolve => {
-    const timer = setTimeout(() => {
-      if (process.platform === 'win32') spawn(process.env.ComSpec || 'cmd.exe', ['/c', `taskkill /PID ${child.pid} /T /F >nul 2>&1`]).on('exit', resolve);
-      else { child.kill('SIGKILL'); resolve(); }
-    }, 5000);
-    child.once('exit', () => { clearTimeout(timer); resolve(); });
-  });
+  if (process.platform === 'win32') {
+    const current = childIdentity ? await readWindowsProcessIdentity(child.pid) : null;
+    if (!sameWindowsProcessIdentity(childIdentity, current)) {
+      cleanupOk = false;
+      console.error(`staged cleanup refused: launcher PID ${child.pid} identity could not be proven`);
+    }
+  }
+  if (cleanupOk) {
+    child.kill('SIGTERM'); // retained ChildProcess handle; never image-wide or tree cleanup
+    let exited = await Promise.race([
+      once(child, 'exit').then(() => true, () => false),
+      new Promise(resolve => setTimeout(() => resolve(false), 5000))
+    ]);
+    if (!exited && process.platform === 'win32') {
+      const current = await readWindowsProcessIdentity(child.pid);
+      if (!sameWindowsProcessIdentity(childIdentity, current)) {
+        cleanupOk = false;
+        console.error(`staged cleanup refused escalation: launcher PID ${child.pid} identity changed or became unknown`);
+      } else {
+        child.kill('SIGKILL');
+        exited = await Promise.race([
+          once(child, 'exit').then(() => true, () => false),
+          new Promise(resolve => setTimeout(() => resolve(false), 5000))
+        ]);
+      }
+    } else if (!exited && process.platform !== 'win32') {
+      child.kill('SIGKILL');
+      exited = await Promise.race([
+        once(child, 'exit').then(() => true, () => false),
+        new Promise(resolve => setTimeout(() => resolve(false), 5000))
+      ]);
+    }
+    if (!exited) {
+      cleanupOk = false;
+      console.error(`staged cleanup unconfirmed for owned launcher PID ${child.pid}; workspace retained`);
+    }
+    if (cleanupOk && process.platform === 'win32') {
+      const after = await readWindowsProcessIdentity(child.pid);
+      if (sameWindowsProcessIdentity(childIdentity, after)) {
+        cleanupOk = false;
+        console.error(`staged cleanup failed: original launcher identity ${child.pid} remains`);
+      }
+    }
+  }
 }
-process.exitCode = passed ? 0 : 1;
+if (cleanupOk) await rm(workspace, { recursive: true, force: true }).catch(() => {});
+process.exitCode = passed && cleanupOk ? 0 : 1;

@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { execFile, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 // Staged resource root is explicit, as with the backend entrypoints below.
@@ -65,14 +65,30 @@ function spawnChild(label, args) {
   return child;
 }
 
-function killTree(child) {
-  if (child.exitCode !== null) return Promise.resolve();
-  if (process.platform !== 'win32') {
-    try { child.kill('SIGTERM'); } catch { /* already gone */ }
-    return Promise.resolve();
-  }
+function terminateOwnedChild(child, graceMs = 5000) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve({ pid: child.pid, status: 'EXITED' });
   return new Promise(resolve => {
-    execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => resolve());
+    let settled = false;
+    let graceTimer;
+    let forceTimer;
+    const finish = status => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(graceTimer);
+      clearTimeout(forceTimer);
+      child.off('exit', onExit);
+      resolve({ pid: child.pid, status });
+    };
+    const onExit = () => finish('EXITED');
+    child.once('exit', onExit);
+    try { child.kill('SIGTERM'); } catch { /* retain ownership; bounded exact-handle fallback below */ }
+    graceTimer = setTimeout(() => {
+      if (child.exitCode !== null || child.signalCode !== null) return finish('EXITED');
+      // Only the retained direct ChildProcess handle is signaled. Descendants
+      // are not inferred from a recycled PPID chain or swept recursively.
+      try { child.kill('SIGKILL'); } catch { /* report unconfirmed below */ }
+      forceTimer = setTimeout(() => finish('UNCONFIRMED'), graceMs);
+    }, graceMs);
   });
 }
 
@@ -80,8 +96,12 @@ async function stop(code) {
   if (stopping) return;
   stopping = true;
   supervisor?.close();
-  await Promise.all([...children].map(killTree));
-  process.exitCode = code;
+  const cleanup = await Promise.all([...children].map(child => terminateOwnedChild(child)));
+  const unconfirmed = cleanup.filter(item => item.status === 'UNCONFIRMED');
+  if (unconfirmed.length) {
+    process.stderr.write(`[stack-launcher] exact owned child cleanup unconfirmed for PID(s): ${unconfirmed.map(item => item.pid).join(', ')}\n`);
+  }
+  process.exitCode = unconfirmed.length ? 1 : code;
 }
 
 await fs.mkdir(logsDir, { recursive: true });
