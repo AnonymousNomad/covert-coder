@@ -132,7 +132,7 @@ function inRunResourceGate(sample) {
 function makeRuntime() {
   process.env.UNSLOTH_STUDIO_HOME = installRoot;
   delete process.env.AIDE_UNSLOTH_ENDPOINT;
-  const cliPath = path.join(installRoot, 'bin', 'unsloth.exe');
+  const cliPath = path.join(installRoot, 'bin', 'unsloth.cmd');
   const workspace = qualificationRoot;
   credentialStore = new CredentialStore(credentialWorkspace);
   const fetcher = async (input, init) => {
@@ -643,7 +643,23 @@ try {
   await main();
 } catch (error) {
   phaseFailure = error?.code ?? error?.message ?? 'QUALIFICATION_FAILED';
-  await emit('QUALIFICATION_FAILURE', { code: error?.code ?? null, details_redacted: true });
+  let runtimeStatus = null;
+  if (broker) {
+    try { runtimeStatus = await broker.status(); } catch { /* failure evidence remains redacted and best-effort */ }
+  }
+  await emit('QUALIFICATION_FAILURE', {
+    code: error?.code ?? null,
+    runtime: runtimeStatus === null ? null : {
+      health: runtimeStatus.health,
+      ownership: runtimeStatus.ownership,
+      pid: runtimeStatus.pid,
+      port: runtimeStatus.port,
+      loaded_model_id: runtimeStatus.loaded_model?.model_id ?? null,
+      artifact_sha256: runtimeStatus.loaded_model?.artifact_sha256 ?? null,
+      last_error_code: runtimeStatus.last_error?.code ?? null
+    },
+    details_redacted: true
+  });
   process.exitCode = 1;
 } finally {
   await cleanup();

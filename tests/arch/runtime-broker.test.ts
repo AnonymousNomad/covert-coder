@@ -26,7 +26,7 @@ import {
   type RuntimeInferenceResult,
   type RuntimeLoadRequest
 } from '../../node/src/services/runtime-adapter.ts';
-import { processIsInTree, UNSLOTH_API_KEY_CREDENTIAL_ID, UnslothRuntimeAdapter, type UnslothRuntimeAdapterOptions } from '../../node/src/services/unsloth-runtime-adapter.ts';
+import { buildUnslothCliInvocation, processIsInTree, selectUnslothExecutable, UNSLOTH_API_KEY_CREDENTIAL_ID, UnslothRuntimeAdapter, type UnslothRuntimeAdapterOptions } from '../../node/src/services/unsloth-runtime-adapter.ts';
 import { LlamaCppRuntimeAdapter } from '../../node/src/services/llama-cpp-runtime-adapter.ts';
 
 const FIXED_TIME = new Date('2026-09-24T16:00:00.000Z');
@@ -34,6 +34,28 @@ const FIXED_TIME = new Date('2026-09-24T16:00:00.000Z');
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 }
+
+test('Windows Unsloth discovery prefers the managed CLI wrapper and quotes its fixed launch safely', () => {
+  const wrapper = String.raw`C:\Program Files\Unsloth Studio\bin\unsloth.cmd`;
+  assert.equal(selectUnslothExecutable([
+    String.raw`C:\Program Files\Unsloth Studio\bin\unsloth.exe`,
+    wrapper
+  ], 'win32'), wrapper);
+  const launch = buildUnslothCliInvocation(wrapper, ['studio', '-H', '127.0.0.1', '-p', '18888', '--api-only'], 'win32');
+  assert.equal(launch.command, 'cmd.exe');
+  assert.deepEqual(launch.args, [
+    '/d', '/v:off', '/s', '/c',
+    String.raw`""C:\Program Files\Unsloth Studio\bin\unsloth.cmd" studio -H 127.0.0.1 -p 18888 --api-only"`
+  ]);
+  assert.equal(launch.windowsVerbatimArguments, true);
+  assert.throws(() => buildUnslothCliInvocation(wrapper, ['studio', '& whoami'], 'win32'), /not safe/);
+});
+
+test('non-Windows Unsloth discovery keeps its native CLI without a command shell', () => {
+  const executable = '/opt/unsloth/bin/unsloth';
+  assert.equal(selectUnslothExecutable([executable], 'linux'), executable);
+  assert.deepEqual(buildUnslothCliInvocation(executable, ['studio'], 'linux'), { command: executable, args: ['studio'] });
+});
 
 function baseStatus(backend: 'UNSLOTH' | 'LLAMA_CPP', health: RuntimeHealthT, loaded: RuntimeModelIdentityT | null = null): RuntimeStatusResponseT {
   return {
@@ -398,15 +420,19 @@ test('port conflict and unknown ownership fail closed without endpoint requests 
   }
 });
 
-test('Covert-owned Unsloth child listener is recognized and shutdown is ownership-gated', async () => {
+test('Covert-owned Unsloth listener re-proves transient ownership and remains shutdown-gated', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-owned-tree-'));
   const artifact = path.join(dir, 'fixture.gguf');
   await writeFile(artifact, 'owned fixture');
   let portState: 'FREE' | 'LISTENING' = 'FREE';
   let requests = 0;
+  let chatRequests = 0;
   let gracefulShutdownRequests = 0;
   let launcherKillCalls = 0;
   let launchArgs: string[] = [];
+  let unknownPortReads = 0;
+  let unknownTreeReads = 0;
+  let forceUnknownPort = false;
   const fakeChild = Object.assign(new EventEmitter(), { pid: 50001, exitCode: null as number | null, kill: () => { launcherKillCalls++; return true; } });
   try {
     const adapter = new UnslothRuntimeAdapter({
@@ -414,13 +440,31 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
       cliPath: path.join(dir, 'unsloth.exe'),
       findExecutable: async () => path.join(dir, 'unsloth.exe'),
       discoverVersion: async () => '2026.09.24',
-      inspectPort: async () => portState === 'FREE' ? { state: 'FREE' } : { state: 'LISTENING', pid: 50002 },
-      processTreeContains: async (rootPid, targetPid) => rootPid === 50001 && targetPid === 50002,
+      inspectPort: async () => {
+        if (forceUnknownPort) return { state: 'UNKNOWN' };
+        if (unknownPortReads > 0) { unknownPortReads--; return { state: 'UNKNOWN' }; }
+        return portState === 'FREE' ? { state: 'FREE' } : { state: 'LISTENING', pid: 50002 };
+      },
+      processTreeContains: async (rootPid, targetPid) => {
+        assert.equal(rootPid, 50001);
+        assert.equal(targetPid, 50002);
+        if (unknownTreeReads > 0) { unknownTreeReads--; return null; }
+        return true;
+      },
       fetcher: async input => {
         requests++;
         const pathname = new URL(String(input)).pathname;
         if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
-        if (pathname === '/api/inference/load' || pathname === '/api/inference/unload') return jsonResponse({ completed: true });
+        if (pathname === '/api/inference/load') {
+          unknownPortReads = 1;
+          unknownTreeReads = 1;
+          return jsonResponse({ completed: true });
+        }
+        if (pathname === '/api/inference/unload') return jsonResponse({ completed: true });
+        if (pathname === '/v1/chat/completions') {
+          chatRequests++;
+          return jsonResponse({ choices: [{ message: { role: 'assistant', content: 'alive' }, finish_reason: 'stop' }] });
+        }
         if (pathname === '/api/shutdown') {
           gracefulShutdownRequests++;
           portState = 'FREE';
@@ -447,11 +491,75 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
     assert.ok(!launchArgs.includes('--disable-tools'));
     assert.equal((await adapter.status()).ownership, 'COVERT_OWNED');
     assert.equal((await adapter.status()).pid, 50002, 'status reports the listener PID, not only the CLI parent PID');
+
+    const recovered = await adapter.infer({ modelId: 'owned-model', messages: [{ role: 'user', content: 'ping' }], temperature: 0 });
+    assert.equal(recovered.text, 'alive', 'transient port and ancestry uncertainty is retried before endpoint access');
+    assert.equal(chatRequests, 1);
+    assert.equal((await adapter.status()).last_error, null);
+
+    forceUnknownPort = true;
+    await assert.rejects(
+      () => adapter.infer({ modelId: 'owned-model', messages: [{ role: 'user', content: 'must not be sent' }], temperature: 0 }),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'OWNERSHIP_UNVERIFIED'
+    );
+    assert.equal(chatRequests, 1, 'persistent unknown port ownership prevents endpoint contact');
+    assert.equal((await adapter.status()).last_error?.code, 'PORT_INSPECTION_UNKNOWN');
+    forceUnknownPort = false;
+    assert.equal((await adapter.infer({ modelId: 'owned-model', messages: [{ role: 'user', content: 'recovered' }], temperature: 0 })).text, 'alive');
+    assert.equal((await adapter.status()).last_error, null, 'a successful request after fresh ownership proof clears the transient diagnostic');
+
     await adapter.shutdown();
     assert.equal(gracefulShutdownRequests, 1);
     assert.equal(launcherKillCalls, 0, 'graceful API shutdown should exit without terminating even the launcher');
     assert.equal((await adapter.status()).health, 'STOPPED');
+    assert.equal((await adapter.status()).last_error, null, 'operator-requested clean shutdown is not recorded as an unexpected exit');
     assert.ok(requests > 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('unexpected owned launcher exit is exposed as a sanitized runtime error', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-unexpected-exit-'));
+  const artifact = path.join(dir, 'fixture.gguf');
+  await writeFile(artifact, 'owned fixture');
+  let portState: 'FREE' | 'LISTENING' = 'FREE';
+  const fakeChild = Object.assign(new EventEmitter(), {
+    pid: 52001,
+    exitCode: null as number | null,
+    signalCode: null as NodeJS.Signals | null,
+    kill: () => true
+  });
+  try {
+    const adapter = new UnslothRuntimeAdapter({
+      workspace: dir,
+      cliPath: path.join(dir, 'unsloth.exe'),
+      findExecutable: async () => path.join(dir, 'unsloth.exe'),
+      discoverVersion: async () => '2026.9.11',
+      inspectPort: async () => portState === 'FREE' ? { state: 'FREE' } : { state: 'LISTENING', pid: 52002 },
+      processTreeContains: async (rootPid, targetPid) => rootPid === 52001 && targetPid === 52002,
+      authTokenProvider: async () => null,
+      fetcher: async input => {
+        const pathname = new URL(String(input)).pathname;
+        if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+        if (pathname === '/api/inference/load') return jsonResponse({ completed: true });
+        return jsonResponse({});
+      },
+      spawnProcess: (() => { portState = 'LISTENING'; return fakeChild; }) as never,
+      startupTimeoutMs: 1000,
+      now: () => FIXED_TIME
+    });
+    await adapter.load({ modelId: 'owned-model', modelPath: artifact });
+    portState = 'FREE';
+    fakeChild.exitCode = 17;
+    fakeChild.emit('exit', 17, null);
+    const status = RuntimeStatusResponse.parse(await adapter.status());
+    assert.equal(status.health, 'STOPPED');
+    assert.equal(status.ownership, 'UNKNOWN');
+    assert.equal(status.loaded_model, null);
+    assert.equal(status.last_error?.code, 'UNSLOTH_PROCESS_EXITED');
+    assert.match(status.last_error?.message ?? '', /code=17/);
+    assert.doesNotMatch(status.last_error?.message ?? '', /[A-Za-z]:\\|token|credential/i);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

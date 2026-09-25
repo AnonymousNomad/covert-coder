@@ -26,6 +26,17 @@ import {
 const STUDIO_SERVICE_MARKER = 'Unsloth UI Backend';
 const DEFAULT_PORT = 18_888;
 const DEFAULT_START_TIMEOUT_MS = 20_000;
+const OWNERSHIP_PROBE_ATTEMPTS = 3;
+const OWNERSHIP_PROBE_RETRY_MS = 100;
+const OWNERSHIP_DIAGNOSTIC_CODES = new Set([
+  'OWNERSHIP_UNVERIFIED',
+  'OWNED_PROCESS_HANDLE_MISSING',
+  'OWNED_LISTENER_NOT_LISTENING',
+  'PORT_INSPECTION_UNKNOWN',
+  'PROCESS_TREE_UNVERIFIED',
+  'FOREIGN_LISTENER',
+  'UNSLOTH_PROCESS_EXITED'
+]);
 export const UNSLOTH_API_KEY_CREDENTIAL_ID = 'unsloth-local-runtime';
 
 type PortInspection = { state: 'FREE' } | { state: 'LISTENING'; pid: number } | { state: 'UNKNOWN' };
@@ -36,6 +47,11 @@ type ProcessInfo = { parentPid: number; startedAt: number };
 type ProcessInfoReader = (pid: number) => Promise<ProcessInfo | null>;
 type ProcessTreeProbe = (rootPid: number, targetPid: number) => Promise<boolean | null>;
 type TerminateOwnedProcess = (child: ChildProcess, pid: number) => Promise<void>;
+type CliInvocation = {
+  command: string;
+  args: string[];
+  windowsVerbatimArguments?: boolean;
+};
 
 export interface UnslothRuntimeAdapterOptions {
   workspace: string;
@@ -86,16 +102,46 @@ function parseLoopbackEndpoint(input: string): URL {
   return url;
 }
 
+export function selectUnslothExecutable(candidates: string[], platform: NodeJS.Platform = process.platform): string | null {
+  const paths = candidates.map(value => value.trim()).filter(Boolean);
+  if (platform === 'win32') return paths.find(value => path.extname(value).toLowerCase() === '.cmd') ?? null;
+  return paths[0] ?? null;
+}
+
+export function buildUnslothCliInvocation(executable: string, args: string[], platform: NodeJS.Platform = process.platform): CliInvocation {
+  if (platform === 'win32' && path.extname(executable).toLowerCase() === '.cmd') {
+    if (/["%\r\n]/u.test(executable) || args.some(argument => !/^[A-Za-z0-9_.:-]+$/u.test(argument))) {
+      throw new RuntimeAdapterError('INVALID_CLI_INVOCATION', 'Unsloth wrapper path or argument is not safe for the Windows command shell');
+    }
+    return {
+      command: 'cmd.exe',
+      args: ['/d', '/v:off', '/s', '/c', `""${path.win32.normalize(executable)}" ${args.join(' ')}"`],
+      windowsVerbatimArguments: true
+    };
+  }
+  return { command: executable, args };
+}
+
+function resolveConfiguredExecutable(configured: string): string | null {
+  const resolved = path.resolve(configured);
+  if (process.platform !== 'win32') return existsSync(resolved) ? resolved : null;
+  if (path.extname(resolved).toLowerCase() === '.cmd') return existsSync(resolved) ? resolved : null;
+  if (path.extname(resolved).toLowerCase() === '.exe') {
+    const wrapper = resolved.replace(/\.exe$/i, '.cmd');
+    return existsSync(wrapper) ? wrapper : null;
+  }
+  return null;
+}
+
 function discoverExecutable(): Promise<string | null> {
   const configured = process.env.AIDE_UNSLOTH_CLI;
-  if (configured) return Promise.resolve(existsSync(configured) ? path.resolve(configured) : null);
+  if (configured) return Promise.resolve(resolveConfiguredExecutable(configured));
   const command = process.platform === 'win32' ? 'where.exe' : 'which';
   return new Promise(resolve => {
     execFile(command, ['unsloth'], { windowsHide: true, timeout: 3000 }, (error, stdout) => {
       if (error) return resolve(null);
-      const candidate = String(stdout).split(/\r?\n/).map(value => value.trim()).find(value =>
-        value.length > 0 && existsSync(value) && (process.platform !== 'win32' || path.extname(value).toLowerCase() === '.exe')
-      );
+      const candidates = String(stdout).split(/\r?\n/).map(value => value.trim()).filter(value => value.length > 0 && existsSync(value));
+      const candidate = selectUnslothExecutable(candidates);
       resolve(candidate ? path.resolve(candidate) : null);
     });
   });
@@ -290,6 +336,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   private startedAt: string | null = null;
   private loadedModel: RuntimeModelIdentityT | null = null;
   private loadedPath: string | null = null;
+  private readonly expectedChildExits = new WeakSet<ChildProcess>();
   private activeControllers = new Set<AbortController>();
   private lastError: RuntimeStatusResponseT['last_error'] = null;
   private lastHealth: RuntimeHealthT = 'UNKNOWN';
@@ -337,8 +384,14 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   }
 
   private discoverVersion(executable: string): Promise<string | null> {
+    const invocation = buildUnslothCliInvocation(executable, ['--version']);
+    const commandShell = invocation.windowsVerbatimArguments === true;
     return new Promise(resolve => {
-      execFile(executable, ['--version'], { windowsHide: true, timeout: 4000 }, (error, stdout, stderr) => {
+      execFile(invocation.command, invocation.args, {
+        windowsHide: true,
+        timeout: commandShell ? 15_000 : 4000,
+        ...(commandShell ? { windowsVerbatimArguments: true } : {})
+      }, (error, stdout, stderr) => {
         if (error) return resolve(null);
         const text = `${String(stdout)}\n${String(stderr)}`;
         const match = text.match(/\b(?:unsloth(?:[- ]studio)?\s+)?v?(\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]+)?)\b/i);
@@ -379,21 +432,80 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     return this.externallyManaged && this.ownership === 'USER_OWNED' || this.ownership === 'COVERT_OWNED';
   }
 
+  private recordOwnershipError(code: string, message: string): void {
+    this.lastError = { code, message, at: this.now().toISOString() };
+  }
+
+  private clearOwnershipError(): void {
+    if (this.lastError !== null && OWNERSHIP_DIAGNOSTIC_CODES.has(this.lastError.code)) this.lastError = null;
+  }
+
   private async verifyOwnedListener(): Promise<boolean> {
     if (this.externallyManaged && this.ownership === 'USER_OWNED') return true;
     const child = this.processHandle;
-    if (child === null || child.pid === undefined || child.exitCode !== null) return false;
-    const listener = await this.inspectPort(Number(this.endpoint.port));
-    this.portState = listener.state;
-    this.listenerPid = listener.state === 'LISTENING' ? listener.pid : null;
-    if (listener.state !== 'LISTENING') {
+    if (child === null || child.pid === undefined) {
       this.ownership = 'UNKNOWN';
+      this.lastHealth = 'UNKNOWN';
+      this.recordOwnershipError('OWNED_PROCESS_HANDLE_MISSING', 'Covert has no live process handle for the Unsloth listener');
       return false;
     }
-    const relation = listener.pid === child.pid ? true : await this.processTreeContains(child.pid, listener.pid).catch(() => null);
-    const owned = relation === true;
-    this.ownership = owned ? 'COVERT_OWNED' : relation === false ? 'FOREIGN' : 'UNKNOWN';
-    return owned;
+    if (child.exitCode !== null) {
+      this.ownership = 'UNKNOWN';
+      this.lastHealth = 'STOPPED';
+      this.recordOwnershipError(
+        'UNSLOTH_PROCESS_EXITED',
+        `Covert-owned Unsloth launcher exited (code=${child.exitCode}, signal=${child.signalCode ?? 'none'})`
+      );
+      return false;
+    }
+
+    for (let attempt = 0; attempt < OWNERSHIP_PROBE_ATTEMPTS; attempt++) {
+      let listener: PortInspection;
+      try {
+        listener = await this.inspectPort(Number(this.endpoint.port));
+      } catch {
+        listener = { state: 'UNKNOWN' };
+      }
+      this.portState = listener.state;
+      this.listenerPid = listener.state === 'LISTENING' ? listener.pid : null;
+      if (listener.state === 'FREE') {
+        this.ownership = 'UNKNOWN';
+        this.lastHealth = 'UNKNOWN';
+        this.recordOwnershipError('OWNED_LISTENER_NOT_LISTENING', 'the Covert-owned Unsloth listener is not present on its configured port');
+        return false;
+      }
+      if (listener.state === 'UNKNOWN') {
+        if (attempt + 1 < OWNERSHIP_PROBE_ATTEMPTS) {
+          await new Promise(resolve => setTimeout(resolve, OWNERSHIP_PROBE_RETRY_MS));
+          continue;
+        }
+        this.ownership = 'UNKNOWN';
+        this.lastHealth = 'UNKNOWN';
+        this.recordOwnershipError('PORT_INSPECTION_UNKNOWN', 'Windows could not establish which process owns the Unsloth port');
+        return false;
+      }
+
+      const relation = listener.pid === child.pid ? true : await this.processTreeContains(child.pid, listener.pid).catch(() => null);
+      if (relation === true) {
+        this.ownership = 'COVERT_OWNED';
+        return true;
+      }
+      if (relation === false) {
+        this.ownership = 'FOREIGN';
+        this.lastHealth = 'UNKNOWN';
+        this.recordOwnershipError('FOREIGN_LISTENER', 'the Unsloth port is listening in a process tree Covert did not start');
+        return false;
+      }
+      if (attempt + 1 < OWNERSHIP_PROBE_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, OWNERSHIP_PROBE_RETRY_MS));
+        continue;
+      }
+      this.ownership = 'UNKNOWN';
+      this.lastHealth = 'UNKNOWN';
+      this.recordOwnershipError('PROCESS_TREE_UNVERIFIED', 'Windows could not prove that the Unsloth listener descends from the retained Covert process');
+      return false;
+    }
+    return false;
   }
 
   private endpointUrl(route: string): string {
@@ -401,7 +513,9 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   }
 
   private async fetchNoRedirect(route: string, init: RequestInit = {}, withAuth = false): Promise<Response> {
-    if (!this.canContactEndpoint() || !(await this.verifyOwnedListener())) {
+    const userOwnedEndpoint = this.externallyManaged && this.ownership === 'USER_OWNED';
+    const canReproveOwnedEndpoint = !this.externallyManaged && this.ownership !== 'FOREIGN' && this.processHandle !== null;
+    if ((!userOwnedEndpoint && !canReproveOwnedEndpoint) || !(await this.verifyOwnedListener())) {
       throw new RuntimeAdapterError('OWNERSHIP_UNVERIFIED', 'Unsloth endpoint ownership is not verified; refusing to connect');
     }
     if (withAuth && await this.health() !== 'HEALTHY') {
@@ -611,17 +725,23 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       if (!response.ok) throw new RuntimeAdapterError('INFERENCE_FAILED', `Unsloth inference returned HTTP ${response.status}`);
       if (streaming) {
         if (response.body === null) throw new RuntimeAdapterError('STREAM_UNAVAILABLE', 'Unsloth returned no streaming body');
-        return await this.readStream(response, request.modelId, onDelta, startedAt);
+        const streamed = await this.readStream(response, request.modelId, onDelta, startedAt);
+        this.clearOwnershipError();
+        return streamed;
       }
       const result = await response.json().catch(() => null) as ChatResponse | null;
       if (result === null || result.error) throw new RuntimeAdapterError('INVALID_INFERENCE_RESPONSE', 'Unsloth returned an invalid inference response');
       const choice = result.choices?.[0];
       const text = typeof choice?.message?.content === 'string' ? choice.message.content : '';
       const toolCalls = Array.isArray(choice?.message?.tool_calls) ? choice.message.tool_calls : [];
-      return this.result(request.modelId, text, toolCalls, result.usage, choice?.finish_reason, startedAt);
+      const inference = this.result(request.modelId, text, toolCalls, result.usage, choice?.finish_reason, startedAt);
+      this.clearOwnershipError();
+      return inference;
     } catch (error) {
       const safe = safeError(error);
-      this.lastError = { code: safe.code, message: safe.message, at: this.now().toISOString() };
+      if (!(safe.code === 'OWNERSHIP_UNVERIFIED' && this.lastError !== null && OWNERSHIP_DIAGNOSTIC_CODES.has(this.lastError.code))) {
+        this.lastError = { code: safe.code, message: safe.message, at: this.now().toISOString() };
+      }
       throw error;
     } finally {
       externalSignal.removeEventListener('abort', abort);
@@ -728,8 +848,16 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       throw new RuntimeAdapterError('OWNERSHIP_CHANGED', 'Unsloth listener ownership changed before shutdown; no process was terminated');
     }
     const ownedListenerPid = this.listenerPid;
-    const response = await this.fetchNoRedirect('/api/shutdown', { method: 'POST' }, true);
+    this.expectedChildExits.add(child);
+    let response: Response;
+    try {
+      response = await this.fetchNoRedirect('/api/shutdown', { method: 'POST' }, true);
+    } catch (error) {
+      this.expectedChildExits.delete(child);
+      throw error;
+    }
     if (!response.ok) {
+      this.expectedChildExits.delete(child);
       throw new RuntimeAdapterError('UNSLOTH_SHUTDOWN_REJECTED', 'Unsloth rejected the authenticated graceful shutdown request (HTTP ' + String(response.status) + ')');
     }
 
@@ -816,6 +944,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       verifiedTree = await this.verifyOwnedListener().catch(() => false) && this.ownership === 'COVERT_OWNED';
     }
     if (child.exitCode === null) {
+      this.expectedChildExits.add(child);
       try {
         if (verifiedTree && pid !== undefined) await this.terminateOwnedProcess(child, pid);
         else child.kill('SIGTERM');
@@ -861,23 +990,31 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     }
     env.UNSLOTH_API_ONLY = '1';
     env._UNSLOTH_CLOUDFLARE_INTENT = 'disabled';
-    const child = this.spawnProcess(cliPath, ['studio', '-H', '127.0.0.1', '-p', String(port), '--api-only'], {
+    const invocation = buildUnslothCliInvocation(cliPath, ['studio', '-H', '127.0.0.1', '-p', String(port), '--api-only']);
+    const child = this.spawnProcess(invocation.command, invocation.args, {
       cwd: this.workspace,
       env,
       stdio: 'ignore',
       windowsHide: true,
-      detached: process.platform !== 'win32'
+      detached: process.platform !== 'win32',
+      ...(invocation.windowsVerbatimArguments === true ? { windowsVerbatimArguments: true } : {})
     });
     this.processHandle = child;
     this.ownership = 'UNKNOWN';
     this.startedAt = this.now().toISOString();
-    child.once('exit', () => {
+    child.once('exit', (code, signal) => {
       if (this.processHandle === child) {
         this.processHandle = null;
         this.ownership = 'UNKNOWN';
         this.lastHealth = 'STOPPED';
         this.loadedModel = null;
         this.loadedPath = null;
+        if (!this.expectedChildExits.has(child)) {
+          this.recordOwnershipError(
+            'UNSLOTH_PROCESS_EXITED',
+            `Covert-owned Unsloth launcher exited unexpectedly (code=${code === null ? 'unknown' : code}, signal=${signal ?? 'none'})`
+          );
+        }
       }
     });
     try {
