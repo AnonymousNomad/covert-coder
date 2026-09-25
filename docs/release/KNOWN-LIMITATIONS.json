@@ -1,0 +1,18 @@
+{
+  "schema": "covert.source-release-known-limitations.v1",
+  "candidate_sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "limitations": [
+    { "id": "resident-qualification", "status": "PENDING", "text": "The permanent Resident model is still awaiting qualification and Resident-dependent acceptance." },
+    { "id": "packaged-installer", "status": "NOT_CERTIFIED", "text": "No packaged desktop installer is certified by this source-release record." },
+    { "id": "capability-fabric", "status": "POST_CANDIDATE", "text": "Capability Fabric v0.1 runtime is not shipped in this candidate." },
+    { "id": "delegation", "status": "POST_CANDIDATE", "text": "Model-neutral delegation runtime is not shipped in this candidate." },
+    { "id": "skills-loader-change", "status": "DEFERRED", "text": "The separate Luna skills-loader semantic change is not included in the immutable candidate." },
+    { "id": "bundled-models", "status": "LIMITED", "text": "GGUF artifacts are not bundled in the source checkout; local model readiness requires an installed compatible runtime and model artifact." },
+    { "id": "platform-skips", "status": "SCOPED", "text": "DPAPI/desktop-list, DAP/debugpy, LSP, and other environment-dependent checks retain their documented platform or tool prerequisites." },
+    { "id": "migration-waivers", "status": "DOCUMENTED", "text": "The candidate retains documented architecture-decision waivers for selected legacy chat/model routes." },
+    { "id": "external-providers", "status": "OPT_IN", "text": "External providers require explicit enrollment and consent; local operation remains the default." },
+    { "id": "kimi-proof", "status": "ENVIRONMENT_BLOCKED", "text": "Kimi live proof was blocked on the certification machine by missing entitlement." },
+    { "id": "tauri-glib", "status": "DESKTOP_PACKAGING_BLOCKER", "text": "GitHub Dependabot alert GHSA-wrw7-89jp-8q8g observes glib 0.18.5 through the Linux-capable Tauri desktop graph; no packaged desktop binary is certified, so this remains a separate packaging-lane blocker and not a source-core claim." },
+    { "id": "sbom-checksums", "status": "ASSEMBLY_IN_PROGRESS", "text": "The source-release SBOM, provenance manifest, release manifest, and SHA-256 checksums are generated in the separate assembly artifact set and must be refreshed if the release input changes." }
+  ]
+}

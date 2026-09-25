@@ -1,0 +1,31 @@
+{
+  "schema": "covert.permanent-resident-release-slot.v1",
+  "candidate_sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "status": "WAITING_FOR_RESIDENT",
+  "accepted_artifact": {
+    "model_name": "NOT_RECORDED",
+    "repository": "NOT_RECORDED",
+    "artifact_filename": "NOT_RECORDED",
+    "sha256": "NOT_RECORDED",
+    "quantization": "NOT_RECORDED",
+    "license": "NOT_RECORDED",
+    "runtime_profile": "NOT_RECORDED",
+    "chat_template": "NOT_RECORDED",
+    "resource_expectations": "NOT_RECORDED",
+    "qualification_evidence": "NOT_RECORDED"
+  },
+  "integration_gates_after_acceptance": [
+    "first-run Resident readiness",
+    "Resident plus local model coexistence",
+    "real operator request",
+    "Skill routing",
+    "worker routing",
+    "Authority",
+    "Harness",
+    "Veritas",
+    "Mission Receipt",
+    "restart",
+    "resource behavior"
+  ],
+  "substitution_policy": "Do not substitute an unqualified model for the accepted Resident artifact."
+}

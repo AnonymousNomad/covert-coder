@@ -1,7 +1,7 @@
-import type { Route } from '../server.ts';
+import type { Route, RouteContext } from '../server.ts';
 import { RouteError } from '../server.ts';
-import type { OperationInput } from '../../../common/security/operation-policy.mjs';
-import { RouterError, type ModelRouter } from '../services/model-router.ts';
+import { OPERATION_POLICY, type OperationInput } from '../../../common/security/operation-policy.mjs';
+import { ChatTargetChangedError, RouterError, type ModelRouter, type ResolvedChatAuthorityTarget } from '../services/model-router.ts';
 import type { ModelRuntime } from '../services/model-runtime.ts';
 import type { ChatStore } from '../services/chat-store.ts';
 import type { ChatRequestT, ChatMessageT, ChatStreamRequestT } from '../../../common/contracts/chat.ts';
@@ -48,10 +48,55 @@ type ChatRouteOptions = {
   providers?: ChatContextProviders;
 };
 
+export function chatAuthorityOperationKind(
+  executionClass: string,
+  policies: Readonly<Record<string, unknown>> = OPERATION_POLICY as Readonly<Record<string, unknown>>
+): 'capability.execute' | 'capability.external' | null {
+  const kind = executionClass === 'LOCAL'
+    ? 'capability.execute'
+    : executionClass === 'EXTERNAL' ? 'capability.external' : null;
+  return kind !== null && Object.hasOwn(policies, kind) ? kind : null;
+}
+
 function toRouteError(error: unknown): RouteError {
   if (error instanceof RouterError) return new RouteError(error.code, error.message);
+  if (error instanceof ChatTargetChangedError) return new RouteError('CONFLICT', error.message);
   if (error instanceof Error && error.name === 'AbortError') return new RouteError('TIMEOUT', 'chat stream aborted');
   return new RouteError('CHILD_FAILED', error instanceof Error ? error.message : 'chat failed');
+}
+
+function describeChatOperation(
+  router: ModelRouter,
+  workspace: string,
+  routePath: '/api/chat' | '/api/chat/stream',
+  targets: WeakMap<RouteContext, ResolvedChatAuthorityTarget>
+) {
+  return async (context: RouteContext, taskId: string): Promise<OperationInput> => {
+    const request = context.body as ChatRequestT | ChatStreamRequestT;
+    const resolution = router.resolveAuthorityTarget(request.modelId);
+    if (resolution.status !== 'RESOLVED') {
+      throw new RouteError('FORBIDDEN', `chat execution target is unresolved (${resolution.reason})`);
+    }
+    const target = resolution.target;
+    const kind = chatAuthorityOperationKind(target.binding.execution_class);
+    if (kind === null) {
+      throw new RouteError('FORBIDDEN', 'chat Authority operation has no registered policy');
+    }
+    targets.set(context, target);
+    return {
+      workspace,
+      taskId,
+      kind,
+      args: { route: `POST ${routePath}`, body: request, chat_target: target.binding }
+    };
+  };
+}
+
+function executionTarget(context: RouteContext, targets: WeakMap<RouteContext, ResolvedChatAuthorityTarget>): ResolvedChatAuthorityTarget {
+  if (context.execution === undefined) throw new RouteError('FORBIDDEN', 'Authority execution is required before chat dispatch');
+  const target = targets.get(context);
+  if (target === undefined) throw new RouteError('FORBIDDEN', 'Authority-resolved chat target is unavailable');
+  return target;
 }
 
 function createComposer(runtime: ModelRuntime, workspace: string, options?: ChatRouteOptions) {
@@ -70,16 +115,20 @@ export function routeForChat(
   options?: ChatRouteOptions
 ): Route {
   const composer = createComposer(runtime, workspace, options);
+  const targets = new WeakMap<RouteContext, ResolvedChatAuthorityTarget>();
   return {
     method: 'POST',
     path: '/api/chat',
     body: ChatRequestCompat,
     response: ChatResponse,
-    handler: async ({ body }) => {
+    describeOperation: describeChatOperation(router, workspace, '/api/chat', targets),
+    handler: async context => {
+      const target = executionTarget(context, targets);
+      const body = context.body;
       const request = body as ChatRequestT;
       try {
         const composed = await composer.compose(request);
-        const result = await gatedChat(router, request, composed.messages);
+        const result = await gatedChat(router, target, request, composed.messages);
         return {
           text: result.text,
           modelId: result.modelId,
@@ -103,13 +152,17 @@ export function routeForChatStream(
   options?: ChatRouteOptions
 ): Route {
   const composer = createComposer(runtime, workspace, options);
+  const targets = new WeakMap<RouteContext, ResolvedChatAuthorityTarget>();
   return {
     method: 'POST',
     path: '/api/chat/stream',
     body: ChatStreamRequest,
     response: ChatStreamDone,
+    describeOperation: describeChatOperation(router, workspace, '/api/chat/stream', targets),
     handler: () => ({ done: true as const, modelId: '', usedApprox: 0, dropped: 0, truncatedSystem: false }),
-    stream: async ({ body }, res) => {
+    stream: async (context, res) => {
+      const target = executionTarget(context, targets);
+      const body = context.body;
       const request = body as ChatStreamRequestT;
       res.writeHead(200, {
         'content-type': 'text/event-stream',
@@ -128,7 +181,7 @@ export function routeForChatStream(
       };
       try {
         const composed = await composer.compose({ modelId: request.modelId, messages: request.messages, harness: true });
-        const result = await router.chatStream(request.modelId, composed.messages, delta => {
+        const result = await router.chatStreamResolvedTarget(target, composed.messages, delta => {
           const parsed = ChatStreamDelta.safeParse({ delta });
           if (parsed.success) write(parsed.data);
         }, controller.signal);
@@ -154,13 +207,14 @@ export function routeForChatStream(
 
 async function gatedChat(
   router: ModelRouter,
+  target: ResolvedChatAuthorityTarget,
   request: ChatRequestT,
   messages: ChatMessageT[]
 ): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number; gated?: { n: number; picked: number; all_passed: boolean; log: Array<{ attempt: number; temperature: number; pass: boolean; penalty: number }> } }> {
   const n = Math.min(Math.max(request.options?.n ?? 1, 1), 4);
   const baseTemp = request.options?.temperature ?? 0.2;
   if (n <= 1) {
-    return router.chat(request.modelId, messages, {
+    return router.chatResolvedTarget(target, messages, {
       maxTokens: request.options?.maxTokens,
       temperature: baseTemp,
       timeoutMs: request.options?.timeoutMs
@@ -171,7 +225,7 @@ async function gatedChat(
   const log: Array<{ attempt: number; temperature: number; pass: boolean; penalty: number }> = [];
   for (let attempt = 0; attempt < n; attempt++) {
     const temperature = attempt === 0 ? baseTemp : Math.min(baseTemp + attempt * 0.25, 1.2);
-    const candidate = await router.chat(request.modelId, messages, {
+    const candidate = await router.chatResolvedTarget(target, messages, {
       maxTokens: request.options?.maxTokens,
       temperature,
       timeoutMs: request.options?.timeoutMs

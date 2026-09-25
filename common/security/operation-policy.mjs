@@ -83,12 +83,6 @@ const HTTP_POLICY = new Map([
   ['GET /api/models/status', 'capability.read'], ['GET /api/model/ready', 'capability.read'],
   ['GET /api/models/routes', 'capability.read'],
   ['GET /api/chat/history', 'capability.read'],
-  // Chat is an approval-bound operation: the approved op binds the exact
-  // messages body, which also binds any external transmission when the
-  // resolved route is a remote provider. (Ported from the accepted
-  // local-inference production-gate repair; production previously waived
-  // these routes, leaving chat unreachable behind the governed dispatcher.)
-  ['POST /api/chat', 'capability.execute'], ['POST /api/chat/stream', 'capability.execute'],
   // Local model acquisition path (ported from the accepted local-inference
   // production-gate lane): import/ingest were waived and therefore denied at
   // the dispatcher, breaking the artifact -> registered -> installed ->

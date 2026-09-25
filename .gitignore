@@ -57,3 +57,7 @@ FSI/
 # Desktop packaged-stack staging: full mirror of the source tree + node_modules
 # for the offline stack launcher. Regenerated per build, like desktop/frontend/.
 desktop/resources/
+
+# Source-release assets are generated and attached separately; they are not
+# repository source and must not be committed into the product tree.
+release-artifacts/

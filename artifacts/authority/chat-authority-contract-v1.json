@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "contract": "CHAT_AUTHORITY_CONTRACT_V1",
+  "status": "IMPLEMENTED_TESTED",
+  "base_sha": "e23aec80cd05ab0c237eba793421bb5e7c5a57e7",
+  "implementation_commit": "1d8e94a",
+  "worktree_guard_commit": "9b6e05a8a0dc6f9337693a145c87fa7ccc151b14",
+  "resident_reproduction_checkpoint": "323fdb3ae800996e19eecc6fd53b3d88bdf4a2bf",
+  "resident_integration": {
+    "merge_base": "8ea6c8b36857f3136996a4cc149f1fafeb57e7eb",
+    "authority_base_is_resident_ancestor": false,
+    "blind_cherry_pick_recommended": false,
+    "method": "reconcile contract files on a clean Resident continuation; do not import unrelated base commits"
+  },
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/chat",
+      "descriptor": "request-aware",
+      "local_operation": "capability.execute",
+      "external_operation": "capability.external",
+      "unknown": "DENY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/stream",
+      "descriptor": "request-aware",
+      "local_operation": "capability.execute",
+      "external_operation": "capability.external",
+      "unknown": "DENY"
+    }
+  ],
+  "resolution": {
+    "pre_authorization_side_effects": [],
+    "target_binding_fields": [
+      "route",
+      "execution_class",
+      "route_id",
+      "model_id",
+      "source",
+      "runtime_class",
+      "endpoint_origin",
+      "target_revision",
+      "provider_id",
+      "provider_model",
+      "egress_host"
+    ],
+    "target_revision_is_artifact_hash": false,
+    "dispatch_revalidates_target": true,
+    "fallback_on_target_change": false,
+    "credentials_in_receipt": false
+  },
+  "local_only_enforcement_added": false,
+  "real_external_provider_call_made": false,
+  "external_stream_transport": "BUFFERED_PROVIDER_RESPONSE_AS_ONE_SSE_DELTA",
+  "runtime_v1_modified": false,
+  "resident_experiment_modified": false,
+  "resident_f1b_rerun": false,
+  "verification": {
+    "route_authority_coverage": {
+      "status": "PASS",
+      "routes": 233,
+      "unclassified": 0,
+      "migration_waived_unrelated_routes": 20
+    },
+    "focused_authority_regression": {
+      "status": "PASS",
+      "tests": 76,
+      "failed": 0
+    },
+    "architecture_suite": {
+      "command": "node scripts/run-arch.mjs",
+      "test_files": 110,
+      "tests": 702,
+      "passed": 691,
+      "skipped": 11,
+      "failed": 0
+    },
+    "node_typescript": "PASS",
+    "changed_file_eslint": "PASS",
+    "openapi_drift": "PASS",
+    "git_diff_check": "PASS",
+    "secret_pattern_scan": "PASS"
+  },
+  "worktree_guard": {
+    "script": "scripts/ci-worktree-check.mjs",
+    "rejects_dirty_tree": true,
+    "supports_expected_branch": true,
+    "supports_expected_head": true,
+    "resident_runner_integration": "HANDOFF_REQUIRED"
+  }
+}

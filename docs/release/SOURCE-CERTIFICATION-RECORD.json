@@ -1,0 +1,49 @@
+{
+  "schema": "covert.source-certification-record.v1",
+  "release_classification": "SOURCE_RELEASE_CORE_CERTIFIED",
+  "candidate_sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "candidate_branch": "audit/wiring-ledger",
+  "candidate_parent": "93470116536718c9af089dc7e2a7e9509eced31f",
+  "candidate_commit_subject": "chore(release): immutable candidate freeze - claim matrix, limitations, fabric post-candidate, isolation evidence",
+  "candidate_immutable": true,
+  "certifier_modifications_to_candidate": 0,
+  "certification_record_owner": "Luna independent release certification",
+  "ci": {
+    "workflow": "AIDE CI",
+    "run_id": 35869659152,
+    "conclusion": "success",
+    "head_sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/35869659152"
+  },
+  "independent_results": {
+    "identity": { "status": "PASS", "evidence": "candidate SHA, branch, parent, and origin identity verified" },
+    "ci": { "status": "PASS", "evidence": "AIDE CI run 35869659152" },
+    "battery_integrity": { "status": "PASS", "evidence": "scripts/battery-guard.mjs; REQUESTED == DISCOVERED == EXECUTED; selftest 3/3" },
+    "regression": { "status": "PASS", "evidence": "140/140 guard-verified across 17 suites; 0 failures; 0 skips" },
+    "golden_mission": { "status": "PASS", "evidence": "candidate freeze record and golden mission evidence; unsupported completion remains honest" },
+    "false_success_attacks": { "status": "PASS", "evidence": "false VERIFIED 0; claim-without-evidence and stale/wrong-project evidence controls rejected" },
+    "two_project_isolation": { "status": "PASS", "evidence": "cross_project_leak 0; P11 isolation 8/8" },
+    "offline_behavior": { "status": "PASS", "evidence": "P09-OFFLINE.json; local-first consent-off behavior and zero egress" },
+    "skills": { "status": "PASS", "evidence": "P0.5 4/4 bounded discovery, correct selection, irrelevant exclusion, stage awareness" },
+    "process_hygiene": { "status": "PASS", "evidence": "owned strays 0; leaks 0; foreign processes untouched" },
+    "soak": { "status": "PASS", "evidence": "independent bounded soak recorded in certification evidence" },
+    "dependency_baseline": { "status": "PASS", "evidence": "candidate lockfile reconciled in DEPENDENCY-BASELINE-CERTIFIED.json" },
+    "security_tauri_disposition": { "status": "PASS_WITH_TRACKED_DESKTOP_LIMITATION", "evidence": "security/authority gates passed; desktop/Tauri glib item remains post-release packaging work" },
+    "claim_matrix": { "status": "PASS", "evidence": "docs/release/RELEASE-CLAIM-MATRIX.md reviewed; partial and post-candidate claims retained" },
+    "fresh_state_scope": { "status": "PASS_WITH_EXPLICIT_SCOPE", "evidence": "source fresh-state scope certified; packaged installer and permanent Resident remain outside this certification" }
+  },
+  "candidate_evidence": {
+    "freeze": "docs/release/CANDIDATE-FREEZE.md",
+    "claims": "docs/release/RELEASE-CLAIM-MATRIX.md",
+    "runstate": "docs/release/CORE-CLOSURE-RUNSTATE.md",
+    "regression_manifest": "artifacts/integration-certification/BATTERY-release-regression.json",
+    "battery_guard": "scripts/battery-guard.mjs"
+  },
+  "release_boundary": {
+    "permanent_resident": "WAITING_FOR_RESIDENT",
+    "packaged_installer": "NOT_CERTIFIED",
+    "capability_fabric": "POST_CANDIDATE",
+    "delegation": "POST_CANDIDATE",
+    "final_public_v1": "NOT_READY_UNTIL_RESIDENT_QUALIFICATION_AND_DEPENDENT_GATES"
+  }
+}

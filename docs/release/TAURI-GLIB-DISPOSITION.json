@@ -1,0 +1,53 @@
+{
+  "schema": "covert.tauri-glib-disposition.v1",
+  "alert": {
+    "provider": "GitHub Dependabot",
+    "number": 1,
+    "ghsa": "GHSA-wrw7-89jp-8q8g",
+    "rustsec": "RUSTSEC-2024-0429",
+    "severity": "medium",
+    "package": "glib",
+    "vulnerable_range": ">=0.15.0,<0.20.0",
+    "patched_version": ">=0.20.0",
+    "summary": "Unsoundness in glib::VariantStrIter iterator implementations",
+    "advisory_url": "https://github.com/advisories/GHSA-wrw7-89jp-8q8g"
+  },
+  "observed_graph": {
+    "manifest": "desktop/Cargo.lock",
+    "glib": "0.18.5",
+    "glib_macros": "0.18.5",
+    "gtk": "0.18.2",
+    "tauri": "2.11.5",
+    "tauri_runtime_wry": "2.11.4",
+    "path": "aide-sovereign-workbench -> tauri -> tauri-runtime-wry -> gtk -> glib",
+    "cargo_tree_direct_verification": "NOT_RUN_CARGO_UNAVAILABLE"
+  },
+  "scope_analysis": {
+    "source_core_node_runtime": "NOT_AFFECTED_BY_EXECUTION_SCOPE",
+    "source_archive_contains_desktop_source": true,
+    "prebuilt_desktop_binary_shipped": false,
+    "desktop_linux_build_dependency": "RUNTIME_DEPENDENCY_IF_LINUX_DESKTOP_BINARY_IS_BUILT",
+    "windows_source_path": "glib_is_in_the_lockfile_but_target-specific_compilation/reachability_was_not_claimed",
+    "exact_variantstriter_call_reachability": "NOT_ESTABLISHED",
+    "installer_certification": "NOT_CERTIFIED"
+  },
+  "classification": {
+    "source_release_core": "NOT_SOURCE_CORE_RELEASE_BLOCKER",
+    "desktop_installer": "RELEASE_BLOCKER_FOR_LINUX_DESKTOP_PACKAGING_UNTIL_RESOLVED_OR_ACCEPTED",
+    "required_action": "Track an upstream-compatible graph change that resolves glib >=0.20.0, then rebuild and recertify the desktop artifact.",
+    "tauri_version_minimum": "NOT_ESTABLISHED; Tauri 2.11.5 graph still resolves gtk/glib 0.18.x, so a version number alone is not a fix.",
+    "current_status": "POST_RELEASE_DESKTOP_PACKAGING_TRACK"
+  },
+  "evidence": {
+    "local": [
+      "desktop/Cargo.toml",
+      "desktop/Cargo.lock",
+      "desktop/Cargo.lock: glib 0.18.5, gtk 0.18.2, tauri 2.11.5, tauri-runtime-wry 2.11.4",
+      "cargo unavailable on the certification machine; no desktop build was claimed"
+    ],
+    "upstream": [
+      "https://rustsec.org/advisories/RUSTSEC-2024-0429.html",
+      "https://github.com/tauri-apps/tauri/issues/12561"
+    ]
+  }
+}

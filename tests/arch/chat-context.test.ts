@@ -82,12 +82,14 @@ test('chat routes deliver the same composed messages to their model transports',
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-routes-'));
   try {
     const seen: ChatMessageT[][] = [];
+    const target = { binding: { execution_class: 'LOCAL' } } as unknown as import('../../node/src/services/model-router.ts').ResolvedChatAuthorityTarget;
     const router = {
-      chat: async (_modelId: string, messages: ChatMessageT[]) => {
+      resolveAuthorityTarget: () => ({ status: 'RESOLVED', target }),
+      chatResolvedTarget: async (_target: unknown, messages: ChatMessageT[]) => {
         seen.push(messages);
         return { text: 'ok', modelId: 'local:test', timingMs: 1 };
       },
-      chatStream: async (_modelId: string, messages: ChatMessageT[], onDelta: (delta: string) => void) => {
+      chatStreamResolvedTarget: async (_target: unknown, messages: ChatMessageT[], onDelta: (delta: string) => void) => {
         seen.push(messages);
         onDelta('ok');
         return { modelId: 'local:test', usedApprox: 1, dropped: 0, truncatedSystem: false, timingMs: 1 };
@@ -102,7 +104,10 @@ test('chat routes deliver the same composed messages to their model transports',
       messages: [{ role: 'user', content: 'Explain the governed route boundary.' }]
     } satisfies ChatRequestT;
 
-    await routeForChat(router, runtime, workspace).handler({ query: {}, body: request });
+    const nonStream = routeForChat(router, runtime, workspace);
+    const nonStreamContext = { query: {}, body: request, execution: {} as never };
+    await nonStream.describeOperation!(nonStreamContext, 'fixture-chat');
+    await nonStream.handler(nonStreamContext);
     const response = new EventEmitter() as EventEmitter & {
       writeHead: (...args: unknown[]) => void;
       write: (chunk: string) => void;
@@ -111,7 +116,10 @@ test('chat routes deliver the same composed messages to their model transports',
     response.writeHead = () => {};
     response.write = () => {};
     response.end = () => {};
-    await routeForChatStream(router, runtime, workspace).stream!({ query: {}, body: request }, response as never);
+    const stream = routeForChatStream(router, runtime, workspace);
+    const streamContext = { query: {}, body: request, execution: {} as never };
+    await stream.describeOperation!(streamContext, 'fixture-chat');
+    await stream.stream!(streamContext, response as never);
 
     assert.equal(seen.length, 2);
     assert.deepEqual(seen[1], seen[0]);

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ModelRouter, RouterError } from '../../node/src/services/model-router.ts';
+import { ChatTargetChangedError, ModelRouter, RouterError } from '../../node/src/services/model-router.ts';
 import type { ModelRuntime } from '../../node/src/services/model-runtime.ts';
-import type { ProviderService } from '../../node/src/services/providers.ts';
+import type { ProviderDefinition, ProviderService } from '../../node/src/services/providers.ts';
 
 interface FakeEntry {
   id: string;
@@ -11,14 +11,21 @@ interface FakeEntry {
   roles: string[];
   endpoint: string;
   model: string;
+  artifact_uri: string;
+  file: string;
   context_tokens: number;
 }
 
 class FakeRuntime {
   entries: FakeEntry[] = [];
   ready = new Set<string>();
+  statusCalls = 0;
+  verifyCalls = 0;
+  chatCalls = 0;
+  chatStreamCalls = 0;
 
   status(): { runtime: boolean; models: Array<Record<string, unknown>> } {
+    this.statusCalls += 1;
     return {
       runtime: true,
       models: this.entries.map(entry => ({
@@ -35,6 +42,7 @@ class FakeRuntime {
   }
 
   async verifyEndpointModel(id: string): Promise<{ ready: boolean }> {
+    this.verifyCalls += 1;
     return { ready: this.ready.has(id) };
   }
 
@@ -51,32 +59,38 @@ class FakeRuntime {
   }
 
   async chat(id: string, messages: Array<{ role: string; content: string }>): Promise<{ text: string; modelId: string; timingMs: number }> {
+    this.chatCalls += 1;
     return { text: `local:${id}:${messages.length}`, modelId: id, timingMs: 1 };
   }
 
   async chatStream(id: string, messages: Array<{ role: string; content: string }>, onDelta: (delta: string) => void): Promise<void> {
+    this.chatStreamCalls += 1;
     onDelta(`stream:${id}:${messages.length}`);
   }
 }
 
 class FakeProviders {
   connected = new Set<string>();
+  listCalls = 0;
+  calls: Array<{ providerId: string; model: string }> = [];
 
   async list(): Promise<Array<{ id: string; status: string }>> {
+    this.listCalls += 1;
     return [...this.connected].map(id => ({ id, status: 'connected' }));
   }
 
   async chat(providerId: string, model: string, messages: Array<{ role: string; content: string }>): Promise<{ text: string; modelId: string; timingMs: number }> {
+    this.calls.push({ providerId, model });
     return { text: `cloud:${providerId}:${model}:${messages.length}`, modelId: `${providerId}:${model}`, timingMs: 2 };
   }
 }
 
-function makeRouter(runtime: FakeRuntime, providers: FakeProviders): ModelRouter {
-  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService);
+function makeRouter(runtime: FakeRuntime, providers: FakeProviders, catalog?: readonly ProviderDefinition[]): ModelRouter {
+  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, catalog);
 }
 
 function entry(id: string, status: string, roles: string[], contextTokens = 2048): FakeEntry {
-  return { id, name: `Model ${id}`, status, roles, endpoint: `http://127.0.0.1:8080/v1`, model: `${id}.gguf`, context_tokens: contextTokens };
+  return { id, name: `Model ${id}`, status, roles, endpoint: `http://127.0.0.1:8080/v1`, model: `${id}.gguf`, artifact_uri: `local://${id}.gguf`, file: `E:\\models\\${id}.gguf`, context_tokens: contextTokens };
 }
 
 test('routes() lists local entries and only connected cloud providers', async () => {
@@ -234,4 +248,76 @@ test('chat throws RouterError down when the route is unknown', async () => {
     () => router.chat('local:nope', [{ role: 'user', content: 'hi' }]),
     (error: unknown) => error instanceof RouterError && error.reason === 'down'
   );
+});
+
+test('Authority target resolution is read-only and classifies only registered local artifacts', () => {
+  const runtime = new FakeRuntime();
+  runtime.entries = [entry('fixture', 'ready', ['chat'])];
+  const providers = new FakeProviders();
+  const router = makeRouter(runtime, providers);
+
+  const resolution = router.resolveAuthorityTarget('local:fixture');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+  assert.equal(resolution.target.binding.execution_class, 'LOCAL');
+  assert.equal(resolution.target.binding.source, 'model-runtime');
+  assert.equal(resolution.target.binding.route_id, 'local:fixture');
+  assert.equal(runtime.statusCalls, 0, 'classification does not check runtime health');
+  assert.equal(runtime.verifyCalls, 0, 'classification does not probe a local endpoint');
+  assert.equal(providers.listCalls, 0, 'classification does not inspect provider connectivity');
+  assert.ok(!JSON.stringify(resolution.target.binding).includes('E:\\models'), 'private artifact path is not exposed');
+
+  runtime.entries[0]!.endpoint = 'https://api.openai.com/v1';
+  const disguised = router.resolveAuthorityTarget('local:fixture');
+  assert.deepEqual(disguised, { status: 'UNKNOWN', reason: 'local-source-not-contained' },
+    'a local registry label cannot authorize a non-loopback endpoint');
+
+  runtime.entries[0]!.endpoint = 'http://127.0.0.1:8080/v1';
+  runtime.entries[0]!.artifact_uri = 'https://models.example/fixture.gguf';
+  const loopbackOnly = router.resolveAuthorityTarget('local:fixture');
+  assert.deepEqual(loopbackOnly, { status: 'UNKNOWN', reason: 'local-source-not-contained' },
+    'a localhost runtime alone does not establish local artifact provenance');
+});
+
+test('provider identity wins over a local-looking model label', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  const catalog: readonly ProviderDefinition[] = [{
+    id: 'openai',
+    name: 'Local GGUF Mirror',
+    kind: 'openai-compatible',
+    baseUrl: 'https://api.openai.com/v1',
+    models: ['local-gguf-q4'],
+    contextLength: 4096,
+    egressHost: 'api.openai.com'
+  }];
+  const router = makeRouter(runtime, providers, catalog);
+  const resolution = router.resolveAuthorityTarget('cloud:openai:local-gguf-q4');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+  assert.equal(resolution.target.binding.execution_class, 'EXTERNAL');
+  assert.equal(resolution.target.binding.source, 'provider-service');
+  assert.equal(resolution.target.binding.provider_id, 'openai');
+  assert.equal(resolution.target.binding.provider_model, 'local-gguf-q4');
+
+  await router.chatResolvedTarget(resolution.target, [{ role: 'user', content: 'fixture' }]);
+  assert.equal(runtime.chatCalls, 0);
+  assert.deepEqual(providers.calls, [{ providerId: 'openai', model: 'local-gguf-q4' }]);
+});
+
+test('dispatch refuses a local target whose registered destination changed after resolution', async () => {
+  const runtime = new FakeRuntime();
+  runtime.entries = [entry('fixture', 'ready', ['chat'])];
+  const providers = new FakeProviders();
+  const router = makeRouter(runtime, providers);
+  const resolution = router.resolveAuthorityTarget('local:fixture');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+
+  runtime.entries[0]!.endpoint = 'http://127.0.0.1:8181/v1';
+  await assert.rejects(
+    () => router.chatResolvedTarget(resolution.target, [{ role: 'user', content: 'fixture' }]),
+    ChatTargetChangedError
+  );
+  assert.equal(runtime.chatCalls, 0, 'changed target is rejected before runtime dispatch');
 });

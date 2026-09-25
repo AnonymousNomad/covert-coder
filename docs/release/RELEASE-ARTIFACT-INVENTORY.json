@@ -1,0 +1,51 @@
+{
+  "schema": "covert.source-release-artifact-inventory.v1",
+  "generated_at": "2026-09-23T14:44:02.9873938Z",
+  "source_sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "source_branch": "audit/wiring-ledger",
+  "lockfile_sha256": "5E5DB8EC50247E517EF54F8521DA33502407F46E2E71AB79FC346B8B7A22AD6A",
+  "toolchain": {
+    "node": "v26.4.0",
+    "npm": "11.17.0",
+    "sbom_format": "CycloneDX 1.5",
+    "sbom_components": 163
+  },
+  "artifacts": [
+    {
+      "file": "covert-source-dc0d30ee.zip",
+      "purpose": "source archive from exact candidate object",
+      "bytes": 13642519,
+      "sha256": "CEA6D8396ED62A1EA08306AFED5585786D45F880686C9278474FC12603679042"
+    },
+    {
+      "file": "covert-source-dc0d30ee.sbom.cdx.json",
+      "purpose": "candidate dependency inventory",
+      "bytes": 168723,
+      "sha256": "A656538A368420E0283EB440BDD9BE3736944843497E1E47E30499F53A4D20B6"
+    },
+    {
+      "file": "covert-source-dc0d30ee.provenance.json",
+      "purpose": "source, certification, dependency, and artifact provenance",
+      "bytes": 2101,
+      "sha256": "415F73F9948187C51F0C9688FABB3C27391813D612E13B61B1CDF3F7A3AE33C6"
+    },
+    {
+      "file": "covert-source-dc0d30ee.release-manifest.json",
+      "purpose": "release metadata and artifact manifest",
+      "bytes": 1602,
+      "sha256": "1A540F80D96D2C82910B80D19D3213FE7D5058BE4B0639F3EAACFBCFCF159F27"
+    },
+    {
+      "file": "SHA256SUMS.txt",
+      "purpose": "SHA-256 verification list for the four release artifacts",
+      "bytes": 412,
+      "sha256": "C6E34135E5040696A5A0376A81BD3FC8D21F6F6B4E711367B1DDB69757212C77"
+    }
+  ],
+  "boundary": {
+    "installer_certified": false,
+    "permanent_resident_accepted": false,
+    "capability_fabric_shipped": false,
+    "delegation_shipped": false
+  }
+}

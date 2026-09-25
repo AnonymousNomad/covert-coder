@@ -1,0 +1,19 @@
+{
+  "schema": "covert.source-assembly-validation.v1",
+  "candidate_sha": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+  "worktree": "E:\\aide-source-release-assembly",
+  "observed": [
+    { "command": "npm ci --ignore-scripts", "status": "PASS", "result": "127 packages added; npm reported 0 vulnerabilities" },
+    { "command": "npm run doctor", "status": "PASS_WITH_WARNINGS", "result": "10/10 checks passed; warnings for llama-server, model artifact, and debugpy" },
+    { "command": "npm audit --package-lock-only --json", "status": "PASS", "result": "0 reported vulnerabilities at generation time" },
+    { "command": "npm run check", "status": "PASS", "result": "691 tests; 680 passed; 0 failed; 11 documented environment/migration skips" },
+    { "command": "npm run build:frontend", "status": "PASS_WITH_WARNING", "result": "1415 modules transformed; build completed; chunk-size warning retained" },
+    { "command": "npm start", "status": "PASS", "result": "typed frontend and facade became reachable on 4173/4777; no model artifact was required for startup" },
+    { "command": "HTTP source probe", "status": "PASS", "result": "GET / on 4173 returned 200; GET /api/health on 4777 returned 200" },
+    { "command": "owned stack shutdown", "status": "PASS", "result": "start owner tree terminated; ports 4173/4777/4778/4779 released; no assembly-worktree Node processes remained" },
+    { "command": "source archive integrity", "status": "PASS", "result": "1417 file entries; archived package-lock.json SHA-256 matches the certified lockfile hash" },
+    { "command": "interactive browser pairing", "status": "NOT_RUN_HERE", "result": "the non-PTY runner has closed stdin; pairing was independently covered by the frozen certification, not inferred from this probe" }
+  ],
+  "interpretation": "The source install/bootstrap/start path is reproducible on this Windows assembly machine. Optional model/debugger artifacts remain explicit warnings. This is not packaged-installer certification and does not close the permanent Resident gate.",
+  "candidate_modified": false
+}
