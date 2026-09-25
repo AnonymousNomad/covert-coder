@@ -57,3 +57,6 @@ FSI/
 # Desktop packaged-stack staging: full mirror of the source tree + node_modules
 # for the offline stack launcher. Regenerated per build, like desktop/frontend/.
 desktop/resources/
+
+# Tauri CLI generated schemas; regenerated from desktop capabilities/config.
+desktop/gen/schemas/
