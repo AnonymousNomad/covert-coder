@@ -408,11 +408,31 @@ try {
   await page.keyboard.press('Escape');
   assert.equal(await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).evaluate(node => node === document.activeElement), true);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  assert.equal(await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).evaluate(node => getComputedStyle(node).transitionDuration), '0s', 'reduced motion must disable control transitions');
+  const reducedMotionDurationsMs = await page.getByRole('button', { name: 'INTELLIGENCE', exact: true }).evaluate(node =>
+    getComputedStyle(node).transitionDuration.split(',').map(value => {
+      const duration = value.trim();
+      const amount = Number.parseFloat(duration);
+      return duration.endsWith('ms') ? amount : duration.endsWith('s') ? amount * 1000 : Number.NaN;
+    })
+  );
+  assert.ok(
+    reducedMotionDurationsMs.length > 0 && reducedMotionDurationsMs.every(duration => Number.isFinite(duration) && duration <= 0.01),
+    `reduced motion must clamp every control transition to effectively zero (<= 0.01ms); received ${reducedMotionDurationsMs.join(', ')}ms`
+  );
 
   await page.route('**/api/health', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false, error: { code: 'NOT_READY', message: 'Startup health probe unavailable' } }) }));
   await page.reload({ waitUntil: 'commit', timeout: bootTimeoutMs });
-  await page.locator('#covert-pairing-code').fill('p'.repeat(32));
+  try {
+    await page.locator('#covert-pairing-code').fill('p'.repeat(32));
+  } catch (error) {
+    const recoveryBootState = await page.evaluate(() => ({
+      pairingInputPresent: document.querySelector('#covert-pairing-code') !== null,
+      editorReady: document.querySelector('#app')?.getAttribute('data-editor-ready') === 'true',
+      appText: document.querySelector('#app')?.innerText.slice(0, 600) ?? null
+    }));
+    console.error(`RECOVERY BOOT STATE: ${JSON.stringify(recoveryBootState)}`);
+    throw error;
+  }
   await page.getByRole('button', { name: 'PAIR SESSION', exact: true }).click();
   await page.locator('#app[data-editor-ready="true"]').waitFor({ timeout: bootTimeoutMs });
   assert.equal(await page.getByText('Restoring editor session…', { exact: true }).count(), 0, 'failed health observation must not strand editor initialization');

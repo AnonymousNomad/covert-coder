@@ -13,13 +13,14 @@ export function createBlockedState(details: BlockedStateDetails): HTMLElement {
   const title = document.createElement('h3');
   title.textContent = 'WHY THIS IS BLOCKED / UNKNOWN';
   root.appendChild(title);
-  for (const [label, value] of [
+  const rows: Array<[string, string]> = [
     ['Blocked by', details.owner],
     ['Reason', details.reason],
     ['Current state', details.currentState],
-    ['Next valid action', details.nextAction],
-    ...(details.evidence ? [['Evidence', details.evidence]] : [])
-  ]) {
+    ['Next valid action', details.nextAction]
+  ];
+  if (details.evidence) rows.push(['Evidence', details.evidence]);
+  for (const [label, value] of rows) {
     const row = document.createElement('div');
     row.className = 'cockpit-blocked-state-row';
     const key = document.createElement('span');

@@ -220,7 +220,7 @@ export function createSettingsSurface(parent: HTMLElement, store: Store<AppState
       const select = document.createElement('select');
       select.className = 'cockpit-setting-control';
       select.dataset.settingControl = id;
-      const choices = id === 'appearance.textScale' ? [['normal', 'STANDARD'], ['large', 'LARGE']]
+      const choices: Array<[string, string]> = id === 'appearance.textScale' ? [['normal', 'STANDARD'], ['large', 'LARGE']]
         : id === 'appearance.effects' ? [['normal', 'STANDARD'], ['reduced', 'REDUCED'], ['off', 'OFF']]
           : [['standard', 'STANDARD'], ['compact', 'COMPACT']];
       for (const [choice, label] of choices) {

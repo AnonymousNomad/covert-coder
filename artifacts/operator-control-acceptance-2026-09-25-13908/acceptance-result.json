@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-09-25T11:45:04.055Z",
+  "evidenceDir": "artifacts/operator-control-acceptance-2026-09-25-13908",
+  "browser": "Microsoft Edge via Playwright",
+  "fixture": "deterministic local API mock; no model/runtime/provider calls",
+  "checks": {
+    "settingsOpen": true,
+    "settingsClose": true,
+    "settingsNavigation": true,
+    "settingsSearch": true,
+    "accessibleNames": true,
+    "matrixSwitch": true,
+    "defaultSwitch": true,
+    "matrixMainSurfaces": true,
+    "responsiveDesktopAndNarrow": true,
+    "healthTruthfulWithFixture": true,
+    "whyBlocked": true,
+    "themeReloadPersistence": true,
+    "workspaceScopeAndIsolation": true,
+    "workspaceReloadPersistence": true,
+    "reducedMotionAndEffects": true,
+    "preferenceRecovery_malformed": true,
+    "preferenceRecovery_unknown": true,
+    "preferenceRecovery_future-version": true,
+    "futureValueNotApplied": true,
+    "browserExceptions": true,
+    "consoleErrors": true
+  },
+  "screenshots": [
+    "01-default-settings.png",
+    "02-matrix-settings.png",
+    "03-matrix-workstation.png",
+    "04-system-health.png",
+    "05-why-blocked.png",
+    "06-global-setting-source.png",
+    "07-workspace-override-source.png"
+  ],
+  "notes": [
+    "Expected negative fixture response: GET /api/hardware/profile → 503 (1)"
+  ],
+  "httpErrors": [
+    {
+      "status": 503,
+      "method": "GET",
+      "route": "/api/hardware/profile"
+    }
+  ]
+}
