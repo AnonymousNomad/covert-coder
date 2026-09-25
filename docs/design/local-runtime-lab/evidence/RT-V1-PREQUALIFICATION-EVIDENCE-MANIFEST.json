@@ -1,0 +1,154 @@
+{
+  "manifest_version": 1,
+  "status": "OPEN_RESOURCE_BLOCKED",
+  "checkpoint": "RT-V1-CLOSEOUT-RESOURCE-PREFLIGHT",
+  "branch": "research/local-runtime-bakeoff",
+  "source_commit": "acccf9bc960d09e96ae6e97db65cf7aca76c39ac",
+  "evidence_root_note": "Raw runtime traces remain in the external Unsloth qualification directory. Paths below are internal evidence locations, not public runtime-state fields.",
+  "passport": {
+    "kind": "HISTORICAL_PRIOR_PROFILE_PASSPORT",
+    "path": "docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT.json",
+    "sha256": "ED72BE685F248236AA7CE63AA1D19A75D8587C61F2DED424B2CFCB93D2C4F03E",
+    "final_v1_closeout_passport_frozen": false
+  },
+  "entries": [
+    {
+      "role": "INSTALL_RUNBOOK",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/UNSLOTH-V1-INSTALL-RUNBOOK.md" },
+      "bytes": 7135,
+      "sha256": "8912571540C57A4147AAF061C9B4BA51DBAEA355C5F2D2F85E4B2F610386A4B2",
+      "provenance": "Canonical version-controlled installation/reconciliation procedure; exact historical successful bootstrap bytes were not retained."
+    },
+    {
+      "role": "INSTALL_RECONCILER",
+      "location": { "kind": "repository", "path": "scripts/qualification/unsloth-install-reconcile.ps1" },
+      "bytes": 2610,
+      "sha256": "2950FA0516CEAE3410496224E314C4BECCB47CE70AAB169AE245553C717EC8FD",
+      "provenance": "Read-only current-install version/profile probe."
+    },
+    {
+      "role": "CURRENT_INSTALL_RECONCILIATION",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/RT-V1-INSTALL-RECONCILIATION.json" },
+      "bytes": 438,
+      "sha256": "A2C4B3234086C8AF33DD361C23076F0F1F1553B53DE77B3E1272E87D8BA8816E",
+      "provenance": "Re-run in this closeout session; recognized Unsloth 2026.9.11, did not start runtime, and read no credentials."
+    },
+    {
+      "role": "RECENT_STOPPED_STATUS",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/RT-V1-STOPPED-STATUS-SNAPSHOT.json" },
+      "bytes": 1179,
+      "sha256": "C627718BA56459661F55998D49A44C4B6860F4CD2562D76F0470ABB5BC6F063C",
+      "provenance": "Read-only adapter observation: STOPPED, UNKNOWN ownership, no PID/model, no credentials read."
+    },
+    {
+      "role": "CURRENT_RESOURCE_GATE",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/RT-V1-CURRENT-RESOURCE-GATE.json" },
+      "bytes": 1626,
+      "sha256": "CDE83C1A745BF8DDFCD117376D9C62205ECAAC7EA1BE2FC1C21D47DF809799DB",
+      "provenance": "Fresh native Windows start-gate sample; RAM and commit below the configured thresholds; runtime was not started."
+    },
+    {
+      "role": "MODEL_MANAGER_HANDOFF_FIXTURE",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/LUNA-RUNTIME-STATUS-FIXTURE-V1.json" },
+      "bytes": 2726,
+      "sha256": "F3D4E77305859B8BF8C24799980CD758306C4606C871971F4386FC7D0FB07864",
+      "provenance": "Sanitized current stopped-state RuntimeStatusResponse plus explicit prior-profile and blocked-closeout distinctions."
+    },
+    {
+      "role": "OPERATOR_CONTROL_HANDOFF_FIXTURE",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/OPERATOR-CONTROL-RUNTIME-FIXTURE-V1.json" },
+      "bytes": 846,
+      "sha256": "78DB41321A3882D0AA0CBADF67C07DE8248C6C7A68BAC4A33224ABE777ECC770",
+      "provenance": "Sanitized current operator-facing runtime state; no private path, PID, or credential."
+    },
+    {
+      "role": "HISTORICAL_PROFILE_PASSPORT",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT.json" },
+      "bytes": 8266,
+      "sha256": "ED72BE685F248236AA7CE63AA1D19A75D8587C61F2DED424B2CFCB93D2C4F03E",
+      "provenance": "Accepted RT23 profile evidence retained without modification; not the final closeout Passport."
+    },
+    {
+      "role": "OFFICIAL_ARTIFACT_IDENTITY",
+      "location": { "kind": "external", "path": "E:\\aide-sovereign-workbench\\models\\LFM2.5-2.6B-Q4_K_M.gguf" },
+      "bytes": 1674455040,
+      "sha256": "02A8B7E17487D326E46D68CE0BA24211E1B80A14C4CD0597FA73C1CD697F52ED",
+      "provenance": "Re-hashed read-only in this closeout turn; the file was not loaded."
+    },
+    {
+      "role": "HISTORICAL_LIVE_RUNTIME_TRACE",
+      "location": { "kind": "external", "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\vulkan-qualification-20260925T030145Z.stdout.jsonl" },
+      "bytes": 19272,
+      "sha256": "AF6C944A3E94527A8E5BD9BB4575215A0C389328BF96794A256EA62C96732DEE",
+      "provenance": "Prior exact-profile live Vulkan qualification; historical, not the missing closeout soak/tool loop."
+    },
+    {
+      "role": "HISTORICAL_RESOURCE_TRACE",
+      "location": { "kind": "external", "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\vulkan-qualification-20260925T030145Z.resources.jsonl" },
+      "bytes": 121591,
+      "sha256": "E156666AAC5E14C9C1D534C0D7B20470E08D79998BC5AA98D58F83B5232FC7C8",
+      "provenance": "Host resource series from the prior Vulkan qualification."
+    },
+    {
+      "role": "HISTORICAL_AUTH_HEALTH_RESTART_REPORT",
+      "location": { "kind": "external", "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\native-windows-health-auth-restart.json" },
+      "bytes": 905,
+      "sha256": "406DF69FC9280EAF38A4923AEFB70ABF81CD548595FE405F5DDBDDE3D9CE9415",
+      "provenance": "Prior local health/auth/restart observations."
+    },
+    {
+      "role": "HISTORICAL_EMPTY_OUTPUT_DIAGNOSTIC",
+      "location": { "kind": "external", "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\unsloth-empty-content-diagnostic-report.json" },
+      "bytes": 2647,
+      "sha256": "BEF7604C62B2ED80C5F56CC980FBD5993A3353C4BA8D4CD0AE391170D106B59E",
+      "provenance": "Prior native strict output was empty/invalid; no credential material included."
+    },
+    {
+      "role": "HISTORICAL_512_OUTPUT_BUDGET_DIAGNOSTIC",
+      "location": { "kind": "external", "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\unsloth-output-budget-512-diagnostic-report.json" },
+      "bytes": 1537,
+      "sha256": "90A0E89B8144310403C5D647621EF815547F6F6408C042B7D21582A396C3C592",
+      "provenance": "Prior bounded output-budget diagnostic; no raw credential material included."
+    },
+    {
+      "role": "FAILED_RESOURCE_PREFLIGHT",
+      "location": { "kind": "external", "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\rt-v1-closeout-20260925T125224Z\\RT-V1-CLOSEOUT.jsonl" },
+      "bytes": 583,
+      "sha256": "74F206B724EC17DCA4CF9F036BED361072E02519CC51E8AC72D292A3040416E2",
+      "provenance": "Runner refused before artifact access or runtime startup because free commit was below the start threshold."
+    },
+    {
+      "role": "CLOSEOUT_BLOCKER_RECORD",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/UNSLOTH-RUNTIME-V1-CLOSEOUT.md" },
+      "bytes": 4298,
+      "sha256": "9CCDDAFFFC70EBCCF5EB3ABBCCB653CB8839D3344E6F5D7F6EC2232784C1816F",
+      "provenance": "Human-readable exact blocker and safe resumption record."
+    },
+    {
+      "role": "FROZEN_SUPPORT_SCOPE",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/UNSLOTH-V1-SUPPORT-CONTRACT.md" },
+      "bytes": 6892,
+      "sha256": "427B2A28E3AC2FAC09302B15E50CC504AC8A15ED63FF7CC35482697CF3A99FA1",
+      "provenance": "Frozen support profile with operational closeout state explicitly marked open."
+    },
+    {
+      "role": "DETERMINISTIC_REGRESSION_RESULTS",
+      "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/RT-V1-DETERMINISTIC-RESULTS.json" },
+      "bytes": 2348,
+      "sha256": "12D3D6019C3C6CAB8DF28E3650D5C4A7D49FBFB650E9E25E78B7140727661DF6",
+      "provenance": "37/37 targeted tests, TypeScript, qualification script syntax, installation reconciliation, and blocked-checkpoint validation."
+    },
+    {
+      "role": "BLOCKED_CHECKPOINT_VALIDATOR",
+      "location": { "kind": "repository", "path": "scripts/qualification/validate-runtime-v1-blocked-checkpoint.mjs" },
+      "bytes": 4775,
+      "sha256": "4C11EA00B351F27A657E41121CA23BA343E1032078D380DF25F4750BE264D4A9",
+      "provenance": "Verifies resource refusal, safe stopped state, handoff schema/privacy, historical Passport identity, and inventoried evidence hashes."
+    }
+  ],
+  "not_present_yet": [
+    "final V1 closeout Passport",
+    "final V1 live trace with tool execution, malformed-call rejection, 30-minute soak, and final cleanup",
+    "final acceptance manifest"
+  ]
+}

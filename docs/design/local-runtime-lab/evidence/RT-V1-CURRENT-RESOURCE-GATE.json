@@ -1,0 +1,54 @@
+{
+  "checkpoint": "RT-V1-CLOSEOUT-RESOURCE-PREFLIGHT",
+  "observed_at_utc": "2026-09-25T13:22:53.1752962Z",
+  "execution_context": {
+    "administrator": true,
+    "os": "Windows 11 native",
+    "runtime": "UNSLOTH"
+  },
+  "runtime_processes": [],
+  "runtime_process_count": 0,
+  "reserved_port_listeners": [],
+  "reserved_listener_count": 0,
+  "resources": {
+    "free_ram_node_bytes": 5929730048,
+    "free_ram_node_gib": 5.522,
+    "free_ram_cim_bytes": 5964271616,
+    "free_commit_bytes": 4723773440,
+    "free_commit_gib": 4.399,
+    "commit_used_bytes": 27633786880,
+    "commit_limit_bytes": 32357560320,
+    "gpu": "NVIDIA GeForce GTX 1060",
+    "gpu_total_mib": 6144,
+    "gpu_used_mib": 897,
+    "gpu_free_mib": 5135,
+    "gpu_utilization_percent": 3,
+    "driver": "582.28"
+  },
+  "start_guardrail": {
+    "free_ram_node_bytes_minimum": 6979321856,
+    "free_commit_bytes_minimum": 5368709120,
+    "free_vram_mib_minimum": 4608,
+    "gpu_utilization_percent_maximum_exclusive": 50,
+    "administrator_required": true,
+    "runtime_process_count_required": 0,
+    "pass": false,
+    "blocked_reasons": [
+      "FREE_RAM_BELOW_START_GUARDRAIL",
+      "FREE_WINDOWS_COMMIT_BELOW_START_GUARDRAIL"
+    ]
+  },
+  "side_effects": {
+    "runtime_started": false,
+    "model_loaded": false,
+    "foreign_process_touched": false,
+    "credentials_read": false
+  },
+  "artifact_identity_checked_separately": {
+    "name": "LFM2.5-2.6B-Q4_K_M.gguf",
+    "bytes": 1674455040,
+    "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "loaded": false
+  },
+  "verdict": "BLOCKED_RESOURCE_START_GATE"
+}

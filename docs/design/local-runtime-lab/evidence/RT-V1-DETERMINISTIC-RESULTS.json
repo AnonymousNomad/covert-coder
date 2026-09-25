@@ -1,0 +1,52 @@
+{
+  "checkpoint": "RT-V1-CLOSEOUT-SAFE-REGRESSION",
+  "captured_at_utc": "2026-09-25T13:36:07Z",
+  "status": "PASS_FOR_BLOCKED_CHECKPOINT",
+  "runtime_selection": "UNSLOTH_CANONICAL",
+  "runtime_start_gate": "BLOCKED_RESOURCE_START_GATE",
+  "checks": {
+    "runtime_broker_authority_output_validation": {
+      "command": "node --test --test-concurrency=1 tests/arch/runtime-broker.test.ts tests/arch/execution-authority.test.ts tests/arch/runtime-output-validation.test.ts",
+      "tests": 37,
+      "passed": 37,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "node_typescript": {
+      "command": ".\\node_modules\\.bin\\tsc.cmd -p tsconfig.node.json --noEmit",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    "qualification_script_syntax": {
+      "files": [
+        "scripts/qualification/unsloth-runtime-v1-closeout.mjs",
+        "scripts/qualification/validate-runtime-v1-closeout.mjs",
+        "scripts/qualification/snapshot-unsloth-stopped-status.mjs",
+        "scripts/qualification/validate-runtime-v1-blocked-checkpoint.mjs"
+      ],
+      "status": "PASS"
+    },
+    "installation_reconciliation": {
+      "version": "2026.9.11",
+      "runtime_started": false,
+      "credentials_read": false,
+      "action": "NO_DESTRUCTIVE_REINSTALL_REQUIRED",
+      "status": "PASS"
+    },
+    "blocked_checkpoint_evidence_validation": {
+      "command": "node scripts/qualification/validate-runtime-v1-blocked-checkpoint.mjs",
+      "repository_and_external_entries_hashed": 19,
+      "evidence_json_files_validated": 11,
+      "runtime_status_schema": "PASS",
+      "public_handoffs_sanitized": true,
+      "historical_passport_hash": "ED72BE685F248236AA7CE63AA1D19A75D8587C61F2DED424B2CFCB93D2C4F03E",
+      "status": "PASS"
+    }
+  },
+  "not_run": {
+    "final_v1_acceptance_validator": "Final V1 Passport and live closeout trace are not present; blocked-checkpoint validator was run instead.",
+    "live_runtime_suite": "Not run because free RAM and free Windows commit were below the start guardrail.",
+    "30_minute_soak": "Not run because live qualification did not start."
+  },
+  "baseline_note": "The previously recorded 16/16 deterministic baseline was not weakened. This closeout reran the 37 targeted runtime, authority, and output-validation tests listed above; counts are reported separately, not added together."
+}

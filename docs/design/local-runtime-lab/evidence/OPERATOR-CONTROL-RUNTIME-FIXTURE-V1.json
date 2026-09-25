@@ -1,0 +1,23 @@
+{
+  "runtime": "Unsloth",
+  "version": "2026.9.11",
+  "environment": "WINDOWS_11_NATIVE_ADMINISTRATOR",
+  "backend": "Vulkan",
+  "health": "STOPPED",
+  "ownership": "UNKNOWN",
+  "loaded_model": null,
+  "artifact": {
+    "name": "LFM2.5-2.6B-Q4_K_M.gguf",
+    "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "bytes": 1674455040
+  },
+  "qualification": "QUALIFIED_WITH_LIMITATIONS_FOR_PRIOR_EXACT_PROFILE",
+  "passport": "VALID_FOR_PRIOR_PROFILE",
+  "passport_sha256": "ED72BE685F248236AA7CE63AA1D19A75D8587C61F2DED424B2CFCB93D2C4F03E",
+  "native_strict_structured_output": "NOT_SUPPORTED — COVERT VALIDATION REQUIRED",
+  "tool_calling": "PARTIAL",
+  "tool_repair_attribution": "UNKNOWN",
+  "v1_closeout": "BLOCKED_RESOURCE_START_GATE",
+  "credential_values_included": false,
+  "private_paths_included": false
+}

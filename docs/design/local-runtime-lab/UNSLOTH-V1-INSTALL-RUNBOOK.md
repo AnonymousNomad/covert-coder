@@ -1,6 +1,6 @@
 # Unsloth V1 Windows Installation and Reconciliation Runbook
 
-Profile: native Windows 11 Administrator, Unsloth `2026.9.11`, GGUF-only, Vulkan, GTX 1060-class qualified machine. This runbook is the canonical Covert procedure; its file hash is recorded in the V1 Passport and evidence manifest. It does not claim to recover the historical remote bootstrap bytes that were not retained during the successful installation.
+Profile: native Windows 11 Administrator, Unsloth `2026.9.11`, GGUF-only, Vulkan, GTX 1060-class qualified machine. This is the canonical Covert procedure. Its current hash is recorded in the prequalification evidence manifest; the final V1 Passport must pin the then-current runbook hash when closeout passes. That Passport has not been issued. This runbook does not claim to recover the historical remote bootstrap bytes that were not retained during the successful installation.
 
 ## Installation state
 

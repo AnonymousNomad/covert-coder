@@ -1,6 +1,6 @@
 # Covert Local Runtime V1 Support Contract
 
-Status: frozen for the V1 qualification profile. Final run evidence and the configuration-specific passport are recorded in `UNSLOTH-RUNTIME-V1-CLOSEOUT.md` and `evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json`.
+Status: support scope frozen for the V1 qualification profile; operational closeout remains open. The current blocker and exact preflight evidence are recorded in `UNSLOTH-RUNTIME-V1-CLOSEOUT.md` and `evidence/RT-V1-CURRENT-RESOURCE-GATE.json`. The accepted RT23 profile Passport remains historical at `evidence/UNSLOTH-RUNTIME-PASSPORT.json`; the final V1 Passport is not issued until the closeout gates pass.
 
 ## Supported profile
 
