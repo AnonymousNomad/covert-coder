@@ -72,6 +72,31 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let windowsResizeHandler: (() => void) | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let opening = false;
+
+  function terminalFontSize(): number {
+    const scale = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ck-text-scale'));
+    return Math.round(13 * (Number.isFinite(scale) ? Math.max(0.85, Math.min(1.3, scale)) : 1));
+  }
+
+  function terminalTheme(): { background: string; foreground: string; cursor: string } {
+    const tokens = getComputedStyle(document.documentElement);
+    return {
+      background: tokens.getPropertyValue('--ck-bg-deepest').trim(),
+      foreground: tokens.getPropertyValue('--ck-text').trim(),
+      cursor: tokens.getPropertyValue('--ck-cyan').trim()
+    };
+  }
+
+  const onAppearanceChange = (): void => {
+    if (xterm === null) return;
+    xterm.options.fontSize = terminalFontSize();
+    xterm.options.theme = terminalTheme();
+    xterm.options.cursorBlink = document.documentElement.dataset.covertMotion !== 'reduced' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    fitAddon?.fit();
+    windowsResizeHandler?.();
+  };
+  window.addEventListener('covert:appearancechange', onAppearanceChange);
+
   function disposeTerminal(): void {
     resizeObserver?.disconnect();
     resizeObserver = null;
@@ -185,10 +210,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     stage.appendChild(termHost);
     sessionShell.appendChild(stage);
 
-    const tokens = getComputedStyle(document.documentElement);
-    const refreshedTerm = new XTerm({ cursorBlink: !matchMedia('(prefers-reduced-motion: reduce)').matches, fontSize: 13,
+    const refreshedTerm = new XTerm({ cursorBlink: document.documentElement.dataset.covertMotion !== 'reduced' && !matchMedia('(prefers-reduced-motion: reduce)').matches, fontSize: terminalFontSize(),
       fontFamily: 'Cascadia Mono, Consolas, monospace',
-      theme: { background: tokens.getPropertyValue('--ck-bg-deepest').trim(), foreground: tokens.getPropertyValue('--ck-text').trim(), cursor: tokens.getPropertyValue('--ck-cyan').trim() }
+      theme: terminalTheme()
     });
     const addon = new FitAddon();
     refreshedTerm.loadAddon(addon);
@@ -406,6 +430,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     dispose() {
       alive = false;
       window.clearInterval(interval);
+      window.removeEventListener('covert:appearancechange', onAppearanceChange);
       disposeTerminal();
       unsubscribe?.();
       if (xterm) {

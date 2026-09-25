@@ -29,6 +29,7 @@ import { createSettingsSurface } from './SettingsSurface.ts';
 import { createWalkthrough, type WalkthroughHandles } from './Walkthrough.ts';
 import { createSetupSession, type SetupSessionHandles } from './SetupSession.ts';
 import { showToast } from '../ui/toast.ts';
+import { applyAppearance, createBrowserPreferenceStore } from '../settings/preferences.mjs';
 
 interface DisposablePanel {
   dispose(): void;
@@ -116,6 +117,16 @@ function phaseGatedPanel(parent: HTMLElement, title: string, maturity: string, m
 }
 
 export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitHandles {
+  const preferences = createBrowserPreferenceStore();
+  preferences.load();
+  const initialWorkspace = store.get().health?.workspace;
+  const initialWorkspaceKey = initialWorkspace && initialWorkspace.length > 0 ? initialWorkspace : null;
+  applyAppearance(preferences.getEffective(initialWorkspaceKey));
+  const unbindAppearance = store.subscribe((state) => {
+    const workspace = state.health?.workspace;
+    applyAppearance(preferences.getEffective(workspace && workspace.length > 0 ? workspace : null));
+  });
+
   app.innerHTML = `
     <div class="cockpit-shell">
       <div class="cockpit-ambient" aria-hidden="true"></div>
@@ -291,7 +302,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const verification = lazyPanel(verificationStage, () => createVerificationPanel(verificationStage, store));
   const security = lazyPanel(securityStage, () => createSecurityPanel(securityStage, store));
   const extensions = lazyPanel(extensionsStage, () => phaseGatedPanel(extensionsStage, 'EXTENSIONS', 'DISABLED', 'The extension host is not integrated into this cockpit phase. No extension capability or authority is implied.'));
-  const settings = lazyPanel(settingsStage, () => createSettingsSurface(settingsStage, store, { onToast: notify, onReopenWalkthrough: () => walkthrough.open(), onRunSetup: () => setup.open() }));
+  const settings = lazyPanel(settingsStage, () => createSettingsSurface(settingsStage, store, { preferences, onToast: notify, onReopenWalkthrough: () => walkthrough.open(), onRunSetup: () => setup.open() }));
 
   const panelRegistry: Record<Panel, PanelRegistration> = {
     'command-center': {
@@ -363,6 +374,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     bottom.dispose();
     unbindCommandTabs();
     unbindVersion();
+    unbindAppearance();
     for (const panelId of PANEL_IDS) panelRegistry[panelId].dispose();
   });
 

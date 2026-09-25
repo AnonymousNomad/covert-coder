@@ -12,11 +12,12 @@ export interface EditorView {
 const views = new Map<string, EditorView>();
 let nextId = 0;
 
-function key(relPath: string, splitId: string): string {
-  return `${relPath}@${splitId}#${nextId++}`;
+function editorFontSize(): number {
+  const scale = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ck-text-scale'));
+  return Math.round(13 * (Number.isFinite(scale) ? Math.max(0.85, Math.min(1.3, scale)) : 1));
 }
 
-export function createView(container: HTMLElement, relPath: string, splitId: string, model: monaco.editor.ITextModel): EditorView {
+function defineCovertTheme(): void {
   const tokens = getComputedStyle(document.documentElement);
   const color = (name: string): string => tokens.getPropertyValue(name).trim();
   monaco.editor.defineTheme('covert', {
@@ -27,16 +28,32 @@ export function createView(container: HTMLElement, relPath: string, splitId: str
       'editorLineNumber.foreground': color('--ck-text-dim'),
       'editorLineNumber.activeForeground': color('--ck-cyan'),
       'editorCursor.foreground': color('--ck-cyan'),
-      'editor.selectionBackground': '#4474ec40',
+      'editor.selectionBackground': color('--ck-blue') + '40',
       'editor.lineHighlightBackground': color('--ck-bg-panel'),
       'editorWidget.background': color('--ck-bg-secondary'),
       'editorWidget.border': color('--ck-line')
     }
   });
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('covert:appearancechange', () => {
+    defineCovertTheme();
+    monaco.editor.setTheme('covert');
+    for (const view of views.values()) view.editor.updateOptions({ fontSize: editorFontSize() });
+  });
+}
+
+function key(relPath: string, splitId: string): string {
+  return `${relPath}@${splitId}#${nextId++}`;
+}
+
+export function createView(container: HTMLElement, relPath: string, splitId: string, model: monaco.editor.ITextModel): EditorView {
+  defineCovertTheme();
   const editor = monaco.editor.create(container, {
     model,
     theme: 'covert',
-    fontSize: 13,
+    fontSize: editorFontSize(),
     fontFamily: "'Cascadia Mono', Consolas, 'Courier New', monospace",
     automaticLayout: true,
     minimap: { enabled: true },

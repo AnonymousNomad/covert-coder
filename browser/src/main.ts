@@ -11,6 +11,8 @@ import { api } from './services/api.ts';
 import { SessionService } from './services/session.ts';
 import { mountCockpit, type CockpitHandles } from './cockpit/CockpitShell.ts';
 import './cockpit/cockpit.css';
+import './themes/themes.css';
+import './cockpit/operator-control.css';
 import { createEditorHost, type EditorHost } from './editor/host.ts';
 import { createGroups } from './editor/groups.ts';
 import { createSearchPanel } from './editor/search.ts';
