@@ -37,28 +37,28 @@
       "role": "RECENT_STOPPED_STATUS",
       "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/RT-V1-STOPPED-STATUS-SNAPSHOT.json" },
       "bytes": 1179,
-      "sha256": "C627718BA56459661F55998D49A44C4B6860F4CD2562D76F0470ABB5BC6F063C",
+      "sha256": "6A620B6EF38F57DF0C886315C3660C3D814ED3D9A883A53E5A5D05A5FD8924EC",
       "provenance": "Read-only adapter observation: STOPPED, UNKNOWN ownership, no PID/model, no credentials read."
     },
     {
       "role": "CURRENT_RESOURCE_GATE",
       "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/RT-V1-CURRENT-RESOURCE-GATE.json" },
-      "bytes": 1626,
-      "sha256": "CDE83C1A745BF8DDFCD117376D9C62205ECAAC7EA1BE2FC1C21D47DF809799DB",
+      "bytes": 1627,
+      "sha256": "9BA4A2E8F166A633B0D9E8D8FDABF330D4E9A640CE89233E8E9C27FDFDDD420B",
       "provenance": "Fresh native Windows start-gate sample; RAM and commit below the configured thresholds; runtime was not started."
     },
     {
       "role": "MODEL_MANAGER_HANDOFF_FIXTURE",
       "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/LUNA-RUNTIME-STATUS-FIXTURE-V1.json" },
       "bytes": 2726,
-      "sha256": "F3D4E77305859B8BF8C24799980CD758306C4606C871971F4386FC7D0FB07864",
+      "sha256": "3EA912397DB61285189184391CF8490AC4582455A6E80E17EC645CA0733C2AE3",
       "provenance": "Sanitized current stopped-state RuntimeStatusResponse plus explicit prior-profile and blocked-closeout distinctions."
     },
     {
       "role": "OPERATOR_CONTROL_HANDOFF_FIXTURE",
       "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/OPERATOR-CONTROL-RUNTIME-FIXTURE-V1.json" },
-      "bytes": 846,
-      "sha256": "78DB41321A3882D0AA0CBADF67C07DE8248C6C7A68BAC4A33224ABE777ECC770",
+      "bytes": 895,
+      "sha256": "408CBDA8FA2A4F107B254044F29611D691D6BD81A85D76438A7E6A463DC360D6",
       "provenance": "Sanitized current operator-facing runtime state; no private path, PID, or credential."
     },
     {
@@ -120,8 +120,8 @@
     {
       "role": "CLOSEOUT_BLOCKER_RECORD",
       "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/UNSLOTH-RUNTIME-V1-CLOSEOUT.md" },
-      "bytes": 4298,
-      "sha256": "9CCDDAFFFC70EBCCF5EB3ABBCCB653CB8839D3344E6F5D7F6EC2232784C1816F",
+      "bytes": 4321,
+      "sha256": "ABC01E790898F883D189282933BED75AFE4C3E342593E3AA80485043D9F9CC9A",
       "provenance": "Human-readable exact blocker and safe resumption record."
     },
     {
@@ -135,7 +135,7 @@
       "role": "DETERMINISTIC_REGRESSION_RESULTS",
       "location": { "kind": "repository", "path": "docs/design/local-runtime-lab/evidence/RT-V1-DETERMINISTIC-RESULTS.json" },
       "bytes": 2348,
-      "sha256": "12D3D6019C3C6CAB8DF28E3650D5C4A7D49FBFB650E9E25E78B7140727661DF6",
+      "sha256": "C420623C8CBE395F3DE904D5733CC49CFC66E9EBC4EEEB450C91CD6A930F82FE",
       "provenance": "37/37 targeted tests, TypeScript, qualification script syntax, installation reconciliation, and blocked-checkpoint validation."
     },
     {

@@ -6,9 +6,9 @@ This closeout record resumes from the accepted RT23 runtime profile without repl
 
 ## Current preflight
 
-At `2026-09-25T13:22:53Z`, the shell was Administrator. No Unsloth, llama-server, Ollama, LM Studio, Resident, or DeepSeek process name match was observed, and the reserved runtime ports were free. The read-only adapter snapshot at `2026-09-25T13:25:19Z` reported Unsloth 2026.9.11, `STOPPED`, ownership `UNKNOWN`, no PID, and no loaded model. No credentials were read and no runtime was started.
+At the latest preflight, `2026-09-25T13:39:43Z`, the shell was Administrator. No Unsloth, llama-server, Ollama, LM Studio, Resident, or DeepSeek process name match was observed, and the reserved runtime ports were free. The read-only adapter snapshot at `2026-09-25T13:38:45Z` reported Unsloth 2026.9.11, `STOPPED`, ownership `UNKNOWN`, no PID, and no loaded model. No credentials were read and no runtime was started.
 
-The runner's start gate requires at least 6.5 GiB free RAM, 5 GiB free Windows commit, 4,608 MiB free VRAM, GPU utilization below 50%, Administrator context, and no runtime process. The measured Node free RAM was 5,929,730,048 bytes (5.522 GiB); free commit was 4,723,773,440 bytes (4.399 GiB); free VRAM was 5,135 MiB; utilization was 3%. RAM and commit are below their thresholds, so live qualification did not start. See `evidence/RT-V1-CURRENT-RESOURCE-GATE.json`.
+The runner's start gate requires at least 6.5 GiB free RAM, 5 GiB free Windows commit, 4,608 MiB free VRAM, GPU utilization below 50%, Administrator context, and no runtime process. The measured Node free RAM was 5,802,319,872 bytes (5.404 GiB); free commit was 4,618,084,352 bytes (4.301 GiB); free VRAM was 5,199 MiB; utilization was 28%. RAM and commit are below their thresholds, so live qualification did not start. See `evidence/RT-V1-CURRENT-RESOURCE-GATE.json`.
 
 ## Completed safely in this checkpoint
 
@@ -33,4 +33,4 @@ When a fresh snapshot clears every start threshold with practical headroom, use 
 
 ## Current verdict
 
-**COVERT LOCAL RUNTIME V1 BLOCKED — free RAM (5.522 GiB) and Windows commit (4.399 GiB) are below the qualified runtime start thresholds (6.5 GiB and 5 GiB).**
+**COVERT LOCAL RUNTIME V1 BLOCKED — free RAM (5.404 GiB) and Windows commit (4.301 GiB) are below the qualified runtime start thresholds (6.5 GiB and 5 GiB).**

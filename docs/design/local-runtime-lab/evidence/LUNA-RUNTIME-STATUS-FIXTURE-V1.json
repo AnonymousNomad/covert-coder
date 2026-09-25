@@ -2,7 +2,7 @@
   "fixture_metadata": {
     "contract": "RuntimeStatusResponse",
     "snapshot_kind": "CURRENT_STOPPED_ADAPTER_OBSERVATION",
-    "updated_at": "2026-09-25T13:25:19.719Z",
+    "updated_at": "2026-09-25T13:38:45.724Z",
     "private_paths_included": false,
     "pid_included": false,
     "credential_values_included": false,
@@ -56,7 +56,7 @@
     },
     "last_error": null,
     "fallback_event_id": null,
-    "updated_at": "2026-09-25T13:25:19.719Z"
+    "updated_at": "2026-09-25T13:38:45.724Z"
   },
   "runtime_state": {
     "installed": true,

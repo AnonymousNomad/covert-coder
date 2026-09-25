@@ -1,6 +1,6 @@
 {
   "checkpoint": "RT-V1-CLOSEOUT-SAFE-REGRESSION",
-  "captured_at_utc": "2026-09-25T13:36:07Z",
+  "captured_at_utc": "2026-09-25T13:42:24Z",
   "status": "PASS_FOR_BLOCKED_CHECKPOINT",
   "runtime_selection": "UNSLOTH_CANONICAL",
   "runtime_start_gate": "BLOCKED_RESOURCE_START_GATE",

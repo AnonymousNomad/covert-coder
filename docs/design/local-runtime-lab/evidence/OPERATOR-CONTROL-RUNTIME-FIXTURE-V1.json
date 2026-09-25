@@ -2,6 +2,7 @@
   "runtime": "Unsloth",
   "version": "2026.9.11",
   "environment": "WINDOWS_11_NATIVE_ADMINISTRATOR",
+  "observed_at_utc": "2026-09-25T13:38:45.724Z",
   "backend": "Vulkan",
   "health": "STOPPED",
   "ownership": "UNKNOWN",

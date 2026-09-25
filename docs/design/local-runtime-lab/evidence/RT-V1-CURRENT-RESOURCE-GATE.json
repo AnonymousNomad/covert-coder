@@ -1,6 +1,6 @@
 {
   "checkpoint": "RT-V1-CLOSEOUT-RESOURCE-PREFLIGHT",
-  "observed_at_utc": "2026-09-25T13:22:53.1752962Z",
+  "observed_at_utc": "2026-09-25T13:39:43.7752961Z",
   "execution_context": {
     "administrator": true,
     "os": "Windows 11 native",
@@ -11,18 +11,18 @@
   "reserved_port_listeners": [],
   "reserved_listener_count": 0,
   "resources": {
-    "free_ram_node_bytes": 5929730048,
-    "free_ram_node_gib": 5.522,
-    "free_ram_cim_bytes": 5964271616,
-    "free_commit_bytes": 4723773440,
-    "free_commit_gib": 4.399,
-    "commit_used_bytes": 27633786880,
+    "free_ram_node_bytes": 5802319872,
+    "free_ram_node_gib": 5.404,
+    "free_ram_cim_bytes": 5828632576,
+    "free_commit_bytes": 4618084352,
+    "free_commit_gib": 4.301,
+    "commit_used_bytes": 27739475968,
     "commit_limit_bytes": 32357560320,
     "gpu": "NVIDIA GeForce GTX 1060",
     "gpu_total_mib": 6144,
-    "gpu_used_mib": 897,
-    "gpu_free_mib": 5135,
-    "gpu_utilization_percent": 3,
+    "gpu_used_mib": 833,
+    "gpu_free_mib": 5199,
+    "gpu_utilization_percent": 28,
     "driver": "582.28"
   },
   "start_guardrail": {
