@@ -26,6 +26,33 @@ function isSubpath(root, target) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+function hasPathTraversalSegment(value) {
+  return /(?:^|[\\/])\.\.(?:[\\/]|$)/.test(String(value));
+}
+
+function isReparsePoint(stat) {
+  return stat.isSymbolicLink() || (Number.isInteger(stat.attributes) && (stat.attributes & 0x400) !== 0);
+}
+
+async function assertNoReparseComponents(root, target) {
+  const canonicalRoot = path.resolve(root);
+  const samePath = (left, right) => process.platform === 'win32'
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+  let cursor = path.resolve(target);
+  if (!isSubpath(canonicalRoot, cursor)) throw new DesktopRefusedError('PATH_NOT_GRANTED', 'file picker path escaped its approved root');
+  while (true) {
+    let stat;
+    try { stat = await fs.lstat(cursor); }
+    catch { throw new DesktopRefusedError('FILE_PICKER_PATH_UNAVAILABLE', 'approved picker path is unavailable'); }
+    if (isReparsePoint(stat)) throw new DesktopRefusedError('PATH_NOT_GRANTED', 'file picker path contains a reparse point');
+    if (samePath(path.resolve(cursor), canonicalRoot)) return;
+    const parent = path.dirname(cursor);
+    if (parent === cursor) throw new DesktopRefusedError('PATH_NOT_GRANTED', 'file picker path did not reach its approved root');
+    cursor = parent;
+  }
+}
+
 function projectActionOutput(operation, output) {
   const text = String(output ?? '');
   if (operation !== 'uia_action') return text.slice(0, 2000);
@@ -144,13 +171,27 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       onStdout: chunk => { stdout = (stdout + String(chunk)).slice(-262144); },
       onStderr: chunk => { stderr = (stderr + String(chunk)).slice(-262144); } });
     await launched.spawned;
-    const timer = setTimeout(() => { void processes.terminate(launched.handle); }, opts.timeout ?? 8000);
+    let timedOut = false;
+    let timeoutTermination = null;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      timeoutTermination = processes.terminate(launched.handle);
+    }, opts.timeout ?? 8000);
     try {
       if (opts.input !== undefined) {
         launched.writeStdin(opts.input);
         launched.endStdin();
       }
       const result = await launched.finished;
+      if (timedOut) {
+        const termination = await timeoutTermination;
+        if (!['terminated', 'exited'].includes(termination?.status)) {
+          throw Object.assign(new Error('desktop helper timed out and owned-process cleanup was unconfirmed'), {
+            code: 'DESKTOP_HELPER_CLEANUP_UNCONFIRMED'
+          });
+        }
+        throw Object.assign(new Error('desktop helper exceeded its bounded runtime'), { code: 'UIA_HELPER_TIMEOUT' });
+      }
       if (result.code !== 0 || result.signal || result.error) throw new Error(stderr || result.error || 'desktop helper failed or was terminated');
       return stdout;
     } catch (error) {
@@ -227,25 +268,46 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
   }
 
   async function validateSelectionPath(grants, selectionRoot, filePath) {
-    const requestedRoot = path.resolve(String(selectionRoot));
+    const selectionRootText = String(selectionRoot);
+    const filePathText = String(filePath);
+    if (!path.isAbsolute(selectionRootText) || !path.isAbsolute(filePathText) ||
+        hasPathTraversalSegment(selectionRootText) || hasPathTraversalSegment(filePathText)) {
+      throw new DesktopRefusedError('PATH_NOT_GRANTED', 'file picker paths must be absolute and cannot contain traversal segments');
+    }
+    const requestedRoot = path.resolve(selectionRootText);
+    const requestedFile = path.resolve(filePathText);
+    if (requestedRoot !== selectionRootText || requestedFile !== filePathText) {
+      throw new DesktopRefusedError('PATH_NOT_GRANTED', 'file picker paths must use canonical absolute syntax');
+    }
     const grant = grants.roots.find(root => isSubpath(root, requestedRoot));
     if (!grant) throw new DesktopRefusedError('PATH_NOT_GRANTED', 'file picker root is outside granted roots');
+    const resolvedGrant = path.resolve(grant);
+    if (!isSubpath(resolvedGrant, requestedRoot) || !isSubpath(requestedRoot, requestedFile)) {
+      throw new DesktopRefusedError('PATH_NOT_GRANTED', 'selected file must be a child of the approved picker root');
+    }
+    await assertNoReparseComponents(resolvedGrant, requestedRoot);
+    await assertNoReparseComponents(requestedRoot, requestedFile);
     let realGrant;
     let realRoot;
     let realFile;
     try {
       [realGrant, realRoot, realFile] = await Promise.all([
-        fs.realpath(grant),
+        fs.realpath(resolvedGrant),
         fs.realpath(requestedRoot),
-        fs.realpath(String(filePath))
+        fs.realpath(requestedFile)
       ]);
     } catch {
       throw new DesktopRefusedError('FILE_PICKER_PATH_UNAVAILABLE', 'approved picker root or fixture file is unavailable');
     }
-    if (!isSubpath(realGrant, realRoot) || realRoot === realGrant && path.resolve(String(selectionRoot)) !== path.resolve(grant) ||
-        realFile === realRoot || !isSubpath(realRoot, realFile)) {
+    const windowsPathEqual = (left, right) => process.platform === 'win32'
+      ? left.toLowerCase() === right.toLowerCase()
+      : left === right;
+    if (!isSubpath(realGrant, realRoot) || !windowsPathEqual(realRoot, requestedRoot) ||
+        !windowsPathEqual(realFile, requestedFile) || realFile === realRoot || !isSubpath(realRoot, realFile)) {
       throw new DesktopRefusedError('PATH_NOT_GRANTED', 'selected file must be a child of the approved picker root');
     }
+    await assertNoReparseComponents(realGrant, realRoot);
+    await assertNoReparseComponents(realRoot, realFile);
     const stat = await fs.stat(realFile);
     if (!stat.isFile()) throw new DesktopRefusedError('FILE_PICKER_NOT_A_FILE', 'selected path is not a regular file');
     return { selectionRoot: realRoot, filePath: realFile };
@@ -473,7 +535,11 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
           try { await fs.unlink(capturePath); }
           catch (cleanupError) { if (cleanupError?.code !== 'ENOENT') error = Object.assign(new Error('failed UIA screenshot artifact could not be removed'), { code: 'UIA_CAPTURE_CLEANUP_FAILED', cause: error }); }
         }
-        if (['UIA_WINDOW_STALE', 'UIA_WINDOW_OWNER_MISMATCH', 'UIA_IDENTITY_MISMATCH', 'UIA_PROCESS_IDENTITY_MISMATCH'].includes(error?.code)) {
+        if ([
+          'UIA_WINDOW_STALE', 'UIA_WINDOW_OWNER_MISMATCH', 'UIA_WINDOW_NOT_UNIQUE', 'UIA_WINDOW_UNAVAILABLE',
+          'UIA_IDENTITY_MISMATCH', 'UIA_PROCESS_IDENTITY_MISMATCH', 'UIA_FOCUS_LOST', 'UIA_HELPER_TIMEOUT',
+          'DESKTOP_HELPER_CLEANUP_UNCONFIRMED', 'UIA_FILE_PICKER_CONTROL_STALE', 'UIA_FILE_PICKER_DIALOG_NOT_CLOSED'
+        ].includes(error?.code)) {
           windowLeases.delete(windowLease?.id);
         }
         const failure = new DesktopRefusedError(error?.code ?? 'UIA_OPERATION_FAILED', 'approved window action failed closed');

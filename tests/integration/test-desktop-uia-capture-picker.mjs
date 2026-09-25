@@ -70,33 +70,12 @@ async function runPickerTreeProbe(pid, windowHandle, safeRoot) {
   return result;
 }
 
-async function runPickerEntryProbe({ pid, windowHandle, resultWindowHandle, safeRoot, targetFile }) {
-  const canonicalRoot = await fs.realpath(safeRoot);
-  const canonicalFile = await fs.realpath(targetFile);
-  const rootStat = await fs.lstat(canonicalRoot);
-  assert.equal(rootStat.isDirectory() && !rootStat.isSymbolicLink() && (rootStat.attributes & 0x400) === 0, true, 'approved fixture root is a real directory');
-  const relative = path.relative(canonicalRoot, canonicalFile);
-  assert.equal(relative.length > 0 && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative), true, 'canonical fixture file is contained inside the approved root');
-  const fileStat = await fs.lstat(canonicalFile);
-  assert.equal(fileStat.isFile() && !fileStat.isSymbolicLink() && (fileStat.attributes & 0x400) === 0, true, 'approved fixture target is a regular non-reparse file');
-  let cursor = path.dirname(canonicalFile);
-  let componentsChecked = 0;
-  while (true) {
-    const componentStat = await fs.lstat(cursor);
-    assert.equal(componentStat.isDirectory() && !componentStat.isSymbolicLink() && (componentStat.attributes & 0x400) === 0, true, 'every fixture path component is a non-reparse directory');
-    componentsChecked++;
-    if (cursor.toLowerCase() === canonicalRoot.toLowerCase()) break;
-    const parent = path.dirname(cursor);
-    assert.notEqual(parent.toLowerCase(), cursor.toLowerCase(), 'canonical target parent chain reaches the approved root');
-    cursor = parent;
-  }
-  const fileBytes = await fs.readFile(canonicalFile);
-  const sha256 = createHash('sha256').update(fileBytes).digest('hex');
-  const script = path.resolve('tests/fixtures/desktop-uia-picker-entry-probe.ps1');
+async function moveResizePicker(pid, windowHandle, left, top, width, height) {
+  const script = path.resolve('tests/fixtures/desktop-uia-picker-layout-fixture.ps1');
   const child = spawn('powershell.exe', [
-    '-NoProfile', '-NonInteractive', '-STA', '-File', script,
-    '-TargetPid', String(pid), '-DialogHandle', String(windowHandle), '-ResultWindowHandle', String(resultWindowHandle),
-    '-SafeRoot', canonicalRoot, '-TargetFile', canonicalFile, '-ExpectedSha256', sha256
+    '-NoProfile', '-NonInteractive', '-File', script,
+    '-TargetPid', String(pid), '-DialogHandle', String(windowHandle),
+    '-Left', String(left), '-Top', String(top), '-Width', String(width), '-Height', String(height)
   ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
@@ -112,19 +91,67 @@ async function runPickerEntryProbe({ pid, windowHandle, resultWindowHandle, safe
   const timeout = setTimeout(() => {
     timedOut = true;
     child.kill();
-  }, 30000);
+  }, 10000);
   timeout.unref?.();
   let exit;
   try { exit = await closed; }
   finally { clearTimeout(timeout); }
   const remaining = child.pid ? await readWindowsProcessIdentity(child.pid) : null;
-  assert.equal(remaining, null, 'the bounded picker entry probe process exited and was reaped');
-  assert.equal(timedOut, false, 'the bounded picker entry probe completed within 30 seconds');
-  assert.equal(exit.code, 0, `picker entry probe exit ${exit.code ?? exit.signal}: ${stderr.slice(0, 1200)}`);
+  assert.equal(remaining, null, 'the bounded picker layout fixture exited and was reaped');
+  assert.equal(timedOut, false, 'the bounded picker layout fixture completed within 10 seconds');
+  assert.equal(exit.code, 0, `picker layout fixture exit ${exit.code ?? exit.signal}: ${stderr.slice(0, 1000)}`);
   let result;
   try { result = JSON.parse(stdout.trim()); }
-  catch (error) { assert.fail(`picker entry probe returned invalid JSON (${Buffer.byteLength(stdout)} bytes): ${String(error.message).slice(0, 160)}; stderr=${stderr.slice(0, 1200)}`); }
-  return { result, canonicalRoot, canonicalFile, fileBytes: fileBytes.length, sha256, componentsChecked };
+  catch (error) { assert.fail(`picker layout fixture returned invalid JSON (${Buffer.byteLength(stdout)} bytes): ${String(error.message).slice(0, 160)}`); }
+  assert.deepEqual({ pid: result.pid, hwnd: result.hwnd, left: result.after.left, top: result.after.top, width: result.after.width, height: result.after.height },
+    { pid, hwnd: windowHandle, left, top, width, height });
+  return result;
+}
+
+async function closeDistractorAndVerifyPicker({ targetPid, dialogHandle, filenameEditHandle, distractorPid, distractorWindow }) {
+  const script = path.resolve('tests/fixtures/desktop-uia-focus-recovery-fixture.ps1');
+  const child = spawn('powershell.exe', [
+    '-NoProfile', '-NonInteractive', '-File', script,
+    '-TargetPid', String(targetPid), '-DialogHandle', String(dialogHandle), '-FilenameEditHandle', String(filenameEditHandle),
+    '-DistractorPid', String(distractorPid), '-DistractorWindowHandle', String(distractorWindow.window_handle),
+    '-DistractorClassName', distractorWindow.class_name
+  ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '';
+  let stderr = '';
+  let timedOut = false;
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stdout.on('data', chunk => { stdout += chunk; });
+  child.stderr.on('data', chunk => { stderr += chunk; });
+  const closed = new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', (code, signal) => resolve({ code, signal }));
+  });
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+  }, 15000);
+  timeout.unref?.();
+  let exit;
+  try { exit = await closed; }
+  finally { clearTimeout(timeout); }
+  const remaining = child.pid ? await readWindowsProcessIdentity(child.pid) : null;
+  assert.equal(remaining, null, 'the bounded modal focus recovery fixture exited and was reaped');
+  assert.equal(timedOut, false, 'the bounded modal focus recovery fixture completed within 15 seconds');
+  assert.equal(exit.code, 0, `modal focus recovery fixture exit ${exit.code ?? exit.signal}: ${stderr.slice(0, 1000)}`);
+  let result;
+  try { result = JSON.parse(stdout.trim()); }
+  catch (error) { assert.fail(`modal focus recovery fixture returned invalid JSON (${Buffer.byteLength(stdout)} bytes): ${String(error.message).slice(0, 160)}`); }
+  assert.equal(result.ok, true);
+  assert.equal(result.target_pid, targetPid);
+  assert.equal(result.dialog_handle, dialogHandle);
+  assert.equal(result.filename_edit_handle, filenameEditHandle);
+  assert.equal(result.distractor_pid, distractorPid);
+  assert.equal(result.distractor_closed, true);
+  assert.equal(result.dialog_foreground, true);
+  assert.equal(result.dialog_active, true);
+  assert.equal(result.filename_edit_focused, true);
+  return result;
 }
 
 async function preservePickerTree(provider, result) {
@@ -181,7 +208,7 @@ function summarizePickerTree(tree) {
   };
 }
 
-test('UIA captures a safe leased window and probes fixture-only selection in WPF and legacy WinForms pickers', {
+test('UIA captures a safe leased window and qualifies product selection in WPF and legacy WinForms pickers', {
   skip: process.platform !== 'win32', timeout: 180000
 }, async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-desktop-uia-capture-picker-'));
@@ -195,6 +222,7 @@ test('UIA captures a safe leased window and probes fixture-only selection in WPF
   const fixture = path.resolve('tests/fixtures/desktop-uia-fixture.ps1');
   const fixturePids = [];
   const cleanupOutcomes = new Map();
+  let reparseTargetRoot = null;
   let task = 0;
 
   async function execute(kind, body, callback) {
@@ -326,6 +354,24 @@ test('UIA captures a safe leased window and probes fixture-only selection in WPF
     const selectedFile = path.join(workspace, 'upload-test.txt');
     const selectedContents = 'COVERT-FILE-PICKER-FIXTURE';
     await fs.writeFile(selectedFile, selectedContents, { encoding: 'utf8', flag: 'wx' });
+    const selectedBytes = await fs.readFile(selectedFile);
+    const selectedSha256 = createHash('sha256').update(selectedBytes).digest('hex');
+    reparseTargetRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-picker-reparse-target-'));
+    await fs.writeFile(path.join(reparseTargetRoot, path.basename(selectedFile)), selectedContents, { encoding: 'utf8', flag: 'wx' });
+    const junctionPath = path.join(workspace, 'picker-junction');
+    await fs.symlink(reparseTargetRoot, junctionPath, 'junction');
+    const junctionStat = await fs.lstat(junctionPath);
+    assert.equal(junctionStat.isSymbolicLink() || (junctionStat.attributes & 0x400) !== 0, true, 'the fixture junction is a reparse point');
+
+    async function selectApprovedFile(pid, picker, main, filePath = selectedFile, selectionRoot = workspace) {
+      return action({ op: 'uia_action', target: JSON.stringify({
+        action: 'select_file', pid, window_handle: picker.window_handle, lease_id: picker.lease_id,
+        selection_root: selectionRoot, file_path: filePath,
+        result_window_handle: main.window_handle, result_lease_id: main.lease_id,
+        verify_file_automation_id: 'fixtureSelectedPath', verify_sha256_automation_id: 'fixtureSelectedSha256'
+      }) });
+    }
+
     const pickerPid = await launchFixture(['-OpenPickerOnLaunch']);
     const { windows: pickerWindows } = await waitForWindow(pickerPid, row => row.automation_id === 'covertDesktopFixtureWindow');
     const mainWindow = pickerWindows.find(row => row.automation_id === 'covertDesktopFixtureWindow');
@@ -358,70 +404,98 @@ test('UIA captures a safe leased window and probes fixture-only selection in WPF
     const wpfTreeEvidence = await preservePickerTree('wpf-isolated', wpfPickerTree);
     console.log(`WPF_PICKER_ACCESSIBILITY=${JSON.stringify({ ...summarizePickerTree(wpfPickerTree), evidence: wpfTreeEvidence })}`);
 
-    const outsideRoot = path.resolve(workspace, '..', `not-granted-${path.basename(workspace)}`);
-    await assert.rejects(
-      () => action({ op: 'uia_action', target: JSON.stringify({
-        action: 'select_file', pid: pickerPid, window_handle: pickerWindow.window_handle, lease_id: pickerWindow.lease_id,
-        selection_root: outsideRoot, file_path: path.join(outsideRoot, 'operator-file.txt'),
-        result_window_handle: mainWindow.window_handle, result_lease_id: mainWindow.lease_id,
-        verify_automation_id: 'fixtureStatus'
-      }) }),
-      { code: 'PATH_NOT_GRANTED' },
-      'selection outside the granted fixture root is refused before UIA dispatch'
-    );
+    const movedWpfPicker = await moveResizePicker(pickerPid, pickerWindow.window_handle, 120, 120, 900, 620);
+    console.log(`WPF_PICKER_MOVED_RESIZED=${JSON.stringify(movedWpfPicker)}`);
 
     await assert.rejects(
-      () => action({ op: 'uia_action', target: JSON.stringify({
-        action: 'select_file', pid: pickerPid, window_handle: pickerWindow.window_handle, lease_id: pickerWindow.lease_id,
-        selection_root: workspace, file_path: selectedFile,
-        result_window_handle: mainWindow.window_handle, result_lease_id: mainWindow.lease_id,
-        verify_automation_id: 'fixtureStatus'
-      }) }),
+      () => selectApprovedFile(pickerPid, pickerWindow, mainWindow,
+        `${workspace}${path.sep}..${path.sep}path-traversal.txt`),
+      { code: 'PATH_NOT_GRANTED' },
+      'literal traversal is refused before native picker input'
+    );
+    await assert.rejects(
+      () => selectApprovedFile(pickerPid, pickerWindow, mainWindow,
+        `${workspace}-escape${path.sep}similar-prefix.txt`),
+      { code: 'PATH_NOT_GRANTED' },
+      'similar-prefix path escapes are refused before native picker input'
+    );
+    await assert.rejects(
+      () => selectApprovedFile(pickerPid, pickerWindow, mainWindow,
+        path.join(junctionPath, path.basename(selectedFile))),
+      { code: 'PATH_NOT_GRANTED' },
+      'junction/reparse path escapes are refused before native picker input'
+    );
+
+    const distractorPid = await launchFixture(['-SafeScreenshotOnly']);
+    const { found: distractorWindow } = await waitForWindow(distractorPid, row => row.automation_id === 'covertDesktopFixtureWindow');
+    const focusDistractor = await action({ op: 'uia_action', target: JSON.stringify({
+      action: 'focus', pid: distractorPid, window_handle: distractorWindow.window_handle, lease_id: distractorWindow.lease_id
+    }) });
+    assert.equal(focusDistractor.assertion.pass, true, 'the unrelated eligible-looking window receives focus for the refusal test');
+    await assert.rejects(
+      () => selectApprovedFile(pickerPid, pickerWindow, mainWindow),
       error => {
-        assert.equal(error.code, 'UIA_FILE_PICKER_CONTROL_UNAVAILABLE');
+        const diagnostic = error.diagnostic ?? {};
+        assert.equal(error.code, 'UIA_FOCUS_LOST', `unexpected picker refusal: ${JSON.stringify({ code: error.code, exception_type: diagnostic.exception_type, line: diagnostic.line, input_phase: diagnostic.input_phase, picker_stage: diagnostic.file_picker?.stage })}`);
         assert.equal(error.desktopReceipt?.result, 'FAILURE');
-        assert.equal(error.desktopReceipt?.failure_classification, 'UIA_FILE_PICKER_CONTROL_UNAVAILABLE');
-        const diagnostic = error.diagnostic?.file_picker;
-        console.log(`PICKER_STRUCTURAL_DIAGNOSTIC=${JSON.stringify({
-          stage: diagnostic?.stage,
-          filename_candidate_count: diagnostic?.filename_candidate_count,
-          filename_candidates: diagnostic?.filename_candidates,
-          nearby_control_count: diagnostic?.nearby_control_count,
-          nearby_controls: diagnostic?.nearby_controls
-        })}`);
-        assert.equal(diagnostic?.stage, 'FILENAME_CONTROL');
-        const usableFilenameFields = (diagnostic?.filename_candidates ?? []).filter(candidate =>
-          candidate.control_type === 'ControlType.Edit' && candidate.enabled === true &&
-          candidate.offscreen === false && candidate.password === false &&
-          candidate.value_pattern === true && candidate.read_only === false
-        );
-        assert.equal(usableFilenameFields.length, 0, 'ambiguous or unproven picker controls are never used as a filename field');
+        assert.equal(diagnostic.input_phase, 'BEFORE_INPUT');
+        assert.equal(diagnostic.focus_check?.foreground_matches, false);
+        assert.equal(diagnostic.focus_check?.focused_process_id, distractorPid);
         assert.doesNotMatch(JSON.stringify(diagnostic), /COVERT-FILE-PICKER-FIXTURE|upload-test\.txt/);
         return true;
       },
-      'the current native picker provider surface is not qualified for safe file selection'
+      'the picker refuses before sending any path characters while a different owned window has focus'
     );
-
-    const wpfEntry = await runPickerEntryProbe({
-      pid: pickerPid, windowHandle: pickerWindow.window_handle, resultWindowHandle: mainWindow.window_handle,
-      safeRoot: workspace, targetFile: selectedFile
+    const stalePickerLease = pickerWindow.lease_id;
+    await assert.rejects(
+      () => selectApprovedFile(pickerPid, pickerWindow, mainWindow),
+      { code: 'UIA_LEASE_INVALID' },
+      'focus loss invalidates the prior picker lease before recovery'
+    );
+    const focusRecovery = await closeDistractorAndVerifyPicker({
+      targetPid: pickerPid,
+      dialogHandle: pickerWindow.window_handle,
+      filenameEditHandle: wpfPickerTree.focused_element.summary.native_window_handle,
+      distractorPid,
+      distractorWindow
     });
-    assert.equal(wpfEntry.result.ok, true, `WPF fixture-only semantic focus and input probe: ${JSON.stringify(wpfEntry.result)}`);
-    assert.equal(wpfEntry.result.filename_entry.focus_runtime_id_verified, true);
-    assert.equal(wpfEntry.result.path_containment.result, 'PASS');
-    assert.equal(wpfEntry.result.input.target_path_readback_matches, true);
-    assert.equal(wpfEntry.result.open.dispatch, 'BM_CLICK_EXACT_OWNED_BUTTON');
-    assert.equal(wpfEntry.result.postcondition.dialog_closed, true);
-    assert.equal(wpfEntry.result.postcondition.caller_path_matches, true);
-    assert.equal(wpfEntry.result.postcondition.caller_sha256_matches, true);
-    assert.equal(wpfEntry.result.path_containment.sha256, wpfEntry.sha256);
-    console.log(`WPF_PICKER_FIXTURE_ENTRY=${JSON.stringify({ ...wpfEntry.result, canonical_root_verified: true, canonical_file_verified: true, path_components_checked: wpfEntry.componentsChecked })}`);
+    console.log(`WPF_PICKER_FOCUS_RECOVERY=${JSON.stringify(focusRecovery)}`);
+    assert.equal(await readWindowsProcessIdentity(distractorPid), null, 'the exact disposable distractor process exited after WM_CLOSE');
+    cleanupOutcomes.set(distractorPid, { pid: distractorPid, status: 'exited' });
+    const reacquiredWindows = await discover(pickerPid);
+    const reacquiredPicker = reacquiredWindows.find(row => row.window_handle === pickerWindow.window_handle);
+    assert.ok(reacquiredPicker, 'the original dialog is rediscovered under its original owned process');
+    assert.notEqual(reacquiredPicker.lease_id, stalePickerLease, 'rediscovery issues a new dialog lease');
+    pickerWindow = reacquiredPicker;
+
+    const wpfSelection = await selectApprovedFile(pickerPid, pickerWindow, mainWindow);
+    assert.equal(wpfSelection.assertion.pass, true);
+    assert.equal(wpfSelection.receipt.result, 'SUCCESS');
+    const wpfDetails = JSON.parse(wpfSelection.output).details;
+    assert.equal(wpfDetails.file_sha256, selectedSha256);
+    assert.equal(wpfDetails.file_bytes, selectedBytes.length);
+    assert.equal(wpfDetails.filename_focus_verified, true);
+    assert.equal(wpfDetails.input_path_readback_verified, true);
+    assert.equal(wpfDetails.path_containment, 'PASS');
+    assert.equal(wpfDetails.dialog_closed, true);
+    assert.equal(wpfDetails.caller_path_receipt_verified, true);
+    assert.equal(wpfDetails.caller_sha256_receipt_verified, true);
+    assert.equal(wpfDetails.open_dispatch, 'BM_CLICK_EXACT_OWNED_BUTTON');
+    assert.equal(wpfSelection.receipt.postcondition, 'caller_file_path_and_sha256');
+    await assert.rejects(
+      () => selectApprovedFile(pickerPid, pickerWindow, mainWindow),
+      { code: 'UIA_LEASE_INVALID' },
+      'the consumed dialog lease is invalid after the native picker closes'
+    );
+    console.log(`WPF_PICKER_PRODUCT_SELECTION=${JSON.stringify({ path_containment: wpfDetails.path_containment, focus_verified: wpfDetails.filename_focus_verified, input_readback_verified: wpfDetails.input_path_readback_verified, open_dispatch: wpfDetails.open_dispatch, dialog_closed: wpfDetails.dialog_closed, caller_path_receipt: wpfDetails.caller_path_receipt_verified, caller_sha256_receipt: wpfDetails.caller_sha256_receipt_verified, file_sha256: wpfDetails.file_sha256, file_bytes: wpfDetails.file_bytes })}`);
 
     const wpfCleanup = await execute('desktop.panic', {}, handle => desktop.panic(handle));
     assert.equal(wpfCleanup.ok, true, 'the isolated WPF caller is cleaned up before the WinForms variant starts');
     for (const outcome of wpfCleanup.outcomes) cleanupOutcomes.set(outcome.pid, outcome);
     assert.equal(wpfCleanup.outcomes.some(outcome => outcome.pid === pickerPid && outcome.status === 'terminated'), true);
+    assert.equal(cleanupOutcomes.get(distractorPid)?.status, 'exited');
     assert.equal(await readWindowsProcessIdentity(pickerPid), null);
+    assert.equal(await readWindowsProcessIdentity(distractorPid), null);
     desktop = createDesktopControl({ workspace, authority });
     await execute('desktop.grants', pickerGrants, handle => desktop.setGrants(pickerGrants, handle));
 
@@ -451,45 +525,32 @@ test('UIA captures a safe leased window and probes fixture-only selection in WPF
     const winformsPickerTree = await runPickerTreeProbe(legacyPickerPid, legacyPickerWindow.window_handle, workspace);
     const winformsTreeEvidence = await preservePickerTree('winforms-isolated', winformsPickerTree);
     console.log(`WINFORMS_PICKER_ACCESSIBILITY=${JSON.stringify({ ...summarizePickerTree(winformsPickerTree), evidence: winformsTreeEvidence })}`);
+    const movedWinformsPicker = await moveResizePicker(legacyPickerPid, legacyPickerWindow.window_handle, 140, 140, 860, 600);
+    console.log(`WINFORMS_PICKER_MOVED_RESIZED=${JSON.stringify(movedWinformsPicker)}`);
+
+    const outsideRoot = path.resolve(workspace, '..', `not-granted-${path.basename(workspace)}`);
     await assert.rejects(
-      () => action({ op: 'uia_action', target: JSON.stringify({
-        action: 'select_file', pid: legacyPickerPid, window_handle: legacyPickerWindow.window_handle,
-        lease_id: legacyPickerWindow.lease_id, selection_root: workspace, file_path: selectedFile,
-        result_window_handle: legacyMainWindow.window_handle, result_lease_id: legacyMainWindow.lease_id,
-        verify_automation_id: 'fixtureStatus'
-      }) }),
-      error => {
-        const diagnostic = error.diagnostic?.file_picker;
-        assert.equal(error.code, 'UIA_FILE_PICKER_CONTROL_UNAVAILABLE');
-        assert.equal(error.desktopReceipt?.result, 'FAILURE');
-        assert.equal(diagnostic?.stage, 'FILENAME_CONTROL');
-        const usableFilenameFields = (diagnostic?.filename_candidates ?? []).filter(candidate =>
-          candidate.control_type === 'ControlType.Edit' && candidate.enabled === true &&
-          candidate.offscreen === false && candidate.password === false &&
-          candidate.value_pattern === true && candidate.read_only === false
-        );
-        assert.equal(usableFilenameFields.length, 0, 'the provider refusal remains fail closed');
-        assert.doesNotMatch(JSON.stringify(diagnostic), /COVERT-FILE-PICKER-FIXTURE|upload-test\.txt/);
-        console.log(`LEGACY_PICKER_REFUSAL=${JSON.stringify({ code: error.code, stage: diagnostic.stage, filename_candidate_count: diagnostic.filename_candidate_count, filename_candidates: diagnostic.filename_candidates })}`);
-        return true;
-      },
-      'the current WinForms production resolver remains fail closed before filename input'
+      () => selectApprovedFile(legacyPickerPid, legacyPickerWindow, legacyMainWindow,
+        path.join(outsideRoot, 'operator-file.txt'), outsideRoot),
+      { code: 'PATH_NOT_GRANTED' },
+      'the in-root success path still refuses a selection whose root is outside granted roots'
     );
 
-    const winformsEntry = await runPickerEntryProbe({
-      pid: legacyPickerPid, windowHandle: legacyPickerWindow.window_handle, resultWindowHandle: legacyMainWindow.window_handle,
-      safeRoot: workspace, targetFile: selectedFile
-    });
-    assert.equal(winformsEntry.result.ok, true, `WinForms fixture-only semantic focus and input probe: ${JSON.stringify(winformsEntry.result)}`);
-    assert.equal(winformsEntry.result.filename_entry.focus_runtime_id_verified, true);
-    assert.equal(winformsEntry.result.path_containment.result, 'PASS');
-    assert.equal(winformsEntry.result.input.target_path_readback_matches, true);
-    assert.equal(winformsEntry.result.open.dispatch, 'BM_CLICK_EXACT_OWNED_BUTTON');
-    assert.equal(winformsEntry.result.postcondition.dialog_closed, true);
-    assert.equal(winformsEntry.result.postcondition.caller_path_matches, true);
-    assert.equal(winformsEntry.result.postcondition.caller_sha256_matches, true);
-    assert.equal(winformsEntry.result.path_containment.sha256, winformsEntry.sha256);
-    console.log(`WINFORMS_PICKER_FIXTURE_ENTRY=${JSON.stringify({ ...winformsEntry.result, canonical_root_verified: true, canonical_file_verified: true, path_components_checked: winformsEntry.componentsChecked })}`);
+    const winformsSelection = await selectApprovedFile(legacyPickerPid, legacyPickerWindow, legacyMainWindow);
+    assert.equal(winformsSelection.assertion.pass, true);
+    assert.equal(winformsSelection.receipt.result, 'SUCCESS');
+    const winformsDetails = JSON.parse(winformsSelection.output).details;
+    assert.equal(winformsDetails.file_sha256, selectedSha256);
+    assert.equal(winformsDetails.file_bytes, selectedBytes.length);
+    assert.equal(winformsDetails.filename_focus_verified, true);
+    assert.equal(winformsDetails.input_path_readback_verified, true);
+    assert.equal(winformsDetails.path_containment, 'PASS');
+    assert.equal(winformsDetails.dialog_closed, true);
+    assert.equal(winformsDetails.caller_path_receipt_verified, true);
+    assert.equal(winformsDetails.caller_sha256_receipt_verified, true);
+    assert.equal(winformsDetails.open_dispatch, 'BM_CLICK_EXACT_OWNED_BUTTON');
+    assert.equal(winformsSelection.receipt.postcondition, 'caller_file_path_and_sha256');
+    console.log(`WINFORMS_PICKER_PRODUCT_SELECTION=${JSON.stringify({ path_containment: winformsDetails.path_containment, focus_verified: winformsDetails.filename_focus_verified, input_readback_verified: winformsDetails.input_path_readback_verified, open_dispatch: winformsDetails.open_dispatch, dialog_closed: winformsDetails.dialog_closed, caller_path_receipt: winformsDetails.caller_path_receipt_verified, caller_sha256_receipt: winformsDetails.caller_sha256_receipt_verified, file_sha256: winformsDetails.file_sha256, file_bytes: winformsDetails.file_bytes })}`);
     assert.equal(captured.receipt.result, 'SUCCESS', 'bounded screenshot remains independently qualified');
     assert.doesNotMatch(JSON.stringify({ captured, records }), /FAKE-SECRET-NOT-REAL/);
   } finally {
@@ -505,6 +566,7 @@ test('UIA captures a safe leased window and probes fixture-only selection in WPF
     } finally {
       authority.control.close();
       await fs.rm(workspace, { recursive: true, force: true });
+      if (reparseTargetRoot) await fs.rm(reparseTargetRoot, { recursive: true, force: true });
     }
   }
 });

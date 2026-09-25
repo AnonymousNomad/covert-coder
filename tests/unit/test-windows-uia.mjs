@@ -16,6 +16,44 @@ test('UIA requests are strict, bounded, leased, and reject secret controls/unsup
   assert.throws(() => validateWindowsUiaRequest({ action: 'scroll', pid: 41, window_handle: 1, lease_id: leaseId, automation_id: 'list', horizontal_percent: -1, vertical_percent: 1000 }), /between -1 and 100/);
   assert.throws(() => validateWindowsUiaRequest({ action: 'type_text', pid: 41, window_handle: 1, automation_id: 'input', text: 'literal', expected_value_sha256: 'a'.repeat(64) }), /lease/);
   assert.throws(() => validateWindowsUiaRequest({ action: 'press_key', pid: 41, window_handle: 1, lease_id: leaseId, automation_id: 'input', verify_automation_id: 'status', key: 'F12', expected_value_sha256: 'a'.repeat(64) }), /unsupported/);
+  const picker = {
+    action: 'select_file', pid: 41, window_handle: 123, lease_id: leaseId,
+    selection_root: 'C:\\fixture-root', file_path: 'C:\\fixture-root\\upload.txt',
+    result_window_handle: 456, result_lease_id: leaseId,
+    verify_file_automation_id: 'fixtureSelectedPath', verify_sha256_automation_id: 'fixtureSelectedSha256'
+  };
+  assert.deepEqual(validateWindowsUiaRequest(picker), picker);
+  assert.throws(() => validateWindowsUiaRequest({ ...picker, verify_sha256_automation_id: 'fixtureSelectedPath' }), /distinct exact-file and SHA-256/);
+  assert.throws(() => validateWindowsUiaRequest({ ...picker, verify_automation_id: 'fixtureStatus' }), /unsupported|fields/);
+});
+
+test('native picker command resolves the labeled nested edit, checks focus, and verifies caller path plus hash receipts', () => {
+  const picker = {
+    action: 'select_file', pid: 41, window_handle: 123, lease_id: leaseId,
+    selection_root: 'C:\\fixture-root', file_path: 'C:\\fixture-root\\upload.txt',
+    result_window_handle: 456, result_lease_id: leaseId,
+    verify_file_automation_id: 'fixtureSelectedPath', verify_sha256_automation_id: 'fixtureSelectedSha256'
+  };
+  const script = buildWindowsUiaCommand(picker, {
+    ...identity, resultWindowRuntimeId: '4,5,6', resultWindowClassName: 'FixtureWindow'
+  });
+  assert.match(script, /Resolve-PickerFilenameEdit/);
+  assert.match(script, /File name:/);
+  assert.match(script, /ComboBoxEx32/);
+  assert.ok(script.includes("ClassName -ceq 'Edit'"));
+  assert.ok(script.includes("Assert-PickerFilenameFocus $target 'BEFORE_INPUT' $true"));
+  assert.match(script, /labelIndex -lt 0 -or \$outerIndex -ne \(\$labelIndex \+ 1\)/);
+  assert.match(script, /label_adjacent=\$true/);
+  assert.match(script, /focused_runtime_id_matches/);
+  assert.match(script, /SendUnicodeToVerifiedEdit\(\$file/);
+  assert.match(script, /info\.hwndFocus != edit/);
+  assert.match(script, /SendMessageTimeoutText/);
+  assert.match(script, /ClickVerifiedOpenButton/);
+  assert.match(script, /BM_CLICK_EXACT_OWNED_BUTTON/);
+  assert.match(script, /caller_path_receipt_verified/);
+  assert.match(script, /caller_sha256_receipt_verified/);
+  assert.match(script, /verify_sha256_automation_id/);
+  assert.doesNotMatch(script, /fileNamePattern\.SetValue/);
 });
 
 test('UIA helper binds process identity, sends only bounded payload on stdin, and returns verified result', async () => {
@@ -55,7 +93,7 @@ test('UIA helper binds process identity, sends only bounded payload on stdin, an
     assert.match(script, /TreeWalker\]::RawViewWalker/);
     assert.match(script, /focused_element_within_window=\$focusedElementWithinWindow/);
     assert.match(script, /focused_process_id -eq \[int\]\$expected\.pid/);
-    assert.match(script, /nearby_controls=\$nearbyDiagnostics/);
+    assert.doesNotMatch(script, /nearby_controls=\$nearbyDiagnostics/);
     const clickScript = script.slice(script.indexOf('      click {'), script.indexOf('      screenshot {'));
     assert.doesNotMatch(clickScript, /\$element\.TryGetCurrentPattern\(\[System\.Windows\.Automation\.TogglePattern\]/);
     assert.match(clickScript, /\$verifyElement\.TryGetCurrentPattern\(\[System\.Windows\.Automation\.TogglePattern\]/);
