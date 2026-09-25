@@ -82,12 +82,16 @@ test('UIA helper binds process identity, sends only bounded payload on stdin, an
     const script = buildWindowsUiaCommand(request, identity);
     assert.match(script, /Assert-TargetIdentity/);
     assert.match(script, /Assert-TargetWindow/);
+    assert.match(script, /if \(\$foreground -ne \[long\]\$payload\.window_handle\) \{ throw \'UIA_FOCUS_LOST\' \}/);
     assert.match(script, /TogglePattern/);
     assert.match(script, /Assert-LeasedWindow/);
     assert.match(script, /\$envelope\.identity/);
     assert.match(script, /stage=\$stage/);
     assert.match(script, /input_phase=\[string\]\$script:inputPhase/);
     assert.match(script, /function Get-SafeFocusSnapshot/);
+    assert.match(script, /function Assert-ForegroundWindow/);
+    assert.match(script, /Assert-ForegroundWindow 'BEFORE_INVOKE'/);
+    assert.match(script, /Assert-ForegroundWindow 'AFTER_INVOKE'/);
     assert.match(script, /AutomationElement\]::FocusedElement/);
     assert.match(script, /focused_native_window_handle=\$focusedWindowHandle/);
     assert.match(script, /TreeWalker\]::RawViewWalker/);
@@ -95,6 +99,12 @@ test('UIA helper binds process identity, sends only bounded payload on stdin, an
     assert.match(script, /focused_process_id -eq \[int\]\$expected\.pid/);
     assert.doesNotMatch(script, /nearby_controls=\$nearbyDiagnostics/);
     const clickScript = script.slice(script.indexOf('      click {'), script.indexOf('      screenshot {'));
+    const invokeScript = script.slice(script.indexOf('      invoke {'), script.indexOf('      type_text {'));
+    assert.match(invokeScript, /InvokePattern/);
+    assert.match(invokeScript, /\$script:inputPhase = 'BEFORE_INVOKE'/);
+    assert.match(invokeScript, /\$script:inputPhase = 'PATTERN_DISPATCHED'/);
+    assert.match(invokeScript, /\$script:inputPhase = 'PATTERN_VERIFIED'/);
+    assert.doesNotMatch(invokeScript, /ClickAt/);
     assert.doesNotMatch(clickScript, /\$element\.TryGetCurrentPattern\(\[System\.Windows\.Automation\.TogglePattern\]/);
     assert.match(clickScript, /\$verifyElement\.TryGetCurrentPattern\(\[System\.Windows\.Automation\.TogglePattern\]/);
   } finally {
