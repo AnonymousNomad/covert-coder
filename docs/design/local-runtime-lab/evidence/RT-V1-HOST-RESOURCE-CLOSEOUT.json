@@ -1,0 +1,98 @@
+{
+  "schema": "covert.runtime.host-resource-closeout.v1",
+  "status": "HOST RESOURCE CONDITION RESOLVED",
+  "root_cause_classifications": [
+    "PROVEN_STALE_DEVELOPMENT_PROCESS",
+    "HOST_PAGEFILE_CONFIGURATION"
+  ],
+  "before": {
+    "captured_at_utc": "2026-09-25T13:39:43.7752961Z",
+    "free_ram_gib": 5.404,
+    "free_commit_gib": 4.301,
+    "commit_used_bytes": 27739475968,
+    "commit_limit_bytes": 32357560320,
+    "free_vram_mib": 5199,
+    "runtime_processes": 0,
+    "reserved_runtime_listeners": 0,
+    "pagefile": {
+      "automatic_management": false,
+      "configured": "C:\\pagefile.sys 0 0",
+      "allocated_mib": 14679,
+      "current_usage_mib": 14535,
+      "peak_usage_mib": 14679,
+      "c_free_gib": 0.118,
+      "e_free_gib": 201.46
+    },
+    "thresholds": {
+      "free_ram_gib_minimum": 6.5,
+      "free_commit_gib_minimum": 5,
+      "free_vram_mib_minimum": 4608,
+      "gpu_utilization_percent_maximum_exclusive": 50
+    }
+  },
+  "primary_consumers": [
+    {
+      "identity": "operator-confirmed abandoned OpenCode process",
+      "classification": "PROVEN_STALE_DEVELOPMENT_PROCESS",
+      "disposition": "exact process identity revalidated and stopped after operator confirmation",
+      "working_set_released_gib": 0.418,
+      "private_memory_released_gib": 0.961,
+      "commit_released_gib": 0.957
+    },
+    {
+      "identity": "Windows and operator desktop session",
+      "classification": "WINDOWS_SYSTEM_AND_OPERATOR_ACTIVE",
+      "disposition": "retained; not treated as stale"
+    }
+  ],
+  "pagefile_remediation": {
+    "previous_state": "C-only system-managed pagefile; 14.679 GiB allocated and 14.535 GiB in use while C: had 0.118 GiB free",
+    "action": "Added system-managed E:\\pagefile.sys while preserving C:\\pagefile.sys; automatic-managed setting remained false; reboot applied the change",
+    "active_after_reboot": [
+      {
+        "drive": "C:",
+        "allocated_mib": 7796,
+        "sampled_usage_mib": 66
+      },
+      {
+        "drive": "E:",
+        "allocated_mib": 2944,
+        "sampled_usage_mib": 478
+      }
+    ],
+    "interpretation": "Commit headroom recovered after the reboot and pagefile change. This is not evidence that a larger pagefile repairs a memory leak."
+  },
+  "diagnostics": {
+    "wsl_running": false,
+    "runtime_or_model_server_before_qualification": false,
+    "port_18888_listener_before_qualification": false,
+    "foreign_runtime_terminated": false,
+    "resident_touched": false,
+    "unexplained_commit_pressure_after_remediation": false
+  },
+  "qualification_preflight": {
+    "captured_at_utc": "2026-09-25T16:59:52.980Z",
+    "pass": true,
+    "free_ram_gib": 7.1156,
+    "free_commit_gib": 16.6152,
+    "free_vram_mib": 5423,
+    "gpu_utilization_percent": 26,
+    "runtime_process_count": 0
+  },
+  "soak_observed_minima": {
+    "free_ram_bytes": 5984075776,
+    "free_ram_gib": 5.5728,
+    "free_commit_bytes": 13827072000,
+    "free_commit_gib": 12.884,
+    "free_vram_mib_at_periodic_ticks": 3589,
+    "all_in_run_floors_passed": true
+  },
+  "remediation_evidence": [
+    "RT-V1-HOST-RESOURCE-DIAGNOSIS-20260925T153324Z.json",
+    "RT-V1-HOST-RESOURCE-GATE-RESUME-20260925T142738Z.json",
+    "RT-V1-PAGEFILE-BEFORE-CHANGE-20260925T144000Z.json",
+    "RT-V1-PAGEFILE-CHANGE-20260925T144527Z.json",
+    "RT-V1-HOST-RESOURCE-GATE-AFTER-REMEDIATION.json"
+  ],
+  "host_idle_baseline": "RT-V1-HOST-IDLE-BASELINE-20260925T173910Z.json"
+}

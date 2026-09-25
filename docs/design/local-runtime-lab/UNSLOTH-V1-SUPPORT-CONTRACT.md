@@ -1,6 +1,6 @@
 # Covert Local Runtime V1 Support Contract
 
-Status: support scope frozen for the V1 qualification profile; operational closeout remains open. The current blocker and exact preflight evidence are recorded in `UNSLOTH-RUNTIME-V1-CLOSEOUT.md` and `evidence/RT-V1-CURRENT-RESOURCE-GATE.json`. The accepted RT23 profile Passport remains historical at `evidence/UNSLOTH-RUNTIME-PASSPORT.json`; the final V1 Passport is not issued until the closeout gates pass.
+Status: **V1 operational qualification closed for the exact profile below.** The final configuration-specific Passport is `evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json`; its sidecar hash is `evidence/UNSLOTH-RUNTIME-PASSPORT-V1.sha256`. The earlier RT23 Passport at `evidence/UNSLOTH-RUNTIME-PASSPORT.json` remains historical evidence and is not overwritten.
 
 ## Supported profile
 
@@ -41,19 +41,21 @@ On host restart: rediscover the runtime; treat old PID/port data as stale; start
 
 ## V1 capabilities
 
-The final values from the qualification runner supersede the historical RT23 capability classifications:
+The final values from the 2026-09-25 live qualification supersede the historical RT23 capability classifications:
 
 - Chat completion: supported for the frozen profile; endpoint contract remains partial outside it.
-- Streaming and cancellation: classify from the V1 live run; do not generalize beyond the tested request shape.
-- Tool execution: Covert validates one named call and schema, then passes it through Execution Authority. Invalid JSON, traversal, wrong tool, or schema mismatch is rejected before execution. Runtime repair attribution remains `UNKNOWN` unless raw pre-repair output is exposed.
+- Streaming: `SUPPORTED` for the tested frozen request shape; streamed TTFT was 7.72 s and total time 8.45 s. Do not generalize beyond this profile.
+- Cancellation and recovery: `SUPPORTED` for the tested client abort; the request was interrupted, runtime health remained healthy, and a subsequent request succeeded.
+- Tool calling: `PARTIAL`. One harmless `workspace.read` tool intent passed schema validation, Covert Execution Authority approved and executed the read-only fixture, the result returned, and the model completed the turn. Malformed arguments and malformed JSON were rejected before Authority execution; the session recovered. Raw pre-repair model output was unavailable, so repair attribution remains `UNKNOWN`; no self-healing repair claim is made.
 - Native strict structured output: `NOT SUPPORTED — COVERT VALIDATION REQUIRED`. Covert's `RuntimeBroker.inferStructured` removes native response-format dependence, validates the complete JSON value against the supplied strict schema, and returns either `ACCEPTED` or `NEEDS_REVIEW`. It does not repair, coerce, or retry. `NEEDS_REVIEW` carries no accepted value.
-- Runtime-native resource metrics and loaded byte count remain `UNKNOWN` unless directly exposed. Host RAM, Windows commit, and VRAM measurements are separate, sourced observations.
+- The frozen-schema probe returned HTTP 200 and one schema-valid value, but that single result does not establish deterministic native enforcement. A malformed JSON/trailing-prose case was rejected by Covert validation as `NEEDS_REVIEW` / `INVALID_JSON`, with zero retries and no accepted value.
+- Runtime-native resource metrics and loaded byte count remain `UNKNOWN` unless directly exposed. Host RAM, Windows commit, and VRAM measurements are separately sourced host observations.
 
 ## Resource guidance for this machine
 
-Prior accepted observations for the exact profile were 5.67 GiB minimum free physical RAM, 3.04 GiB minimum free Windows commit, 2,517 MiB peak total GPU memory use, and 1,774 MiB increase from idle. Those are observed samples, not universal limits.
+Prior accepted observations for this profile included 5.67 GiB minimum free physical RAM, 3.04 GiB minimum free Windows commit, 2,517 MiB peak total GPU memory use, and a 1,774 MiB increase from that run's idle sample. In the final 30-minute V1 soak, minimum free physical RAM was 5.57 GiB, minimum free Windows commit was 12.88 GiB, the lowest periodic tick snapshot showed 3,589 MiB free VRAM, and peak total GPU memory use was 2,444 MiB. The runner's in-run VRAM guard passed at every resource sample. These are host-specific observed samples, not universal limits. The runtime's llama-server private bytes stayed approximately 2.13–2.18 GiB across sampled intervals and did not show a rising trend.
 
-For a new interactive load on this machine, use these conservative preflight recommendations: at least 6.5 GiB free RAM, 5 GiB free Windows commit, and 4.5 GiB free VRAM; GPU utilization below 50%; no foreign model runtime; and a free, dedicated loopback port. During a run, stop qualification if free RAM falls below 5.25 GiB, free commit below 2.75 GiB, or free VRAM below 3 GiB. These guardrails are specific operational margins around observed behavior, not claims about all GTX 1060 systems.
+For a new interactive load on this machine, use these conservative preflight recommendations: at least 6.5 GiB free RAM, 5 GiB free Windows commit, and 4.5 GiB free VRAM; GPU utilization below 50%; no foreign model runtime; and a free, dedicated loopback port. During a run, stop qualification if free RAM falls below 5.25 GiB, free commit below 2.75 GiB, or free VRAM below 3 GiB. The final soak remained above each in-run stop guardrail. These guardrails are host-specific operational margins, not claims about all GTX 1060 systems.
 
 ## Updates and removal
 

@@ -1,0 +1,224 @@
+{
+  "passport_version": 1,
+  "passport_id": "RT-V1-WINDOWS-ADMIN-VULKAN-LFM25-20260925",
+  "issued_at_utc": "2026-09-25T17:34:01.217Z",
+  "qualification_state": "QUALIFIED",
+  "scope": "Exact native Windows 11 Administrator + external Unsloth 2026.9.11 + Vulkan + GTX 1060 Mobile + official Liquid Q4_K_M artifact; no generalization outside this configuration.",
+  "environment": {
+    "os": "Windows 11 Home Insider Preview",
+    "os_build": "26220",
+    "execution_environment": "WINDOWS_NATIVE",
+    "elevation": "ADMINISTRATOR",
+    "elevation_authorized_by_operator": true,
+    "standard_user_installation": "NOT_QUALIFIED",
+    "machine": "ASUS ROG Strix GL703GM",
+    "cpu": "Intel Core i7-8750H, 6 cores / 12 threads",
+    "ram_installed_gib": 16,
+    "gpu": "NVIDIA GeForce GTX 1060 Mobile 6 GB",
+    "compute_capability": "6.1",
+    "nvidia_driver": "582.28"
+  },
+  "runtime": {
+    "name": "Unsloth",
+    "version": "2026.9.11",
+    "canonical_backend": "UNSLOTH",
+    "execution_environment": "WINDOWS_NATIVE_ADMINISTRATOR",
+    "serving_backend": "VULKAN",
+    "engine": "Unsloth-managed llama-server for GGUF",
+    "endpoint_binding": "127.0.0.1:18888",
+    "external_user_managed": true,
+    "health_during_qualification": "HEALTHY",
+    "health_after_cleanup": "STOPPED",
+    "fallback_used": false,
+    "direct_llama_cpp_role": "EXPLICIT_RECOVERY_REFERENCE_ONLY"
+  },
+  "installation": {
+    "mechanism": "Official Unsloth Windows PowerShell bootstrap, external user-managed install; exact successful historical bootstrap bytes were not retained",
+    "bootstrap_source": "https://unsloth.ai/install.ps1",
+    "successful_bootstrap_sha256": "UNKNOWN_NOT_RETAINED",
+    "prior_failed_stage_sha256_not_attributed_to_this_install": "5C6F0AFD0306A6461F346DD772D5A8BDE97780716507AA5824974375B1649A6C",
+    "install_root": "E:\\Unsloth-Studio-runtime-lab-RT27",
+    "cli_path": "E:\\Unsloth-Studio-runtime-lab-RT27\\bin\\unsloth.exe",
+    "cli_wrapper_path": "E:\\Unsloth-Studio-runtime-lab-RT27\\bin\\unsloth.cmd",
+    "managed_python_path": "E:\\Unsloth-Studio-runtime-lab-RT27\\unsloth_studio\\Scripts\\python.exe",
+    "cache_roots": [
+      "E:\\Unsloth-Studio-runtime-lab-RT27\\.cache",
+      "E:\\Unsloth-Studio-runtime-lab-RT27\\cache"
+    ],
+    "reconciliation_result": "CURRENT_INSTALL_RECOGNIZED_VERSION_MATCHED",
+    "reconciliation_action": "NO_DESTRUCTIVE_REINSTALL_REQUIRED",
+    "runbook_sha256": "3dfb8f81b244890529d4fde1152c9691fce1ffee9d64e42d06c41bd97109f001",
+    "reconciler_sha256": "2950fa0516ceae3410496224e314c4beccb47ce70aab169ae245553c717ec8fd",
+    "administrator_access": "PASS"
+  },
+  "artifact": {
+    "name": "LFM2.5-2.6B-Q4_K_M.gguf",
+    "format": "GGUF",
+    "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "bytes": 1674455040,
+    "hash_recomputed_before_qualification": true,
+    "runtime_loaded_identity_matched": true
+  },
+  "generation_profile": {
+    "context_tokens": "UNKNOWN_NOT_EXPOSED_BY_QUALIFIED_API_PROFILE",
+    "temperature": 0,
+    "max_output_tokens": 512,
+    "prompt_tokens_normal_probe": 22,
+    "completion_tokens_normal_probe": 56,
+    "same_artifact_reload": "PASS",
+    "different_model_switch": "NOT_TESTED"
+  },
+  "authentication": {
+    "mechanism": "DPAPI-backed bearer credential slot",
+    "unauthenticated_http_status": 401,
+    "authenticated_http_status": 200,
+    "credential_value_logged": false,
+    "credential_value_serialized": false,
+    "result": "PASS"
+  },
+  "capabilities": {
+    "discovery": "PASS",
+    "health": "PASS_DURING_RUN_STOPPED_AFTER_CLEANUP",
+    "model_discovery": "PASS_ONE_EXPECTED_MODEL_ID",
+    "load": "PASS",
+    "unload": "PASS",
+    "reload": "PASS",
+    "chat_inference": "PASS_FOR_FROZEN_REQUEST_PROFILE",
+    "streaming": {
+      "classification": "SUPPORTED_FOR_TESTED_PROFILE",
+      "first_visible_token_ms": 7721.17,
+      "total_ms": 8448.54
+    },
+    "cancellation": "PASS_FOR_TESTED_CLIENT_ABORT",
+    "failure_recovery": "PASS",
+    "tool_calling": {
+      "classification": "PARTIAL",
+      "valid_harmless_call": "PASS_ONE_FROZEN_WORKSPACE_READ_CASE",
+      "authority_approved_and_executed": true,
+      "result_returned_and_final_response_completed": true,
+      "malformed_argument_and_json_rejected_before_execution": true,
+      "session_recovered_after_rejection": true,
+      "raw_pre_repair_output": "UNAVAILABLE",
+      "runtime_adjusted_call": "VALID_SCHEMA_CALL_OBSERVED",
+      "repair_attribution": "UNKNOWN",
+      "self_healing_repair_claimed": false
+    },
+    "structured_output": {
+      "native_strict_schema": "NOT SUPPORTED — COVERT VALIDATION REQUIRED",
+      "single_valid_probe": "OBSERVED_BUT_NOT_SUFFICIENT_TO_QUALIFY_NATIVE_ENFORCEMENT",
+      "covert_validator": "PASS_DETERMINISTIC_FAIL_CLOSED",
+      "malformed_json_result": "NEEDS_REVIEW_INVALID_JSON",
+      "retry_count": 0,
+      "accepted_value_on_invalid_result": false
+    },
+    "native_prompt_processing_tokens_per_second": "UNKNOWN_NOT_RETURNED_BY_API",
+    "native_generation_tokens_per_second": "UNKNOWN_NOT_RETURNED_BY_API",
+    "metrics_api": "UNKNOWN",
+    "loaded_model_bytes_api": "UNKNOWN"
+  },
+  "performance": {
+    "cold_start_to_healthy_model_loaded_ms": 48353.1817,
+    "cold_server_health_ms": 10592.657000000003,
+    "warm_unload_ms": 19252.857600000018,
+    "warm_reload_ms": 24894.34209999998,
+    "normal_request_latency_ms": 7336.290200000003,
+    "normal_request_end_to_end_completion_tokens_per_second": 7.633285826125032,
+    "throughput_note": "End-to-end output-token count divided by full request latency; not native decode speed.",
+    "soak": {
+      "duration_ms": 1807502,
+      "ticks": 23,
+      "host_resource_samples": 46,
+      "requests": 19,
+      "failures": 0,
+      "completed": true,
+      "minimum_free_physical_ram_bytes": 5984075776,
+      "minimum_free_commit_bytes": 13827072000,
+      "minimum_free_vram_mib_at_periodic_ticks": 3589,
+      "maximum_total_gpu_memory_used_mib": 2444,
+      "gpu_memory_used_start_end_mib": [
+        2378,
+        2440
+      ],
+      "llama_server_private_bytes_observed_range": [
+        2288640000,
+        2339651584
+      ],
+      "memory_trend": "NO_MONOTONIC_GROWTH_OBSERVED"
+    },
+    "streaming_first_visible_token_ms": 7721.169699999999,
+    "streaming_total_ms": 8448.537599999996,
+    "owned_restart_and_model_reload_ms": 46017.69999999995
+  },
+  "ownership": {
+    "managed_run_state": "COVERT_OWNED",
+    "foreign_runtime_adoption": "PROHIBITED",
+    "unknown_ownership": "FAIL_CLOSED",
+    "port_conflict": "DO_NOT_ASSUME_OWNERSHIP",
+    "shutdown_only_when_owned": true,
+    "restart_loss_detected": true,
+    "restart_recovery_ms": 46017.7,
+    "post_cleanup_health": "STOPPED",
+    "post_cleanup_model_loaded": false,
+    "post_cleanup_listener_count": 0,
+    "ownership_tests": "PASS"
+  },
+  "host_resources": {
+    "start_preflight_free_ram_gib": 7.115581512451172,
+    "start_preflight_free_commit_gib": 16.61520004272461,
+    "start_preflight_free_vram_gib": 5.2958984375,
+    "start_preflight_gpu_utilization_percent": 26,
+    "recommended_start_guardrail": {
+      "free_ram_gib_minimum": 6.5,
+      "free_commit_gib_minimum": 5,
+      "free_vram_gib_minimum": 4.5,
+      "gpu_utilization_percent_maximum_exclusive": 50
+    },
+    "in_run_stop_guardrail": {
+      "free_ram_gib_minimum": 5.25,
+      "free_commit_gib_minimum": 2.75,
+      "free_vram_gib_minimum": 3
+    },
+    "guidance_scope": "OBSERVED AND RECOMMENDED FOR THIS HOST PROFILE ONLY"
+  },
+  "licensing_and_distribution": {
+    "distribution_model": "EXTERNAL_USER_MANAGED_DEPENDENCY",
+    "studio_or_cli_source_bundled": false,
+    "studio_or_cli_binaries_redistributed": false,
+    "observed_license_boundary": "Upstream source labels core unsloth/* Apache-2.0 and Studio/optional CLI components AGPLv3; this records the observed boundary and is not a broader legal opinion.",
+    "automatic_updates": false
+  },
+  "qualification_limits": {
+    "passport_stales_on": [
+      "Unsloth version change",
+      "backend change",
+      "driver change",
+      "artifact SHA-256 change",
+      "material runtime or generation profile change"
+    ],
+    "out_of_v1_scope": [
+      "standard-user Windows",
+      "AUTO backend",
+      "CUDA",
+      "CPU inference",
+      "WSL",
+      "other operating systems",
+      "other GPUs",
+      "other model artifacts",
+      "other Unsloth versions",
+      "different-model hot swap"
+    ],
+    "soak_claim": "Bounded 30-minute qualification only; no indefinite-stability claim."
+  },
+  "evidence": {
+    "sanitized_trace": "docs/design/local-runtime-lab/evidence/RT-V1-LIVE-TRACE.jsonl",
+    "evidence_manifest": "docs/design/local-runtime-lab/evidence/RT-RUNTIME-EVIDENCE-MANIFEST.json",
+    "raw_trace": {
+      "path_classification": "EXTERNAL_LOCAL_EVIDENCE",
+      "sha256": "19227dad3ec97f835b52e2614ed520ab60b925677144b87140eb8d6affd97c4c",
+      "bytes": 75987
+    },
+    "host_resource_diagnosis": "docs/design/local-runtime-lab/evidence/RT-V1-HOST-RESOURCE-CLOSEOUT.json",
+    "host_idle_baseline": "docs/design/local-runtime-lab/evidence/RT-V1-HOST-IDLE-BASELINE-20260925T173910Z.json",
+    "qualification_report": "docs/design/local-runtime-lab/UNSLOTH-RUNTIME-V1-CLOSEOUT.md"
+  }
+}

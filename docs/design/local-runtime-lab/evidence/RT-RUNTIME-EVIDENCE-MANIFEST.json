@@ -1,0 +1,292 @@
+{
+  "schema": "covert.runtime.evidence-manifest.v1",
+  "status": "FROZEN",
+  "created_at_utc": "2026-09-25T17:34:01.217Z",
+  "passport": {
+    "path": "docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json",
+    "sha256": "921af21011ac194cf84ae11751de0f32018a7646fe857555a6ca167e6bdf8b4c"
+  },
+  "entries": [
+    {
+      "role": "FROZEN_SUPPORT_CONTRACT",
+      "sha256": "70c6459096494d545fa2a090da15945177cdb54186a306cdba83e77571cf3f2e",
+      "bytes": 8018,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/UNSLOTH-V1-SUPPORT-CONTRACT.md"
+      }
+    },
+    {
+      "role": "CANONICAL_INSTALL_RUNBOOK",
+      "sha256": "3dfb8f81b244890529d4fde1152c9691fce1ffee9d64e42d06c41bd97109f001",
+      "bytes": 7675,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/UNSLOTH-V1-INSTALL-RUNBOOK.md"
+      }
+    },
+    {
+      "role": "V1_CLOSEOUT_REPORT",
+      "sha256": "1f740533d7eb76845b4645141172cabdf71121f5957ebbf5be50a8b8e2e88842",
+      "bytes": 10306,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/UNSLOTH-RUNTIME-V1-CLOSEOUT.md"
+      }
+    },
+    {
+      "role": "INSTALL_RECONCILER",
+      "sha256": "2950fa0516ceae3410496224e314c4beccb47ce70aab169ae245553c717ec8fd",
+      "bytes": 2610,
+      "location": {
+        "kind": "repository",
+        "path": "scripts/qualification/unsloth-install-reconcile.ps1"
+      }
+    },
+    {
+      "role": "EVIDENCE_FINALIZER",
+      "sha256": "11760d9e5c864367f4a767083a51bd3c65d4576f29dbb7e2ea5ae9eefcc1a284",
+      "bytes": 22017,
+      "location": {
+        "kind": "repository",
+        "path": "scripts/qualification/finalize-runtime-v1-evidence.mjs"
+      }
+    },
+    {
+      "role": "ACCEPTANCE_VALIDATOR",
+      "sha256": "df3a54b860c4e0fd4fb4fb81e4119ef9a838a504ed00406b3c3dfcff3b64c8de",
+      "bytes": 10130,
+      "location": {
+        "kind": "repository",
+        "path": "scripts/qualification/validate-runtime-v1-closeout.mjs"
+      }
+    },
+    {
+      "role": "HISTORICAL_PROFILE_PASSPORT",
+      "sha256": "ed72be685f248236aa7ce63aa1d19a75d8587c61f2ded424b2cfcb93d2c4f03e",
+      "bytes": 8266,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT.json"
+      }
+    },
+    {
+      "role": "FINAL_V1_RUNTIME_PASSPORT",
+      "sha256": "921af21011ac194cf84ae11751de0f32018a7646fe857555a6ca167e6bdf8b4c",
+      "bytes": 9255,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json"
+      }
+    },
+    {
+      "role": "FINAL_V1_PASSPORT_HASH_SIDECAR",
+      "sha256": "68b7b257b47ce7a38dd60e89667dc72e85ac7f6a2cc466eeb6713dbcc3c20719",
+      "bytes": 99,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT-V1.sha256"
+      }
+    },
+    {
+      "role": "MODEL_MANAGER_HANDOFF_FIXTURE",
+      "sha256": "7c8b5aeeeefb2e89ceb934c50b10e40d3fda0bb3fb3e0bc142732e6198981e83",
+      "bytes": 3145,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/LUNA-RUNTIME-STATUS-FIXTURE-V1.json"
+      }
+    },
+    {
+      "role": "OPERATOR_CONTROL_HANDOFF_FIXTURE",
+      "sha256": "f44c2dfd5f2fbdab46fe61c230a61236e7bd5a7b34a7633df71066f0e80f1c13",
+      "bytes": 1320,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/OPERATOR-CONTROL-RUNTIME-FIXTURE-V1.json"
+      }
+    },
+    {
+      "role": "CURRENT_INSTALL_RECONCILIATION",
+      "sha256": "a2c4b3234086c8af33dd361c23076f0f1f1553b53de77b3e1272e87d8ba8816e",
+      "bytes": 438,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-INSTALL-RECONCILIATION.json"
+      }
+    },
+    {
+      "role": "PASSED_FINAL_RESOURCE_PREFLIGHT",
+      "sha256": "f5e2cf8b899b9ace83d06031da2a3ed01fc123ca836933ad36bab07fcf481b04",
+      "bytes": 1083,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-FINAL-PREFLIGHT.json"
+      }
+    },
+    {
+      "role": "HOST_RESOURCE_DIAGNOSIS",
+      "sha256": "3905a2767e6ad48075ae338b8519ee28aef56091ce92394beabcdb9494933d33",
+      "bytes": 39256,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-HOST-RESOURCE-DIAGNOSIS-20260925T153324Z.json"
+      }
+    },
+    {
+      "role": "HOST_RESOURCE_CLOSEOUT",
+      "sha256": "f9febbd0eea26ec3669d5f7459c861460b49d184eb7138492f8420b986a3fa54",
+      "bytes": 3443,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-HOST-RESOURCE-CLOSEOUT.json"
+      }
+    },
+    {
+      "role": "HOST_IDLE_BASELINE",
+      "sha256": "f1b956692c9aa18846963a14c4d0f39bf43b524a4286cfc616a2f4406fa19845",
+      "bytes": 1420,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-HOST-IDLE-BASELINE-20260925T173910Z.json"
+      }
+    },
+    {
+      "role": "SANITIZED_LIVE_RUNTIME_TRACE",
+      "sha256": "d8ba6a56a4c14221bf10427d9cfd306b75d381f1a3c436a71e86d3be3a1c8c98",
+      "bytes": 27279,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-LIVE-TRACE.jsonl"
+      }
+    },
+    {
+      "role": "DETERMINISTIC_REGRESSION_RESULTS",
+      "sha256": "2399395993c9c034a27ab12a4683bf524cd14dd7012dbac2d38e2ae450ae2faa",
+      "bytes": 3875,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-DETERMINISTIC-RESULTS.json"
+      }
+    },
+    {
+      "role": "HISTORICAL_PREQUALIFICATION_MANIFEST",
+      "sha256": "f6c00b4dac8a3bc97365c6b90233d1dbdd9fbfd458b78bf6ed2166be3e6b61b4",
+      "bytes": 8880,
+      "location": {
+        "kind": "repository",
+        "path": "docs/design/local-runtime-lab/evidence/RT-V1-PREQUALIFICATION-EVIDENCE-MANIFEST.json"
+      }
+    },
+    {
+      "role": "OFFICIAL_ARTIFACT_IDENTITY",
+      "location": {
+        "kind": "external",
+        "path": "E:\\aide-sovereign-workbench\\models\\LFM2.5-2.6B-Q4_K_M.gguf"
+      },
+      "bytes": 1674455040,
+      "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+      "provenance": "Carried forward from the validated RT-V1 prequalification evidence manifest."
+    },
+    {
+      "role": "HISTORICAL_LIVE_RUNTIME_TRACE",
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\vulkan-qualification-20260925T030145Z.stdout.jsonl"
+      },
+      "bytes": 19272,
+      "sha256": "af6c944a3e94527a8e5bd9bb4575215a0c389328bf96794a256ea62c96732dee",
+      "provenance": "Carried forward from the validated RT-V1 prequalification evidence manifest."
+    },
+    {
+      "role": "HISTORICAL_RESOURCE_TRACE",
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\vulkan-qualification-20260925T030145Z.resources.jsonl"
+      },
+      "bytes": 121591,
+      "sha256": "e156666aac5e14c9c1d534c0d7b20470e08d79998bc5aa98d58f83b5232fc7c8",
+      "provenance": "Carried forward from the validated RT-V1 prequalification evidence manifest."
+    },
+    {
+      "role": "HISTORICAL_AUTH_HEALTH_RESTART_REPORT",
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\native-windows-health-auth-restart.json"
+      },
+      "bytes": 905,
+      "sha256": "406df69fc9280eaf38a4923aefb70abf81cd548595fe405f5ddbdde3d9ce9415",
+      "provenance": "Carried forward from the validated RT-V1 prequalification evidence manifest."
+    },
+    {
+      "role": "HISTORICAL_EMPTY_OUTPUT_DIAGNOSTIC",
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\unsloth-empty-content-diagnostic-report.json"
+      },
+      "bytes": 2647,
+      "sha256": "bef7604c62b2ed80c5f56cc980fbd5993a3353c4ba8d4cd0ae391170d106b59e",
+      "provenance": "Carried forward from the validated RT-V1 prequalification evidence manifest."
+    },
+    {
+      "role": "HISTORICAL_512_OUTPUT_BUDGET_DIAGNOSTIC",
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\unsloth-output-budget-512-diagnostic-report.json"
+      },
+      "bytes": 1537,
+      "sha256": "90a0e89b8144310403c5d647621ef815547f6f6408c042b7d21582a396c3c592",
+      "provenance": "Carried forward from the validated RT-V1 prequalification evidence manifest."
+    },
+    {
+      "role": "FAILED_RESOURCE_PREFLIGHT",
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\rt-v1-closeout-20260925T125224Z\\RT-V1-CLOSEOUT.jsonl"
+      },
+      "bytes": 583,
+      "sha256": "74f206b724ec17dca4cf9f036bed361072e02519cc51e8ac72d292a3040416e2",
+      "provenance": "Carried forward from the validated RT-V1 prequalification evidence manifest."
+    },
+    {
+      "role": "HISTORICAL_FAILED_SOAK_TRACE",
+      "sha256": "88a1d978bd9a5ee42a392a1711453c18bc445f48eb21aa98f0dfced0bde462b7",
+      "bytes": 63497,
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\RT-V1-CLOSEOUT-20260925T155741Z.jsonl"
+      },
+      "provenance": "Prior safe stop; ownership proof became inconclusive and cleanup stopped the owned runtime."
+    },
+    {
+      "role": "HISTORICAL_RESOURCE_GATE_STOP_TRACE",
+      "sha256": "63e394ad46e25d323d0615b8d0c7e845de614253a4c488ca39d509a17f6e4141",
+      "bytes": 2329,
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\RT-V1-CLOSEOUT-20260925T154601Z.jsonl"
+      },
+      "provenance": "Historical preflight/guard stop preserved outside Git."
+    },
+    {
+      "role": "LIVE_AUTHORITY_EVENT_TRACE",
+      "sha256": "01ddb03179b5c6533b3d3c4d6385d5e5bbfdfd71133944f0bee82b40d0ec7f8d",
+      "bytes": 1704,
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\runtime-v1-authority-events.jsonl"
+      },
+      "provenance": "Raw authority event receipts for the harmless V1 tool execution case; preserved outside Git."
+    },
+    {
+      "role": "LIVE_RUNTIME_TRACE",
+      "sha256": "19227dad3ec97f835b52e2614ed520ab60b925677144b87140eb8d6affd97c4c",
+      "bytes": 75987,
+      "location": {
+        "kind": "external",
+        "path": "E:\\Unsloth-Studio-runtime-lab-RT27\\qualification\\c1168c1b97852fba8a329e15380389375a9eade0\\RT-V1-CLOSEOUT-20260925T170000Z.jsonl"
+      },
+      "provenance": "Raw 2026-09-25 V1 qualification trace; retained outside Git because it includes local process/resource evidence."
+    }
+  ]
+}

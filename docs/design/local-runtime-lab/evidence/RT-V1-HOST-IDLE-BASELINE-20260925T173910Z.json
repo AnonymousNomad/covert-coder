@@ -1,0 +1,49 @@
+{
+  "schema": "covert.runtime.host-idle-baseline.v1",
+  "captured_at_utc": "2026-09-25T17:39:10.2920557Z",
+  "baseline_kind": "OPERATOR_SESSION_IDLE_RUNTIME_STOPPED",
+  "host": "ASUS ROG Strix GL703GM",
+  "os": "Windows 11 Home Insider Preview",
+  "os_build": "26220",
+  "execution_context": "WINDOWS_NATIVE_ADMINISTRATOR",
+  "total_ram_bytes": 17099075584,
+  "free_ram_bytes": 7302672384,
+  "commit_used_bytes": 10991472640,
+  "commit_limit_bytes": 28360839168,
+  "free_commit_bytes": 17369366528,
+  "cache_bytes": 1058217984,
+  "paged_pool_bytes": 987635712,
+  "nonpaged_pool_bytes": 781365248,
+  "gpu": {
+    "name": "NVIDIA GeForce GTX 1060",
+    "driver": "582.28",
+    "total_mib": 6144,
+    "used_mib": 671,
+    "free_mib": 5361,
+    "utilization_percent": 25
+  },
+  "pagefile": {
+    "automatic_managed": false,
+    "active": [
+      {
+        "name": "C:\\pagefile.sys",
+        "allocated_mib": 7796,
+        "current_usage_mib": 109,
+        "peak_usage_mib": 110
+      },
+      {
+        "name": "E:\\pagefile.sys",
+        "allocated_mib": 2944,
+        "current_usage_mib": 1115,
+        "peak_usage_mib": 1122
+      }
+    ],
+    "configured_as_system_managed_entries": true
+  },
+  "running_wsl_distributions": [],
+  "runtime_process_count": 0,
+  "reserved_runtime_listeners": [],
+  "start_guardrail_pass": true,
+  "host_specific_only": true,
+  "operator_desktop_and_Codex_session_remained_active": true
+}

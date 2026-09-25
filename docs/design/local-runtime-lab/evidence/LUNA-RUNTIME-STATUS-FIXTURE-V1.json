@@ -1,19 +1,19 @@
 {
   "fixture_metadata": {
     "contract": "RuntimeStatusResponse",
-    "snapshot_kind": "CURRENT_STOPPED_ADAPTER_OBSERVATION",
-    "updated_at": "2026-09-25T13:38:45.724Z",
+    "snapshot_kind": "FINAL_POST_QUALIFICATION_STOPPED_ADAPTER_OBSERVATION",
+    "updated_at": "2026-09-25T17:34:01.217Z",
     "private_paths_included": false,
     "pid_included": false,
     "credential_values_included": false,
-    "qualification_note": "The prior profile Passport remains historical accepted evidence. V1 closeout is separately blocked by the current resource start gate."
+    "qualification_note": "The exact native Windows Administrator, Unsloth 2026.9.11, Vulkan, GTX 1060 Mobile, official Liquid artifact profile is qualified. Current health is STOPPED after verified clean shutdown."
   },
   "status": {
     "contract_version": 1,
     "canonical_backend": "UNSLOTH",
     "backend": "UNSLOTH",
     "version": "2026.9.11",
-    "engine": null,
+    "engine": "llama-server",
     "endpoint": "http://127.0.0.1:18888",
     "port": 18888,
     "pid": null,
@@ -28,23 +28,23 @@
       "api_embeddings": "UNKNOWN",
       "embeddings": "UNKNOWN",
       "model_discovery": "PARTIAL",
-      "model_load": "PARTIAL",
-      "model_unload": "PARTIAL",
+      "model_load": "SUPPORTED",
+      "model_unload": "SUPPORTED",
       "model_switching": "PARTIAL",
       "hot_swap": "UNKNOWN",
-      "streaming": "PARTIAL",
-      "cancellation": "PARTIAL",
+      "streaming": "SUPPORTED",
+      "cancellation": "SUPPORTED",
       "tool_calling": "PARTIAL",
       "tool_repair": "UNKNOWN",
-      "structured_output": "UNKNOWN",
+      "structured_output": "UNSUPPORTED",
       "vision": "UNKNOWN",
       "speculative_decoding": "UNKNOWN",
       "parallel_requests": "UNKNOWN",
-      "context_controls": "PARTIAL",
+      "context_controls": "UNKNOWN",
       "kv_cache_controls": "UNKNOWN",
       "metrics": "UNKNOWN",
       "headless": "SUPPORTED",
-      "offline_local_inference": "SUPPORTED"
+      "offline_local_inference": "UNKNOWN"
     },
     "metrics": {
       "ram_bytes": null,
@@ -56,7 +56,7 @@
     },
     "last_error": null,
     "fallback_event_id": null,
-    "updated_at": "2026-09-25T13:38:45.724Z"
+    "updated_at": "2026-09-25T17:34:01.217Z"
   },
   "runtime_state": {
     "installed": true,
@@ -64,17 +64,27 @@
     "healthy": false,
     "model_available": true,
     "model_loaded": false,
-    "runtime_profile_qualified_by_prior_passport": true,
-    "artifact_qualified_by_prior_passport": true,
-    "prior_passport_sha256": "ED72BE685F248236AA7CE63AA1D19A75D8587C61F2DED424B2CFCB93D2C4F03E",
-    "v1_closeout_state": "BLOCKED_RESOURCE_START_GATE"
+    "runtime_qualified": true,
+    "artifact_qualified": true,
+    "qualification_state": "QUALIFIED",
+    "v1_closeout_state": "CLOSED",
+    "passport_file": "UNSLOTH-RUNTIME-PASSPORT-V1.json",
+    "passport_sha256": "921af21011ac194cf84ae11751de0f32018a7646fe857555a6ca167e6bdf8b4c",
+    "artifact": {
+      "name": "LFM2.5-2.6B-Q4_K_M.gguf",
+      "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+      "bytes": 1674455040
+    }
   },
   "v1_capability_classification": {
-    "native_strict_structured_output": "NOT_SUPPORTED — COVERT VALIDATION REQUIRED",
-    "covert_structured_validation": "DETERMINISTIC_FAIL_CLOSED",
+    "native_strict_structured_output": "NOT SUPPORTED — COVERT VALIDATION REQUIRED",
+    "covert_structured_validation": "DETERMINISTIC_FAIL_CLOSED_PASS",
     "tool_calling": "PARTIAL",
-    "live_tool_execution_loop": "NOT_QUALIFIED_RESOURCE_GATE",
-    "raw_pre_repair_output": "UNAVAILABLE_IN_PRIOR_TRACE",
-    "tool_repair_attribution": "UNKNOWN"
+    "one_harmless_authority_execution_loop": "PASS",
+    "malformed_call_rejection_before_execution": "PASS",
+    "raw_pre_repair_output": "UNAVAILABLE",
+    "tool_repair_attribution": "UNKNOWN",
+    "bounded_30_minute_soak": "PASS",
+    "runtime_ownership_and_clean_shutdown": "PASS"
   }
 }

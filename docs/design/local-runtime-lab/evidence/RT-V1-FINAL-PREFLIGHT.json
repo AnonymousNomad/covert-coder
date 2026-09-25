@@ -1,0 +1,32 @@
+{
+  "schema": "covert.runtime.v1-final-preflight.v1",
+  "captured_at_utc": "2026-09-25T16:59:52.980Z",
+  "execution_context": "WINDOWS_NATIVE_ADMINISTRATOR",
+  "administrator_authorized_by_operator": true,
+  "pass": true,
+  "resources": {
+    "total_ram_bytes": 17099075584,
+    "free_ram_bytes": 7640297472,
+    "free_ram_gib": 7.1156,
+    "commit_used_bytes": 10520403968,
+    "commit_limit_bytes": 28360839168,
+    "free_commit_bytes": 17840435200,
+    "free_commit_gib": 16.6152,
+    "gpu": "NVIDIA GeForce GTX 1060",
+    "driver": "582.28",
+    "gpu_total_mib": 6144,
+    "gpu_used_mib": 609,
+    "gpu_free_mib": 5423,
+    "gpu_utilization_percent": 26
+  },
+  "runtime_process_count": 0,
+  "port_18888_listener_count": 0,
+  "guardrails": {
+    "free_ram_gib_minimum": 6.5,
+    "free_commit_gib_minimum": 5,
+    "free_vram_mib_minimum": 4608,
+    "gpu_utilization_percent_maximum_exclusive": 50
+  },
+  "artifact_hash_checked_immediately_after_preflight": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+  "credential_values_read_before_server_start": false
+}

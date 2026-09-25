@@ -1,6 +1,6 @@
 # Unsloth V1 Windows Installation and Reconciliation Runbook
 
-Profile: native Windows 11 Administrator, Unsloth `2026.9.11`, GGUF-only, Vulkan, GTX 1060-class qualified machine. This is the canonical Covert procedure. Its current hash is recorded in the prequalification evidence manifest; the final V1 Passport must pin the then-current runbook hash when closeout passes. That Passport has not been issued. This runbook does not claim to recover the historical remote bootstrap bytes that were not retained during the successful installation.
+Profile: native Windows 11 Administrator, Unsloth `2026.9.11`, GGUF-only, Vulkan, GTX 1060-class qualified machine. This version-controlled runbook is the canonical V1 installation and reconciliation procedure; the final Runtime Passport pins its SHA-256. The successful install used Unsloth's official Windows PowerShell bootstrap, but the exact downloaded bootstrap bytes were not retained, so that historical bootstrap hash remains `UNKNOWN_NOT_RETAINED`. The separate hash of the earlier failed staged installer must not be substituted.
 
 ## Installation state
 
@@ -38,6 +38,8 @@ action: NO_DESTRUCTIVE_REINSTALL_REQUIRED
 
 The reconciler is read-only. It fails closed for a non-Administrator session, missing files, version mismatch, or profile mismatch. Do not rerun installation merely to recreate the lost historical bootstrap hash.
 
+The final qualification replay recognized the installed runtime as version-matched, accessible, stopped, and in the no-Torch/GGUF profile. It returned `NO_DESTRUCTIVE_REINSTALL_REQUIRED`; no install or credential read occurred. This is an idempotent reconciliation proof for the existing installation, not a clean-room reinstall claim.
+
 ## Fresh installation procedure
 
 Only use this procedure if the reconciler reports that the runtime is absent and the operator explicitly requests installation. The official Windows path is documented by [Unsloth](https://github.com/unslothai/unsloth/blob/main/README.md). The upstream bootstrap is mutable and currently specifies a package lower bound rather than a reproducible historical installer build, so capture its hash at each install and stop qualification unless the installed package and manifest both resolve exactly to `2026.9.11`.
@@ -62,7 +64,7 @@ $env:UNSLOTH_STUDIO_HOME = 'E:\Unsloth-Studio-runtime-lab-RT27'
 $env:UNSLOTH_LLAMA_CPP_BACKEND = 'vulkan'
 ```
 
-5. Execute the reviewed local script, for example `& $bootstrapPath`, from that same PowerShell session. Record the actual CLI, managed Python, manifest, cache, configuration, and install roots. Do not enable autostart, tunnels, LAN exposure, or cloud features.
+5. Execute the reviewed local script, for example `& $bootstrapPath`, from that same PowerShell session. Record the downloaded bootstrap SHA-256, package version, install manifest, and actual CLI, managed Python, cache, configuration, and install roots. Require Unsloth `2026.9.11`; do not promote a different version under this Passport. Do not enable autostart, tunnels, LAN exposure, or cloud features.
 6. Run the reconciler again. Require exact package and manifest version `2026.9.11`, GGUF-only/no-Torch profile, accessible CLI/Python/configuration, and no runtime started as a side effect.
 7. Before first model load, use the normal Covert RuntimeAdapter path to verify loopback health, bearer authentication, ownership, and clean start/stop. Then run the exact artifact hash gate in the qualification harness.
 
