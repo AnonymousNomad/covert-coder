@@ -1,4 +1,6 @@
-# Unsloth Runtime Qualification — RT23
+# Historical Unsloth Runtime Qualification — RT23
+
+> Historical snapshot retained as evidence. Its `PARTIAL` tool and structured-output classifications and its absence of long-run soak are superseded by the V1 closeout record when that record is frozen. This history is not to be edited into current V1 state.
 
 ## Verdict
 

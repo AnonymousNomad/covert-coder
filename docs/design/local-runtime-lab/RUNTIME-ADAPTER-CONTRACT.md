@@ -6,6 +6,8 @@
 
 This contract defines Covert's ownership boundary around the canonical Unsloth runtime. Covert standardizes on Unsloth for local inference while keeping inference behind a clean runtime boundary. Covert owns qualification, resource admission, routing, context, authority, verification, evidence, and project state; Unsloth owns model execution and engine internals.
 
+**V1 qualification overlay:** use [UNSLOTH-V1-SUPPORT-CONTRACT.md](UNSLOTH-V1-SUPPORT-CONTRACT.md) and the V1 Runtime Passport for the tested Windows Administrator + Vulkan + Liquid profile. Earlier RT23 capability notes below remain historical evidence; they do not override the final V1 classification.
+
 ## Product hierarchy
 
 ```text
@@ -104,7 +106,9 @@ Unknown is retained as `UNKNOWN`; the adapter does not infer support from an end
 
 The exact tested profile was native Windows 11 Administrator execution, Unsloth 2026.9.11, Vulkan, GTX 1060 Mobile, and the official Liquid GGUF artifact. Non-stream and streaming chat, authenticated API use, model load/unload/reload, cancellation, invalid-request recovery, server restart, and Covert-owned shutdown passed. Five sequential normal requests returned visible content and ended with stop.
 
-The runtime accepted one strict JSON Schema request with HTTP 200 but returned no schema-valid JSON at the frozen 512-token budget. This profile result is PARTIAL. The Covert adapter continues to reject responseFormat until its structured path is wired; its generic capability remains UNKNOWN. Tool calling produced schema-valid arguments for one frozen case. The runtime API did not expose raw pre-repair model output, so repair attribution remains UNKNOWN and Covert did not execute the tool.
+### Historical RT23 live observations (superseded by V1 closeout)
+
+The runtime accepted one strict JSON Schema request with HTTP 200 but returned no schema-valid JSON at the frozen 512-token budget. That RT23 profile result was PARTIAL. The adapter rejected `responseFormat`; tool calling produced schema-valid arguments for one frozen case but the tool was not executed. Raw pre-repair output was unavailable, so repair attribution was UNKNOWN. The V1 tool-loop result and final structured-output product decision are recorded in the V1 support contract and Passport.
 
 Host monitoring captured minimum free RAM of 5.67 GiB, minimum free Windows commit of 3.04 GiB, and peak total system VRAM use of 2,517 MiB. Adapter-native metric fields remain null. Long-run soak, AUTO, CUDA inference, CPU inference, and switching to a different model were not tested. Exact settings and evidence are in the [Runtime Passport](evidence/UNSLOTH-RUNTIME-PASSPORT.json).
 

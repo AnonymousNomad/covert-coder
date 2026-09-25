@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { z } from 'zod';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:net';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -506,10 +507,12 @@ test('rejected graceful shutdown leaves the owned runtime untouched', async () =
 class AdapterStub implements RuntimeAdapter {
   private loaded: RuntimeModelIdentityT | null = null;
   private readonly state: RuntimeHealthT;
+  private readonly responseText: string;
   readonly backendId: 'UNSLOTH' | 'LLAMA_CPP';
-  constructor(backend: 'UNSLOTH' | 'LLAMA_CPP', state: RuntimeHealthT) {
+  constructor(backend: 'UNSLOTH' | 'LLAMA_CPP', state: RuntimeHealthT, responseText = 'ok') {
     this.backendId = backend;
     this.state = state;
+    this.responseText = responseText;
   }
   async discover(): Promise<void> {}
   async health(): Promise<RuntimeHealthT> { return this.state; }
@@ -519,7 +522,7 @@ class AdapterStub implements RuntimeAdapter {
   async unload(): Promise<void> { this.loaded = null; }
   async infer(request: RuntimeInferenceRequest): Promise<RuntimeInferenceResult> {
     if (this.state !== 'HEALTHY') throw new RuntimeAdapterError('UNHEALTHY', 'stub backend unhealthy');
-    return { text: 'ok', model: this.loaded ?? unknownModelIdentity(request.modelId), promptTokens: null, completionTokens: null, timingMs: 0, toolCalls: [], toolEvidence: { raw_model_output: null, runtime_adjusted_output: null, executed_tool_call: null, attribution: 'UNKNOWN', limitation: null }, finishReason: null };
+    return { text: this.responseText, model: this.loaded ?? unknownModelIdentity(request.modelId), promptTokens: null, completionTokens: null, timingMs: 0, toolCalls: [], toolEvidence: { raw_model_output: null, runtime_adjusted_output: null, executed_tool_call: null, attribution: 'UNKNOWN', limitation: null }, finishReason: null };
   }
   async stream(): Promise<RuntimeInferenceResult> { return this.infer({ modelId: 'm', messages: [] }); }
   async cancel(): Promise<boolean> { return false; }
@@ -527,6 +530,25 @@ class AdapterStub implements RuntimeAdapter {
   async shutdown(): Promise<void> {}
   async status(): Promise<RuntimeStatusResponseT> { return { ...baseStatus(this.backendId, this.state, this.loaded), ownership: 'UNKNOWN' }; }
 }
+
+test('Runtime Broker strict output normalization accepts schema-valid JSON and routes invalid output to NEEDS_REVIEW without retry', async () => {
+  const schema = z.object({ status: z.enum(['ok', 'needs_review']), count: z.number().int().nonnegative() }).strict();
+  const request = { modelId: 'fixture', messages: [{ role: 'user', content: 'Return the frozen JSON fixture.' }], maxTokens: 64, temperature: 0 };
+  const acceptedBroker = new RuntimeBroker(new AdapterStub('UNSLOTH', 'HEALTHY', '{"status":"ok","count":2}'), null, os.tmpdir());
+  const rejectedBroker = new RuntimeBroker(new AdapterStub('UNSLOTH', 'HEALTHY', '{"status":"ok","count":2} trailing'), null, os.tmpdir());
+  const accepted = await acceptedBroker.inferStructured(request, schema);
+  assert.equal(accepted.disposition, 'ACCEPTED');
+  if (accepted.disposition === 'ACCEPTED') assert.deepEqual(accepted.value, { status: 'ok', count: 2 });
+  const rejected = await rejectedBroker.inferStructured(request, schema);
+  assert.equal(rejected.disposition, 'NEEDS_REVIEW');
+  assert.equal(rejected.fallback, 'NEEDS_REVIEW');
+  assert.equal(rejected.retry_count, 0);
+  assert.equal('value' in rejected, false);
+  await assert.rejects(
+    () => rejectedBroker.inferStructured({ ...request, responseFormat: { type: 'json_schema' } } as never, schema),
+    (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'NATIVE_STRUCTURED_OUTPUT_NOT_SUPPORTED'
+  );
+});
 
 test('Runtime Broker does not fall back silently and journals only an explicit recovery selection', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-runtime-broker-'));

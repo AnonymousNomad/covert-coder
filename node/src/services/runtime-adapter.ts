@@ -12,6 +12,7 @@ import {
   type RuntimeStatusResponseT,
   type RuntimeToolEvidenceT
 } from '../../../common/contracts/runtime.ts';
+import { classifyStructuredOutput, type RuntimeSafeParseSchema, type StructuredOutputDisposition } from './runtime-output-validation.ts';
 
 export interface RuntimeLoadRequest {
   modelId: string;
@@ -190,6 +191,24 @@ export class RuntimeBroker {
   unload(modelId: string, operatorAction = false): Promise<void> { return this.invoke(() => this.active.unload(modelId, operatorAction)); }
   infer(request: RuntimeInferenceRequest, signal?: AbortSignal): Promise<RuntimeInferenceResult> {
     return this.invoke(() => this.active.infer(request, signal));
+  }
+  async inferStructured<T>(
+    request: Omit<RuntimeInferenceRequest, 'responseFormat'>,
+    schema: RuntimeSafeParseSchema<T>,
+    signal?: AbortSignal
+  ): Promise<StructuredOutputDisposition<T> & { inference: RuntimeInferenceResult }> {
+    if (Object.prototype.hasOwnProperty.call(request, 'responseFormat')) {
+      throw new RuntimeAdapterError('NATIVE_STRUCTURED_OUTPUT_NOT_SUPPORTED', 'use Covert validation without native response-format enforcement');
+    }
+    const inferenceRequest: RuntimeInferenceRequest = {
+      modelId: request.modelId,
+      messages: request.messages,
+      ...(request.maxTokens === undefined ? {} : { maxTokens: request.maxTokens }),
+      ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+      ...(request.tools === undefined ? {} : { tools: request.tools })
+    };
+    const inference = await this.infer(inferenceRequest, signal);
+    return { ...classifyStructuredOutput(inference.text, schema), inference };
   }
   stream(request: RuntimeInferenceRequest, onDelta: RuntimeDeltaHandler, signal: AbortSignal): Promise<RuntimeInferenceResult> {
     return this.invoke(() => this.active.stream(request, onDelta, signal));

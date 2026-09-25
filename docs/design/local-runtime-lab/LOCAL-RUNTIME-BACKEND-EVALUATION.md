@@ -37,6 +37,8 @@ The source research below remains historical evidence. The engineering decision 
 - **Performance:** no backend speed winner is claimed. Unsloth must qualify per model and machine before a configuration is marked qualified.
 
 The original RT0 resource snapshot and RT5–RT8 deferrals describe that research checkpoint only. The active ownership rules and implementation state are in [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md) and [RUNTIME-BENCHMARK-METHODOLOGY.md](RUNTIME-BENCHMARK-METHODOLOGY.md).
+
+The frozen V1 support envelope and current operational capability decisions are in [UNSLOTH-V1-SUPPORT-CONTRACT.md](UNSLOTH-V1-SUPPORT-CONTRACT.md) and its configuration-specific Runtime Passport. The preliminary verdict below is historical only.
 - **UNVERIFIED** — not established by documentation or a safe local experiment in this lane.
 
 ## Unsloth Desktop / Studio
