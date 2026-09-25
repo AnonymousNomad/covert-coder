@@ -1,0 +1,41 @@
+{
+  "schema": "covert.runtime.host-resource-resume-gate.v1",
+  "capturedAtUtc": "2026-09-25T14:27:38.447Z",
+  "machine": "NEURO-MIRROR",
+  "executionContext": "WINDOWS_NATIVE_ADMINISTRATOR",
+  "source": "Node-equivalent runtime runner preflight",
+  "resourceGate": {
+    "freeRamGiB": 6.903984069824219,
+    "requiredFreeRamGiB": 6.5,
+    "freeCommitGiB": 5.850299835205078,
+    "requiredFreeCommitGiB": 5.0,
+    "freeVramGiB": 5.1005859375,
+    "requiredFreeVramGiB": 4.5,
+    "gpuUtilizationPercent": 25,
+    "maximumGpuUtilizationPercentExclusive": 50,
+    "runtimeProcessCount": 0,
+    "port18888Listeners": 0,
+    "pass": true
+  },
+  "rootCause": {
+    "classification": "PROVEN_STALE_DEVELOPMENT_PROCESS",
+    "process": "opencode.exe",
+    "pid": 21852,
+    "releasedWorkingSetGiB": 0.418,
+    "releasedPrivateBytesGiB": 0.961,
+    "releasedCommitGiB": 0.957,
+    "exactPidStoppedAfterOperatorConfirmation": true,
+    "residualSystemCommitGap": "UNEXPLAINED_NOT_ATTRIBUTED"
+  },
+  "pagefile": {
+    "automaticManagement": false,
+    "configured": "C:\\pagefile.sys 0 0",
+    "allocatedGiB": 14.335,
+    "currentUsageGiB": 14.077,
+    "capturedAtUtc": "2026-09-25T14:25:18.114Z",
+    "cFreeGiB": 0.123,
+    "eFreeGiB": 201.458,
+    "changed": false
+  },
+  "qualificationStarted": false
+}

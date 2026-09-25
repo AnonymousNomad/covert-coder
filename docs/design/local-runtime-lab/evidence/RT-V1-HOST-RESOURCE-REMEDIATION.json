@@ -1,0 +1,35 @@
+{
+  "schema": "covert.runtime.host-resource-remediation.v1",
+  "capturedAtUtc": "2026-09-25T14:09:25.0087301Z",
+  "remediation": "Stopped exact operator-confirmed abandoned OpenCode process after identity revalidation.",
+  "processBefore": {
+    "pid": 21852,
+    "name": "opencode.exe",
+    "path": "E:\\nodejs\\node-v26.4.0-win-x64\\node_modules\\.opencode-ai-3SSEl1GE\\bin\\opencode.exe",
+    "parentPid": 1804,
+    "startTimeUtc": "2026-09-22T23:31:13.3515687Z",
+    "workingSetBytes": 404127744,
+    "privateBytes": 1031667712,
+    "cpuSeconds": 2222.265625,
+    "listener": "127.0.0.1:4096"
+  },
+  "processAfterAbsent": true,
+  "listenerPort4096Free": true,
+  "before": {
+    "availableRamBytes": 6620913664,
+    "freeCommitBytes": 5377363968,
+    "commitUsedBytes": 27114414080,
+    "commitLimitBytes": 32491778048
+  },
+  "after": {
+    "availableRamBytes": 7069966336,
+    "freeCommitBytes": 6404800512,
+    "commitUsedBytes": 26086977536,
+    "commitLimitBytes": 32491778048
+  },
+  "delta": {
+    "availableRamBytes": 449052672,
+    "freeCommitBytes": 1027436544,
+    "commitUsedBytes": -1027436544
+  }
+}

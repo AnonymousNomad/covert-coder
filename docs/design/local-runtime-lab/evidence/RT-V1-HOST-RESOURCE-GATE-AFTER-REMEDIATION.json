@@ -1,0 +1,31 @@
+{
+  "schema": "covert.runtime.v1-post-remediation-resource-gate.v1",
+  "capturedAtUtc": "2026-09-25T14:10:57.2349185Z",
+  "freeRamBytes": 7100592128,
+  "freeRamGiB": 6.613,
+  "committedBytes": 26074902528,
+  "commitLimitBytes": 32491778048,
+  "freeCommitBytes": 6416875520,
+  "freeCommitGiB": 5.976,
+  "ramThresholdGiB": 6.5,
+  "commitThresholdGiB": 5,
+  "gatePass": true,
+  "gpu": "NVIDIA GeForce GTX 1060, 582.28, 6144 MiB, 819 MiB, 5213 MiB, 26 %",
+  "runtimeProcesses": [],
+  "reservedListeners": [],
+  "runningWslDistros": [],
+  "diskFree": [
+    {
+      "DeviceID": "C:",
+      "FreeGiB": 0.136
+    },
+    {
+      "DeviceID": "E:",
+      "FreeGiB": 201.458
+    },
+    {
+      "DeviceID": "L:",
+      "FreeGiB": 29.383
+    }
+  ]
+}
