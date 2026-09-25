@@ -426,7 +426,7 @@ export function createAgentTools({ workspace, rg, desktop = null, authority } = 
     },
     {
       name: 'desktop_action',
-      description: 'Propose a single desktop action (launch_app, open_path, list_windows, focus_window, move_file, outlook_create_draft, excel_generate_report). Goes through the operator approval flow; deny-by-default on out-of-grants targets. Output the proposal inside <desktop_action>...</desktop_action> with op:/target:/destination:/note: fields. Approved must be true (the agent approval flow sets it).',
+      description: 'Propose a single desktop action (launch_app, open_path, list_windows, focus_window, uia_action, move_file, outlook_create_draft, excel_generate_report). UIA is limited to a live process launched and identity-verified by this session; it uses semantic controls and requires operator approval. Goes through the operator approval flow; deny-by-default on out-of-grants targets. Output the proposal inside <desktop_action>...</desktop_action> with op:/target:/destination:/note: fields. Approved must be true (the agent approval flow sets it).',
       params: ['action', 'approved'],
       readOnly: false,
       required: ['action', 'approved'],
@@ -463,6 +463,7 @@ export function createAgentTools({ workspace, rg, desktop = null, authority } = 
             op: proposal.op,
             target: proposal.target,
             destination: proposal.destination,
+            ...(proposal.show_window === undefined ? {} : { show_window: proposal.show_window }),
             approved: true,
             note: proposal.note
               ? `agent-approved: ${proposal.note}`
@@ -502,4 +503,3 @@ export function createAgentTools({ workspace, rg, desktop = null, authority } = 
   }
   return { tools, rootAbs };
 }
-

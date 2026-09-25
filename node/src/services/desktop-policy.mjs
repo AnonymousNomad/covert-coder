@@ -30,6 +30,7 @@ const OP_ALLOWLIST = new Set([
   'open_path',
   'list_windows',
   'focus_window',
+  'uia_action',
   'move_file',
   'outlook_create_draft',
   'excel_generate_report'
@@ -38,6 +39,9 @@ const OP_ALLOWLIST = new Set([
 const CLASS_BY_OP = Object.freeze({
   list_windows: 'READ',
   focus_window: 'WRITE',
+  // UIA may invoke controls with application-defined effects; require the
+  // strongest existing approval card rather than guessing the control risk.
+  uia_action: 'DESTRUCTIVE',
   launch_app: 'OPEN',
   open_path: 'OPEN',
   move_file: 'DESTRUCTIVE',
@@ -52,6 +56,7 @@ const RISK_TAGS = Object.freeze({
   open_path: ['opens-external-handler'],
   move_file: ['mutates-filesystem', 'no-undo-on-overwrite'],
   focus_window: ['changes-input-focus'],
+  uia_action: ['targets-owned-process-only', 'semantic-control-only', 'postcondition-required-for-invoke'],
   outlook_create_draft: ['saves-to-outlook', 'sender-must-send'],
   excel_generate_report: ['writes-to-disk', 'overwrites-if-exists'],
   list_windows: []
@@ -96,7 +101,7 @@ export function parseDesktopAction(blockText) {
   // Known fields. Anything else is a parse error (privilege-escalation
   // guard — a model that emits `approved: true` is trying to bypass the
   // agent's approval flow, which is impossible from inside the parser).
-  const KNOWN_FIELDS = new Set(['op', 'target', 'destination', 'note']);
+  const KNOWN_FIELDS = new Set(['op', 'target', 'destination', 'note', 'show_window']);
   // Field extraction: one key: value per line. Whitespace-tolerant. Unknown
   // keys are errors (privilege-escalation guard).
   const fields = {};
@@ -111,7 +116,7 @@ export function parseDesktopAction(blockText) {
     }
     const key = m[1].toLowerCase();
     if (!KNOWN_FIELDS.has(key)) {
-      throw new DesktopPolicyError('UNKNOWN_FIELD', `unknown field "${key}"; allowed: op, target, destination, note`);
+      throw new DesktopPolicyError('UNKNOWN_FIELD', `unknown field "${key}"; allowed: op, target, destination, note, show_window`);
     }
     if (seen.has(key)) {
       throw new DesktopPolicyError('DUPLICATE_FIELD', `duplicate field: ${key}`);
@@ -151,6 +156,11 @@ export function parseDesktopAction(blockText) {
     }
     proposal.note = note;
   }
+  if (fields.show_window !== undefined) {
+    if (!['true', 'false'].includes(fields.show_window.toLowerCase())) throw new DesktopPolicyError('INVALID_SHOW_WINDOW', 'show_window must be true or false');
+    if (op !== 'launch_app') throw new DesktopPolicyError('INVALID_SHOW_WINDOW', 'show_window is supported only for launch_app');
+    proposal.show_window = fields.show_window.toLowerCase() === 'true';
+  }
 
   // Per-op required-field law. move_file MUST have destination. The
   // DesktopActionRequest contract requires `approved: boolean`; we set it
@@ -181,8 +191,9 @@ export function desktopActionPromptHint() {
   return [
     'DESKTOP ACTION (requires operator approval in ACT mode):',
     '  <desktop_action>',
-    '  op: launch_app | open_path | list_windows | focus_window | move_file | outlook_create_draft | excel_generate_report',
-    '  target: <app name | path | window title substring>     # not required for list_windows',
+    '  op: launch_app | open_path | list_windows | focus_window | uia_action | move_file | outlook_create_draft | excel_generate_report',
+    '  target: <app name | path | window title substring | bounded UIA request JSON>     # not required for list_windows',
+    '  show_window: true | false   # optional; launch_app only, defaults false',
     '  destination: <path>   # REQUIRED for move_file',
     '  note: <one-sentence intent, captured for training>',
     '  </desktop_action>',

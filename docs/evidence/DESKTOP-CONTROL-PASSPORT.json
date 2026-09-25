@@ -1,0 +1,112 @@
+{
+  "passport_version": "desktop-control-passport-v1",
+  "qualification": "PARTIAL",
+  "qualified_at": "2026-09-25",
+  "platform": {
+    "os": "Windows 11 Home Insider Preview",
+    "version": "10.0.26220",
+    "build": "26220",
+    "powershell_helper": "5.1.26100.8925",
+    "node": "26.4.0"
+  },
+  "control_provider": {
+    "name": "Windows UI Automation",
+    "assembly": "UIAutomationClient",
+    "assembly_version": "4.0.0.0",
+    "mechanisms": [
+      "Win32 EnumWindows filtered by owner PID",
+      "UI Automation AutomationElement",
+      "Focus",
+      "InvokePattern",
+      "ScrollPattern"
+    ]
+  },
+  "capabilities": {
+    "application_launch": "QUALIFIED",
+    "owned_window_discovery": "QUALIFIED",
+    "process_and_window_ownership": "QUALIFIED_WITHIN_SESSION_LAUNCHED_PROCESS_SCOPE",
+    "window_focus": "QUALIFIED",
+    "semantic_invoke": "QUALIFIED",
+    "bounded_scroll": "QUALIFIED",
+    "raw_mouse_click": "NOT_IMPLEMENTED",
+    "text_entry": "BLOCKED_PENDING_SECRET_SAFE_AUTHORITY_CONTRACT",
+    "keyboard_input": "NOT_IMPLEMENTED",
+    "screenshot": "NOT_IMPLEMENTED",
+    "file_picker_selection": "NOT_IMPLEMENTED",
+    "drag_drop": "NOT_QUALIFIED",
+    "clipboard": "NOT_QUALIFIED",
+    "terminal_gui": "NOT_RUN",
+    "browser_gui": "NOT_RUN",
+    "covert_ui": "NOT_RUN",
+    "unexpected_dialog_handling": "NOT_RUN",
+    "owned_process_cleanup": "QUALIFIED_FOR_RETAINED_DIRECT_CHILD"
+  },
+  "allowed_application_classes": {
+    "source": "operator-approved Desktop Control grants",
+    "qualification_fixture": ["powershell.exe running the disposable WPF fixture"],
+    "scope": "UI Automation accepts only a live direct process launched and retained by this Desktop Control session"
+  },
+  "window_identification_method": {
+    "process_identity": ["PID", "parent PID", "image name", "executable path", "creation time UTC"],
+    "window_identity": ["native HWND", "UIA NativeWindowHandle", "owner PID"],
+    "revalidation": "process identity checked before dispatch and again in the PowerShell UIA helper; HWND is re-enumerated and owner PID checked immediately before and after focus, invoke, and scroll"
+  },
+  "input_method": {
+    "semantic": ["focus", "InvokePattern", "ScrollPattern"],
+    "coordinate_input": false,
+    "arbitrary_text_input": false,
+    "keyboard_synthesis": false,
+    "secret_handling": "inspection excludes UIA password controls and does not serialize Name or Value properties; no screenshot or text-input path is implemented"
+  },
+  "screenshot_method": "NOT_IMPLEMENTED",
+  "file_picker_support": "NOT_IMPLEMENTED",
+  "drag_drop_support": "NOT_QUALIFIED",
+  "clipboard_support": "NOT_QUALIFIED",
+  "safety_boundaries": [
+    "Desktop action requires the existing Authority-bound execution and approval path.",
+    "uia_action is classified DESTRUCTIVE and fails closed for unowned processes, identity mismatch, missing windows, and fabricated/foreign HWNDs.",
+    "No image-wide process termination is used by the Desktop Control battery, staged smoke, or stack launcher.",
+    "Cleanup uses retained ChildProcess handles; Windows test cleanup revalidates PID, parent, executable identity/path, and creation time.",
+    "No descendant process cleanup is claimed unless separately retained and owned.",
+    "No public provider writes, purchases, account changes, or system-security changes were performed."
+  ],
+  "failure_battery": {
+    "deterministic_safety_cases": [
+      {"case": "unapproved UIA operation", "expected": "NO_APPROVAL", "result": "PASS"},
+      {"case": "process not launched by this session", "expected": "UIA_TARGET_NOT_OWNED", "result": "PASS"},
+      {"case": "fabricated window handle", "expected": "UIA_WINDOW_OWNER_MISMATCH", "result": "PASS"},
+      {"case": "missing semantic control", "expected": "UIA_CONTROL_NOT_UNIQUE", "result": "PASS"},
+      {"case": "password control inspection", "expected": "control omitted and fake value absent", "result": "PASS"},
+      {"case": "same-executable foreign process cleanup", "expected": "foreign process survives", "result": "PASS"}
+    ],
+    "not_run": [
+      "focus theft immediately before keyboard input",
+      "unexpected dialog",
+      "window minimize/restore and resize recovery",
+      "application crash recovery",
+      "actual timeout waiting for a missing control",
+      "foreign application interaction"
+    ]
+  },
+  "canonical_mission": {
+    "status": "PARTIAL",
+    "completed": ["launch approved fixture", "discover and inspect owned window", "focus and verify foreground", "scroll and verify position", "invoke fixture control and verify toggle postcondition", "panic-clean retained processes"],
+    "not_completed": ["screenshot", "file picker", "terminal command entry", "browser UI workflow", "Covert UI workflow"],
+    "unauthorized_external_writes": 0,
+    "operator_files_modified": 0,
+    "foreign_processes_killed": 0,
+    "owned_fixture_processes_remaining": 0
+  },
+  "resource_measurement": "NOT MEASURED; this was not a full desktop mission",
+  "observed_fixture_integration_duration_ms": 14180,
+  "duration_note": "Latest UIA fixture test wall time includes helper startup, identity rechecks, authority operations, and test cleanup; one observation, not a performance benchmark",
+  "evidence_refs": [
+    "docs/evidence/desktop-control-safety.md",
+    "docs/evidence/desktop-battery.md",
+    "tests/unit/test-windows-uia.mjs",
+    "tests/unit/test-desktop-process-identity.mjs",
+    "tests/integration/test-desktop-uia-owned-window.mjs",
+    "tests/integration/test-desktop-panic-ownership.mjs",
+    "tests/arch/desktop-policy.test.ts"
+  ]
+}

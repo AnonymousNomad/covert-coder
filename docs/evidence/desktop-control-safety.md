@@ -31,3 +31,21 @@ At starting checkpoint `a05ad8484b7d5451f8797a8d09e99a08836320ca`, `scripts/desk
 - Desktop lifecycle smoke cleanup uses specific `System.Diagnostics.Process` objects returned by its own `Start-Process` calls; that install/uninstall script was not run because it mutates the host installation.
 - The shared, non-Desktop-Control test stack supervisor and other application/runtime launchers contain exact-root-PID recursive `/T` fallbacks. They are not image-wide selectors and were not changed in this Desktop Control safety patch; recursive descendant ownership deserves a separate owner review before relying on those paths.
 - Live Outlook/Excel integration behavior, GUI input, UI Automation, file-picker selection, drag/drop, and browser chrome interaction remain unqualified by this battery.
+
+## Follow-up: bounded Windows UI Automation pilot
+
+Date: 2026-09-25. This follow-up added a narrow Windows UIA adapter and disposable WPF fixture; it does not change the classification of the earlier Notepad cleanup finding.
+
+- The UIA adapter only targets a live process directly launched and retained by the current Desktop Control session. It revalidates PID, parent PID, executable name/path, and creation time before dispatch and again in its PowerShell helper; window handles are filtered by owner PID.
+- The helper re-enumerates the HWND and verifies its owner PID immediately before and after focus, invoke, and scroll. UIA helper stdin delivery and wait are both under the retained-child timeout/cleanup guard.
+- Successful UIA receipts preserve only bounded action/window/control IDs, expected/verifier state metadata, and assertion status; they do not serialize accessible names, control values, or the fake password fixture value.
+- The real fixture integration verified approval refusal, non-owned PID refusal, fabricated HWND and missing-control refusal, semantic discovery/inspection, foreground focus, bounded scroll, `InvokePattern` with a toggle-state postcondition, exclusion of a fake password control/value from inspect output, and panic cleanup.
+- The UIA WPF fixture integration passed `1/1`; UIA unit tests passed `3/3`; the Desktop Battery passed `10/10`; the process-identity foreign same-executable regression passed `2/2`; Desktop panic/ownership integration passed `5/5`; desktop policy/agent integration passed `22/22`.
+- No fixture process remained after the interactive integration test. No operator file or foreign process was modified.
+- This is a **partial semantic UIA pilot**, not Desktop Control V1 qualification. Raw mouse, text/keyboard entry, screenshot capture, file-picker selection, drag/drop, clipboard, Terminal/Edge/Covert interaction, unexpected dialogs, and broader recovery are not qualified. See `DESKTOP-CONTROL-QUALIFICATION-V1.md` and `DESKTOP-CONTROL-PASSPORT.json`.
+
+## Cleanup pattern classification
+
+The current Desktop Control battery/staged smoke/stack launcher have no active image-wide or wildcard process termination. The test selector's forbidden strings are static test data only. Historical `/IM notepad.exe` references remain in earlier evidence by design.
+
+General test/application launchers that use `/PID <root-pid> /T` are exact-root-PID recursive tree termination, not image-wide selectors; their descendant ownership is outside this Desktop Control patch and remains a separate review item. Desktop Control qualification does not rely on those paths.

@@ -6,6 +6,8 @@ import path from 'node:path';
 import { createStateBus } from '../../../harness/cipher-state.mjs';
 import { AuthorityError } from './execution-authority.mjs';
 import { createOwnedProcesses } from './owned-process.mjs';
+import { readWindowsProcessIdentity, sameWindowsProcessIdentity } from './windows-process-identity.mjs';
+import { validateWindowsUiaRequest, windowsUiaAction } from './windows-uia.mjs';
 
 const GRANTS_FILE = '.aide/desktop/grants.json';
 
@@ -30,6 +32,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
   }
   let manifest = null;
   const processes = createOwnedProcesses();
+  const ownedUiProcesses = new Map();
   let grantOwner = null;
   let panicked = false;
   let unownedHandlers = 0;
@@ -113,17 +116,49 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
   async function run(cmd, args, opts = {}) {
     let stdout = ''; let stderr = '';
     const launched = processes.launch(cmd, args, { cwd: workspace,
+      ...(opts.input === undefined ? {} : { stdio: ['pipe', 'pipe', 'pipe'] }),
       onStdout: chunk => { stdout = (stdout + String(chunk)).slice(-262144); },
       onStderr: chunk => { stderr = (stderr + String(chunk)).slice(-262144); } });
     await launched.spawned;
     const timer = setTimeout(() => { void processes.terminate(launched.handle); }, opts.timeout ?? 8000);
     try {
+      if (opts.input !== undefined) {
+        launched.writeStdin(opts.input);
+        launched.endStdin();
+      }
       const result = await launched.finished;
       if (result.code !== 0 || result.signal || result.error) throw new Error(stderr || result.error || 'desktop helper failed or was terminated');
       return stdout;
+    } catch (error) {
+      if (processes.alive(launched.handle)) {
+        const cleanup = await processes.terminate(launched.handle);
+        if (!['terminated', 'exited'].includes(cleanup.status)) {
+          throw Object.assign(new Error(`desktop helper failed and owned-process cleanup was ${cleanup.status}`), {
+            code: 'DESKTOP_HELPER_CLEANUP_UNCONFIRMED',
+            cause: error
+          });
+        }
+      }
+      throw error;
     } finally { clearTimeout(timer); }
   }
   const psLiteral = text => `'${String(text).replaceAll("'", "''")}'`;
+  const safeActionTarget = request => {
+    if (request?.op !== 'uia_action') return request?.target;
+    try {
+      const value = JSON.parse(String(request.target));
+      return JSON.stringify({
+        pid: value.pid,
+        action: value.action,
+        window_handle: value.window_handle,
+        automation_id: value.automation_id,
+        verify_automation_id: value.verify_automation_id,
+        expected_state: value.expected_state,
+        horizontal_percent: value.horizontal_percent,
+        vertical_percent: value.vertical_percent
+      });
+    } catch { return '[redacted UI Automation target]'; }
+  };
 
   const ops = {
     // Business-lane ops (drafts-first doctrine: AIDE creates drafts, humans
@@ -190,8 +225,16 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       const name = String(target || '').trim().toLowerCase().replace(/\.exe$/, '');
       const hit = grants.apps.find(a => a.toLowerCase().replace(/\.exe$/, '') === name);
       if (!hit) throw new DesktopRefusedError('NOT_ALLOWLISTED', `app "${target}" is not on the allowlist`);
-      const launched = processes.launch(hit, request.args ?? [], { cwd: workspace });
+      const launched = processes.launch(hit, request.args ?? [], { cwd: workspace, windowsHide: request.show_window !== true });
       await launched.spawned;
+      if (process.platform === 'win32' && Number.isSafeInteger(launched.handle.pid)) {
+        try {
+          const identity = await readWindowsProcessIdentity(launched.handle.pid);
+          if (identity?.pid === launched.handle.pid && processes.alive(launched.handle)) {
+            ownedUiProcesses.set(launched.handle.pid, { handle: launched.handle, identity });
+          }
+        } catch { /* launch remains valid; UIA fails closed without verified identity */ }
+      }
       return { output: `launched ${hit}; owned process ${launched.handle.pid}`, handle: launched.handle };
     },
     async open_path(grants, target) {
@@ -228,6 +271,22 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       const script = `(New-Object -ComObject WScript.Shell).AppActivate(${psLiteral(title)}) | Out-Null`;
       await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]);
       return `focused window matching ${title}`;
+    },
+    async uia_action(_grants, target) {
+      if (process.platform !== 'win32') throw new DesktopRefusedError('UIA_UNAVAILABLE', 'Windows UI Automation is available only on Windows');
+      let request;
+      try { request = validateWindowsUiaRequest(JSON.parse(String(target))); }
+      catch (error) { throw new DesktopRefusedError('UIA_INVALID_REQUEST', String(error?.message ?? error).slice(0, 180)); }
+      const owned = ownedUiProcesses.get(request.pid);
+      if (!owned || !processes.alive(owned.handle) || owned.handle.pid !== request.pid) {
+        throw new DesktopRefusedError('UIA_TARGET_NOT_OWNED', 'UI Automation is restricted to a live process launched and retained by this Desktop Control session');
+      }
+      let observed;
+      try { observed = await readWindowsProcessIdentity(request.pid); }
+      catch { throw new DesktopRefusedError('UIA_IDENTITY_UNVERIFIED', 'target process identity could not be revalidated'); }
+      if (!sameWindowsProcessIdentity(owned.identity, observed)) throw new DesktopRefusedError('UIA_IDENTITY_MISMATCH', 'target PID no longer matches its captured process identity');
+      const result = await windowsUiaAction(request, owned.identity, (cmd, args, options) => run(cmd, args, options));
+      return { output: JSON.stringify({ action: result.action, verified: result.verified, details: result.details ?? null }), verified: result.verified, action: result.action };
     }
   };
 
@@ -248,6 +307,19 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       }
       case 'open_path':
         return { pass: false, check: 'handler_ownership_unproven' };
+      case 'uia_action': {
+        let rawDetails = {};
+        try { rawDetails = JSON.parse(String(output?.output ?? '')).details ?? {}; } catch { /* malformed helper detail cannot establish verification */ }
+        const details = { action: String(rawDetails.action ?? output?.action ?? 'unknown').slice(0, 32) };
+        if (Number.isSafeInteger(rawDetails.window_handle)) details.window_handle = rawDetails.window_handle;
+        for (const key of ['automation_id', 'verified_by']) {
+          if (typeof rawDetails[key] === 'string' && rawDetails[key].length <= 64) details[key] = rawDetails[key];
+        }
+        if (Number.isFinite(rawDetails.vertical_percent)) details.vertical_percent = rawDetails.vertical_percent;
+        if (Array.isArray(rawDetails.windows)) details.windows_found = rawDetails.windows.length;
+        if (Array.isArray(rawDetails.controls)) details.controls_inspected = rawDetails.controls.length;
+        return { pass: output?.verified === true, check: `uia_verified:${output?.action ?? 'unknown'}`, details };
+      }
       case 'focus_window':
       case 'list_windows':
       default:
@@ -268,12 +340,13 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
   async function act(request, execution, sessionId = 'default') {
     const trusted = authorized(execution, 'desktop.action', request);
     const started = Date.now();
+    if (request.show_window !== undefined && request.op !== 'launch_app') throw new DesktopRefusedError('INVALID_SHOW_WINDOW', 'show_window is supported only for launch_app');
     if (request.approved !== true) {
-      await evidence('desktop', { op: request.op, target: request.target, decision: 'refused-no-approval' });
+      await evidence('desktop', { op: request.op, target: safeActionTarget(request), decision: 'refused-no-approval' });
       await recordTrajectory(sessionId, {
         ts: new Date().toISOString(), turn: ++turnCounter,
-        observation: { op: request.op, target: request.target },
-        thought: request.note || '', action_raw: `${request.op}(target="${request.target}")`,
+        observation: { op: request.op, target: safeActionTarget(request) },
+        thought: request.op === 'uia_action' ? '[UI Automation input omitted]' : request.note || '', action_raw: `${request.op}(target="${safeActionTarget(request)}")`,
         class: 'UNKNOWN', verdict: 'NO_APPROVAL', latency_ms: Date.now() - started
       });
       throw new DesktopRefusedError('NO_APPROVAL', 'explicit approval required for desktop actions');
@@ -287,23 +360,23 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       const output = await fn(grants, request.target, request.destination, request);
       const assertion = await autoAssert(request.op, request.target, request.destination, output);
       const result = { ok: true, decision: 'executed', output: String(output?.output ?? output).slice(0, 2000), latency_ms: Date.now() - started, assertion };
-      await evidence('desktop', { op: request.op, target: request.target, decision: 'executed' });
+      await evidence('desktop', { op: request.op, target: safeActionTarget(request), decision: 'executed', assertion });
       await recordTrajectory(sessionId, {
         ts: new Date().toISOString(), turn: ++turnCounter,
-        observation: { op: request.op, target: request.target, destination: request.destination ?? null },
-        thought: request.note || '', action_raw: `${request.op}(target="${request.target}"${request.destination ? `, destination="${request.destination}"` : ''})`,
+        observation: { op: request.op, target: safeActionTarget(request), destination: request.destination ?? null },
+        thought: request.op === 'uia_action' ? '[UI Automation input omitted]' : request.note || '', action_raw: `${request.op}(target="${safeActionTarget(request)}"${request.destination ? `, destination="${request.destination}"` : ''})`,
         class: 'WRITE', verdict: 'executed', assertion, latency_ms: result.latency_ms
       });
       return result;
     } catch (error) {
       const code = error instanceof DesktopRefusedError ? error.code : 'CHILD_FAILED';
-      await evidence('desktop', { op: request.op, target: request.target, decision: code });
+      await evidence('desktop', { op: request.op, target: safeActionTarget(request), decision: code });
       // Refusal-recovery rows are TRAINING GOLD per the model spec — recorded
       // with the refusal code as the verdict so T2's corpus includes recovery.
       await recordTrajectory(sessionId, {
         ts: new Date().toISOString(), turn: ++turnCounter,
-        observation: { op: request.op, target: request.target },
-        thought: request.note || '', action_raw: `${request.op}(target="${request.target}")`,
+        observation: { op: request.op, target: safeActionTarget(request) },
+        thought: request.op === 'uia_action' ? '[UI Automation input omitted]' : request.note || '', action_raw: `${request.op}(target="${safeActionTarget(request)}")`,
         class: code === 'NOT_ALLOWLISTED' || code === 'PATH_NOT_GRANTED' ? 'FORBIDDEN' : 'WRITE',
         verdict: code, latency_ms: Date.now() - started
       });
@@ -318,6 +391,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
     authority.control.revokePending();
     if (manifest) panics.push(manifest.session_started_at);
     const outcomes = await processes.revoke();
+    ownedUiProcesses.clear();
     const killed = outcomes.filter(item => item.killed).length;
     const result = { ok: outcomes.every(item => item.status === 'terminated' || item.status === 'exited'), children_killed: killed,
       unowned_handlers: unownedHandlers, outcomes, revoked_at: new Date().toISOString(), latency_ms: Date.now() - started };

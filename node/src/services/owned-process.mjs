@@ -12,7 +12,7 @@ export function createOwnedProcesses({ terminationTimeoutMs = 5000 } = {}) {
     if (!armed) throw new Error('owned process launcher is disarmed');
     if (options.detached || options.shell) throw new Error('detached or shell ownership is not supported');
     const generation = epoch;
-    const child = spawn(program, args, { ...options, shell: false, detached: false, windowsHide: true,
+    const child = spawn(program, args, { ...options, shell: false, detached: false, windowsHide: options.windowsHide !== false,
       stdio: options.stdio ?? ['ignore', 'pipe', 'pipe'] });
     const handle = Object.freeze({ id: randomUUID(), pid: child.pid ?? null });
     let settle;
@@ -40,7 +40,15 @@ export function createOwnedProcesses({ terminationTimeoutMs = 5000 } = {}) {
     // Consume streams unless the trusted caller attaches output listeners.
     child.stdout?.on('data', chunk => options.onStdout?.(chunk));
     child.stderr?.on('data', chunk => options.onStderr?.(chunk));
-    return Object.freeze({ handle, spawned, finished });
+    const writeStdin = value => {
+      if (entry.state !== 'running' || !child.stdin?.writable) throw new Error('owned process stdin is unavailable');
+      return child.stdin.write(value);
+    };
+    const endStdin = () => {
+      if (entry.state !== 'running' || !child.stdin?.writable) throw new Error('owned process stdin is unavailable');
+      child.stdin.end();
+    };
+    return Object.freeze({ handle, spawned, finished, writeStdin, endStdin });
   }
   async function terminate(handle) {
     const entry = handle && owned.get(handle);

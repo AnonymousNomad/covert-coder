@@ -31,6 +31,30 @@ test('parseDesktopAction accepts a well-formed launch_app proposal', () => {
   assert.deepEqual(proposal.risks, ['starts-a-process']);
 });
 
+test('parseDesktopAction gates visible launch and semantic UIA behind the existing approval classes', () => {
+  const visibleLaunch = parseDesktopAction(
+    '<desktop_action>\nop: launch_app\ntarget: powershell.exe\nshow_window: true\n</desktop_action>'
+  );
+  assert.equal(visibleLaunch.show_window, true);
+  assert.equal(visibleLaunch.class, 'OPEN');
+
+  const uia = parseDesktopAction(
+    '<desktop_action>\nop: uia_action\ntarget: {"action":"discover","pid":123}\n</desktop_action>'
+  );
+  assert.equal(uia.op, 'uia_action');
+  assert.equal(uia.class, 'DESTRUCTIVE');
+  assert.ok(uia.risks.includes('targets-owned-process-only'));
+
+  assert.throws(
+    () => parseDesktopAction('<desktop_action>\nop: uia_action\ntarget: {}\nshow_window: true\n</desktop_action>'),
+    (err: unknown) => (err as { code: string }).code === 'INVALID_SHOW_WINDOW'
+  );
+  assert.throws(
+    () => parseDesktopAction('<desktop_action>\nop: launch_app\ntarget: app.exe\nshow_window: maybe\n</desktop_action>'),
+    (err: unknown) => (err as { code: string }).code === 'INVALID_SHOW_WINDOW'
+  );
+});
+
 test('parseDesktopAction accepts list_windows without a target', () => {
   const proposal = parseDesktopAction('<desktop_action>\nop: list_windows\n</desktop_action>');
   assert.equal(proposal.op, 'list_windows');
