@@ -26,7 +26,7 @@ The Authority operation arguments bind the HTTP route, normalized request body, 
 
 After Authority executes the exact operation, the route uses a request-scoped resolved target. Immediately before backend dispatch, `ModelRouter` resolves the target again and compares the complete binding. A changed or missing target raises `ChatTargetChangedError` and is refused; it is not silently rerouted or fallen back. The dispatch method then calls the exact local model ID or exact provider/model selected in the binding.
 
-`POST /api/chat` and `POST /api/chat/stream` use the same local/external operation mapping. The HTTP route is part of the digest, so an approval cannot be replayed across the two routes. Streaming changes response transport only; it does not bypass a denial.
+`POST /api/chat` and `POST /api/chat/stream` use the same local/external operation mapping. The HTTP route is part of the digest, so an approval cannot be replayed across the two routes. Streaming changes response transport only; it does not bypass a denial. For external targets, the existing `ProviderService.chat` returns a completed response which the stream route emits as one SSE delta; this contract proves Authority parity, not incremental provider-token streaming.
 
 Authority receipts include no provider credentials or private local artifact path. They do bind the request body under the existing exact-operation digest. Request task identity, Authority operation identity, route identity, and resolved target identity remain distinguishable.
 

@@ -52,6 +52,7 @@
   },
   "local_only_enforcement_added": false,
   "real_external_provider_call_made": false,
+  "external_stream_transport": "BUFFERED_PROVIDER_RESPONSE_AS_ONE_SSE_DELTA",
   "runtime_v1_modified": false,
   "resident_experiment_modified": false,
   "resident_f1b_rerun": false,
