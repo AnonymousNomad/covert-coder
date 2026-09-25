@@ -67,3 +67,22 @@ CMP-001..CMP-003+  controlled comparisons (Covert vs 3 products) (PENDING)
 - `E:\aide-sovereign-workbench-resident-resume` (Resident park) — untouched.
 - `E:\aide-desktop-control-v1`, `E:\aide-model-manager` — untouched.
 - H4: NOT AUTHORIZED. Public Ops: DRAFT only; no publication from this wave.
+
+---
+
+## RESUME STATE — 2026-09-25 (checkpoint A: preflight)
+
+- **Credential preflight: PASS (path A read-only reuse).** Qualification-time store located at
+  `E:\Unsloth-Studio-runtime-lab-RT27\qualification\c1168c1b97852fba8a329e15380389375a9eade0\.aide\credentials.dpapi`;
+  `CredentialStore('unsloth-local-runtime')` retrieves a non-empty bearer; DPAPI blob contains no
+  plaintext; no secret in report. Evidence: `docs/v1/dogfood/evidence/CREDENTIAL-PREFLIGHT.json`.
+- **Host preflight: 6/7 gates PASS** — administrator PASS · commit free 11.64 GiB PASS · VRAM free
+  5430 MiB PASS · GPU util 25% PASS · no existing runtime PASS · port 18888 free PASS ·
+  **free RAM 3.64 GiB FAIL (gate ≥6.5 GiB)**. Evidence: `docs/v1/dogfood/evidence/HOST-PREFLIGHT.json`.
+- **`DOGFOOD WAVE 1 BLOCKED — frozen start gate unmet`**: free RAM is held by the operator
+  environment (OpenCode ~1.7 GB, codex ~1.1 GB, msedge ~0.7 GB, system services) — foreign/user
+  processes, none dogfood-owned. Gate is NOT lowered and no process was terminated.
+- **Exact resume:** when the machine is idle, rerun `node scripts/dogfood/preflight.mjs`; on
+  `pass:true` proceed to boot the qualified runtime (Unsloth adapter, port 18888, credentialStore =
+  the qualification root above), load `LFM2.5-2.6B-Q4_K_M.gguf` with hash recompute, verify
+  401/200 auth + health + identity, freeze DF-M000 input, and run missions in order.

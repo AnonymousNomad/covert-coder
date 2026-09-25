@@ -1,0 +1,44 @@
+{
+  "schema": "dogfood-host-preflight-v1",
+  "at": "2026-09-25T22:30:33.390Z",
+  "observed": {
+    "admin": {
+      "is_admin": true,
+      "commit_free_bytes": 12493344768,
+      "commit_used_bytes": 15867494400,
+      "commit_limit_bytes": 28360839168
+    },
+    "ram": {
+      "free_bytes": 3904188416,
+      "total_bytes": 17099075584
+    },
+    "gpu": {
+      "used_mib": 602,
+      "free_mib": 5430,
+      "utilization_percent": 25
+    },
+    "runtime_processes": [],
+    "llama_count": 0,
+    "unsloth_count": 0,
+    "port_18888_listeners": 0
+  },
+  "gates": {
+    "administrator_required": true,
+    "free_ram_ge_6_5_gib": false,
+    "free_commit_ge_5_gib": true,
+    "free_vram_ge_4608_mib": true,
+    "gpu_util_lt_50": true,
+    "no_existing_runtime": true,
+    "port_18888_free": true
+  },
+  "pass": false,
+  "summary": {
+    "free_ram_gib": 3.64,
+    "commit_free_gib": 11.64,
+    "vram_free_mib": 5430,
+    "gpu_util": 25,
+    "llama_count": 0,
+    "unsloth_count": 0,
+    "port_18888_listeners": 0
+  }
+}
