@@ -1,4 +1,4 @@
-param([string]$Root = '', [switch]$SafeScreenshotOnly, [switch]$OpenPickerOnLaunch, [long]$StealFocusToHandle = 0)
+param([string]$Root = '', [switch]$SafeScreenshotOnly, [switch]$OpenPickerOnLaunch, [switch]$UseLegacyPicker, [long]$StealFocusToHandle = 0)
 
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
@@ -18,6 +18,10 @@ $rootPath = if ($Root) { [IO.Path]::GetFullPath($Root) } else { [IO.Path]::GetFu
              Text="" Width="420" Height="30" Margin="0,6,0,0" HorizontalAlignment="Left" />
     <TextBlock x:Name="FixtureStatus" AutomationProperties.AutomationId="fixtureStatus"
                Text="IDLE" Margin="0,8,0,0" />
+    <TextBox x:Name="FixtureSelectedPath" AutomationProperties.AutomationId="fixtureSelectedPath"
+             Text="" IsReadOnly="True" Width="420" Height="28" Margin="0,6,0,0" HorizontalAlignment="Left" />
+    <TextBox x:Name="FixtureSelectedSha256" AutomationProperties.AutomationId="fixtureSelectedSha256"
+             Text="" IsReadOnly="True" Width="420" Height="28" Margin="0,4,0,0" HorizontalAlignment="Left" />
     <ToggleButton x:Name="FixtureState" AutomationProperties.AutomationId="fixtureStateCheckbox"
                   Content="Fixture state" IsChecked="False" Width="150" Height="32" HorizontalAlignment="Left" />
     <Button x:Name="FixtureToggle" AutomationProperties.AutomationId="fixtureToggleButton"
@@ -56,6 +60,8 @@ $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($markup.O
 $window = [Windows.Markup.XamlReader]::Load($reader)
 $inputBox = $window.FindName('FixtureInput')
 $status = $window.FindName('FixtureStatus')
+$selectedPath = $window.FindName('FixtureSelectedPath')
+$selectedSha256 = $window.FindName('FixtureSelectedSha256')
 $state = $window.FindName('FixtureState')
 $button = $window.FindName('FixtureToggle')
 $inputBox.Add_TextChanged({ $status.Text = 'TEXT_RECEIVED' })
@@ -91,17 +97,36 @@ $window.Add_PreviewKeyDown({
 })
 $pickerButton = $window.FindName('FixtureOpenPicker')
 $pickerButton.Add_Click({
-  $dialog = New-Object Microsoft.Win32.OpenFileDialog
-  $dialog.InitialDirectory = $rootPath
-  $dialog.Filter = 'Text files (*.txt)|*.txt'
-  $dialog.Multiselect = $false
-  if ($dialog.ShowDialog($window) -eq $true) {
-    $fullName = [IO.Path]::GetFullPath($dialog.FileName)
+  $fullName = $null
+  if ($UseLegacyPicker) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    $dialog.AutoUpgradeEnabled = $false
+    $dialog.InitialDirectory = $rootPath
+    $dialog.Filter = 'Text files (*.txt)|*.txt'
+    $dialog.Multiselect = $false
+    if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $fullName = [IO.Path]::GetFullPath($dialog.FileName) }
+  } else {
+    $dialog = New-Object Microsoft.Win32.OpenFileDialog
+    $dialog.InitialDirectory = $rootPath
+    $dialog.Filter = 'Text files (*.txt)|*.txt'
+    $dialog.Multiselect = $false
+    if ($dialog.ShowDialog($window) -eq $true) { $fullName = [IO.Path]::GetFullPath($dialog.FileName) }
+  }
+  if ($fullName) {
     $rootPrefix = $rootPath.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
     if ($fullName.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase) -and
         [IO.File]::ReadAllText($fullName) -eq 'COVERT-FILE-PICKER-FIXTURE') {
+      $bytes = [IO.File]::ReadAllBytes($fullName)
+      $sha = [System.Security.Cryptography.SHA256]::Create()
+      try { $digest = ([BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant() }
+      finally { $sha.Dispose() }
+      $selectedPath.Text = $fullName
+      $selectedSha256.Text = $digest
       $status.Text = 'FIXTURE_FILE_ACCEPTED'
     } else {
+      $selectedPath.Text = ''
+      $selectedSha256.Text = ''
       $status.Text = 'FIXTURE_FILE_REJECTED'
     }
   }

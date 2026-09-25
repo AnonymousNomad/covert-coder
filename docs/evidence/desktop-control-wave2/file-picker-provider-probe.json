@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "generated_at_utc": "2026-09-25T19:28:30Z",
+  "checkpoint": {
+    "head": "6818db6d7530045eb352fb3378fe7d0fc30818ff",
+    "branch": "feat/covert-desktop-control-v1"
+  },
+  "probe": "native_file_picker_provider_binding",
+  "providers": [
+    {
+      "dialog": "WPF Microsoft.Win32.OpenFileDialog",
+      "configuration": "default",
+      "result": "PRODUCTION_ADAPTER_NOT_QUALIFIED",
+      "refusal_code": "UIA_FILE_PICKER_CONTROL_UNAVAILABLE",
+      "automation_id_1148_candidate_count": 3,
+      "automation_id_1148_control_types": ["ControlType.Pane"],
+      "automation_id_1148_value_pattern": false,
+      "uniquely_identified_filename_field_count": 0,
+      "filename_input_dispatched": false,
+      "open_action_dispatched": false,
+      "production_input_dispatched": false,
+      "production_open_action_dispatched": false,
+      "production_file_selected": false
+    },
+    {
+      "dialog": "WinForms System.Windows.Forms.OpenFileDialog",
+      "configuration": "AutoUpgradeEnabled=false",
+      "result": "PRODUCTION_ADAPTER_NOT_QUALIFIED",
+      "refusal_code": "UIA_FILE_PICKER_CONTROL_UNAVAILABLE",
+      "automation_id_1148_candidate_count": 3,
+      "automation_id_1148_control_types": ["ControlType.Pane"],
+      "automation_id_1148_value_pattern": false,
+      "uniquely_identified_filename_field_count": 0,
+      "filename_input_dispatched": false,
+      "open_action_dispatched": false,
+      "production_input_dispatched": false,
+      "production_open_action_dispatched": false,
+      "production_file_selected": false
+    }
+  ],
+  "fixture_only_entry_probe": {
+    "result": "PASS",
+    "production_adapter_changed": false,
+    "interaction_mechanism": "unique File name label to ComboBoxEx32 > ComboBox > Edit ancestry; exact dialog foreground and nested Edit focused runtime ID/HWND verified; full canonical in-root path sent as Unicode only after verification; bounded WM_GETTEXT readback; exact owned Open button resolved by UIA semantics and native identity; bounded BM_CLICK",
+    "path_containment": "PASS",
+    "caller_postcondition": "dialog closed and caller fixture reported exact canonical path and SHA-256",
+    "providers": [
+      {
+        "dialog": "WPF Microsoft.Win32.OpenFileDialog default variant",
+        "result": "PASS",
+        "filename_entry_class": "Edit",
+        "filename_entry_automation_id": "1148",
+        "value_pattern": false,
+        "label_ancestry_resolution": "PASS",
+        "focused_element_verification": "PASS",
+        "open_dispatch": "BM_CLICK_EXACT_OWNED_BUTTON",
+        "caller_path_and_hash_postcondition": "PASS"
+      },
+      {
+        "dialog": "WinForms OpenFileDialog AutoUpgradeEnabled=false",
+        "result": "PASS",
+        "filename_entry_class": "Edit",
+        "filename_entry_automation_id": "1148",
+        "value_pattern": false,
+        "label_ancestry_resolution": "PASS",
+        "focused_element_verification": "PASS",
+        "open_dispatch": "BM_CLICK_EXACT_OWNED_BUTTON",
+        "caller_path_and_hash_postcondition": "PASS"
+      }
+    ],
+    "scope": "fixture exploration only; this does not qualify the production adapter or universal Windows common dialogs"
+  },
+  "accessibility_snapshots": [
+    {
+      "path": "file-picker-accessibility-wpf-isolated.json",
+      "sha256": "9368662826d1cf6e6140f0c20004b9ded5800752235537e627be39107cdad96e",
+      "bytes": 272481,
+      "dialog_foreground_and_focused_filename_edit": true
+    },
+    {
+      "path": "file-picker-accessibility-winforms-isolated.json",
+      "sha256": "f2e2a5722f58981944aef0ed6fe88f5813e65b1555625aada0d0e0010af8d2eb",
+      "bytes": 215274,
+      "dialog_foreground_and_focused_filename_edit": true
+    }
+  ],
+  "out_of_root_refusal": {
+    "provider": "WPF Microsoft.Win32.OpenFileDialog",
+    "result": "PASS",
+    "code": "PATH_NOT_GRANTED",
+    "uia_dispatch": false
+  },
+  "integration_test": {
+    "path": "tests/integration/test-desktop-uia-capture-picker.mjs",
+    "result": "PASS",
+    "tests": 1,
+    "failed": 0,
+    "owned_fixture_process_cleanup": "PASS"
+  },
+  "desktop_control_v1": "BLOCKED",
+  "passport_reissued": false
+}
