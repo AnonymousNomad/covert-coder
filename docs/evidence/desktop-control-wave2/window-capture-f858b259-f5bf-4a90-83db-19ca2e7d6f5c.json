@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "attempt_id": "uia-capture-18792-1790354511892",
+  "task_id": "desktop-uia-capture-1",
+  "captured_at_utc": "2026-09-25T16:41:59.173Z",
+  "application": "powershell.exe",
+  "process_id": 10344,
+  "window_handle": 2425090,
+  "ownership_state": "ATTEMPT_OWNED",
+  "operation": "screenshot",
+  "capture_scope": "LEASED_WINDOW_ONLY",
+  "capture_sha256": "596d1a18c505646b9489e6ee021d400cd04513d9490f6437029133c1b8580eb4",
+  "capture_bytes": 12208,
+  "width": 520,
+  "height": 560,
+  "verification": "PNG_SIGNATURE_DIMENSIONS_AND_SHA256_MATCH",
+  "action_id": "f858b259-f5bf-4a90-83db-19ca2e7d6f5c",
+  "evidence_ref": "docs/evidence/desktop-control-wave2/safe-fixture-window-596d1a18c505646b9489e6ee021d400cd04513d9490f6437029133c1b8580eb4.png"
+}

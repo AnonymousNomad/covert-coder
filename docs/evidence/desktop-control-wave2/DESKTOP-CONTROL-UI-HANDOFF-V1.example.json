@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "qualification": "BLOCKED",
+  "activity": "INACTIVE",
+  "last_qualified_at": null,
+  "passport_sha256": "D7003F383931C8DC963187530076B8B0EE38799CCA343607C9330BEAE52498C3",
+  "attempt_id": null,
+  "target": null,
+  "capabilities": {
+    "window_discovery": "QUALIFIED",
+    "semantic_actions": "QUALIFIED",
+    "safe_fixture_input": "QUALIFIED",
+    "leased_window_screenshot": "PARTIAL",
+    "file_picker": "NOT_QUALIFIED",
+    "terminal_gui": "NOT_RUN",
+    "browser_gui": "NOT_RUN",
+    "covert_gui": "NOT_RUN"
+  },
+  "evidence_refs": [
+    "docs/evidence/desktop-control-wave2/DESKTOP-CONTROL-PASSPORT-WAVE2.json",
+    "docs/evidence/desktop-control-wave2/DESKTOP-CONTROL-QUALIFICATION-V1-WAVE2.md"
+  ]
+}

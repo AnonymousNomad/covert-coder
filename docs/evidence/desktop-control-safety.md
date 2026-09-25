@@ -30,7 +30,7 @@ At starting checkpoint `a05ad8484b7d5451f8797a8d09e99a08836320ca`, `scripts/desk
 
 - Desktop lifecycle smoke cleanup uses specific `System.Diagnostics.Process` objects returned by its own `Start-Process` calls; that install/uninstall script was not run because it mutates the host installation.
 - The shared, non-Desktop-Control test stack supervisor and other application/runtime launchers contain exact-root-PID recursive `/T` fallbacks. They are not image-wide selectors and were not changed in this Desktop Control safety patch; recursive descendant ownership deserves a separate owner review before relying on those paths.
-- Live Outlook/Excel integration behavior, GUI input, UI Automation, file-picker selection, drag/drop, and browser chrome interaction remain unqualified by this battery.
+- That initial battery did not qualify Live Outlook/Excel integration behavior, GUI input, UI Automation, file-picker selection, drag/drop, or browser chrome interaction. Later UIA pilot and Wave 2 evidence are recorded below; the original battery result remains unchanged.
 
 ## Follow-up: bounded Windows UI Automation pilot
 
@@ -49,3 +49,9 @@ Date: 2026-09-25. This follow-up added a narrow Windows UIA adapter and disposab
 The current Desktop Control battery/staged smoke/stack launcher have no active image-wide or wildcard process termination. The test selector's forbidden strings are static test data only. Historical `/IM notepad.exe` references remain in earlier evidence by design.
 
 General test/application launchers that use `/PID <root-pid> /T` are exact-root-PID recursive tree termination, not image-wide selectors; their descendant ownership is outside this Desktop Control patch and remains a separate review item. Desktop Control qualification does not rely on those paths.
+
+## Wave 2 closure evidence
+
+Date: 2026-09-25. The bounded UIA adapter additionally qualified plain fixture text/key input with pre/post focus checks, a revalidated element-center pointer click, and leased-window screenshot capture. A deterministic focus-steal test verified zero characters reached either fixture field after focus changed. Screenshot capture refused a fixture window containing a UIA password descendant; a safe fixture capture and receipt are preserved under `docs/evidence/desktop-control-wave2/`.
+
+The actual Windows file picker was discovered, but its filename-entry UIA surface contained ambiguous panes and no uniquely proven writable filename field. The adapter refused `UIA_FILE_PICKER_CONTROL_UNAVAILABLE`; no selection was made. Out-of-root selection was refused. Terminal GUI, browser GUI, Covert GUI, clipboard, drag/drop, modal/recreation recovery, and full resource measurement remain unqualified. Therefore the Desktop Control Passport remains **BLOCKED**, not V1-qualified. See `desktop-control-wave2/DESKTOP-CONTROL-PASSPORT-WAVE2.json` and `desktop-control-wave2/DESKTOP-CONTROL-QUALIFICATION-V1-WAVE2.md`.

@@ -1,0 +1,151 @@
+{
+  "passport_version": "desktop-control-passport-v1-wave2",
+  "qualification": "BLOCKED",
+  "qualified_at": "2026-09-25",
+  "supersedes_for_current_status": "docs/evidence/DESKTOP-CONTROL-PASSPORT.json",
+  "prior_passport_sha256": "9502457CA60172DCCE8CBFC6D49BB1AFC1D7004B7755A5CD031CD00C115888BA",
+  "platform": {
+    "os": "Windows 11 Home Insider Preview",
+    "version": "10.0.26220",
+    "build": "26220",
+    "node": "26.4.0",
+    "powershell_helper": "Windows PowerShell 5.1"
+  },
+  "control_provider": {
+    "name": "Windows UI Automation plus bounded Win32 input/capture helpers",
+    "mechanisms": [
+      "EnumWindows filtered by retained process identity",
+      "UI Automation AutomationElement and semantic patterns",
+      "foreground and focused-element ownership revalidation",
+      "bounded SendInput text/key dispatch",
+      "revalidated element-center click with occlusion check",
+      "leased-window-only PrintWindow capture"
+    ]
+  },
+  "capabilities": {
+    "approved_application_launch": "QUALIFIED_FOR_DISPOSABLE_FIXTURE",
+    "window_discovery": "QUALIFIED_FOR_SESSION_OWNED_PROCESS",
+    "process_identity": "QUALIFIED_PID_PARENT_IMAGE_PATH_AND_CREATION_TIME",
+    "window_lease": "PARTIAL_BOUND_TO_SESSION_PROCESS_IDENTITY_HWND_UIA_RUNTIME_ID_AND_CLASS",
+    "lease_revalidation": "QUALIFIED_BEFORE_DISPATCH_AND_IN_HELPER",
+    "window_recreation_invalidation": "NOT_QUALIFIED",
+    "semantic_focus": "QUALIFIED_FOR_FIXTURE",
+    "semantic_invoke": "QUALIFIED_FOR_FIXTURE_WITH_POSTCONDITION",
+    "bounded_scroll": "QUALIFIED_FOR_FIXTURE_WITH_POSTCONDITION",
+    "coordinate_click": "QUALIFIED_FOR_FIXTURE_WITH_FOREGROUND_OCCLUSION_AND_POSTCONDITION_CHECKS",
+    "pointer_move_double_click_right_click": "NOT_QUALIFIED",
+    "plain_text_input": "QUALIFIED_FOR_NONSECRET_FIXTURE_TEXT_ONLY",
+    "keyboard": "QUALIFIED_ALLOWLIST_ENTER_ESCAPE_TAB_BACKSPACE_DELETE_AND_CTRL_A",
+    "wrong_window_input_protection": "QUALIFIED_ZERO_CHARACTERS_SENT_AFTER_FOCUS_STEAL",
+    "secret_reference_input": "NOT_IMPLEMENTED_AUTHORITY_OWNER_HANDOFF_REQUIRED",
+    "leased_window_screenshot": "QUALIFIED_FOR_PASSWORD_FREE_FIXTURE_ONLY",
+    "screenshot_sensitive_window_refusal": "QUALIFIED_FOR_UIA_PASSWORD_DESCENDANTS",
+    "screenshot_redaction_and_general_sensitive_surface_detection": "NOT_QUALIFIED",
+    "full_desktop_or_arbitrary_region_capture": "NOT_QUALIFIED",
+    "file_picker_out_of_root_refusal": "QUALIFIED",
+    "file_picker_in_root_selection": "NOT_QUALIFIED_AMBIGUOUS_NATIVE_FILENAME_CONTROLS",
+    "save_dialog": "NOT_QUALIFIED",
+    "drag_drop": "NOT_QUALIFIED",
+    "clipboard": "NOT_QUALIFIED",
+    "terminal_gui": "NOT_RUN",
+    "browser_gui": "NOT_RUN",
+    "covert_gui": "NOT_RUN",
+    "modal_handling": "NOT_QUALIFIED",
+    "destructive_modal_authority_gate": "NOT_QUALIFIED",
+    "panic_owned_process_cleanup": "QUALIFIED_EXACT_RETAINED_PROCESS_IDENTITY",
+    "foreign_process_protection": "QUALIFIED_FOREIGN_SAME_EXECUTABLE_SURVIVES",
+    "timeout_recovery": "PARTIAL_BOUNDED_HELPER_TIMEOUT_ONLY",
+    "window_loss_and_recreation_recovery": "NOT_QUALIFIED",
+    "resource_impact": "NOT_MEASURED"
+  },
+  "security_boundaries": [
+    "Only session-launched, retained processes are UIA targets.",
+    "A window lease binds attempt/session, process identity, HWND, UIA runtime ID, and window class; current identity is revalidated before provider dispatch and in the helper.",
+    "Plain text/key receipts omit input values; UIA password controls are rejected.",
+    "Screenshot is restricted to the leased target window, bounded to 64..4096 pixels per dimension, stored under the attempt evidence root, and refused if UIA finds a password descendant.",
+    "File selection requires a granted root and exact target/result-window leases; ambiguous filename controls fail closed.",
+    "Cleanup targets exact retained test-owned process identities; no image-wide or wildcard termination is used.",
+    "No provider writes, publication, purchases, system-security changes, or operator-file modifications occurred."
+  ],
+  "failure_battery": {
+    "passed": [
+      "unapproved operation refused",
+      "foreign/unowned target refused",
+      "fabricated/stale lease refused",
+      "same-executable foreign process survived cleanup",
+      "wrong-window focus theft blocked before input; both fixture fields remained empty",
+      "missing/ambiguous UIA controls refused",
+      "fake password control excluded from inspection and input",
+      "password-bearing fixture window refused screenshot",
+      "file-picker selection outside granted root refused",
+      "ambiguous native file-picker filename field refused",
+      "panic cleanup revalidated exact owned process identity"
+    ],
+    "not_qualified_or_not_run": [
+      "file-picker successful in-root selection",
+      "Save As",
+      "drag/drop",
+      "clipboard",
+      "Terminal GUI",
+      "Edge/browser GUI",
+      "Covert GUI",
+      "unexpected and destructive modal battery",
+      "window minimize/move/resize/recreation recovery matrix",
+      "operator panic during an active input dispatch",
+      "full desktop sensitivity detection/redaction",
+      "resource impact measurement"
+    ]
+  },
+  "canonical_mission": {
+    "status": "NOT_COMPLETED",
+    "completed_components": [
+      "launch disposable WPF fixture",
+      "identify and lease owned window",
+      "semantic inspect/focus/invoke/scroll with postcondition checks",
+      "plain fixture text and allowlisted key input",
+      "block input after focus theft before any character is sent",
+      "coordinate click after target/foreground/occlusion checks",
+      "capture and hash a bounded password-free leased-window screenshot",
+      "refuse out-of-root and ambiguous in-root file-picker selection",
+      "exact owned-process panic cleanup"
+    ],
+    "remaining_for_canonical_mission": [
+      "successful in-root file-picker workflow",
+      "Terminal GUI workflow",
+      "local browser GUI workflow",
+      "Covert UI workflow",
+      "full modal and recovery coverage",
+      "resource impact capture"
+    ],
+    "unauthorized_external_writes": 0,
+    "operator_files_modified": 0,
+    "foreign_processes_killed": 0,
+    "owned_fixture_processes_remaining": 0
+  },
+  "verification": {
+    "desktop_battery": "10/10 PASS",
+    "uia_units_and_process_identity": "7/7 PASS",
+    "owned_window_integration": "1/1 PASS",
+    "capture_and_picker_integration": "1/1 PASS; capture passed and picker correctly failed closed",
+    "wrong_window_integration": "1/1 PASS",
+    "panic_and_ownership_integration": "5/5 PASS",
+    "desktop_policy_agent_integration": "22/22 PASS",
+    "architecture_suite": "648 total; 640 PASS, 0 FAIL, 8 skipped for absent GGUF fixtures",
+    "frontend_production_build": "PASS",
+    "lint": "PASS, 0 errors; 60 existing warnings",
+    "git_diff_check": "PASS"
+  },
+  "resource_measurement": "NOT MEASURED",
+  "evidence_refs": [
+    "docs/evidence/desktop-control-safety.md",
+    "docs/evidence/desktop-battery.md",
+    "docs/evidence/desktop-control-wave2/",
+    "tests/unit/test-windows-uia.mjs",
+    "tests/unit/test-desktop-process-identity.mjs",
+    "tests/integration/test-desktop-uia-owned-window.mjs",
+    "tests/integration/test-desktop-uia-capture-picker.mjs",
+    "tests/integration/test-desktop-uia-wrong-window.mjs",
+    "tests/integration/test-desktop-panic-ownership.mjs",
+    "tests/arch/desktop-policy.test.ts"
+  ]
+}

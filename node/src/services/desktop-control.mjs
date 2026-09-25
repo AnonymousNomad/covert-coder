@@ -2,6 +2,7 @@
 // session-scoped TTL, panic kill switch, evidence to the memory spine.
 // Zero new native deps: Windows ops via cmd start / explorer / PowerShell / fs.
 import { promises as fs } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { createStateBus } from '../../../harness/cipher-state.mjs';
 import { AuthorityError } from './execution-authority.mjs';
@@ -25,6 +26,28 @@ function isSubpath(root, target) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+function projectActionOutput(operation, output) {
+  const text = String(output ?? '');
+  if (operation !== 'uia_action') return text.slice(0, 2000);
+  let result;
+  try { result = JSON.parse(text); }
+  catch { throw new DesktopRefusedError('UIA_RESULT_INVALID', 'UI Automation returned malformed result data'); }
+  const details = result?.details;
+  if (details && Array.isArray(details.windows) && details.windows.length > 64) {
+    details.windows_truncated = true;
+    details.windows_omitted = details.windows.length - 64;
+    details.windows = details.windows.slice(0, 64);
+  }
+  if (details && Array.isArray(details.controls) && details.controls.length > 64) {
+    details.controls_truncated = true;
+    details.controls_omitted = details.controls.length - 64;
+    details.controls = details.controls.slice(0, 64);
+  }
+  const projected = JSON.stringify(result);
+  if (projected.length > 16000) throw new DesktopRefusedError('UIA_RESULT_TOO_LARGE', 'bounded UI Automation result exceeded its response limit');
+  return projected;
+}
+
 export function createDesktopControl({ workspace, authority, clock = Date.now }) {
   function authorized(execution, kind, body) {
     if (!authority) throw new AuthorityError('FORBIDDEN', 'canonical authority required');
@@ -33,6 +56,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
   let manifest = null;
   const processes = createOwnedProcesses();
   const ownedUiProcesses = new Map();
+  const windowLeases = new Map();
   let grantOwner = null;
   let panicked = false;
   let unownedHandlers = 0;
@@ -151,14 +175,81 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
         pid: value.pid,
         action: value.action,
         window_handle: value.window_handle,
+        lease_id: value.lease_id,
         automation_id: value.automation_id,
         verify_automation_id: value.verify_automation_id,
         expected_state: value.expected_state,
         horizontal_percent: value.horizontal_percent,
-        vertical_percent: value.vertical_percent
+        vertical_percent: value.vertical_percent,
+        key: value.key,
+        selection_root: value.selection_root ? '[approved root]' : undefined,
+        file_path: value.file_path ? '[approved fixture path]' : undefined,
+        result_window_handle: value.result_window_handle,
+        result_lease_id: value.result_lease_id,
+        text: value.text === undefined ? undefined : '[input omitted]'
       });
     } catch { return '[redacted UI Automation target]'; }
   };
+
+  function resolveWindowLease(sessionId, leaseId, pid, windowHandle, identity) {
+    const lease = windowLeases.get(leaseId);
+    if (!lease || lease.sessionId !== sessionId || lease.pid !== pid || lease.windowHandle !== windowHandle ||
+        !sameWindowsProcessIdentity(lease.identity, identity)) {
+      throw new DesktopRefusedError('UIA_LEASE_INVALID', 'window lease is absent, stale, or belongs to another attempt');
+    }
+    return lease;
+  }
+
+  function rememberWindowLease(sessionId, identity, row) {
+    if (!Number.isSafeInteger(row.window_handle) || row.window_handle <= 0 ||
+        !Array.isArray(row.runtime_id) || row.runtime_id.length < 1 ||
+        typeof row.class_name !== 'string' || !row.class_name) {
+      throw new DesktopRefusedError('UIA_WINDOW_IDENTITY_INCOMPLETE', 'window provider did not expose a stable window identity');
+    }
+    const runtimeId = row.runtime_id.map(String).join(',');
+    const existing = [...windowLeases.values()].find(lease => lease.sessionId === sessionId &&
+      lease.pid === identity.pid && lease.windowHandle === row.window_handle &&
+      lease.runtimeId === runtimeId && lease.className === row.class_name &&
+      sameWindowsProcessIdentity(lease.identity, identity));
+    if (existing) return existing;
+    if (windowLeases.size >= 256) throw new DesktopRefusedError('UIA_LEASE_CAPACITY', 'session window lease capacity reached');
+    const lease = {
+      id: randomUUID(),
+      sessionId,
+      pid: identity.pid,
+      windowHandle: row.window_handle,
+      runtimeId,
+      className: row.class_name,
+      identity
+    };
+    windowLeases.set(lease.id, lease);
+    return lease;
+  }
+
+  async function validateSelectionPath(grants, selectionRoot, filePath) {
+    const requestedRoot = path.resolve(String(selectionRoot));
+    const grant = grants.roots.find(root => isSubpath(root, requestedRoot));
+    if (!grant) throw new DesktopRefusedError('PATH_NOT_GRANTED', 'file picker root is outside granted roots');
+    let realGrant;
+    let realRoot;
+    let realFile;
+    try {
+      [realGrant, realRoot, realFile] = await Promise.all([
+        fs.realpath(grant),
+        fs.realpath(requestedRoot),
+        fs.realpath(String(filePath))
+      ]);
+    } catch {
+      throw new DesktopRefusedError('FILE_PICKER_PATH_UNAVAILABLE', 'approved picker root or fixture file is unavailable');
+    }
+    if (!isSubpath(realGrant, realRoot) || realRoot === realGrant && path.resolve(String(selectionRoot)) !== path.resolve(grant) ||
+        realFile === realRoot || !isSubpath(realRoot, realFile)) {
+      throw new DesktopRefusedError('PATH_NOT_GRANTED', 'selected file must be a child of the approved picker root');
+    }
+    const stat = await fs.stat(realFile);
+    if (!stat.isFile()) throw new DesktopRefusedError('FILE_PICKER_NOT_A_FILE', 'selected path is not a regular file');
+    return { selectionRoot: realRoot, filePath: realFile };
+  }
 
   const ops = {
     // Business-lane ops (drafts-first doctrine: AIDE creates drafts, humans
@@ -272,7 +363,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]);
       return `focused window matching ${title}`;
     },
-    async uia_action(_grants, target) {
+    async uia_action(grants, target, _destination, _request, sessionId = 'default') {
       if (process.platform !== 'win32') throw new DesktopRefusedError('UIA_UNAVAILABLE', 'Windows UI Automation is available only on Windows');
       let request;
       try { request = validateWindowsUiaRequest(JSON.parse(String(target))); }
@@ -285,8 +376,126 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       try { observed = await readWindowsProcessIdentity(request.pid); }
       catch { throw new DesktopRefusedError('UIA_IDENTITY_UNVERIFIED', 'target process identity could not be revalidated'); }
       if (!sameWindowsProcessIdentity(owned.identity, observed)) throw new DesktopRefusedError('UIA_IDENTITY_MISMATCH', 'target PID no longer matches its captured process identity');
-      const result = await windowsUiaAction(request, owned.identity, (cmd, args, options) => run(cmd, args, options));
-      return { output: JSON.stringify({ action: result.action, verified: result.verified, details: result.details ?? null }), verified: result.verified, action: result.action };
+      const actionId = randomUUID();
+      let windowLease = null;
+      let resultWindowLease = null;
+      let helperRequest = request;
+      let selection = null;
+      let capturePath = null;
+      const captureRoot = path.resolve(workspace, '.aide', 'desktop', 'evidence');
+      const helperDirectory = path.resolve(workspace, '.aide', 'desktop', 'helpers');
+      if (request.action === 'discover') {
+        const discovered = await windowsUiaAction(request, owned.identity, (cmd, args, options) => run(cmd, args, options), {
+          workspaceRoot: workspace, helperDirectory
+        });
+        const windows = discovered.details?.windows;
+        if (!Array.isArray(windows)) throw new DesktopRefusedError('UIA_RESULT_INVALID', 'window discovery returned no window identity list');
+        const leasedWindows = windows.map(row => {
+          const lease = rememberWindowLease(sessionId, owned.identity, row);
+          return {
+            window_handle: row.window_handle,
+            process_id: row.process_id,
+            class_name: row.class_name,
+            automation_id: row.automation_id || null,
+            lease_id: lease.id
+          };
+        });
+        return {
+          output: JSON.stringify({ action: 'discover', verified: true, details: { windows: leasedWindows } }),
+          verified: true,
+          action: 'discover'
+        };
+      }
+
+      try {
+        windowLease = resolveWindowLease(sessionId, request.lease_id, request.pid, request.window_handle, owned.identity);
+        const helperIdentity = {
+          ...owned.identity,
+          windowRuntimeId: windowLease.runtimeId,
+          windowClassName: windowLease.className
+        };
+        if (request.action === 'select_file') {
+          resultWindowLease = resolveWindowLease(sessionId, request.result_lease_id, request.pid, request.result_window_handle, owned.identity);
+          selection = await validateSelectionPath(grants, request.selection_root, request.file_path);
+          helperRequest = { ...request, selection_root: selection.selectionRoot, file_path: selection.filePath };
+          helperIdentity.resultWindowRuntimeId = resultWindowLease.runtimeId;
+          helperIdentity.resultWindowClassName = resultWindowLease.className;
+        }
+        if (request.action === 'screenshot') {
+          await fs.mkdir(captureRoot, { recursive: true });
+          const rootStat = await fs.lstat(captureRoot);
+          if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new DesktopRefusedError('UIA_CAPTURE_ROOT_INVALID', 'screenshot evidence root is not a real directory');
+          capturePath = path.join(captureRoot, actionId + '.png');
+          if (!isSubpath(captureRoot, capturePath)) throw new DesktopRefusedError('UIA_CAPTURE_PATH_DENIED', 'screenshot destination escaped its evidence root');
+          helperIdentity.captureRoot = captureRoot;
+        }
+        const result = await windowsUiaAction(helperRequest, helperIdentity, (cmd, args, options) => run(cmd, args, options), {
+          workspaceRoot: workspace,
+          helperDirectory,
+          ...(capturePath ? { capturePath } : {}),
+          ...(request.action === 'select_file' ? { timeout: 12000 } : {})
+        });
+        if (capturePath) {
+          const bytes = await fs.readFile(capturePath);
+          const digest = createHash('sha256').update(bytes).digest('hex');
+          if (bytes.length < 100 || digest !== result.details?.capture_sha256 ||
+              bytes[0] !== 0x89 || bytes.subarray(1, 4).toString('ascii') !== 'PNG') {
+            throw new DesktopRefusedError('UIA_CAPTURE_VERIFICATION_FAILED', 'window screenshot failed PNG/hash verification');
+          }
+          result.details.capture_sha256 = digest;
+          result.details.capture_bytes = bytes.length;
+          result.details.capture_ref = path.relative(workspace, capturePath).split(path.sep).join('/');
+        }
+        if (request.action === 'select_file') windowLeases.delete(windowLease.id);
+        const receipt = {
+          action_id: actionId,
+          attempt_id: String(sessionId).slice(0, 120),
+          target_application: owned.identity.name,
+          process_id: owned.identity.pid,
+          window_handle: windowLease.windowHandle,
+          lease_id: windowLease.id,
+          ownership_state: 'ATTEMPT_OWNED',
+          requested_operation: request.action,
+          target_element: request.automation_id ?? (request.action === 'select_file' ? '1148' : null),
+          precondition: 'owned_process_identity_and_window_lease_revalidated',
+          result: 'SUCCESS',
+          postcondition: String(result.details?.verified_by ?? result.details?.action ?? result.action),
+          evidence_refs: result.details?.capture_ref ? [result.details.capture_ref] : []
+        };
+        return {
+          output: JSON.stringify({ action: result.action, verified: result.verified, details: result.details ?? null }),
+          verified: result.verified,
+          action: result.action,
+          receipt
+        };
+      } catch (error) {
+        if (capturePath) {
+          try { await fs.unlink(capturePath); }
+          catch (cleanupError) { if (cleanupError?.code !== 'ENOENT') error = Object.assign(new Error('failed UIA screenshot artifact could not be removed'), { code: 'UIA_CAPTURE_CLEANUP_FAILED', cause: error }); }
+        }
+        if (['UIA_WINDOW_STALE', 'UIA_WINDOW_OWNER_MISMATCH', 'UIA_IDENTITY_MISMATCH', 'UIA_PROCESS_IDENTITY_MISMATCH'].includes(error?.code)) {
+          windowLeases.delete(windowLease?.id);
+        }
+        const failure = new DesktopRefusedError(error?.code ?? 'UIA_OPERATION_FAILED', 'approved window action failed closed');
+        if (error?.diagnostic && typeof error.diagnostic === 'object') failure.diagnostic = error.diagnostic;
+        failure.desktopReceipt = {
+          action_id: actionId,
+          attempt_id: String(sessionId).slice(0, 120),
+          target_application: owned.identity.name,
+          process_id: owned.identity.pid,
+          window_handle: windowLease?.windowHandle ?? request.window_handle,
+          lease_id: windowLease?.id ?? request.lease_id,
+          ownership_state: 'ATTEMPT_OWNED',
+          requested_operation: request.action,
+          target_element: request.automation_id ?? (request.action === 'select_file' ? '1148' : null),
+          precondition: 'owned_process_identity_and_window_lease_revalidated',
+          result: 'FAILURE',
+          postcondition: 'not_verified',
+          evidence_refs: [],
+          failure_classification: failure.code
+        };
+        throw failure;
+      }
     }
   };
 
@@ -316,6 +525,13 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
           if (typeof rawDetails[key] === 'string' && rawDetails[key].length <= 64) details[key] = rawDetails[key];
         }
         if (Number.isFinite(rawDetails.vertical_percent)) details.vertical_percent = rawDetails.vertical_percent;
+        if (typeof rawDetails.input_method === 'string') details.input_method = rawDetails.input_method;
+        if (typeof rawDetails.key === 'string') details.key = rawDetails.key;
+        if (typeof rawDetails.capture_sha256 === 'string' && /^[0-9a-f]{64}$/i.test(rawDetails.capture_sha256)) details.capture_sha256 = rawDetails.capture_sha256;
+        if (typeof rawDetails.capture_ref === 'string' && rawDetails.capture_ref.startsWith('.aide/desktop/evidence/')) details.capture_ref = rawDetails.capture_ref;
+        for (const key of ['capture_bytes', 'capture_width', 'capture_height']) {
+          if (Number.isSafeInteger(rawDetails[key]) && rawDetails[key] > 0) details[key] = rawDetails[key];
+        }
         if (Array.isArray(rawDetails.windows)) details.windows_found = rawDetails.windows.length;
         if (Array.isArray(rawDetails.controls)) details.controls_inspected = rawDetails.controls.length;
         return { pass: output?.verified === true, check: `uia_verified:${output?.action ?? 'unknown'}`, details };
@@ -357,20 +573,28 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
     const fn = ops[request.op];
     if (!fn) throw new DesktopRefusedError('UNKNOWN_OP', `unsupported op: ${request.op}`);
     try {
-      const output = await fn(grants, request.target, request.destination, request);
+      const output = await fn(grants, request.target, request.destination, request, sessionId);
       const assertion = await autoAssert(request.op, request.target, request.destination, output);
-      const result = { ok: true, decision: 'executed', output: String(output?.output ?? output).slice(0, 2000), latency_ms: Date.now() - started, assertion };
-      await evidence('desktop', { op: request.op, target: safeActionTarget(request), decision: 'executed', assertion });
+      const result = {
+        ok: true,
+        decision: 'executed',
+        output: projectActionOutput(request.op, output?.output ?? output),
+        latency_ms: Date.now() - started,
+        assertion,
+        ...(output?.receipt ? { receipt: output.receipt } : {})
+      };
+      await evidence('desktop', { op: request.op, target: safeActionTarget(request), decision: 'executed', assertion, ...(output?.receipt ? { receipt: output.receipt } : {}) });
       await recordTrajectory(sessionId, {
         ts: new Date().toISOString(), turn: ++turnCounter,
         observation: { op: request.op, target: safeActionTarget(request), destination: request.destination ?? null },
         thought: request.op === 'uia_action' ? '[UI Automation input omitted]' : request.note || '', action_raw: `${request.op}(target="${safeActionTarget(request)}"${request.destination ? `, destination="${request.destination}"` : ''})`,
-        class: 'WRITE', verdict: 'executed', assertion, latency_ms: result.latency_ms
+        class: 'WRITE', verdict: 'executed', assertion, ...(output?.receipt ? { receipt: output.receipt } : {}), latency_ms: result.latency_ms
       });
       return result;
     } catch (error) {
       const code = error instanceof DesktopRefusedError ? error.code : 'CHILD_FAILED';
-      await evidence('desktop', { op: request.op, target: safeActionTarget(request), decision: code });
+      const failureReceipt = error?.desktopReceipt;
+      await evidence('desktop', { op: request.op, target: safeActionTarget(request), decision: code, ...(failureReceipt ? { receipt: failureReceipt } : {}) });
       // Refusal-recovery rows are TRAINING GOLD per the model spec — recorded
       // with the refusal code as the verdict so T2's corpus includes recovery.
       await recordTrajectory(sessionId, {
@@ -378,7 +602,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
         observation: { op: request.op, target: safeActionTarget(request) },
         thought: request.op === 'uia_action' ? '[UI Automation input omitted]' : request.note || '', action_raw: `${request.op}(target="${safeActionTarget(request)}")`,
         class: code === 'NOT_ALLOWLISTED' || code === 'PATH_NOT_GRANTED' ? 'FORBIDDEN' : 'WRITE',
-        verdict: code, latency_ms: Date.now() - started
+        verdict: code, ...(failureReceipt ? { receipt: failureReceipt } : {}), latency_ms: Date.now() - started
       });
       throw error;
     }
@@ -392,6 +616,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
     if (manifest) panics.push(manifest.session_started_at);
     const outcomes = await processes.revoke();
     ownedUiProcesses.clear();
+    windowLeases.clear();
     const killed = outcomes.filter(item => item.killed).length;
     const result = { ok: outcomes.every(item => item.status === 'terminated' || item.status === 'exited'), children_killed: killed,
       unowned_handlers: unownedHandlers, outcomes, revoked_at: new Date().toISOString(), latency_ms: Date.now() - started };
@@ -425,7 +650,12 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       const next = await saveManifest({ version: 1, ...input, session_started_at: new Date(clock()).toISOString(), approved_by: 'operator-wizard' });
       authorized(execution, 'desktop.grants', input);
       grantOwner = trusted.owner; panicked = false;
-      if (input.enabled) processes.arm(); else await processes.revoke();
+      windowLeases.clear();
+      if (input.enabled) processes.arm();
+      else {
+        await processes.revoke();
+        ownedUiProcesses.clear();
+      }
       return next;
     },
     act,

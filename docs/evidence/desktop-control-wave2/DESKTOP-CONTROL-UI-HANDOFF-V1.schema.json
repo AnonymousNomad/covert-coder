@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://covert.invalid/schemas/desktop-control-ui-handoff-v1.json",
+  "title": "Desktop Control read-only operator status projection",
+  "description": "UI-facing projection only. It consumes Desktop Control and Passport truth; it does not grant authority or create qualification state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "qualification",
+    "activity",
+    "last_qualified_at",
+    "passport_sha256",
+    "target",
+    "capabilities"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "qualification": { "enum": ["VALID", "STALE", "BLOCKED", "NOT_QUALIFIED", "UNKNOWN"] },
+    "activity": { "enum": ["INACTIVE", "ACTIVE", "AWAITING_APPROVAL", "BLOCKED", "ERROR"] },
+    "last_qualified_at": { "type": ["string", "null"], "format": "date" },
+    "passport_sha256": { "type": ["string", "null"], "pattern": "^[A-Fa-f0-9]{64}$" },
+    "attempt_id": { "type": ["string", "null"] },
+    "target": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["application", "ownership"],
+      "properties": {
+        "application": { "type": "string" },
+        "ownership": { "enum": ["COVERT_OWNED", "ATTEMPT_OWNED", "OPERATOR_APPROVED", "FOREIGN", "UNKNOWN"] },
+        "process_id": { "type": ["integer", "null"], "minimum": 1 },
+        "window_id": { "type": ["string", "null"] }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": { "enum": ["QUALIFIED", "PARTIAL", "BLOCKED", "NOT_QUALIFIED", "NOT_RUN", "UNKNOWN"] }
+    },
+    "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  }
+}

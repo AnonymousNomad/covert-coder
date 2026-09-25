@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-15T16:06:49.804Z",
-  "count": 292,
+  "generated_at": "2026-09-25T15:19:12.000Z",
+  "count": 299,
   "categories": [
     "academy",
     "aide-core",
@@ -1460,6 +1460,13 @@
       "path": "skills/packs/failure-desktop-staged-stack-exit/SKILL.md"
     },
     {
+      "name": "failure-desktop-uia-output-truncated-invalid-json",
+      "title": "failure-desktop-uia-output-truncated-invalid-json",
+      "description": "Prevent the generic desktop action output limit from slicing structured UIA JSON and returning an unparsable partial result. Bound collections and fail closed instead of truncating JSON text.",
+      "category": "general",
+      "path": "skills/packs/failure-desktop-uia-output-truncated-invalid-json/SKILL.md"
+    },
+    {
       "name": "failure-git-api-stage-500",
       "title": "failure-git-api-stage-500",
       "description": "Diagnose legacy Git API acceptance failures where an approved stage or commit request returns 500. Use whenever scripts/test-git-api.mjs fails inside a nested or full battery run.",
@@ -1523,11 +1530,74 @@
       "path": "skills/packs/failure-typescript-mjs-declaration/SKILL.md"
     },
     {
+      "name": "failure-uia-forged-window-preflight-classification",
+      "title": "failure-uia-forged-window-preflight-classification",
+      "description": "Diagnose Desktop Control assertions that expect a provider HWND error even though a session-issued lease rejects a forged handle before provider dispatch. Preserve the earlier fail-closed lease refusal.",
+      "category": "general",
+      "path": "skills/packs/failure-uia-forged-window-preflight-classification/SKILL.md"
+    },
+    {
+      "name": "failure-uia-missing-lease-validation-order",
+      "title": "failure-uia-missing-lease-validation-order",
+      "description": "Diagnose UIA requests whose missing session lease is reported as a generic field-shape error. Use when strict request validation runs before the dedicated process/window lease guard.",
+      "category": "general",
+      "path": "skills/packs/failure-uia-missing-lease-validation-order/SKILL.md"
+    },
+    {
       "name": "failure-vite-entry-relative-url-assertion",
       "title": "failure-vite-entry-relative-url-assertion",
       "description": "Prevent false Vite launch-test failures caused by comparing relative and root-relative HTML entry URLs as raw strings. Use when a dev index serves ./src/main.ts but the test expects /src/main.ts.",
       "category": "general",
       "path": "skills/packs/failure-vite-entry-relative-url-assertion/SKILL.md"
+    },
+    {
+      "name": "failure-windows-uia-encoded-helper-command-too-long",
+      "title": "failure-windows-uia-encoded-helper-command-too-long",
+      "description": "Diagnose and prevent Windows UI Automation helper launch failures caused by embedding a large PowerShell script and identity in an overlong EncodedCommand argument. Use a workspace-bounded file-backed helper with a JSON stdin envelope.",
+      "category": "general",
+      "path": "skills/packs/failure-windows-uia-encoded-helper-command-too-long/SKILL.md"
+    },
+    {
+      "name": "failure-uia-window-focus-owner-unverified",
+      "title": "failure-uia-window-focus-owner-unverified",
+      "description": "Diagnose UIA window focus where the leased HWND is foreground but the focused element cannot yet be tied to the leased window; keep input blocked until identity and control focus verify.",
+      "category": "general",
+      "path": "skills/packs/failure-uia-window-focus-owner-unverified/SKILL.md"
+    },
+    {
+      "name": "failure-uia-pointer-target-pattern-mismatch",
+      "title": "failure-uia-pointer-target-pattern-mismatch",
+      "description": "Fix UIA pointer-action refusals that demand a TogglePattern on a command Button instead of verifying a separate state postcondition.",
+      "category": "general",
+      "path": "skills/packs/failure-uia-pointer-target-pattern-mismatch/SKILL.md"
+    },
+    {
+      "name": "failure-uia-file-picker-control-identity",
+      "title": "failure-uia-file-picker-control-identity",
+      "description": "Diagnose leased UIA file dialogs where familiar AutomationIds do not resolve to one usable filename field or Open button; preserve fail-closed selection.",
+      "category": "general",
+      "path": "skills/packs/failure-uia-file-picker-control-identity/SKILL.md"
+    },
+    {
+      "name": "failure-windows-uia-malformed-action-output",
+      "title": "failure-windows-uia-malformed-action-output",
+      "description": "Diagnose action-specific PowerShell UIA output that is not a single JSON result while preserving sensitive-output boundaries. Use non-content diagnostics only.",
+      "category": "general",
+      "path": "skills/packs/failure-windows-uia-malformed-action-output/SKILL.md"
+    },
+    {
+      "name": "failure-windows-uia-generic-exception-classification",
+      "title": "failure-windows-uia-generic-exception-classification",
+      "description": "Diagnose Windows UIA actions mapped to a generic failure code using safe exception type/category metadata, never raw PowerShell messages or application content.",
+      "category": "general",
+      "path": "skills/packs/failure-windows-uia-generic-exception-classification/SKILL.md"
+    },
+    {
+      "name": "failure-windows-uia-focus-lost-between-actions",
+      "title": "failure-windows-uia-focus-lost-between-actions",
+      "description": "Diagnose UIA keyboard actions that lose focus between helper invocations. Reacquire the leased semantic target within the input action and revalidate immediately before sending input.",
+      "category": "general",
+      "path": "skills/packs/failure-windows-uia-focus-lost-between-actions/SKILL.md"
     },
     {
       "name": "felon-master",

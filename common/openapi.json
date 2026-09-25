@@ -5931,6 +5931,117 @@
                         "check"
                       ],
                       "additionalProperties": false
+                    },
+                    "receipt": {
+                      "type": "object",
+                      "properties": {
+                        "action_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "attempt_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "target_application": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 260
+                        },
+                        "process_id": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "window_handle": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "lease_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "ownership_state": {
+                          "type": "string",
+                          "const": "ATTEMPT_OWNED"
+                        },
+                        "requested_operation": {
+                          "type": "string",
+                          "enum": [
+                            "inspect",
+                            "focus",
+                            "invoke",
+                            "scroll",
+                            "type_text",
+                            "replace_text",
+                            "press_key",
+                            "click",
+                            "screenshot",
+                            "select_file"
+                          ]
+                        },
+                        "target_element": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 64
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "precondition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "SUCCESS",
+                            "FAILURE",
+                            "BLOCKED"
+                          ]
+                        },
+                        "postcondition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "evidence_refs": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 500
+                          }
+                        },
+                        "failure_classification": {
+                          "type": "string",
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "action_id",
+                        "attempt_id",
+                        "target_application",
+                        "process_id",
+                        "window_handle",
+                        "lease_id",
+                        "ownership_state",
+                        "requested_operation",
+                        "target_element",
+                        "precondition",
+                        "result",
+                        "postcondition",
+                        "evidence_refs"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -5958,6 +6069,7 @@
                       "open_path",
                       "list_windows",
                       "focus_window",
+                      "uia_action",
                       "move_file",
                       "outlook_create_draft",
                       "excel_generate_report"
@@ -5974,6 +6086,9 @@
                       "type": "string",
                       "maxLength": 4096
                     }
+                  },
+                  "show_window": {
+                    "type": "boolean"
                   },
                   "destination": {
                     "type": "string",

@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -55,14 +56,16 @@ test('UIA enforces session ownership and approval, then verifies focus, scroll, 
     const windows = JSON.parse(discovered.output).details.windows;
     assert.ok(windows.length > 0, discovered.output);
     let windowHandle = null;
+    let windowLeaseId = null;
     let controls = [];
     const candidates = [];
     for (const candidate of windows) {
-      const inspected = await action({ op: 'uia_action', target: JSON.stringify({ action: 'inspect', pid: fixturePid, window_handle: candidate.window_handle }) });
+      const inspected = await action({ op: 'uia_action', target: JSON.stringify({ action: 'inspect', pid: fixturePid, window_handle: candidate.window_handle, lease_id: candidate.lease_id }) });
       const candidateControls = JSON.parse(inspected.output).details.controls;
       candidates.push({ window_handle: candidate.window_handle, automation_ids: candidateControls.map(control => control.automation_id) });
       if (candidateControls.some(control => control.automation_id === 'fixtureToggleButton') && candidateControls.some(control => control.automation_id === 'fixtureStateCheckbox') && candidateControls.some(control => control.automation_id === 'fixtureScrollViewer')) {
         windowHandle = candidate.window_handle;
+        windowLeaseId = candidate.lease_id;
         controls = candidateControls;
         break;
       }
@@ -73,23 +76,61 @@ test('UIA enforces session ownership and approval, then verifies focus, scroll, 
     assert.ok(controls.some(control => control.automation_id === 'fixtureScrollViewer'));
     assert.ok(!controls.some(control => control.automation_id === 'fixtureFakeSecretField'), 'password controls must be excluded from UIA inspection');
     assert.doesNotMatch(JSON.stringify(controls), /FAKE-SECRET-NOT-REAL/, 'fake credential value must never be serialized');
+    const hash = value => createHash('sha256').update(value, 'utf8').digest('hex');
+    const inputFocus = await action({ op: 'uia_action', target: JSON.stringify({ action: 'focus', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput' }) });
+    assert.equal(inputFocus.assertion.pass, true);
+    const typed = await action({ op: 'uia_action', target: JSON.stringify({ action: 'type_text', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', text: 'COVERT-INPUT', expected_value_sha256: hash('COVERT-INPUT') }) });
+    assert.equal(typed.assertion.pass, true);
+    assert.doesNotMatch(typed.output, /COVERT-INPUT/, 'typed text is not returned in action output');
+    const replaced = await action({ op: 'uia_action', target: JSON.stringify({ action: 'replace_text', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', text: 'REPLACE-ME', expected_value_sha256: hash('REPLACE-ME') }) });
+    assert.equal(replaced.assertion.pass, true, 'Ctrl+A replacement is followed by value-hash verification');
+    const backspace = await action({ op: 'uia_action', target: JSON.stringify({ action: 'press_key', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', verify_automation_id: 'fixtureTextInput', key: 'BACKSPACE', expected_value_sha256: hash('REPLACE-M') }) });
+    assert.equal(backspace.assertion.pass, true);
+    const restored = await action({ op: 'uia_action', target: JSON.stringify({ action: 'type_text', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', text: 'E', expected_value_sha256: hash('REPLACE-ME') }) });
+    assert.equal(restored.assertion.pass, true);
+    const deleteKey = await action({ op: 'uia_action', target: JSON.stringify({ action: 'press_key', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', verify_automation_id: 'fixtureStatus', key: 'DELETE', expected_value_sha256: hash('DELETE_RECEIVED') }) });
+    assert.equal(deleteKey.assertion.pass, true);
+    const enterKey = await action({ op: 'uia_action', target: JSON.stringify({ action: 'press_key', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', verify_automation_id: 'fixtureStatus', key: 'ENTER', expected_value_sha256: hash('ENTER_RECEIVED') }) });
+    assert.equal(enterKey.assertion.pass, true);
+    const escapeKey = await action({ op: 'uia_action', target: JSON.stringify({ action: 'press_key', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', verify_automation_id: 'fixtureStatus', key: 'ESCAPE', expected_value_sha256: hash('ESCAPE_RECEIVED') }) });
+    assert.equal(escapeKey.assertion.pass, true);
+    const tabKey = await action({ op: 'uia_action', target: JSON.stringify({ action: 'press_key', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureTextInput', verify_automation_id: 'fixtureTabTarget', key: 'TAB', expected_value_sha256: hash('') }) });
+    assert.equal(tabKey.assertion.pass, true, 'Tab focus is checked against the next fixture control');
     await assert.rejects(
-      () => action({ op: 'uia_action', target: JSON.stringify({ action: 'inspect', pid: fixturePid, window_handle: 1 }) }),
-      { code: 'UIA_WINDOW_OWNER_MISMATCH' },
-      'a fabricated or foreign window handle must fail ownership validation'
+      () => action({ op: 'uia_action', target: JSON.stringify({ action: 'type_text', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureFakeSecretField', text: 'FAKE-SECRET-NOT-REAL', expected_value_sha256: hash('FAKE-SECRET-NOT-REAL') }) }),
+      { code: 'UIA_CONTROL_UNAVAILABLE' },
+      'password controls cannot be used as desktop text targets'
     );
     await assert.rejects(
-      () => action({ op: 'uia_action', target: JSON.stringify({ action: 'invoke', pid: fixturePid, window_handle: windowHandle, automation_id: 'missingFixtureControl', verify_automation_id: 'fixtureStateCheckbox', expected_state: 'ON' }) }),
+      () => action({ op: 'uia_action', target: JSON.stringify({ action: 'screenshot', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId }) }),
+      { code: 'UIA_SENSITIVE_WINDOW' },
+      'a window containing a password field is excluded from capture'
+    );
+    const captureRoot = path.join(workspace, '.aide', 'desktop', 'evidence');
+    const remainingCaptures = await fs.readdir(captureRoot).catch(error => error.code === 'ENOENT' ? [] : Promise.reject(error));
+    assert.deepEqual(remainingCaptures.filter(file => file.endsWith('.png')), [], 'refused sensitive capture leaves no partial PNG');
+    await assert.rejects(
+      () => action({ op: 'uia_action', target: JSON.stringify({ action: 'inspect', pid: fixturePid, window_handle: 1, lease_id: windowLeaseId }) }),
+      error => {
+        assert.equal(error.code, 'UIA_LEASE_INVALID', 'a forged HWND must be rejected by lease preflight');
+        assert.equal(error.desktopReceipt?.result, 'FAILURE');
+        assert.equal(error.desktopReceipt?.failure_classification, 'UIA_LEASE_INVALID');
+        return true;
+      },
+      'a fabricated or foreign window handle must fail ownership validation before provider dispatch'
+    );
+    await assert.rejects(
+      () => action({ op: 'uia_action', target: JSON.stringify({ action: 'invoke', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'missingFixtureControl', verify_automation_id: 'fixtureStateCheckbox', expected_state: 'ON' }) }),
       { code: 'UIA_CONTROL_NOT_UNIQUE' },
       'a missing semantic control must fail without substituting a coordinate or text target'
     );
 
-    const focused = await action({ op: 'uia_action', target: JSON.stringify({ action: 'focus', pid: fixturePid, window_handle: windowHandle }) });
+    const focused = await action({ op: 'uia_action', target: JSON.stringify({ action: 'focus', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId }) });
     assert.equal(focused.assertion.pass, true);
-    const scrolled = await action({ op: 'uia_action', target: JSON.stringify({ action: 'scroll', pid: fixturePid, window_handle: windowHandle, automation_id: 'fixtureScrollViewer', horizontal_percent: -1, vertical_percent: 100 }) });
+    const scrolled = await action({ op: 'uia_action', target: JSON.stringify({ action: 'scroll', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureScrollViewer', horizontal_percent: -1, vertical_percent: 100 }) });
     assert.equal(scrolled.assertion.pass, true);
     assert.match(scrolled.assertion.check, /uia_verified:scroll/);
-    const invoked = await action({ op: 'uia_action', target: JSON.stringify({ action: 'invoke', pid: fixturePid, window_handle: windowHandle, automation_id: 'fixtureToggleButton', verify_automation_id: 'fixtureStateCheckbox', expected_state: 'ON' }) });
+    const invoked = await action({ op: 'uia_action', target: JSON.stringify({ action: 'invoke', pid: fixturePid, window_handle: windowHandle, lease_id: windowLeaseId, automation_id: 'fixtureToggleButton', verify_automation_id: 'fixtureStateCheckbox', expected_state: 'ON' }) });
     assert.equal(invoked.assertion.pass, true);
     assert.match(invoked.assertion.check, /uia_verified:invoke/);
     assert.equal(invoked.assertion.details.verified_by, 'fixtureStateCheckbox');
@@ -99,7 +140,11 @@ test('UIA enforces session ownership and approval, then verifies focus, scroll, 
     assert.ok(invokeReceipt, 'successful semantic operation must emit a provenance receipt');
     assert.equal(invokeReceipt.assertion.details.verified_by, 'fixtureStateCheckbox');
     assert.doesNotMatch(JSON.stringify(invokeReceipt), /FAKE-SECRET-NOT-REAL/, 'receipt must not include fake password value');
+    const persistedEvidence = await fs.readFile(path.join(workspace, '.aide', 'cipher-state.jsonl'), 'utf8');
+    assert.doesNotMatch(persistedEvidence, /FAKE-SECRET-NOT-REAL/, 'fake credential-shaped input is absent from persistent evidence');
     assert.ok(records.some(event => event.kind === 'desktop.action' && event.decision === 'execution-succeeded'));
+    assert.equal(invokeReceipt.receipt.ownership_state, 'ATTEMPT_OWNED');
+    assert.equal(invokeReceipt.receipt.lease_id, windowLeaseId);
   } catch (error) {
     primaryFailure = error;
     throw error;

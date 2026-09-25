@@ -33,6 +33,25 @@ export const DesktopActionRequest = z
   })
   .strict();
 
+export const DesktopActionReceipt = z
+  .object({
+    action_id: z.string().uuid(),
+    attempt_id: z.string().min(1).max(120),
+    target_application: z.string().min(1).max(260),
+    process_id: z.number().int().positive(),
+    window_handle: z.number().int().positive(),
+    lease_id: z.string().uuid(),
+    ownership_state: z.literal('ATTEMPT_OWNED'),
+    requested_operation: z.enum(['inspect', 'focus', 'invoke', 'scroll', 'type_text', 'replace_text', 'press_key', 'click', 'screenshot', 'select_file']),
+    target_element: z.string().max(64).nullable(),
+    precondition: z.string().min(1).max(160),
+    result: z.enum(['SUCCESS', 'FAILURE', 'BLOCKED']),
+    postcondition: z.string().min(1).max(160),
+    evidence_refs: z.array(z.string().max(500)).max(8),
+    failure_classification: z.string().max(100).optional()
+  })
+  .strict();
+
 export const DesktopActionResult = z
   .object({
     ok: z.boolean(),
@@ -43,7 +62,8 @@ export const DesktopActionResult = z
     // Per-op auto-assertion: { pass: boolean, check: string } e.g. {pass:true,check:'process_alive:notepad.exe'}
     // Recorded into training trajectories; surfaced in the result for the model
     // and the operator to verify the action took real effect.
-    assertion: z.object({ pass: z.boolean(), check: z.string() }).optional()
+    assertion: z.object({ pass: z.boolean(), check: z.string() }).optional(),
+    receipt: DesktopActionReceipt.optional()
   })
   .strict();
 
