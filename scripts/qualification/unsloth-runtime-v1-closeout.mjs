@@ -13,6 +13,7 @@ import { createExecutionAuthority } from '../../node/src/services/execution-auth
 import { resolveInsideWorkspace } from '../../node/src/services/agent-tools.mjs';
 import { classifyStructuredOutput, validateSingleRuntimeToolCall, validateStructuredOutput } from '../../node/src/services/runtime-output-validation.ts';
 import { summarizeChatResponse } from './runtime-response-evidence.mjs';
+import { summarizeProcessResources } from './runtime-process-evidence.mjs';
 
 const installRoot = path.resolve(process.env.COVERT_UNSLOTH_INSTALL_ROOT ?? '');
 const qualificationRoot = path.resolve(process.env.COVERT_UNSLOTH_QUALIFICATION_ROOT ?? '');
@@ -82,10 +83,11 @@ function sampleSystemResources() {
     "$admin=([Security.Principal.WindowsPrincipal]([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)",
     "$os=Get-CimInstance Win32_OperatingSystem",
     "$m=Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory",
-    "$r=@(Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('unsloth.exe','llama-server.exe') })",
-    "[pscustomobject]@{isAdmin=$admin;commitFreeBytes=[long]($m.CommitLimit-$m.CommittedBytes);commitUsedBytes=[long]$m.CommittedBytes;commitLimitBytes=[long]$m.CommitLimit;runtimeProcessCount=$r.Count}|ConvertTo-Json -Compress"
+    "$p=@(Get-CimInstance Win32_Process | Where-Object { $_.Name -notin @('powershell.exe','pwsh.exe') } | ForEach-Object { [pscustomobject]@{pid=[int]$_.ProcessId;name=[string]$_.Name;parent_pid=[int]$_.ParentProcessId;working_set_bytes=[long]$_.WorkingSetSize;private_bytes=[long]$_.PrivatePageCount} })",
+    "[pscustomobject]@{isAdmin=$admin;commitFreeBytes=[long]($m.CommitLimit-$m.CommittedBytes);commitUsedBytes=[long]$m.CommittedBytes;commitLimitBytes=[long]$m.CommitLimit;processes=$p}|ConvertTo-Json -Compress -Depth 5"
   ].join(';');
   const windows = powershellJson(ps);
+  const processResources = summarizeProcessResources(windows.processes, { excludedPids: [process.pid] });
   let gpu = null;
   try {
     const text = execFileSync('nvidia-smi.exe', ['--query-gpu=memory.used,memory.free,utilization.gpu', '--format=csv,noheader,nounits'], {
@@ -101,7 +103,8 @@ function sampleSystemResources() {
     commit_free_bytes: windows.commitFreeBytes,
     commit_used_bytes: windows.commitUsedBytes,
     commit_limit_bytes: windows.commitLimitBytes,
-    runtime_process_count: windows.runtimeProcessCount,
+    runtime_process_count: processResources.runtime_name_matches.length,
+    process_resources: processResources,
     gpu
   };
 }
@@ -461,9 +464,20 @@ async function soak() {
       result = { operation: 'inference', pass: inferred.text.length > 0 };
     }
     const after = sampleSystemResources();
+    const runtimeStatus = await broker.status();
+    const runtimeIdentity = {
+      health: runtimeStatus.health,
+      ownership: runtimeStatus.ownership,
+      pid: runtimeStatus.pid,
+      model_id: runtimeStatus.loaded_model?.model_id ?? null,
+      artifact_sha256: runtimeStatus.loaded_model?.artifact_sha256 ?? null
+    };
     soakSamples.push({ at: new Date().toISOString(), sample: after });
-    await emit('SOAK_TICK', { tick, elapsed_ms: Date.now() - start, ...result, sample: after });
+    await emit('SOAK_TICK', { tick, elapsed_ms: Date.now() - start, ...result, runtime: runtimeIdentity, sample: after });
     if (!result.pass) throw new Error(`soak operation failed at tick ${tick}`);
+    if (runtimeIdentity.health !== 'HEALTHY' || runtimeIdentity.ownership !== 'COVERT_OWNED' || runtimeIdentity.artifact_sha256?.toLowerCase() !== expectedSha256) {
+      throw new Error(`soak observed unhealthy or unowned runtime state at tick ${tick}`);
+    }
     if (!inRunResourceGate(after)) {
       await emit('SOAK_GUARD_STOP', { tick, reason: 'post-operation in-run resource envelope crossed', sample: after });
       break;
@@ -490,7 +504,7 @@ async function soak() {
     gpu_used_start_end_mib: first?.gpu && last?.gpu ? [first.gpu.used_mib, last.gpu.used_mib] : null,
     free_ram_start_end: first && last ? [first.free_ram_bytes, last.free_ram_bytes] : null,
     commit_start_end: first && last ? [first.commit_free_bytes, last.commit_free_bytes] : null,
-    runtime_process_count_start_end: first && last ? [first.runtime_process_count, last.runtime_process_count] : null,
+    runtime_process_name_match_count_start_end: first && last ? [first.runtime_process_count, last.runtime_process_count] : null,
     inference_latency_first_last_ms: inferenceLatencies.length > 0 ? [inferenceLatencies[0], inferenceLatencies.at(-1)] : null
   });
   if (!completed) throw new Error('bounded soak did not reach its requested duration');
