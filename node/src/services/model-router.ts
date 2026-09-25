@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import type { ModelRuntime } from './model-runtime.ts';
 import type { ProviderService } from './providers.ts';
-import { BUILTIN_PROVIDERS } from './providers.ts';
+import { BUILTIN_PROVIDERS, type ProviderDefinition } from './providers.ts';
 import { fitHistory, estimateTokens } from './history-fit.ts';
 import type { ChatMessageT } from '../../../common/contracts/chat.ts';
 import type { RouteFallbackT, RouteStatusT } from '../../../common/contracts/routing.ts';
@@ -52,6 +53,35 @@ export interface RouteChatResult {
   overflowTrimmed?: boolean;
 }
 
+export interface ChatAuthorityTargetBinding {
+  execution_class: 'LOCAL' | 'EXTERNAL';
+  route_id: string;
+  model_id: string;
+  source: 'model-runtime' | 'provider-service';
+  runtime_class: 'local-model-runtime' | 'provider-service';
+  endpoint_origin: string;
+  target_revision: string;
+  provider_id?: string;
+  provider_model?: string;
+  egress_host?: string;
+}
+
+export interface ResolvedChatAuthorityTarget {
+  binding: Readonly<ChatAuthorityTargetBinding>;
+  route: ModelRoute;
+}
+
+export type ChatAuthorityTargetResolution =
+  | { status: 'RESOLVED'; target: ResolvedChatAuthorityTarget }
+  | { status: 'UNKNOWN'; reason: 'route-not-registered' | 'local-source-not-contained' | 'provider-catalog-invalid' };
+
+export class ChatTargetChangedError extends Error {
+  constructor() {
+    super('chat execution target changed after Authority resolution; prepare a fresh operation');
+    this.name = 'ChatTargetChangedError';
+  }
+}
+
 const PROBE_TTL_MS = 30_000;
 const LOCAL_PROBE_TIMEOUT_MS = 3_000;
 
@@ -63,35 +93,74 @@ function normalizeOptions(options: { maxTokens?: number | undefined; temperature
   return out;
 }
 
+function targetRevision(value: Record<string, string>): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function localEndpointOrigin(raw: string): string | null {
+  try {
+    const endpoint = new URL(raw);
+    // The local runtime contract uses a numeric loopback endpoint. A model
+    // display name or a generic "local" label cannot turn remote HTTP into
+    // local inference.
+    if (endpoint.protocol !== 'http:' || !['127.0.0.1', '[::1]'].includes(endpoint.hostname) ||
+        endpoint.username || endpoint.password || endpoint.search || endpoint.hash) return null;
+    return endpoint.origin;
+  } catch {
+    return null;
+  }
+}
+
+function providerEndpoint(provider: ProviderDefinition): string | null {
+  try {
+    const endpoint = new URL(provider.baseUrl);
+    if (endpoint.protocol !== 'https:' || endpoint.hostname.toLowerCase() !== provider.egressHost.toLowerCase() ||
+        endpoint.username || endpoint.password || endpoint.search || endpoint.hash) return null;
+    return endpoint.origin;
+  } catch {
+    return null;
+  }
+}
+
+function localRoute(entry: { id: string; name: string; endpoint: string; model: string; context_tokens: number; roles: string[] }): ModelRoute {
+  return {
+    id: `local:${entry.id}`,
+    displayName: entry.name,
+    providerType: 'local',
+    baseUrl: entry.endpoint,
+    modelString: entry.model,
+    contextLength: entry.context_tokens,
+    chatTemplate: 'gguf-metadata',
+    status: 'unverified',
+    probeMs: null,
+    roles: entry.roles,
+    capabilities: []
+  };
+}
+
+function bindingEqual(left: Readonly<ChatAuthorityTargetBinding>, right: Readonly<ChatAuthorityTargetBinding>): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export class ModelRouter {
   private readonly runtime: ModelRuntime;
   private readonly providers: ProviderService;
+  private readonly providerCatalog: readonly ProviderDefinition[];
   private readonly health = new Map<string, { status: RouteStatusT; at: number }>();
 
-  constructor(runtime: ModelRuntime, providers: ProviderService) {
+  constructor(runtime: ModelRuntime, providers: ProviderService, providerCatalog: readonly ProviderDefinition[] = BUILTIN_PROVIDERS) {
     this.runtime = runtime;
     this.providers = providers;
+    this.providerCatalog = providerCatalog;
   }
 
   private localRoute(entry: { id: string; name: string; endpoint: string; model: string; context_tokens: number; roles: string[] }): ModelRoute {
-    return {
-      id: `local:${entry.id}`,
-      displayName: entry.name,
-      providerType: 'local',
-      baseUrl: entry.endpoint,
-      modelString: entry.model,
-      contextLength: entry.context_tokens,
-      chatTemplate: 'gguf-metadata',
-      status: 'unverified',
-      probeMs: null,
-      roles: entry.roles,
-      capabilities: []
-    };
+    return localRoute(entry);
   }
 
   private cloudRoutes(): ModelRoute[] {
     const routes: ModelRoute[] = [];
-    for (const provider of BUILTIN_PROVIDERS) {
+    for (const provider of this.providerCatalog) {
       for (const model of provider.models) {
         routes.push({
           id: `cloud:${provider.id}:${model}`,
@@ -140,6 +209,147 @@ export class ModelRouter {
       return route;
     });
     return [...local, ...cloud];
+  }
+
+  /**
+   * Resolve the exact, configured inference destination without probing,
+   * starting, loading, or contacting a provider/runtime. The returned binding
+   * is included in the Authority operation digest and must be revalidated at
+   * dispatch.
+   */
+  resolveAuthorityTarget(requestedId: string): ChatAuthorityTargetResolution {
+    const localId = requestedId.startsWith('local:')
+      ? requestedId.slice('local:'.length)
+      : requestedId.startsWith('cloud:') ? null : requestedId;
+    if (localId !== null) {
+      const entry = this.runtime.list().find(candidate => candidate.id === localId);
+      if (entry !== undefined) {
+        const endpointOrigin = localEndpointOrigin(entry.endpoint);
+        const artifactUri = typeof entry.artifact_uri === 'string' ? entry.artifact_uri : '';
+        const artifactFile = typeof entry.file === 'string' ? entry.file : '';
+        if (endpointOrigin === null || !artifactUri.startsWith('local://') || artifactUri.length <= 'local://'.length || artifactFile.length === 0) {
+          return { status: 'UNKNOWN', reason: 'local-source-not-contained' };
+        }
+        const route = localRoute(entry);
+        const binding = Object.freeze({
+          execution_class: 'LOCAL' as const,
+          route_id: route.id,
+          model_id: entry.id,
+          source: 'model-runtime' as const,
+          runtime_class: 'local-model-runtime' as const,
+          endpoint_origin: endpointOrigin,
+          target_revision: targetRevision({
+            route_id: route.id,
+            model_id: entry.id,
+            model: entry.model,
+            artifact_uri: artifactUri,
+            artifact_file: artifactFile,
+            endpoint: entry.endpoint
+          })
+        });
+        return { status: 'RESOLVED', target: Object.freeze({ binding, route }) };
+      }
+    }
+
+    for (const provider of this.providerCatalog) {
+      for (const model of provider.models) {
+        const routeId = `cloud:${provider.id}:${model}`;
+        if (requestedId !== routeId) continue;
+        const endpointOrigin = providerEndpoint(provider);
+        if (endpointOrigin === null) return { status: 'UNKNOWN', reason: 'provider-catalog-invalid' };
+        const route: ModelRoute = {
+          id: routeId,
+          displayName: `${provider.name} · ${model}`,
+          providerType: 'cloud',
+          baseUrl: provider.baseUrl,
+          modelString: model,
+          contextLength: provider.contextLength,
+          chatTemplate: 'provider',
+          status: 'unverified',
+          probeMs: null,
+          roles: ['chat'],
+          capabilities: []
+        };
+        const binding = Object.freeze({
+          execution_class: 'EXTERNAL' as const,
+          route_id: routeId,
+          model_id: model,
+          source: 'provider-service' as const,
+          runtime_class: 'provider-service' as const,
+          endpoint_origin: endpointOrigin,
+          target_revision: targetRevision({
+            route_id: routeId,
+            provider_id: provider.id,
+            provider_model: model,
+            endpoint: provider.baseUrl,
+            egress_host: provider.egressHost,
+            provider_kind: provider.kind
+          }),
+          provider_id: provider.id,
+          provider_model: model,
+          egress_host: provider.egressHost
+        });
+        return { status: 'RESOLVED', target: Object.freeze({ binding, route }) };
+      }
+    }
+    return { status: 'UNKNOWN', reason: 'route-not-registered' };
+  }
+
+  private currentBoundRoute(target: ResolvedChatAuthorityTarget): ModelRoute {
+    const current = this.resolveAuthorityTarget(target.binding.route_id);
+    if (current.status !== 'RESOLVED' || !bindingEqual(current.target.binding, target.binding)) throw new ChatTargetChangedError();
+    return current.target.route;
+  }
+
+  async chatResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined } = {}): Promise<RouteChatResult> {
+    const route = this.currentBoundRoute(target);
+    const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
+    const chatOptions = normalizeOptions(options);
+    const result = route.providerType === 'local'
+      ? await this.runtime.chat(route.id.slice('local:'.length), fit.messages, chatOptions)
+      : await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, fit.messages, chatOptions);
+    const out: RouteChatResult = {
+      text: result.text,
+      modelId: route.id,
+      timingMs: result.timingMs,
+      usedApprox: fit.estimatedTokens,
+      dropped: fit.dropped,
+      truncatedSystem: fit.truncatedSystem
+    };
+    if (overflowTrimmed) out.overflowTrimmed = true;
+    if (result.tokens !== undefined) out.tokens = result.tokens;
+    return out;
+  }
+
+  async chatStreamResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], onDelta: (delta: string) => void, signal: AbortSignal, options: { maxTokens?: number | undefined } = {}): Promise<RouteChatResult> {
+    const route = this.currentBoundRoute(target);
+    const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
+    const chatOptions = normalizeOptions(options);
+    let result: { text: string; modelId: string; tokens?: number; timingMs: number };
+    if (route.providerType === 'local') {
+      const modelId = route.id.slice('local:'.length);
+      const started = Date.now();
+      let text = '';
+      await this.runtime.chatStream(modelId, fit.messages, delta => {
+        text += delta;
+        onDelta(delta);
+      }, signal, chatOptions);
+      result = { text, modelId, timingMs: Date.now() - started };
+    } else {
+      result = await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, fit.messages, chatOptions);
+      onDelta(result.text);
+    }
+    const out: RouteChatResult = {
+      text: result.text,
+      modelId: route.id,
+      timingMs: result.timingMs,
+      usedApprox: fit.estimatedTokens,
+      dropped: fit.dropped,
+      truncatedSystem: fit.truncatedSystem
+    };
+    if (overflowTrimmed) out.overflowTrimmed = true;
+    if (result.tokens !== undefined) out.tokens = result.tokens;
+    return out;
   }
 
   async probe(id: string): Promise<RouteStatusT> {
