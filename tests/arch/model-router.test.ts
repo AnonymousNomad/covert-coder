@@ -271,6 +271,12 @@ test('Authority target resolution is read-only and classifies only registered lo
   const disguised = router.resolveAuthorityTarget('local:fixture');
   assert.deepEqual(disguised, { status: 'UNKNOWN', reason: 'local-source-not-contained' },
     'a local registry label cannot authorize a non-loopback endpoint');
+
+  runtime.entries[0]!.endpoint = 'http://127.0.0.1:8080/v1';
+  runtime.entries[0]!.artifact_uri = 'https://models.example/fixture.gguf';
+  const loopbackOnly = router.resolveAuthorityTarget('local:fixture');
+  assert.deepEqual(loopbackOnly, { status: 'UNKNOWN', reason: 'local-source-not-contained' },
+    'a localhost runtime alone does not establish local artifact provenance');
 });
 
 test('provider identity wins over a local-looking model label', async () => {
