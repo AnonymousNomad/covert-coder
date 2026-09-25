@@ -1,0 +1,61 @@
+{
+  "schema": "covert.runtime.v1.pagefile-change.v1",
+  "capturedAtUtc": "2026-09-25T14:46:16.8162748Z",
+  "machine": "NEURO-MIRROR",
+  "executionContext": "WINDOWS_NATIVE_ADMINISTRATOR",
+  "change": {
+    "action": "ADD_SYSTEM_MANAGED_PAGEFILE",
+    "path": "E:\\pagefile.sys",
+    "initialSizeMB": 0,
+    "maximumSizeMB": 0,
+    "applied": true,
+    "effectiveAfterReboot": true,
+    "rebootRequired": true,
+    "reason": "Qualified Liquid run passed inference/capability probes but stopped at the unchanged in-run commit guard: 2.6656 GiB available vs 2.75 GiB required."
+  },
+  "afterWrite": {
+    "settings": [
+      {
+        "Name": "c:\\pagefile.sys",
+        "InitialSize": 0,
+        "MaximumSize": 0
+      },
+      {
+        "Name": "E:\\pagefile.sys",
+        "InitialSize": 0,
+        "MaximumSize": 0
+      }
+    ],
+    "activePagefiles": [
+      {
+        "Name": "C:\\pagefile.sys",
+        "AllocatedBaseSize": 14679,
+        "CurrentUsage": 14534,
+        "PeakUsage": 14679
+      }
+    ],
+    "automaticManagedPagefile": false,
+    "pagingFiles": [
+      "c:\\pagefile.sys 0 0",
+      "E:\\pagefile.sys 0 0"
+    ],
+    "cEntryPreserved": true,
+    "eEntryReadback": true,
+    "automaticSettingUnchanged": true,
+    "runtimeProcesses": [],
+    "port18888Listeners": []
+  },
+  "expectedEffect": "Additional system-managed commit capacity on E after restart; physical RAM unchanged. Must measure before any model load.",
+  "rollback": {
+    "removeOnly": "Win32_PageFileSetting where Name equals E:\\pagefile.sys",
+    "restoreExistingC": "Leave C:\\pagefile.sys 0 0 unchanged",
+    "automaticManagedPagefile": "Remain false",
+    "verify": "Confirm only prior C pagefile setting remains",
+    "rebootRequired": true
+  },
+  "sources": [
+    "https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/how-to-determine-the-appropriate-page-file-size-for-64-bit-versions-of-windows",
+    "https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/configure-system-failure-and-recovery-options",
+    "https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-pagefilesetting"
+  ]
+}
