@@ -209,13 +209,27 @@ test('Unsloth absence and a stopped installed CLI are detected without contactin
   assert.equal(spawnCount, 0);
 });
 
-test('process-tree ownership distinguishes descendant, foreign, and unverifiable ancestry', async () => {
-  const parents = new Map<number, number | null>([[11, 10], [12, 11], [21, 20], [20, 1], [1, 0], [31, null], [41, 42], [42, 41]]);
-  const parentPidOf = async (pid: number): Promise<number | null> => parents.get(pid) ?? null;
-  assert.equal(await processIsInTree(10, 12, parentPidOf), true);
-  assert.equal(await processIsInTree(10, 21, parentPidOf), false);
-  assert.equal(await processIsInTree(10, 31, parentPidOf), null);
-  assert.equal(await processIsInTree(40, 41, parentPidOf), null);
+test('process-tree ownership rejects reused parent PIDs by creation time', async () => {
+  const processes = new Map<number, { parentPid: number; startedAt: number } | null>([
+    [1, { parentPid: 0, startedAt: 1 }],
+    [10, { parentPid: 1, startedAt: 10 }],
+    [11, { parentPid: 10, startedAt: 11 }],
+    [12, { parentPid: 11, startedAt: 12 }],
+    [20, { parentPid: 1, startedAt: 20 }],
+    [21, { parentPid: 20, startedAt: 21 }],
+    [31, null],
+    [40, { parentPid: 1, startedAt: 40 }],
+    [41, { parentPid: 42, startedAt: 41 }],
+    [42, { parentPid: 41, startedAt: 41 }],
+    [99, { parentPid: 100, startedAt: 999 }],
+    [100, { parentPid: 1, startedAt: 1000 }]
+  ]);
+  const processInfoOf = async (pid: number) => processes.get(pid) ?? null;
+  assert.equal(await processIsInTree(10, 12, processInfoOf), true);
+  assert.equal(await processIsInTree(10, 21, processInfoOf), false);
+  assert.equal(await processIsInTree(10, 31, processInfoOf), null);
+  assert.equal(await processIsInTree(40, 41, processInfoOf), null);
+  assert.equal(await processIsInTree(100, 99, processInfoOf), false, 'a child predating its current parent indicates PID reuse');
 });
 
 test('an installed but unhealthy Unsloth server is not queried for model enumeration', async () => {
@@ -389,9 +403,10 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
   await writeFile(artifact, 'owned fixture');
   let portState: 'FREE' | 'LISTENING' = 'FREE';
   let requests = 0;
-  let terminateCalls = 0;
+  let gracefulShutdownRequests = 0;
+  let launcherKillCalls = 0;
   let launchArgs: string[] = [];
-  const fakeChild = Object.assign(new EventEmitter(), { pid: 50001, exitCode: null as number | null, kill: () => true });
+  const fakeChild = Object.assign(new EventEmitter(), { pid: 50001, exitCode: null as number | null, kill: () => { launcherKillCalls++; return true; } });
   try {
     const adapter = new UnslothRuntimeAdapter({
       workspace: dir,
@@ -402,8 +417,16 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
       processTreeContains: async (rootPid, targetPid) => rootPid === 50001 && targetPid === 50002,
       fetcher: async input => {
         requests++;
-        if (new URL(String(input)).pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
-        if (new URL(String(input)).pathname === '/api/inference/load' || new URL(String(input)).pathname === '/api/inference/unload') return jsonResponse({ completed: true });
+        const pathname = new URL(String(input)).pathname;
+        if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+        if (pathname === '/api/inference/load' || pathname === '/api/inference/unload') return jsonResponse({ completed: true });
+        if (pathname === '/api/shutdown') {
+          gracefulShutdownRequests++;
+          portState = 'FREE';
+          fakeChild.exitCode = 0;
+          fakeChild.emit('exit', 0, null);
+          return jsonResponse({ scheduled: true });
+        }
         return jsonResponse({});
       },
       spawnProcess: ((command: string, args: string[], options: { env?: NodeJS.ProcessEnv }) => {
@@ -414,14 +437,6 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
         portState = 'LISTENING';
         return fakeChild;
       }) as never,
-      terminateProcessTree: async (child, pid) => {
-        assert.equal(child, fakeChild);
-        assert.equal(pid, 50001);
-        terminateCalls++;
-        portState = 'FREE';
-        fakeChild.exitCode = 0;
-        fakeChild.emit('exit', 0, null);
-      },
       startupTimeoutMs: 1000,
       now: () => FIXED_TIME
     });
@@ -432,9 +447,57 @@ test('Covert-owned Unsloth child listener is recognized and shutdown is ownershi
     assert.equal((await adapter.status()).ownership, 'COVERT_OWNED');
     assert.equal((await adapter.status()).pid, 50002, 'status reports the listener PID, not only the CLI parent PID');
     await adapter.shutdown();
-    assert.equal(terminateCalls, 1);
+    assert.equal(gracefulShutdownRequests, 1);
+    assert.equal(launcherKillCalls, 0, 'graceful API shutdown should exit without terminating even the launcher');
     assert.equal((await adapter.status()).health, 'STOPPED');
     assert.ok(requests > 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rejected graceful shutdown leaves the owned runtime untouched', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-shutdown-rejected-'));
+  const artifact = path.join(dir, 'fixture.gguf');
+  await writeFile(artifact, 'owned fixture');
+  let portState: 'FREE' | 'LISTENING' = 'FREE';
+  let killCalls = 0;
+  let shutdownRequests = 0;
+  const child = Object.assign(new EventEmitter(), {
+    pid: 51001,
+    exitCode: null as number | null,
+    kill: () => { killCalls++; return true; }
+  });
+  try {
+    const adapter = new UnslothRuntimeAdapter({
+      workspace: dir,
+      cliPath: path.join(dir, 'unsloth.exe'),
+      findExecutable: async () => path.join(dir, 'unsloth.exe'),
+      discoverVersion: async () => '2026.09.24',
+      inspectPort: async () => portState === 'FREE' ? { state: 'FREE' } : { state: 'LISTENING', pid: 51001 },
+      authTokenProvider: async () => 'fixture-token',
+      fetcher: async input => {
+        const pathname = new URL(String(input)).pathname;
+        if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+        if (pathname === '/api/inference/load') return jsonResponse({ completed: true });
+        if (pathname === '/api/shutdown') {
+          shutdownRequests++;
+          return jsonResponse({ detail: 'owner approval required' }, 403);
+        }
+        return jsonResponse({});
+      },
+      spawnProcess: (() => { portState = 'LISTENING'; return child; }) as never,
+      startupTimeoutMs: 1000,
+      now: () => FIXED_TIME
+    });
+    await adapter.load({ modelId: 'owned-model', modelPath: artifact });
+    await assert.rejects(
+      () => adapter.shutdown(),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'UNSLOTH_SHUTDOWN_REJECTED'
+    );
+    assert.equal(shutdownRequests, 1);
+    assert.equal(killCalls, 0, 'a rejected shutdown must not trigger process termination');
+    assert.equal((await adapter.status()).ownership, 'COVERT_OWNED');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

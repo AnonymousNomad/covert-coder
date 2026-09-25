@@ -32,8 +32,10 @@ type PortInspection = { state: 'FREE' } | { state: 'LISTENING'; pid: number } | 
 type AuthTokenProvider = () => Promise<string | null>;
 type FetchLike = typeof fetch;
 type SpawnLike = typeof spawn;
-type ParentPidReader = (pid: number) => Promise<number | null>;
+type ProcessInfo = { parentPid: number; startedAt: number };
+type ProcessInfoReader = (pid: number) => Promise<ProcessInfo | null>;
 type ProcessTreeProbe = (rootPid: number, targetPid: number) => Promise<boolean | null>;
+type TerminateOwnedProcess = (child: ChildProcess, pid: number) => Promise<void>;
 
 export interface UnslothRuntimeAdapterOptions {
   workspace: string;
@@ -44,9 +46,9 @@ export interface UnslothRuntimeAdapterOptions {
   spawnProcess?: SpawnLike;
   findExecutable?: () => Promise<string | null>;
   inspectPort?: (port: number) => Promise<PortInspection>;
-  parentPidOf?: ParentPidReader;
+  processInfoOf?: ProcessInfoReader;
   processTreeContains?: ProcessTreeProbe;
-  terminateProcessTree?: (child: ChildProcess, pid: number) => Promise<void>;
+  terminateOwnedProcess?: TerminateOwnedProcess;
   authTokenProvider?: AuthTokenProvider;
   credentialStore?: Pick<CredentialStore, 'get'>;
   discoverVersion?: (cliPath: string) => Promise<string | null>;
@@ -125,61 +127,84 @@ function inspectListeningPort(port: number): Promise<PortInspection> {
   });
 }
 
-function readParentPid(pid: number): Promise<number | null> {
+function readProcessInfo(pid: number): Promise<ProcessInfo | null> {
   if (!Number.isInteger(pid) || pid < 1) return Promise.resolve(null);
   if (process.platform === 'win32') {
-    const script = `$p = Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}" -ErrorAction SilentlyContinue; if ($p -ne $null) { [string]$p.ParentProcessId }`;
+    const script = '$proc=Get-CimInstance Win32_Process -Filter "ProcessId = ' + String(pid) + '" -ErrorAction SilentlyContinue; if ($proc) { $created=([datetime]$proc.CreationDate).ToUniversalTime(); $epoch=[datetime]::new(1970,1,1,0,0,0,[System.DateTimeKind]::Utc); [pscustomobject]@{parentPid=[int]$proc.ParentProcessId;startedAt=[long](($created - $epoch).Ticks / 10)} | ConvertTo-Json -Compress }';
     return new Promise(resolve => {
       execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 3000 }, (error, stdout) => {
         if (error) return resolve(null);
-        const text = String(stdout).trim();
-        if (text.length === 0) return resolve(null);
-        const parent = Number(text);
-        resolve(Number.isInteger(parent) && parent >= 0 ? parent : null);
+        try {
+          const parsed = JSON.parse(String(stdout).trim()) as Partial<ProcessInfo>;
+          resolve(
+            Number.isInteger(parsed.parentPid) && Number.isSafeInteger(parsed.startedAt) && (parsed.startedAt ?? -1) >= 0
+              ? { parentPid: parsed.parentPid as number, startedAt: parsed.startedAt as number }
+              : null
+          );
+        } catch {
+          resolve(null);
+        }
       });
     });
   }
   return new Promise(resolve => {
-    execFile('ps', ['-o', 'ppid=', '-p', String(pid)], { timeout: 3000 }, (error, stdout) => {
+    execFile('ps', ['-o', 'ppid=,lstart=', '-p', String(pid)], { timeout: 3000 }, (error, stdout) => {
       if (error) return resolve(null);
-      const text = String(stdout).trim();
-      if (text.length === 0) return resolve(null);
-      const parent = Number(text);
-      resolve(Number.isInteger(parent) && parent >= 0 ? parent : null);
+      const match = /^\s*(\d+)\s+(.+?)\s*$/.exec(String(stdout));
+      if (match === null) return resolve(null);
+      const parentText = match[1];
+      const startedAtText = match[2];
+      if (parentText === undefined || startedAtText === undefined) return resolve(null);
+      const parentPid = Number(parentText);
+      const startedAt = Date.parse(startedAtText);
+      resolve(Number.isInteger(parentPid) && parentPid >= 0 && Number.isFinite(startedAt) ? { parentPid, startedAt } : null);
     });
   });
 }
 
-export async function processIsInTree(rootPid: number, targetPid: number, parentPidOf: ParentPidReader = readParentPid): Promise<boolean | null> {
+export async function processIsInTree(rootPid: number, targetPid: number, processInfoOf: ProcessInfoReader = readProcessInfo): Promise<boolean | null> {
   if (!Number.isInteger(rootPid) || !Number.isInteger(targetPid) || rootPid < 1 || targetPid < 1) return false;
   let currentPid = targetPid;
+  let currentInfo: ProcessInfo | null;
+  try {
+    currentInfo = await processInfoOf(currentPid);
+  } catch {
+    return null;
+  }
+  if (currentInfo === null) return null;
   const visited = new Set<number>();
   for (let depth = 0; depth < 64; depth++) {
     if (currentPid === rootPid) return true;
     if (visited.has(currentPid)) return null;
     visited.add(currentPid);
-    let parentPid: number | null;
+    const parentPid = currentInfo.parentPid;
+    if (!Number.isInteger(parentPid) || parentPid < 0) return null;
+    if (parentPid === 0) return false;
+    if (parentPid === currentPid) return null;
+    let parentInfo: ProcessInfo | null;
     try {
-      parentPid = await parentPidOf(currentPid);
+      parentInfo = await processInfoOf(parentPid);
     } catch {
       return null;
     }
-    if (parentPid === null) return null;
-    if (parentPid === 0) return false;
-    if (parentPid === currentPid) return null;
+    if (parentInfo === null) return null;
+    // A reused ParentProcessId can make an old foreign process appear under our
+    // newly launched runtime. The child must be no older than each current parent.
+    if (parentInfo.startedAt > currentInfo.startedAt) return false;
     currentPid = parentPid;
+    currentInfo = parentInfo;
   }
   return null;
 }
 
-function terminateOwnedProcessTree(child: ChildProcess, pid: number): Promise<void> {
+function terminateOwnedProcess(child: ChildProcess, pid: number): Promise<void> {
   if (process.platform === 'win32') {
-    return new Promise((resolve, reject) => {
-      execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, timeout: 10_000 }, error => {
-        if (error) reject(new RuntimeAdapterError('TREE_SHUTDOWN_FAILED', 'Windows could not stop the verified Covert-owned Unsloth process tree'));
-        else resolve();
-      });
-    });
+    try {
+      if (child.exitCode !== null || child.kill('SIGTERM')) return Promise.resolve();
+    } catch {
+      // Fall through to a typed failure; never broaden this to taskkill /T.
+    }
+    return Promise.reject(new RuntimeAdapterError('PROCESS_SHUTDOWN_FAILED', 'Windows could not stop the exact Covert-started Unsloth launcher process'));
   }
   try {
     // Non-Windows launches are detached, making -pid the process group created for this child.
@@ -187,10 +212,9 @@ function terminateOwnedProcessTree(child: ChildProcess, pid: number): Promise<vo
     return Promise.resolve();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ESRCH' && child.exitCode !== null) return Promise.resolve();
-    return Promise.reject(new RuntimeAdapterError('TREE_SHUTDOWN_FAILED', 'the verified Covert-owned Unsloth process group could not be stopped'));
+    return Promise.reject(new RuntimeAdapterError('PROCESS_SHUTDOWN_FAILED', 'the exact Covert-owned Unsloth process group could not be stopped'));
   }
 }
-
 function waitForChildExit(child: ChildProcess, timeoutMs: number): Promise<void> {
   if (child.exitCode !== null) return Promise.resolve();
   return new Promise((resolve, reject) => {
@@ -249,7 +273,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   private readonly findExecutable: () => Promise<string | null>;
   private readonly inspectPort: (port: number) => Promise<PortInspection>;
   private readonly processTreeContains: ProcessTreeProbe;
-  private readonly terminateProcessTree: (child: ChildProcess, pid: number) => Promise<void>;
+  private readonly terminateOwnedProcess: TerminateOwnedProcess;
   private readonly versionProbe: (cliPath: string) => Promise<string | null>;
   private readonly now: () => Date;
   private readonly credentialStore: Pick<CredentialStore, 'get'>;
@@ -279,8 +303,8 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     this.spawnProcess = options.spawnProcess ?? spawn;
     this.findExecutable = options.findExecutable ?? discoverExecutable;
     this.inspectPort = options.inspectPort ?? inspectListeningPort;
-    this.processTreeContains = options.processTreeContains ?? ((rootPid, targetPid) => processIsInTree(rootPid, targetPid, options.parentPidOf ?? readParentPid));
-    this.terminateProcessTree = options.terminateProcessTree ?? terminateOwnedProcessTree;
+    this.processTreeContains = options.processTreeContains ?? ((rootPid, targetPid) => processIsInTree(rootPid, targetPid, options.processInfoOf ?? readProcessInfo));
+    this.terminateOwnedProcess = options.terminateOwnedProcess ?? terminateOwnedProcess;
     this.versionProbe = options.discoverVersion ?? (cliPath => this.discoverVersion(cliPath));
     this.startupTimeoutMs = options.startupTimeoutMs ?? DEFAULT_START_TIMEOUT_MS;
     this.now = options.now ?? (() => new Date());
@@ -704,21 +728,52 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       throw new RuntimeAdapterError('OWNERSHIP_CHANGED', 'Unsloth listener ownership changed before shutdown; no process was terminated');
     }
     const ownedListenerPid = this.listenerPid;
-    await this.terminateProcessTree(child, rootPid);
-    await waitForChildExit(child, 10_000);
-    const listener = await this.inspectPort(Number(this.endpoint.port));
-    this.portState = listener.state;
-    this.listenerPid = listener.state === 'LISTENING' ? listener.pid : null;
+    const response = await this.fetchNoRedirect('/api/shutdown', { method: 'POST' }, true);
+    if (!response.ok) {
+      throw new RuntimeAdapterError('UNSLOTH_SHUTDOWN_REJECTED', 'Unsloth rejected the authenticated graceful shutdown request (HTTP ' + String(response.status) + ')');
+    }
+
+    const deadline = Date.now() + 10_000;
+    let listener = await this.inspectPort(Number(this.endpoint.port));
+    while (listener.state !== 'FREE' && Date.now() < deadline) {
+      this.portState = listener.state;
+      this.listenerPid = listener.state === 'LISTENING' ? listener.pid : null;
+      if (listener.state === 'UNKNOWN') {
+        this.ownership = 'UNKNOWN';
+        throw new RuntimeAdapterError('SHUTDOWN_UNCONFIRMED', 'Unsloth shutdown was requested but listener ownership became unknown; no process was terminated');
+      }
+      if (listener.pid !== ownedListenerPid) {
+        this.ownership = 'FOREIGN';
+        throw new RuntimeAdapterError('OWNERSHIP_CHANGED', 'The original Unsloth listener was replaced during shutdown; the new process was not touched');
+      }
+      await new Promise(resolve => setTimeout(resolve, 250));
+      listener = await this.inspectPort(Number(this.endpoint.port));
+    }
+    if (listener.state !== 'FREE') {
+      this.portState = listener.state;
+      this.listenerPid = listener.state === 'LISTENING' ? listener.pid : null;
+      throw new RuntimeAdapterError('SHUTDOWN_TIMEOUT', 'Unsloth did not release its owned listener after graceful shutdown; no process tree was terminated');
+    }
+
+    // The API has stopped serving before we stop the exact launcher retained by
+    // ChildProcess. Never use taskkill /T, which can follow a reused parent PID.
+    if (child.exitCode === null) {
+      await this.terminateOwnedProcess(child, rootPid);
+      await waitForChildExit(child, 5000);
+    }
+    const finalListener = await this.inspectPort(Number(this.endpoint.port));
+    this.portState = finalListener.state;
+    this.listenerPid = finalListener.state === 'LISTENING' ? finalListener.pid : null;
+    if (finalListener.state !== 'FREE') {
+      this.ownership = finalListener.state === 'LISTENING' && finalListener.pid !== ownedListenerPid ? 'FOREIGN' : 'UNKNOWN';
+      throw new RuntimeAdapterError('SHUTDOWN_UNCONFIRMED', 'the Unsloth listener remained or could not be checked after graceful shutdown; it was not terminated again');
+    }
     this.processHandle = null;
-    this.ownership = listener.state === 'LISTENING'
-      ? listener.pid !== ownedListenerPid ? 'FOREIGN' : 'UNKNOWN'
-      : 'UNKNOWN';
-    if (listener.state !== 'FREE') throw new RuntimeAdapterError('SHUTDOWN_UNCONFIRMED', 'the Unsloth listener remained or could not be checked after its owned process tree exited; it was not terminated again');
+    this.ownership = 'UNKNOWN';
     this.loadedModel = null;
     this.loadedPath = null;
     this.lastHealth = 'STOPPED';
   }
-
   async status(): Promise<RuntimeStatusResponseT> {
     await this.discover();
     const health = this.lastHealth;
@@ -762,7 +817,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     }
     if (child.exitCode === null) {
       try {
-        if (verifiedTree && pid !== undefined) await this.terminateProcessTree(child, pid);
+        if (verifiedTree && pid !== undefined) await this.terminateOwnedProcess(child, pid);
         else child.kill('SIGTERM');
         await waitForChildExit(child, 5000);
       } catch {
