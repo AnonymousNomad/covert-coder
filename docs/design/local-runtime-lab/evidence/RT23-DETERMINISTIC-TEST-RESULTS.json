@@ -1,0 +1,33 @@
+{
+  "checkpoint": "RT23",
+  "recorded_at_utc": "2026-09-25T04:12:26Z",
+  "branch": "research/local-runtime-bakeoff",
+  "implementation_sha": "b6e0175aad759c33fe18f452acf6b00661259a4e",
+  "results": {
+    "runtime_broker_suite": {
+      "command": "node --test tests/arch/runtime-broker.test.ts",
+      "status": "PASS",
+      "tests": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "node_typescript": {
+      "command": "node_modules/.bin/tsc -p tsconfig.node.json --noEmit",
+      "status": "PASS"
+    },
+    "runtime_status_fixture": {
+      "status": "PASS",
+      "validation": "RuntimeStatusResponse.parse",
+      "private_path_pid_endpoint_credential_scan": "PASS"
+    },
+    "runtime_passport": {
+      "status": "PASS",
+      "validation": "JSON parse and official artifact SHA-256 identity assertion"
+    },
+    "git_diff_check": {
+      "status": "PASS"
+    }
+  },
+  "scope_note": "These are deterministic runtime adapter and broker checks plus the Node TypeScript project check. They do not assert live inference; live evidence is recorded in UNSLOTH-RUNTIME-QUALIFICATION-2026-09-24.md and UNSLOTH-RUNTIME-PASSPORT.json."
+}

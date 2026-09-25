@@ -1,0 +1,216 @@
+{
+  "passport_version": 1,
+  "passport_id": "RT23-WINDOWS-ADMIN-VULKAN-LFM25-2026-09-24",
+  "qualification_state": "UNSLOTH RUNTIME ACCEPTED",
+  "scope": "Exact native Windows Administrator + Unsloth 2026.9.11 + Vulkan + official Liquid GGUF profile only",
+  "environment": {
+    "os": "Windows 11 Home Insider Preview",
+    "os_build": "26220",
+    "execution_environment": "WINDOWS_NATIVE",
+    "elevation": "ADMINISTRATOR",
+    "elevation_authorized_by_operator": true,
+    "standard_user_installation": "NOT_QUALIFIED",
+    "machine": "ASUS ROG Strix GL703GM",
+    "cpu": "Intel Core i7-8750H, 6 cores / 12 threads",
+    "ram_installed_gib": 16,
+    "gpu": "NVIDIA GeForce GTX 1060 Mobile 6 GB",
+    "compute_capability": "6.1",
+    "nvidia_driver": "582.28"
+  },
+  "installation": {
+    "version": "2026.9.11",
+    "mechanism": "Official Unsloth Windows PowerShell installation mechanism; external user-managed installation",
+    "bootstrap_source": "https://unsloth.ai/install.ps1",
+    "successful_bootstrap_sha256": "UNKNOWN_NOT_RETAINED",
+    "prior_failed_stage_sha256_not_attributed_to_this_install": "5C6F0AFD0306A6461F346DD772D5A8BDE97780716507AA5824974375B1649A6C",
+    "install_root": "E:\\Unsloth-Studio-runtime-lab-RT27",
+    "cli_path": "E:\\Unsloth-Studio-runtime-lab-RT27\\bin\\unsloth.exe",
+    "studio_home": "E:\\Unsloth-Studio-runtime-lab-RT27",
+    "cache_roots": [
+      "E:\\Unsloth-Studio-runtime-lab-RT27\\.cache",
+      "E:\\Unsloth-Studio-runtime-lab-RT27\\cache"
+    ],
+    "api_mode": "API_ONLY",
+    "endpoint": "http://127.0.0.1:18888",
+    "server_process_after_shutdown": "ABSENT",
+    "intended_administrator_context_access": "PASS",
+    "credential_values_included": false
+  },
+  "runtime_engine": {
+    "engine": "llama-server",
+    "version": "0.5.0-dev",
+    "build": 11160,
+    "source_commit": "a3c12db9dfc9a5bdf93df199ec370e9faf117c69",
+    "prebuilt_release": "b11160-mix-a6922cc",
+    "backend": "VULKAN",
+    "backend_request": "vulkan",
+    "prebuilt_archive_sha256": "67e4cb8f2f52cfba8ea3f21f63db09b87b64b477ae926f629f65ea453b7a3c4d",
+    "device_report": "Vulkan0: NVIDIA GeForce GTX 1060 (6245 MiB visible, 5463 MiB free)",
+    "auto_inference": "NOT_TESTED",
+    "cuda_inference": "NOT_TESTED",
+    "cpu_inference": "NOT_TESTED",
+    "observed_server_parameters": {
+      "gpu_layers": -1,
+      "context_tokens": 2048,
+      "threads": 2,
+      "parallel": 4,
+      "flash_attention": "on",
+      "metrics_endpoint_flag": true,
+      "batch_size": "NOT_CAPTURED",
+      "kv_cache_type": "NOT_CAPTURED",
+      "speculative_decoding": "NOT_CONFIGURED"
+    }
+  },
+  "artifact": {
+    "name": "LFM2.5-2.6B-Q4_K_M.gguf",
+    "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "bytes": 1674455040,
+    "hash_verified_before_each_load": true,
+    "broker_identity_source": "REQUESTED_ARTIFACT",
+    "runtime_display_name": "LFM2.5-2.6B-Q4_K_M",
+    "runtime_reported_artifact_hash": null,
+    "loaded_model_bytes": null
+  },
+  "generation_profile": {
+    "context_tokens": 2048,
+    "max_tokens": 512,
+    "temperature": 0,
+    "top_p": "RUNTIME_DEFAULT_NOT_CAPTURED",
+    "seed": "RUNTIME_DEFAULT_NOT_CAPTURED",
+    "prompt": "In one short sentence, explain why a deterministic test suite is useful."
+  },
+  "authentication": {
+    "status": "PASS",
+    "unauthenticated_models_http_status": 401,
+    "authenticated_models_http_status": 200,
+    "clean_start_auth_shutdown_cycles": 2,
+    "credential_storage": "DPAPI-backed Covert credential slot",
+    "credential_value_recorded": false
+  },
+  "capabilities": {
+    "chat_completions": "PARTIAL",
+    "responses_api": "UNKNOWN",
+    "anthropic_messages": "UNKNOWN",
+    "streaming": "PARTIAL",
+    "cancellation": "PARTIAL",
+    "tool_calling": {
+      "profile_result": "SUPPORTED_FOR_ONE_FROZEN_CASE",
+      "adapter_capability": "PARTIAL",
+      "raw_model_output": "UNAVAILABLE",
+      "runtime_adjusted_output": "VALID_SCHEMA_CALL",
+      "executed_tool_call": false,
+      "repair_attribution": "UNKNOWN",
+      "self_healing_repair_tested": false
+    },
+    "structured_output": {
+      "profile_result": "PARTIAL",
+      "http_status": 200,
+      "valid_json": false,
+      "schema_valid": false,
+      "adapter_capability": "UNKNOWN",
+      "response_format_adapter_path": "FAILS_CLOSED_AND_IS_NOT_ENABLED"
+    },
+    "model_discovery": "PARTIAL",
+    "load": "PASS",
+    "unload": "PASS",
+    "same_artifact_reload": "PASS",
+    "different_model_hot_swap": "NOT_TESTED",
+    "vision": "UNKNOWN",
+    "embeddings": "UNKNOWN",
+    "speculative_decoding": "UNKNOWN",
+    "parallel_requests": "UNKNOWN",
+    "kv_cache_controls": "UNKNOWN",
+    "adapter_metrics": "UNKNOWN",
+    "offline_inference_transport": "LOCAL_LOOPBACK; NETWORK_DISCONNECT_NOT_TESTED"
+  },
+  "performance": {
+    "startup_to_health_ms": 11182.355,
+    "first_load_total_ms": 47860.066,
+    "first_load_api_roundtrip_ms": 15136.831,
+    "reload_total_ms": 23817.445,
+    "ttft_first_visible_stream_content_ms": 7610.38,
+    "stream_total_latency_ms": 7979.018,
+    "prompt_processing_tokens_per_second": null,
+    "native_generation_tokens_per_second": null,
+    "native_timing_attribution": "Unavailable in the returned API body",
+    "normal_requests": {
+      "count": 5,
+      "prompt_tokens_each": 24,
+      "completion_tokens_each": 287,
+      "finish_reason_each": "stop",
+      "latency_ms": [
+        8865.679,
+        8046.628,
+        8217.415,
+        7980.175,
+        8139.442
+      ],
+      "median_latency_ms": 8139.442,
+      "end_to_end_completion_tokens_per_second": [
+        32.372,
+        35.667,
+        34.926,
+        35.964,
+        35.26
+      ],
+      "median_end_to_end_completion_tokens_per_second": 35.26,
+      "throughput_note": "Includes full request latency and reasoning tokens; not native decode speed"
+    },
+    "host_resources": {
+      "samples": 199,
+      "minimum_free_physical_ram_gib": 5.67,
+      "minimum_free_windows_commit_gib": 3.04,
+      "peak_total_gpu_memory_used_mib": 2517,
+      "idle_gpu_memory_used_before_run_mib": 743,
+      "peak_gpu_memory_increase_mib": 1774,
+      "peak_single_runtime_process_working_set_gib": 0.86,
+      "runtime_tree_private_bytes": null
+    },
+    "stability": {
+      "loaded_idle_hold_seconds": 30,
+      "five_sequential_requests": "PASS",
+      "client_abort": "PASS",
+      "broker_cancel": "PASS",
+      "invalid_request_recovery": "PASS",
+      "unload_reload": "PASS",
+      "server_restart_reload": "PASS",
+      "owned_shutdown": "PASS",
+      "long_run_soak": "NOT_RUN"
+    }
+  },
+  "ownership": {
+    "live_covert_owned_lifecycle": "PASS",
+    "user_owned_destructive_controls": "DETERMINISTIC_TEST_PASS",
+    "foreign_process_protection": "DETERMINISTIC_TEST_PASS",
+    "unknown_ownership_fail_closed": "DETERMINISTIC_TEST_PASS",
+    "occupied_port_not_adopted": "DETERMINISTIC_TEST_PASS",
+    "fallback": "EXPLICIT_ONLY; NO FALLBACK OCCURRED IN THIS QUALIFICATION"
+  },
+  "licensing_and_distribution": {
+    "installation_mode": "EXTERNAL_USER_MANAGED",
+    "unsloth_studio_source_bundled": false,
+    "unsloth_cli_source_bundled": false,
+    "studio_source_copied": false,
+    "redistribution_by_covert": false,
+    "upstream_core_license": "Apache-2.0",
+    "upstream_studio_and_optional_cli_license": "AGPL-3.0",
+    "bundling_compliance_review_complete": false
+  },
+  "qualification_limits": [
+    "Applies only to the recorded Windows Administrator, Unsloth, Vulkan, artifact, and profile combination.",
+    "Standard-user installation was not qualified.",
+    "AUTO selection and CUDA/CPU inference were not tested.",
+    "Structured output was PARTIAL; Covert's adapter remains fail-closed for responseFormat.",
+    "Raw pre-repair tool output was unavailable, so runtime repair attribution is UNKNOWN.",
+    "Long-run soak and network-disconnected operation were not tested.",
+    "Adapter-native RAM, VRAM, commit, and loaded-model-size metrics remain unavailable."
+  ],
+  "evidence": [
+    "UNSLOTH-RUNTIME-QUALIFICATION-2026-09-24.md",
+    "LUNA-RUNTIME-STATUS-FIXTURE.json",
+    "RT23-DETERMINISTIC-TEST-RESULTS.json",
+    "LOCAL-RUNTIME-BACKEND-EVALUATION.md",
+    "BACKEND-CAPABILITY-MATRIX.md",
+    "RUNTIME-BENCHMARK-METHODOLOGY.md"
+  ]
+}

@@ -1,10 +1,18 @@
 # Local Runtime Qualification Methodology
 
-- **Status:** comparative apparatus retained for evidence; active objective is Unsloth configuration qualification; no inference runs performed in this implementation slice
+- **Status:** RT23 native Windows Unsloth/Vulkan operational qualification complete for the exact profile recorded in the Runtime Passport; earlier stop records remain historical
 - **Date:** 2026-09-24
 - **Machine target:** Windows 11, Intel i7-8750H, 16 GB RAM, GTX 1060 6 GB
 
 ## Safety and stop condition
+
+### Current RT23 result
+
+The authorized Administrator-context run completed with a fresh resource/process preflight. Unsloth was stopped by its Covert-owned adapter at the end, and the managed port was free. The official Liquid artifact hash was rechecked before each model load. The accepted profile and its limitations are recorded in [UNSLOTH-RUNTIME-QUALIFICATION-2026-09-24.md](UNSLOTH-RUNTIME-QUALIFICATION-2026-09-24.md) and [evidence/UNSLOTH-RUNTIME-PASSPORT.json](evidence/UNSLOTH-RUNTIME-PASSPORT.json).
+
+### Historical pre-RT23 stop records
+
+The snapshots and process observations below describe earlier sessions only. They are not current resource readings and were superseded by the fresh RT23 preflight and run.
 
 A final non-destructive pre-commit check found one active, unqualified llama-server process. System commit was 25,379,328,000 / 31,443,066,880 bytes (80.7%), available physical RAM was 3,225,481,216 bytes, and the GTX 1060 had 933 MiB in use. Model loads and benchmarks remain deferred. A later installation-only attempt is recorded below. The local runner refuses to execute without a same-run lease file declaring exclusive resource clearance, an owner, runtime PID set, local endpoint, artifact path, and expected SHA-256. It checks well-known runtime processes and listeners before sending any inference request; resource clearance and ownership remain operator-attested, not inferred by the runner. The runner refuses adjacent-lane ports 8097 and 8104 and requires the endpoint to be a literal loopback IP.
 
@@ -12,7 +20,7 @@ That snapshot is historical evidence from the research pass, not a current resou
 
 The 2026-09-24 implementation-lane recheck found a foreign/unclaimed `llama-server` process (PID 28468; working set 3,083,182,080 bytes) without inspecting its command line, model, or endpoint. Available physical memory was 4,505,948 KiB (~4.30 GiB), Windows commit was 24,760,803,328 / 31,443,066,880 bytes (~78.7%), and port 18888 was free. Unsloth was not found on PATH and the configured `AIDE_UNSLOTH_CLI` path did not exist. No process was queried, attached to, started, or stopped. This is still insufficient for a live run: the foreign runtime remains untouched and resource ownership is not cleared for this lane.
 
-## RT22 native Windows installation attempt
+## RT22 native Windows installation attempt (historical; superseded by operator authorization and RT23)
 
 - **Result:** BLOCKED before a usable Unsloth runtime was installed. The installer process was elevated; Unsloth's official installer warned that the runtime root would be Administrator-owned and inaccessible to the normal account. Studio setup did not complete.
 - **Official source:** `install.ps1` was staged from the official Unsloth repository at SHA-256 `5C6F0AFD0306A6461F346DD772D5A8BDE97780716507AA5824974375B1649A6C` (654,179 bytes). This hash identifies the downloaded script snapshot, not an Unsloth release.
@@ -79,11 +87,11 @@ Before loading, require a same-run resource lease, a free loopback port owned by
 
 Measure startup and model load, TTFT, prompt and generation throughput where native counters exist, total latency, RAM working set, Windows commit, VRAM, tool-call validity, structured-output validity, cancellation, unload/model switch, recovery, shutdown cleanliness, and long-run stability. Do not substitute unknown metrics or runtime repair for model capability.
 
-### GTX 1060 profile gate
+### GTX 1060 profile gate before installation (historical)
 
 The GTX 1060 Mobile is compute capability 6.1. Unsloth's current NVIDIA requirements document CUDA capability 7.0 as the minimum, so the CUDA path is **not supported by that published requirement**. The Unsloth source exposes CPU and Vulkan llama.cpp backend selections for GGUF. CPU is the supported conservative profile; Vulkan is a candidate profile, not qualified on this Pascal device. Neither path has been run in this lane. [Unsloth requirements](https://unsloth.ai/docs/get-started/fine-tuning-for-beginners/unsloth-requirements), [official setup/README](https://github.com/unslothai/unsloth/blob/main/README.md)
 
-GTX 1060 status: **BLOCKED pending exclusive resource ownership and live qualification**. Do not infer support from driver version or from generic Vulkan support.
+That GTX 1060 status was the pre-installation state. RT23 subsequently qualified the explicit Unsloth Vulkan profile; AUTO, CUDA inference, and CPU inference remain unqualified. Do not infer support for those paths from the Vulkan result.
 
 ## Measurements
 
@@ -174,6 +182,8 @@ Track startup success, request success, crash count, recovery duration, and cont
 
 ## Runtime implementation checkpoints
 
+RT11–RT22 entries below preserve the implementation and pre-installation history. Their blocked or pending labels are point-in-time historical states; RT23 is the current operational result.
+
 ### RT11 — explicitly unqualified implementation checkpoint
 
 - **Implementation:** PRESENT.
@@ -196,6 +206,7 @@ Track startup success, request success, crash count, recovery duration, and cont
 | RT20 acceptance candidate | Not accepted | Deterministic tests pass; native install, live auth, official Liquid qualification, and resource-safe runtime checks remain pending |
 | RT21 authentication contract | Adapter support implemented; live authentication unqualified | DPAPI credential slot, Bearer header, and explicit 401/403 handling are covered by deterministic tests; no installed Unsloth version/API key exists in this lane |
 | RT22 native Windows install attempt | Blocked | Official installer stopped on elevated-token warning; no Unsloth version or backend was installed/resolved |
+| RT23 native Windows operational qualification | PASS for the frozen Administrator/Vulkan/Liquid profile | Install/version/auth, exact artifact, load/unload/reload, inference/streaming, cancellation/recovery, ownership, shutdown, host metrics, and Runtime Passport; see qualification report |
 
 ## Primary references
 

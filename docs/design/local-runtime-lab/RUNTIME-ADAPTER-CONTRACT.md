@@ -71,9 +71,11 @@ status()
 
 An adapter may reject an operation when ownership or capability evidence is missing. The Broker never switches to recovery because an operation failed.
 
-## Current Unsloth capability values
+## Unsloth capability values at RT22 implementation checkpoint (historical)
 
 Values describe the API surface currently wired in the adapter, not model quality. Loaded-model qualification remains separate.
+
+The table below preserves the pre-installation adapter snapshot. Its live-unverified statements are historical; RT23 results follow.
 
 | Capability | Adapter value | Boundary |
 |---|---|---|
@@ -98,6 +100,14 @@ Values describe the API surface currently wired in the adapter, not model qualit
 
 Unknown is retained as `UNKNOWN`; the adapter does not infer support from an endpoint existing.
 
+## RT23 live capability results
+
+The exact tested profile was native Windows 11 Administrator execution, Unsloth 2026.9.11, Vulkan, GTX 1060 Mobile, and the official Liquid GGUF artifact. Non-stream and streaming chat, authenticated API use, model load/unload/reload, cancellation, invalid-request recovery, server restart, and Covert-owned shutdown passed. Five sequential normal requests returned visible content and ended with stop.
+
+The runtime accepted one strict JSON Schema request with HTTP 200 but returned no schema-valid JSON at the frozen 512-token budget. This profile result is PARTIAL. The Covert adapter continues to reject responseFormat until its structured path is wired; its generic capability remains UNKNOWN. Tool calling produced schema-valid arguments for one frozen case. The runtime API did not expose raw pre-repair model output, so repair attribution remains UNKNOWN and Covert did not execute the tool.
+
+Host monitoring captured minimum free RAM of 5.67 GiB, minimum free Windows commit of 3.04 GiB, and peak total system VRAM use of 2,517 MiB. Adapter-native metric fields remain null. Long-run soak, AUTO, CUDA inference, CPU inference, and switching to a different model were not tested. Exact settings and evidence are in the [Runtime Passport](evidence/UNSLOTH-RUNTIME-PASSPORT.json).
+
 ## Ownership and lifecycle
 
 - `COVERT_OWNED`: Covert launched the CLI and confirms the listening PID is either the retained CLI PID or a verified descendant in its process tree. Shutdown targets only that retained process tree.
@@ -109,7 +119,9 @@ Without `AIDE_UNSLOTH_ENDPOINT`, the managed endpoint is `http://127.0.0.1:18888
 
 Health uses `GET /api/health` and requires the Unsloth service marker. Model enumeration uses only `GET /v1/models`; it does not call the model catalog route that can retrieve remote recommendations. Requests do not follow redirects. Lifecycle calls reject missing/truncated responses and the `_deferred_error` body used to report late load/unload failures.
 
-Protected Studio/API calls use the documented `Authorization: Bearer <API key>` mechanism. The adapter reads the dedicated `unsloth-local-runtime` slot from Covert's existing DPAPI-backed `CredentialStore` by default; tests and alternate compositions can inject a credential reader or token provider. The token is held only in memory for the request and is excluded from status, errors, and logs. HTTP 401 and 403 are classified as `AUTH_REQUIRED` and `AUTH_FORBIDDEN`. Health checks remain unauthenticated. The operator creates the key through Unsloth Studio's Settings → API keys and stores it in Covert's secure credential store; this lane adds no credential UI or public route. The native Unsloth installation/version is not present here, so end-to-end authentication remains unqualified. On WSL/Linux, the default Windows DPAPI store is unavailable; that surface needs an injected platform-secure credential reader.
+Protected Studio/API calls use the documented `Authorization: Bearer <API key>` mechanism. The adapter reads the dedicated `unsloth-local-runtime` slot from Covert's existing DPAPI-backed `CredentialStore` by default; tests and alternate compositions can inject a credential reader or token provider. The token is held only in memory for the request and is excluded from status, errors, and logs. HTTP 401 and 403 are classified as `AUTH_REQUIRED` and `AUTH_FORBIDDEN`. Health checks remain unauthenticated. The operator creates the key through Unsloth Studio's Settings → API keys and stores it in Covert's secure credential store; this lane adds no credential UI or public route. On WSL/Linux, the default Windows DPAPI store is unavailable; that surface needs an injected platform-secure credential reader.
+
+RT23 authentication checks passed twice: the health endpoint responded, `/v1/models` returned 401 without a Bearer token and 200 with the DPAPI-backed token, and the owned process shut down cleanly. No token value was recorded.
 
 ## Artifact and qualification identity
 
@@ -138,9 +150,19 @@ The current distribution path is **external user installation** of Unsloth Studi
 
 The adapter currently targets the documented `unsloth studio` CLI/API path. Detection of a separately installed Desktop GUI without that CLI is not implemented or qualified.
 
-## GTX 1060 / Pascal gate
+## GTX 1060 / Pascal gate — pre-installation research state (superseded)
 
 The GTX 1060 Mobile is compute capability 6.1. Unsloth Core's published CUDA minimum is 7.0; that statement alone does not prove whether Studio's separate GGUF/llama.cpp CUDA path supports Pascal. Unsloth documents CPU GGUF chat and has an official `cpu` llama.cpp backend selection; CPU is the conservative Covert profile candidate. Vulkan is an alternative install selection but remains unqualified on this Pascal machine. The adapter does not change Unsloth's installed backend selection. No runtime or Liquid artifact was loaded in this slice because foreign llama-server ownership and memory pressure were present, so GTX 1060 remains BLOCKED pending an isolated CPU-profile load and runtime measurement. See [Unsloth requirements](https://unsloth.ai/docs/get-started/fine-tuning-for-beginners/unsloth-requirements), the [Windows setup script](https://github.com/unslothai/unsloth/blob/main/studio/setup.ps1), and the [official README](https://github.com/unslothai/unsloth/blob/main/README.md).
+
+The following pre-installation GTX 1060 paragraph is historical and superseded by the measured Vulkan result.
+
+## RT23 GTX 1060 result
+
+Vulkan is qualified for the exact installed Unsloth build and Liquid artifact. The verified llama-server device report identified the NVIDIA GTX 1060 with 6,245 MiB visible to Vulkan. AUTO, CUDA inference, and CPU inference were not run; no conclusion about those paths is inferred from the Vulkan result.
+
+## RT23 operational qualification
+
+The qualified configuration is native Windows 11 Administrator execution, Unsloth 2026.9.11, Vulkan, and the official Liquid artifact SHA-256 02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed. See the [qualification report](UNSLOTH-RUNTIME-QUALIFICATION-2026-09-24.md) and [sanitized Model Manager fixture](evidence/LUNA-RUNTIME-STATUS-FIXTURE.json).
 
 ## Public-safe copy for later review
 

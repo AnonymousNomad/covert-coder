@@ -1,0 +1,87 @@
+{
+  "fixture_metadata": {
+    "contract": "RuntimeStatusResponse",
+    "snapshot_kind": "LAST_LIVE_QUALIFIED_LOADED_OBSERVATION",
+    "source_events": [
+      "LOAD",
+      "STATUS"
+    ],
+    "updated_at_note": "The safe runner projection omitted the adapter updated_at value. This fixture normalizes updated_at to the observed runtime started_at; it is a contract fixture, not a current health assertion.",
+    "private_paths_included": false,
+    "pid_included": false,
+    "credential_values_included": false,
+    "current_state_note": "The runtime was cleanly stopped after qualification. Query the live broker for current health; do not treat this saved loaded observation as current."
+  },
+  "status": {
+    "contract_version": 1,
+    "canonical_backend": "UNSLOTH",
+    "backend": "UNSLOTH",
+    "version": "2026.9.11",
+    "engine": null,
+    "endpoint": null,
+    "port": null,
+    "pid": null,
+    "started_at": "2026-09-25T03:34:44.238Z",
+    "health": "HEALTHY",
+    "ownership": "COVERT_OWNED",
+    "loaded_model": {
+      "model_id": "liquid-lfm25-2.6b-q4km",
+      "display_name": "LFM2.5-2.6B-Q4_K_M.gguf",
+      "artifact_name": "LFM2.5-2.6B-Q4_K_M.gguf",
+      "artifact_sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+      "identity_evidence": "REQUESTED_ARTIFACT"
+    },
+    "capabilities": {
+      "api_chat_completions": "PARTIAL",
+      "api_responses": "UNKNOWN",
+      "api_anthropic_messages": "UNKNOWN",
+      "api_embeddings": "UNKNOWN",
+      "embeddings": "UNKNOWN",
+      "model_discovery": "PARTIAL",
+      "model_load": "PARTIAL",
+      "model_unload": "PARTIAL",
+      "model_switching": "PARTIAL",
+      "hot_swap": "UNKNOWN",
+      "streaming": "PARTIAL",
+      "cancellation": "PARTIAL",
+      "tool_calling": "PARTIAL",
+      "tool_repair": "UNKNOWN",
+      "structured_output": "UNKNOWN",
+      "vision": "UNKNOWN",
+      "speculative_decoding": "UNKNOWN",
+      "parallel_requests": "UNKNOWN",
+      "context_controls": "PARTIAL",
+      "kv_cache_controls": "UNKNOWN",
+      "metrics": "UNKNOWN",
+      "headless": "SUPPORTED",
+      "offline_local_inference": "SUPPORTED"
+    },
+    "metrics": {
+      "ram_bytes": null,
+      "vram_bytes": null,
+      "windows_commit_bytes": null,
+      "loaded_model_bytes": null,
+      "context_tokens": null,
+      "source": "UNKNOWN"
+    },
+    "last_error": null,
+    "fallback_event_id": null,
+    "updated_at": "2026-09-25T03:34:44.238Z"
+  },
+  "qualification": {
+    "state": "ACCEPTED_WITH_LIMITATIONS",
+    "backend": "UNSLOTH",
+    "runtime_engine": "llama-server",
+    "hardware_backend": "VULKAN",
+    "artifact_sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "structured_output": "PARTIAL",
+    "tool_calling": "SUPPORTED_FOR_ONE_FROZEN_CASE",
+    "tool_repair_attribution": "UNKNOWN",
+    "host_metrics": {
+      "minimum_free_physical_ram_gib": 5.67,
+      "minimum_free_windows_commit_gib": 3.04,
+      "peak_total_gpu_memory_used_mib": 2517,
+      "source": "HOST_MONITOR"
+    }
+  }
+}

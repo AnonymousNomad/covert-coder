@@ -4,6 +4,10 @@
 
 The older comparison and multi-backend sketches in this document are historical design inputs. The active Luna-facing schema is [RUNTIME-ADAPTER-CONTRACT.md](RUNTIME-ADAPTER-CONTRACT.md).
 
+## Operational status
+
+The canonical backend decision is closed: Covert uses Unsloth. The Runtime Broker is the stable ownership and adapter boundary, not an AUTO selector across vendors. Direct llama.cpp remains explicit reference/recovery only. RT23 accepted the exact native Windows Administrator + Unsloth Vulkan + Liquid GGUF profile with capability limitations recorded in the [Runtime Passport](evidence/UNSLOTH-RUNTIME-PASSPORT.json). Ollama and LM Studio remain historical research, not shipped product priorities.
+
 ## Boundary
 
 Covert standardizes on Unsloth for local inference and owns resource admission, model qualification, routing, evidence capture, and lease policy. Unsloth owns kernels, tokenization, quantization, inference, and hardware-specific execution. The Broker is Covert's stable ownership and integration boundary, not a backend competition layer.
