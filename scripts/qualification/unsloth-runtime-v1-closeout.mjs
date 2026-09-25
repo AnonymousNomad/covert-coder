@@ -12,6 +12,7 @@ import { UNSLOTH_API_KEY_CREDENTIAL_ID, UnslothRuntimeAdapter } from '../../node
 import { createExecutionAuthority } from '../../node/src/services/execution-authority.mjs';
 import { resolveInsideWorkspace } from '../../node/src/services/agent-tools.mjs';
 import { classifyStructuredOutput, validateSingleRuntimeToolCall, validateStructuredOutput } from '../../node/src/services/runtime-output-validation.ts';
+import { summarizeChatResponse } from './runtime-response-evidence.mjs';
 
 const installRoot = path.resolve(process.env.COVERT_UNSLOTH_INSTALL_ROOT ?? '');
 const qualificationRoot = path.resolve(process.env.COVERT_UNSLOTH_QUALIFICATION_ROOT ?? '');
@@ -136,6 +137,20 @@ function makeRuntime() {
     const timing = fetchTiming;
     if (timing && route === '/api/inference/load' && timing.loadStartedMs === null) timing.loadStartedMs = performance.now() - timing.startedMs;
     const response = await fetch(input, init);
+    if (route === '/v1/chat/completions' && init?.method === 'POST') {
+      const requestBody = typeof init.body === 'string' ? JSON.parse(init.body) : null;
+      let responseBody = null;
+      let parseError = false;
+      if (requestBody?.stream !== true) {
+        responseBody = await response.clone().json().catch(() => { parseError = true; return null; });
+      }
+      await emit('CHAT_RESPONSE_METADATA', summarizeChatResponse({
+        status: response.status,
+        requestBody,
+        responseBody,
+        parseError
+      }));
+    }
     if (timing && route === '/api/health' && timing.healthMs === null && response.ok) timing.healthMs = performance.now() - timing.startedMs;
     if (timing && route === '/api/inference/load' && timing.loadDoneMs === null) timing.loadDoneMs = performance.now() - timing.startedMs;
     return response;
