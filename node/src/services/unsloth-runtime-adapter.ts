@@ -102,7 +102,7 @@ function discoverExecutable(): Promise<string | null> {
 function inspectListeningPort(port: number): Promise<PortInspection> {
   if (!Number.isInteger(port) || port < 1 || port > 65535) return Promise.resolve({ state: 'UNKNOWN' });
   if (process.platform === 'win32') {
-    const script = `try { $x = Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction Stop | Select-Object -First 1 -ExpandProperty OwningProcess; if ($null -eq $x) { 'FREE' } else { [string]$x } } catch { exit 2 }`;
+    const script = `try { $x = Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction Stop | Select-Object -First 1 -ExpandProperty OwningProcess; if ($null -eq $x) { 'FREE' } else { [string]$x } } catch { if ($_.FullyQualifiedErrorId -like 'CmdletizationQuery_NotFound,Get-NetTCPConnection*') { 'FREE' } else { exit 2 } }`;
     return new Promise(resolve => {
       execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 3000 }, (error, stdout) => {
         if (error) return resolve({ state: 'UNKNOWN' });

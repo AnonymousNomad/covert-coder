@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { createServer } from 'node:net';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -98,6 +99,81 @@ function makeUserServer(fetcher: typeof fetch, overrides: Partial<UnslothRuntime
     ...overrides
   });
 }
+
+async function listenLoopback(): Promise<{ server: ReturnType<typeof createServer>; port: number }> {
+  const server = createServer();
+  const port = await new Promise<number>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (address === null || typeof address === 'string') {
+        reject(new Error('loopback listener did not receive a TCP address'));
+        return;
+      }
+      resolve(address.port);
+    });
+  });
+  return { server, port };
+}
+
+async function closeLoopback(server: ReturnType<typeof createServer>): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+  });
+}
+
+test('Windows port inspection treats a no-listener result as FREE', { skip: process.platform !== 'win32' }, async () => {
+  const { server, port } = await listenLoopback();
+  await closeLoopback(server);
+  const adapter = new UnslothRuntimeAdapter({
+    workspace: os.tmpdir(),
+    port,
+    findExecutable: async () => null
+  });
+  await adapter.discover();
+  const status = await adapter.status();
+  assert.equal(status.health, 'NOT_INSTALLED');
+  assert.equal(status.ownership, 'UNKNOWN');
+});
+
+test('Windows port inspection identifies and refuses an occupied foreign listener', { skip: process.platform !== 'win32' }, async () => {
+  const { server, port } = await listenLoopback();
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-port-ownership-'));
+  const artifact = path.join(dir, 'fixture.gguf');
+  let fetchCount = 0;
+  let spawnCount = 0;
+  try {
+    await writeFile(artifact, 'fixture');
+    const adapter = new UnslothRuntimeAdapter({
+      workspace: dir,
+      cliPath: 'unsloth-fixture.exe',
+      port,
+      findExecutable: async () => null,
+      discoverVersion: async () => '2026.9.11',
+      fetcher: async () => { fetchCount++; return jsonResponse({}); },
+      spawnProcess: (() => { spawnCount++; throw new Error('unexpected spawn'); }) as never
+    });
+    await adapter.discover();
+    const status = await adapter.status();
+    assert.equal(status.health, 'UNKNOWN');
+    assert.equal(status.ownership, 'FOREIGN');
+    assert.equal(status.pid, process.pid);
+    await assert.rejects(
+      () => adapter.load({ modelId: 'fixture', modelPath: artifact }),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'PORT_CONFLICT'
+    );
+    await assert.rejects(
+      () => adapter.shutdown(true),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'OWNERSHIP_UNVERIFIED'
+    );
+    assert.equal(fetchCount, 0);
+    assert.equal(spawnCount, 0);
+    assert.equal(server.listening, true);
+  } finally {
+    if (server.listening) await closeLoopback(server);
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 test('Unsloth absence and a stopped installed CLI are detected without contacting a runtime', async () => {
   let fetchCount = 0;
