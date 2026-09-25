@@ -86,3 +86,27 @@ CMP-001..CMP-003+  controlled comparisons (Covert vs 3 products) (PENDING)
   `pass:true` proceed to boot the qualified runtime (Unsloth adapter, port 18888, credentialStore =
   the qualification root above), load `LFM2.5-2.6B-Q4_K_M.gguf` with hash recompute, verify
   401/200 auth + health + identity, freeze DF-M000 input, and run missions in order.
+
+---
+
+## PHASE A — HOST RESOURCE RECOVERY ATTEMPT (checkpoint A2)
+
+Inventory (exact identity, top consumers):
+- **OpenCode.exe tree** (pids 16004 → 22808 renderer 1788MB, 23256 utility 1139MB, 2304 gpu 146MB) — started 16:54, parented by 16004 → **PROTECTED — CURRENT SESSION (~3.2 GB)**.
+- **Codex host trees** (codex.exe 9508/19468/17068 + node 16452/12456/21656 + node_repl ×3) — operator's other agents, started 10:35–12:07 → **PROTECTED (Codex host process tree)**.
+- **System/user** — MsMpEng (Defender), TextInputHost, explorer, PhoneExperienceHost, StartMenu/SearchHost, CrossDevice, MSPCManager, esrv, msedge ×4 (~1.2 GB operator browsing) → **protected (system / active operator work)**.
+- WSL: no running distributions · Docker: absent · orphan dev servers/playwright/ollama/llama/unsloth: **none**.
+- Dogfood-owned leftovers: **none**.
+
+Result: **NO safely reclaimable process exists.** All free-RAM shortfall (~2.9 GiB below the 6.5 GiB gate)
+is held by this session, protected Codex trees, system software, or uncertain operator state.
+
+Reboot decision (A9): **NOT EXECUTED** — precondition "no unsaved operator work identified" cannot be
+proven (live Edge tabs + three Codex sessions may carry unsaved state). Per A9, unproven ⇒ no reboot.
+
+**Status: `DOGFOOD WAVE 1 BLOCKED — frozen start gate unmet (free RAM 3.64 GiB < 6.5 GiB); no
+safely reclaimable process; reboot not provably safe from inside this session.`**
+
+Exact operator remediation (either): (a) close the three Codex sessions and Edge, then let the agent
+rerun `node scripts/dogfood/preflight.mjs`; or (b) schedule a machine reboot (no unsaved work), after
+which a fresh session resumes from this checkpoint and reruns preflight. No other action was taken.
