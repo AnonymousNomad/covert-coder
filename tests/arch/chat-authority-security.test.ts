@@ -118,7 +118,12 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     const localStreamBody = { modelId: localBody.modelId, messages: localBody.messages };
     const cloudStreamBody = { modelId: cloudBody.modelId, messages: cloudBody.messages };
 
-    for (const [url, body] of [['/api/chat', { ...localBody, modelId: 'unknown:model' }], ['/api/chat/stream', { ...localStreamBody, modelId: 'unknown:model' }]] as const) {
+    for (const [url, body] of [
+      ['/api/chat', { ...localBody, modelId: 'unknown:model' }],
+      ['/api/chat/stream', { ...localStreamBody, modelId: 'unknown:model' }],
+      ['/api/chat', { ...cloudBody, modelId: 'cloud:missing:local-looking-model' }],
+      ['/api/chat/stream', { ...cloudStreamBody, modelId: 'cloud:missing:local-looking-model' }]
+    ] as const) {
       const denied = await request(url, body);
       assert.equal(denied.status, 403, `${url} denies an unresolved target`);
     }
