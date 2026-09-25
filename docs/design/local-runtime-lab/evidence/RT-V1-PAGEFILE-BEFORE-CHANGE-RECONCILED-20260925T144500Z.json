@@ -1,0 +1,171 @@
+{
+  "schema": "covert.runtime.v1.pagefile-prechange-reconciled.v1",
+  "capturedAtUtc": "2026-09-25T14:44:23.0028087Z",
+  "executionContext": "WINDOWS_NATIVE_ADMINISTRATOR",
+  "previous": {
+    "automaticManagedPagefile": false,
+    "pagingFiles": [
+      "c:\\pagefile.sys 0 0"
+    ],
+    "pagefileSettings": [
+      {
+        "Name": "c:\\pagefile.sys",
+        "InitialSize": 0,
+        "MaximumSize": 0
+      }
+    ],
+    "pagefileUsage": [
+      {
+        "Name": "C:\\pagefile.sys",
+        "AllocatedBaseSize": 14679,
+        "CurrentUsage": 14535,
+        "PeakUsage": 14679
+      }
+    ],
+    "crashDumpEnabled": 3,
+    "dumpFile": "C:\\WINDOWS\\MEMORY.DMP",
+    "minidumpDir": "C:\\WINDOWS\\Minidump",
+    "volumes": [
+      {
+        "DriveLetter": "C",
+        "FileSystem": "NTFS",
+        "DriveType": "Fixed",
+        "HealthStatus": "Healthy",
+        "OperationalStatus": "OK",
+        "Size": 126812377088,
+        "SizeRemaining": 126889984,
+        "UniqueId": "\\\\?\\Volume{6c1d4d95-1865-43fe-afe3-8b619697116c}\\"
+      },
+      {
+        "DriveLetter": "E",
+        "FileSystem": "NTFS",
+        "DriveType": "Fixed",
+        "HealthStatus": "Healthy",
+        "OperationalStatus": "OK",
+        "Size": 878859776000,
+        "SizeRemaining": 216312147968,
+        "UniqueId": "\\\\?\\Volume{957de7e7-8057-4876-ac56-37ce90ebf996}\\"
+      }
+    ],
+    "logicalDisks": [
+      {
+        "DeviceID": "C:",
+        "DriveType": 3,
+        "FileSystem": "NTFS",
+        "ProviderName": null,
+        "VolumeName": "C:",
+        "Size": 126812377088,
+        "FreeSpace": 126889984
+      },
+      {
+        "DeviceID": "E:",
+        "DriveType": 3,
+        "FileSystem": "NTFS",
+        "ProviderName": null,
+        "VolumeName": "E:",
+        "Size": 878859776000,
+        "FreeSpace": 216312147968
+      }
+    ],
+    "ePhysicalDiskMapping": "UNKNOWN_NOT_INFERRED",
+    "eDriveQualification": {
+      "driveType": "Fixed",
+      "fileSystem": "NTFS",
+      "health": "Healthy",
+      "freeBytes": 216312147968
+    }
+  },
+  "runtimeAttempt": {
+    "tracePath": "E:\\aide-sovereign-workbench-runtime-lab\\docs\\design\\local-runtime-lab\\evidence\\RT-V1-LIVE-CLOSEOUT-20260925T143500Z.jsonl",
+    "traceBytes": 11661,
+    "traceSha256": "ED948ADEA8ACC60797969C76F8CD23C67BB4493DFB557FA44F9DE82616B5C4D3",
+    "start": {
+      "at": "2026-09-25T14:35:11.269Z",
+      "event": "RESOURCE_PREFLIGHT",
+      "pass": true,
+      "observed": {
+        "free_ram_gib": 7.003814697265625,
+        "free_commit_gib": 5.814456939697266,
+        "free_vram_gib": 5.1005859375,
+        "gpu_utilization_percent": 27
+      },
+      "sample": {
+        "is_admin": true,
+        "total_ram_bytes": 17099075584,
+        "free_ram_bytes": 7520288768,
+        "commit_free_bytes": 6243225600,
+        "commit_used_bytes": 26248552448,
+        "commit_limit_bytes": 32491778048,
+        "runtime_process_count": 0,
+        "gpu": {
+          "used_mib": 809,
+          "free_mib": 5223,
+          "utilization_percent": 27
+        }
+      }
+    },
+    "soakGuard": {
+      "at": "2026-09-25T14:39:11.04Z",
+      "event": "SOAK_GUARD_STOP",
+      "tick": 0,
+      "reason": "in-run resource envelope crossed",
+      "sample": {
+        "is_admin": true,
+        "total_ram_bytes": 17099075584,
+        "free_ram_bytes": 6419177472,
+        "commit_free_bytes": 2862120960,
+        "commit_used_bytes": 29629657088,
+        "commit_limit_bytes": 32491778048,
+        "runtime_process_count": 2,
+        "gpu": {
+          "used_mib": 2581,
+          "free_mib": 3451,
+          "utilization_percent": 3
+        }
+      }
+    },
+    "cleanup": {
+      "at": "2026-09-25T14:39:38.364Z",
+      "event": "FINAL_CLEANUP",
+      "health": "STOPPED",
+      "ownership": "UNKNOWN",
+      "model_loaded": false,
+      "listener_count": 0,
+      "credential_value_logged": false,
+      "pass": true
+    },
+    "resourceDelta": {
+      "freeRamGiBStart": 7.003814697265625,
+      "freeRamGiBAtGuard": 5.978324890136719,
+      "freeCommitGiBStart": 5.814456939697266,
+      "freeCommitGiBAtGuard": 2.665557861328125,
+      "commitConsumedGiB": 3.1488990783691406,
+      "freeVramMiBStart": 5223,
+      "freeVramMiBAtGuard": 3451
+    }
+  },
+  "afterCleanup": {
+    "capturedAtUtc": "2026-09-25T14:44:23.0186682Z",
+    "freeRamBytes": 7432003584,
+    "commitUsedBytes": 26225418240,
+    "commitLimitBytes": 32491778048,
+    "freeCommitBytes": 6266359808
+  },
+  "recommendedChange": {
+    "add": "E:\\pagefile.sys",
+    "initialSizeMB": 0,
+    "maximumSizeMB": 0,
+    "retainExistingCPagefile": true,
+    "automaticManagedPagefileRemains": false,
+    "rebootRequired": true,
+    "reason": "E is a healthy NTFS fixed local volume with ample free space; C is nearly full; exact Liquid run crossed the existing in-run commit guard."
+  },
+  "rollback": {
+    "removeOnlyAddedEntry": "E:\\pagefile.sys",
+    "restorePagingFiles": [
+      "c:\\pagefile.sys 0 0"
+    ],
+    "restoreAutomaticManagedPagefile": false,
+    "rebootRequired": true
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "schema": "covert.runtime.v1.pagefile-prechange.v1",
+  "capturedAtUtc": "2026-09-25T14:42:00.7731408Z",
+  "previous": {
+    "automaticManagedPagefile": false,
+    "pagingFiles": [
+      "c:\\pagefile.sys 0 0"
+    ],
+    "pagefileSettings": [
+      {
+        "Name": "c:\\pagefile.sys",
+        "InitialSize": 0,
+        "MaximumSize": 0
+      }
+    ],
+    "pagefileUsage": [
+      {
+        "Name": "C:\\pagefile.sys",
+        "AllocatedBaseSize": 14679,
+        "CurrentUsage": 14535,
+        "PeakUsage": 14679
+      }
+    ],
+    "crashDumpEnabled": 3,
+    "dumpFile": "C:\\WINDOWS\\MEMORY.DMP",
+    "minidumpDir": "C:\\WINDOWS\\Minidump",
+    "volumes": [
+      {
+        "DriveLetter": "C",
+        "FileSystem": "NTFS",
+        "HealthStatus": "Healthy",
+        "Size": 126812377088,
+        "SizeRemaining": 130732032
+      },
+      {
+        "DriveLetter": "E",
+        "FileSystem": "NTFS",
+        "HealthStatus": "Healthy",
+        "Size": 878859776000,
+        "SizeRemaining": 216312156160
+      }
+    ],
+    "eDisk": null
+  },
+  "rollback": {
+    "removeOnlyAddedEntry": "E:\\pagefile.sys",
+    "restorePagingFiles": [
+      "c:\\pagefile.sys 0 0"
+    ],
+    "restoreAutomaticManagedPagefile": false,
+    "rebootRequired": true
+  },
+  "runtimeAttempt": {
+    "tracePath": "E:\\aide-sovereign-workbench-runtime-lab\\docs\\design\\local-runtime-lab\\evidence\\RT-V1-LIVE-CLOSEOUT-20260925T143500Z.jsonl",
+    "traceBytes": 11661,
+    "traceSha256": "ED948ADEA8ACC60797969C76F8CD23C67BB4493DFB557FA44F9DE82616B5C4D3",
+    "start": {
+      "at": "2026-09-25T14:35:11.269Z",
+      "event": "RESOURCE_PREFLIGHT",
+      "pass": true,
+      "observed": {
+        "free_ram_gib": 7.003814697265625,
+        "free_commit_gib": 5.814456939697266,
+        "free_vram_gib": 5.1005859375,
+        "gpu_utilization_percent": 27
+      },
+      "sample": {
+        "is_admin": true,
+        "total_ram_bytes": 17099075584,
+        "free_ram_bytes": 7520288768,
+        "commit_free_bytes": 6243225600,
+        "commit_used_bytes": 26248552448,
+        "commit_limit_bytes": 32491778048,
+        "runtime_process_count": 0,
+        "gpu": {
+          "used_mib": 809,
+          "free_mib": 5223,
+          "utilization_percent": 27
+        }
+      }
+    },
+    "soakGuard": {
+      "at": "2026-09-25T14:39:11.04Z",
+      "event": "SOAK_GUARD_STOP",
+      "tick": 0,
+      "reason": "in-run resource envelope crossed",
+      "sample": {
+        "is_admin": true,
+        "total_ram_bytes": 17099075584,
+        "free_ram_bytes": 6419177472,
+        "commit_free_bytes": 2862120960,
+        "commit_used_bytes": 29629657088,
+        "commit_limit_bytes": 32491778048,
+        "runtime_process_count": 2,
+        "gpu": {
+          "used_mib": 2581,
+          "free_mib": 3451,
+          "utilization_percent": 3
+        }
+      }
+    },
+    "cleanup": {
+      "at": "2026-09-25T14:39:38.364Z",
+      "event": "FINAL_CLEANUP",
+      "health": "STOPPED",
+      "ownership": "UNKNOWN",
+      "model_loaded": false,
+      "listener_count": 0,
+      "credential_value_logged": false,
+      "pass": true
+    },
+    "afterCleanup": {
+      "freeRamBytes": 7489638400,
+      "commitUsedBytes": 26169352192,
+      "commitLimitBytes": 32491778048,
+      "freeCommitBytes": 6322425856
+    }
+  },
+  "collectionStatus": "PARTIAL",
+  "collectionNote": "Get-Partition -DriveLetter E returned no partition object; no physical disk mapping inferred. See the reconciled volume evidence file."
+}
