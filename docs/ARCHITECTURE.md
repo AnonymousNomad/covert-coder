@@ -23,7 +23,7 @@ Rules that are now non-negotiable:
 
 1. **No new subsystem until the P0 acceptance path proves the existing system works end-to-end.** (Collaborator directive, 2026-09-08.) Add nothing that grows right-of-way for unproven machinery. Finish first.
 2. **New route families** go through the full route-slice checklist: contract → service → route → OpenAPI wiring → façade map → restart order → live verification through :4777.
-3. **The facade (`scripts/facade.mjs`) is the single product edge** on :4777. It routes `/api/<prefix>` to the TS backend (port 4778) or the legacy backend (port 4779) per `common/facade-route-map.json`. Nothing else is exposed.
+3. **The facade (`scripts/facade.mjs`) is the single product edge** on :4777. Its v2 route map owns HTTP method plus canonical path. Public operations dispatch to the typed backend (port 4778); only reviewed compatibility adapters can dispatch to legacy (port 4779); explicit out-of-V1 operations and unknown routes fail closed. There is no implicit legacy fallback. OpenAPI is generated from the typed registrations, and `/ws` upgrade ownership is explicit.
 4. **The legacy stack (`app.js`, `daemon/server.mjs`) is a migration inventory, not a development surface.** Any new feature with a legacy-shaped ancestor gets a TS-era contract. Legacy routes are ported or consciously dropped via §4.
 5. Every user-facing surface the product ships must be testable through the facade on :4777. "Works on 4777" is the only valid green.
 

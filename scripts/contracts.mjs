@@ -11,4 +11,4 @@ const json = JSON.stringify(doc, null, 2) + '\n';
 const out = path.join(home, 'common', 'openapi.json');
 await mkdir(path.dirname(out), { recursive: true });
 await writeFile(out, json, 'utf8');
-console.log(`wrote ${out} (${Buffer.byteLength(json)} bytes, ${routes.length - 1} documented routes)`);
+console.log(`wrote ${out} (${Buffer.byteLength(json)} bytes, ${routes.length} documented operations)`);

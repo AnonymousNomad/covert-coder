@@ -1,59 +1,3044 @@
 {
-  "prefixes": {
-    "/api/authority": "ts",
-    "/api/agent": "ts",
-    "/api/audit": "ts",
-    "/api/closed-loop": "ts",
-    "/api/connections": "ts",
-    "/api/byok": "ts",
-    "/api/chat": "ts",
-    "/api/commands": "ts",
-    "/api/dap": "ts",
-    "/api/desktop": "ts",
-    "/api/experts": "ts",
-    "/api/editor": "ts",
-    "/api/git": "ts",
-    "/api/health": "ts",
-    "/api/hooks": "ts",
-    "/api/index": "ts",
-    "/api/keybindings": "ts",
-    "/api/lsp": "ts",
-    "/api/learner": "ts",
-    "/api/memory": "ts",
-    "/api/modelhub": "ts",
-    "/api/models": "ts",
-    "/api/notifications": "ts",
-    "/api/onboarding": "ts",
-    "/api/orch": "ts",
-    "/api/problems": "ts",
-    "/api/providers": "ts",
-    "/api/resident": "ts",
-    "/api/rg": "ts",
-    "/api/search": "ts",
-    "/api/telegram": "ts",
-    "/api/settings": "ts",
-    "/api/workspace": "ts",
-    "/api/workbenches": "ts",
-    "/api/workflow": "ts",
-    "/api/academy": "ts",
-    "/api/artifacts": "ts",
-    "/api/community": "ts",
-    "/api/handoff": "ts",
-    "/api/plugins": "ts",
-    "/api/replays": "ts",
-    "/api/tasks": "ts",
-    "/api/terminal": "ts",
-    "/api/patch": "ts",
-    "/api/hardware": "ts"
-  },
-  "exact": {
-    "/api/file": "ts",
-    "/api/file/write": "ts",
-    "/api/chat": "ts",
-    "/api/session": "ts",
-    "/api/model/ready": "ts"
-  },
+  "schema": "covert.facade-route-map.v2",
+  "routes": [
+    {
+      "method": "DELETE",
+      "path": "/api/byok/key/delete",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/byok/providers/delete",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/community/items",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/connections/hf-token",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/academy",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/academy/certificate",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/academy/exercises/next",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/academy/hint",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/academy/session",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/continuation",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/continuations",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/sessions",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/artifacts",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit/bundle",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit/events",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit/session",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/authority/operation",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/blueprint",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported frontend/client caller or V1 requirement was found for the legacy-only blueprint endpoint."
+    },
+    {
+      "method": "GET",
+      "path": "/api/byok/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/history",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/closed-loop/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/commands",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/community",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/connections",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/dap/state",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/dap/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/desktop/pending",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/desktop/pending/verdict",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/desktop/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/diagnostics",
+      "match": "exact",
+      "target": "legacy",
+      "classification": "LEGACY_COMPATIBILITY",
+      "owner": "start:legacy developer UI",
+      "reason": "The development-only legacy UI reads diagnostics here; no typed V1 contract currently replaces this operation. Exact GET is retained as capability.read; the legacy ?clear= form is rejected before dispatch because it mutates diagnostics."
+    },
+    {
+      "method": "GET",
+      "path": "/api/editor/options",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/egress/manifest",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/experts",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/experts/stats",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/file",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/branches",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff",
+      "match": "prefix",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The legacy GET variant has no current caller; the legacy UI uses POST /api/git/diff, which is a typed V1 operation."
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/log",
+      "match": "prefix",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The legacy GET variant has no current caller; the legacy UI uses POST /api/git/log, which is a typed V1 operation."
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/handoff/bundles",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/handoff/bundles/get",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/hardware/profile",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/hardware/recommend",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/harness/attempt",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/harness/attempt/events",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/harness/attempts",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/hooks",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/index/search",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/index/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/keybindings",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/learner/reviews",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/learner/state",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/lsp/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/memory/digests",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/mission/receipt",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/model/ready",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/model/status",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-status operation has no current caller; the V1 model client uses the typed plural /api/models/status contract."
+    },
+    {
+      "method": "GET",
+      "path": "/api/modelhub/downloads",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/modelhub/files",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/modelhub/search",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/models",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current caller was found for the legacy bare model list; current UI consumers use typed model status and typed model operations."
+    },
+    {
+      "method": "GET",
+      "path": "/api/models/routes",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/models/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/state",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/openapi.json",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/orch/context",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/plugins",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/plugins/presets",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/provenance/run",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/provenance/runs",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/readiness",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/replays",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/resident/context",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/resident/decisions",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/resident/push-summary",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/resident/summary",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/rg/files",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/rg/quick-open",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/search",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/system-map/snapshot",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/cache/stats",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/matchers",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/telegram/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/training/checkpoints",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/training/datasets",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/training/datasets/read",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/training/exports",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/training/presets",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/training/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/workbench/worktree/list",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/workbenches",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/worker-handoff/context",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/worker-handoff/get",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/worker-handoff/list",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflow/state",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspace",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspace/tree",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/academy/check",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/academy/complete",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/academy/exercises/attempt",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/continuation",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/decision",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/start",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/tool",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/arena/run",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller or V1 requirement was found for this legacy-only arena endpoint."
+    },
+    {
+      "method": "POST",
+      "path": "/api/authority/decision",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/authority/pair",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/authority/prepare",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/byok/test",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/history",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/stream",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/commands/invoke",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/community/items",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/connections/subscription/auth",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/connections/test",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/breakpoints",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/configure",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/continue",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/disconnect",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/launch",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/request",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/scopes",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/stack",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/start",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/step",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/stop",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/dap/variables",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/desktop/action",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/desktop/grants",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/desktop/panic",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/desktop/pending",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/desktop/pending/resolve",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/classify-request",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/diff-risk",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/freeze",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/infer",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/intent",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/thaw",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/train",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/file/write",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/blame",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/checkout",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/commit",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/diff",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/file-log",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/hunks/list",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/hunks/stage",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/hunks/unstage",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/log",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/push",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/stage",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/git/unstage",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/handoff/continue",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller uses the legacy handoff continuation operation; typed worker-handoff operations own the V1 surface."
+    },
+    {
+      "method": "POST",
+      "path": "/api/handoff/export",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/handoff/import",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/handoff/propose",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller uses the legacy handoff proposal operation; typed worker-handoff operations own the V1 surface."
+    },
+    {
+      "method": "POST",
+      "path": "/api/index/reindex",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/keybindings/resolve",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/learner/attempt",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/change",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/close",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/completion",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/definition",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/hover",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/notify",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/open",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/request",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/start",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/lsp/stop",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/memory/digest",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/model/start",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-start operation has no current caller; the V1 model client uses the typed plural /api/models/start contract."
+    },
+    {
+      "method": "POST",
+      "path": "/api/model/stop",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-stop operation has no current caller; the V1 model client uses the typed plural /api/models/stop contract."
+    },
+    {
+      "method": "POST",
+      "path": "/api/modelhub/download",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/modelhub/downloads/cancel",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/fit",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/import",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/ingest",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/profile",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/register",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/route",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/start",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/models/stop",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/read",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/read-all",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/complete",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/next",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/operator",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller or V1 requirement was found for this legacy-only operator endpoint."
+    },
+    {
+      "method": "POST",
+      "path": "/api/patch/apply",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/plugins/execute",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/plugins/scaffold",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/plugins/trust",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/problems/parse",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/chat",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current client calls the legacy provider-specific chat endpoint; V1 chat uses typed POST /api/chat with canonical provider resolution."
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/connect",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/disconnect",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/import",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/replays",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/resource/admission",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/rg/search",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/search/replace",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/cache/clear",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/run",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/stop",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/telegram/authorize",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/telegram/connect",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/telegram/disconnect",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/telegram/start",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/run",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/training/datasets",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/training/datasets/append",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/training/datasets/delete",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/training/export",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/training/export-eval",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/training/start",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/training/stop",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workbench/worktree/create",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workbench/worktree/discard",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workbench/worktree/merge",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workbenches/detail",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workbenches/install",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workbenches/trust",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workbenches/uninstall",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/worker-handoff/accept",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/worker-handoff/cancel",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/worker-handoff/consume",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/worker-handoff/create",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow/apply",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "Only start:legacy calls this untyped mutation. That frontend is development-only; the apply operation has no canonical typed route or legacy Authority policy and is not part of V1."
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow/create",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow/plan",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "Only start:legacy calls this untyped operation. That frontend is development-only; the workflow planning contract is not part of V1 and has no canonical typed route or legacy Authority policy."
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow/transition",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/byok/consent",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/byok/key",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/byok/providers/set",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/byok/routing",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/community/items",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/connections/hf-token",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/connections/preference",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/hooks",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/state",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/session",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/settings",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    }
+  ],
   "upgrades": {
     "/ws": "ts"
+  },
+  "legacySourceAudit": [
+    {
+      "method": "DELETE",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/community/items",
+      "path": "/api/community/items",
+      "sourceLine": 583,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration DELETE /api/community/items owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/academy",
+      "path": "/api/academy",
+      "sourceLine": 245,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/academy owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/academy/certificate?",
+      "path": "/api/academy/certificate",
+      "sourceLine": 270,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/academy/certificate owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/academy/session",
+      "path": "/api/academy/session",
+      "sourceLine": 261,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/academy/session owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/artifacts",
+      "path": "/api/artifacts",
+      "sourceLine": 468,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/artifacts owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/blueprint",
+      "path": "/api/blueprint",
+      "sourceLine": 219,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported frontend/client caller or V1 requirement was found for the legacy-only blueprint endpoint."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/community",
+      "path": "/api/community",
+      "sourceLine": 518,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/community owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/dap/state?",
+      "path": "/api/dap/state",
+      "sourceLine": 534,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/dap/state owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/dap/status",
+      "path": "/api/dap/status",
+      "sourceLine": 531,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/dap/status owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/diagnostics",
+      "path": "/api/diagnostics",
+      "sourceLine": 524,
+      "disposition": "LEGACY_COMPATIBILITY",
+      "owner": "start:legacy developer UI",
+      "reason": "The development-only legacy UI reads diagnostics here; no typed V1 contract currently replaces this operation. Exact GET is retained as capability.read; the legacy ?clear= form is rejected before dispatch because it mutates diagnostics."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/diagnostics?clear=",
+      "path": "/api/diagnostics",
+      "sourceLine": 525,
+      "disposition": "LEGACY_COMPATIBILITY",
+      "owner": "start:legacy developer UI",
+      "reason": "The development-only legacy UI reads diagnostics here; no typed V1 contract currently replaces this operation. Exact GET is retained as capability.read; the legacy ?clear= form is rejected before dispatch because it mutates diagnostics."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/file?",
+      "path": "/api/file",
+      "sourceLine": 274,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/file owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/git/branches",
+      "path": "/api/git/branches",
+      "sourceLine": 430,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/git/branches owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/git/diff",
+      "path": "/api/git/diff",
+      "sourceLine": 399,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The legacy GET variant has no current caller; the legacy UI uses POST /api/git/diff, which is a typed V1 operation."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/git/log",
+      "path": "/api/git/log",
+      "sourceLine": 407,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The legacy GET variant has no current caller; the legacy UI uses POST /api/git/log, which is a typed V1 operation."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/git/log",
+      "path": "/api/git/log",
+      "sourceLine": 444,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The legacy GET variant has no current caller; the legacy UI uses POST /api/git/log, which is a typed V1 operation."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/git/status",
+      "path": "/api/git/status",
+      "sourceLine": 392,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/git/status owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/lsp/status",
+      "path": "/api/lsp/status",
+      "sourceLine": 521,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/lsp/status owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/model/ready?",
+      "path": "/api/model/ready",
+      "sourceLine": 241,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/model/ready owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/model/status",
+      "path": "/api/model/status",
+      "sourceLine": 238,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-status operation has no current caller; the V1 model client uses the typed plural /api/models/status contract."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/models",
+      "path": "/api/models",
+      "sourceLine": 222,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current caller was found for the legacy bare model list; current UI consumers use typed model status and typed model operations."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/models/status",
+      "path": "/api/models/status",
+      "sourceLine": 469,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/models/status owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/plugins",
+      "path": "/api/plugins",
+      "sourceLine": 246,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/plugins owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/plugins/presets",
+      "path": "/api/plugins/presets",
+      "sourceLine": 247,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/plugins/presets owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/providers",
+      "path": "/api/providers",
+      "sourceLine": 472,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/providers owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/replays",
+      "path": "/api/replays",
+      "sourceLine": 541,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/replays owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "url-prefix",
+      "sourceLiteral": "/api/search?",
+      "path": "/api/search",
+      "sourceLine": 286,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/search owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/tasks",
+      "path": "/api/tasks",
+      "sourceLine": 464,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/tasks owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/tasks/status",
+      "path": "/api/tasks/status",
+      "sourceLine": 467,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/tasks/status owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/training/status",
+      "path": "/api/training/status",
+      "sourceLine": 538,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/training/status owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/workspace",
+      "path": "/api/workspace",
+      "sourceLine": 213,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/workspace owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/workspace/tree",
+      "path": "/api/workspace/tree",
+      "sourceLine": 216,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration GET /api/workspace/tree owns V1 behavior."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/health",
+      "path": "/health",
+      "sourceLine": 210,
+      "disposition": "INTERNAL_BACKEND_HEALTH",
+      "owner": "scripts/start.mjs",
+      "reason": "The launcher probes the legacy backend directly at /health; this is not exposed through the browser facade."
+    },
+    {
+      "method": "GET",
+      "matcher": "exact-url",
+      "sourceLiteral": "/health",
+      "path": "/health",
+      "sourceLine": 617,
+      "disposition": "INTERNAL_BACKEND_HEALTH",
+      "owner": "scripts/start.mjs",
+      "reason": "The launcher probes the legacy backend directly at /health; this is not exposed through the browser facade."
+    },
+    {
+      "method": "OPTIONS",
+      "matcher": "method-wildcard",
+      "sourceLiteral": "*",
+      "path": "*",
+      "sourceLine": 617,
+      "disposition": "FACADE_CORS_PRELIGHT",
+      "owner": "scripts/facade.mjs",
+      "reason": "OPTIONS is answered by the facade before backend route selection."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/academy/check",
+      "path": "/api/academy/check",
+      "sourceLine": 269,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/academy/check owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/academy/complete",
+      "path": "/api/academy/complete",
+      "sourceLine": 265,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/academy/complete owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/arena/run",
+      "path": "/api/arena/run",
+      "sourceLine": 543,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller or V1 requirement was found for this legacy-only arena endpoint."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/chat",
+      "path": "/api/chat",
+      "sourceLine": 474,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/chat owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/community/items",
+      "path": "/api/community/items",
+      "sourceLine": 575,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/community/items owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/dap/request",
+      "path": "/api/dap/request",
+      "sourceLine": 554,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/dap/request owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/dap/start",
+      "path": "/api/dap/start",
+      "sourceLine": 551,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/dap/start owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/dap/stop",
+      "path": "/api/dap/stop",
+      "sourceLine": 558,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/dap/stop owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/file/write",
+      "path": "/api/file/write",
+      "sourceLine": 282,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/file/write owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/git/checkout",
+      "path": "/api/git/checkout",
+      "sourceLine": 435,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/git/checkout owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/git/commit",
+      "path": "/api/git/commit",
+      "sourceLine": 417,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/git/commit owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/git/push",
+      "path": "/api/git/push",
+      "sourceLine": 452,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/git/push owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/git/stage",
+      "path": "/api/git/stage",
+      "sourceLine": 411,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/git/stage owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/handoff/continue",
+      "path": "/api/handoff/continue",
+      "sourceLine": 517,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller uses the legacy handoff continuation operation; typed worker-handoff operations own the V1 surface."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/handoff/propose",
+      "path": "/api/handoff/propose",
+      "sourceLine": 516,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller uses the legacy handoff proposal operation; typed worker-handoff operations own the V1 surface."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/lsp/notify",
+      "path": "/api/lsp/notify",
+      "sourceLine": 568,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/lsp/notify owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/lsp/request",
+      "path": "/api/lsp/request",
+      "sourceLine": 564,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/lsp/request owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/lsp/start",
+      "path": "/api/lsp/start",
+      "sourceLine": 561,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/lsp/start owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/lsp/stop",
+      "path": "/api/lsp/stop",
+      "sourceLine": 572,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/lsp/stop owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/model/start",
+      "path": "/api/model/start",
+      "sourceLine": 226,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-start operation has no current caller; the V1 model client uses the typed plural /api/models/start contract."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/model/stop",
+      "path": "/api/model/stop",
+      "sourceLine": 233,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-stop operation has no current caller; the V1 model client uses the typed plural /api/models/stop contract."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/models/import",
+      "path": "/api/models/import",
+      "sourceLine": 591,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/models/import owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/models/profile",
+      "path": "/api/models/profile",
+      "sourceLine": 505,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/models/profile owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/models/register",
+      "path": "/api/models/register",
+      "sourceLine": 587,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/models/register owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/models/start",
+      "path": "/api/models/start",
+      "sourceLine": 602,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/models/start owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/models/stop",
+      "path": "/api/models/stop",
+      "sourceLine": 605,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/models/stop owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/operator",
+      "path": "/api/operator",
+      "sourceLine": 509,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller or V1 requirement was found for this legacy-only operator endpoint."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/patch/apply",
+      "path": "/api/patch/apply",
+      "sourceLine": 388,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/patch/apply owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/plugins/execute",
+      "path": "/api/plugins/execute",
+      "sourceLine": 252,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/plugins/execute owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/plugins/scaffold",
+      "path": "/api/plugins/scaffold",
+      "sourceLine": 256,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/plugins/scaffold owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/plugins/trust",
+      "path": "/api/plugins/trust",
+      "sourceLine": 248,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/plugins/trust owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/providers/chat",
+      "path": "/api/providers/chat",
+      "sourceLine": 473,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current client calls the legacy provider-specific chat endpoint; V1 chat uses typed POST /api/chat with canonical provider resolution."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/replays",
+      "path": "/api/replays",
+      "sourceLine": 542,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/replays owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/search/replace",
+      "path": "/api/search/replace",
+      "sourceLine": 321,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/search/replace owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/tasks/run",
+      "path": "/api/tasks/run",
+      "sourceLine": 465,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/tasks/run owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/tasks/stop",
+      "path": "/api/tasks/stop",
+      "sourceLine": 466,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/tasks/stop owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/terminal/run",
+      "path": "/api/terminal/run",
+      "sourceLine": 359,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/terminal/run owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/training/start",
+      "path": "/api/training/start",
+      "sourceLine": 544,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/training/start owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/training/stop",
+      "path": "/api/training/stop",
+      "sourceLine": 548,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration POST /api/training/stop owns V1 behavior."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/workflow/apply",
+      "path": "/api/workflow/apply",
+      "sourceLine": 515,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "Only start:legacy calls this untyped mutation. That frontend is development-only; the apply operation has no canonical typed route or legacy Authority policy and is not part of V1."
+    },
+    {
+      "method": "POST",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/workflow/plan",
+      "path": "/api/workflow/plan",
+      "sourceLine": 514,
+      "disposition": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "Only start:legacy calls this untyped operation. That frontend is development-only; the workflow planning contract is not part of V1 and has no canonical typed route or legacy Authority policy."
+    },
+    {
+      "method": "PUT",
+      "matcher": "exact-url",
+      "sourceLiteral": "/api/community/items",
+      "path": "/api/community/items",
+      "sourceLine": 579,
+      "disposition": "TYPED_CANONICAL_OWNER",
+      "owner": "typed-server",
+      "reason": "Typed registration PUT /api/community/items owns V1 behavior."
+    }
+  ],
+  "generatedFrom": {
+    "typedOwner": "node/src/openapi.ts buildRoutes()",
+    "publicContract": "common/openapi.json",
+    "legacyExceptions": "common/facade-route-exceptions.json"
   }
 }

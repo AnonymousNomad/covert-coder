@@ -16,13 +16,13 @@ test('openapi.json is up to date (run npm run contracts to regenerate)', async (
   assert.equal(generated, committed, 'drift detected: regenerate with npm run contracts');
 });
 
-test('openapi.json documents every non-raw route with a schema', async () => {
+test('openapi.json documents every registered public operation', async () => {
   const routes = await buildRoutes(WORKSPACE, '0.1.0');
   const doc = generateOpenApi(routes, { title: 'AIDE Arch Daemon API', version: '0.1.0' }) as { paths: Record<string, unknown> };
-  const documented = new Set(Object.keys(doc.paths));
+  const rawRoutes = routes.filter(route => route.raw);
+  assert.deepEqual(rawRoutes.map(route => `${route.method} ${route.path}`), ['GET /api/openapi.json'], 'the raw OpenAPI discovery endpoint is public, not an internal exclusion');
   for (const route of routes) {
-    if (route.raw) continue;
-    assert.ok(documented.has(route.path), `route ${route.method} ${route.path} missing from openapi.json`);
+    assert.ok(Object.hasOwn(doc.paths, route.path), `route ${route.method} ${route.path} missing from openapi.json`);
     const operation = (doc.paths[route.path] as Record<string, unknown>)[route.method.toLowerCase()];
     assert.ok(operation !== undefined, `method ${route.method} missing for ${route.path}`);
   }

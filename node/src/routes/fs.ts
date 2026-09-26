@@ -67,7 +67,6 @@ export function routeForFileRead(workspace: WorkspaceService): Route {
   return {
     method: 'GET',
     path: '/api/file',
-    prefix: true,
     query: FileReadQuery,
     response: FileReadResponse,
     handler: async ({ query }): Promise<FileReadResponseT> => {
@@ -117,7 +116,6 @@ export function routeForSearch(workspace: WorkspaceService): Route {
   return {
     method: 'GET',
     path: '/api/search',
-    prefix: true,
     query: SearchQuery,
     response: SearchResponse,
     handler: async ({ query }): Promise<SearchResponseT> => {

@@ -1,0 +1,148 @@
+{
+  "schema": "covert.facade-route-exceptions.v1",
+  "upgrades": {
+    "/ws": "ts"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/diagnostics",
+      "match": "exact",
+      "target": "legacy",
+      "classification": "LEGACY_COMPATIBILITY",
+      "owner": "start:legacy developer UI",
+      "reason": "The development-only legacy UI reads diagnostics here; no typed V1 contract currently replaces this operation. Exact GET is retained as capability.read; the legacy ?clear= form is rejected before dispatch because it mutates diagnostics."
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow/plan",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "Only start:legacy calls this untyped operation. That frontend is development-only; the workflow planning contract is not part of V1 and has no canonical typed route or legacy Authority policy."
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow/apply",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "Only start:legacy calls this untyped mutation. That frontend is development-only; the apply operation has no canonical typed route or legacy Authority policy and is not part of V1."
+    },
+    {
+      "method": "GET",
+      "path": "/api/blueprint",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported frontend/client caller or V1 requirement was found for the legacy-only blueprint endpoint."
+    },
+    {
+      "method": "GET",
+      "path": "/api/model/status",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-status operation has no current caller; the V1 model client uses the typed plural /api/models/status contract."
+    },
+    {
+      "method": "POST",
+      "path": "/api/model/start",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-start operation has no current caller; the V1 model client uses the typed plural /api/models/start contract."
+    },
+    {
+      "method": "POST",
+      "path": "/api/model/stop",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The singular legacy model-stop operation has no current caller; the V1 model client uses the typed plural /api/models/stop contract."
+    },
+    {
+      "method": "POST",
+      "path": "/api/arena/run",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller or V1 requirement was found for this legacy-only arena endpoint."
+    },
+    {
+      "method": "POST",
+      "path": "/api/operator",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller or V1 requirement was found for this legacy-only operator endpoint."
+    },
+    {
+      "method": "GET",
+      "path": "/api/models",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current caller was found for the legacy bare model list; current UI consumers use typed model status and typed model operations."
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/diff",
+      "match": "prefix",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The legacy GET variant has no current caller; the legacy UI uses POST /api/git/diff, which is a typed V1 operation."
+    },
+    {
+      "method": "GET",
+      "path": "/api/git/log",
+      "match": "prefix",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "The legacy GET variant has no current caller; the legacy UI uses POST /api/git/log, which is a typed V1 operation."
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers/chat",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current client calls the legacy provider-specific chat endpoint; V1 chat uses typed POST /api/chat with canonical provider resolution."
+    },
+    {
+      "method": "POST",
+      "path": "/api/handoff/propose",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller uses the legacy handoff proposal operation; typed worker-handoff operations own the V1 surface."
+    },
+    {
+      "method": "POST",
+      "path": "/api/handoff/continue",
+      "match": "exact",
+      "target": "deny",
+      "classification": "OUT_OF_V1",
+      "owner": "V1 facade contract",
+      "reason": "No current supported caller uses the legacy handoff continuation operation; typed worker-handoff operations own the V1 surface."
+    }
+  ],
+  "legacySourceExpected": {
+    "exactUrl": 67,
+    "urlPrefix": 9,
+    "methodWildcard": 1
+  }
+}

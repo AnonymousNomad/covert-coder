@@ -74,18 +74,12 @@ function canonicalPath(rawUrl) {
   return pathname;
 }
 
-function pickTarget(routeMap, pathname) {
-  if (routeMap.exact && Object.prototype.hasOwnProperty.call(routeMap.exact, pathname)) return routeMap.exact[pathname];
-  let best = null;
-  let bestLength = -1;
-  for (const [prefix, target] of Object.entries(routeMap.prefixes || {})) {
-    const scoped = prefix.endsWith('/') ? prefix : prefix + '/';
-    if ((pathname === prefix || pathname.startsWith(scoped)) && prefix.length > bestLength) {
-      best = target;
-      bestLength = prefix.length;
-    }
-  }
-  return best || 'legacy';
+export function matchFacadeRoute(routeMap, method, pathname) {
+  const exact = routeMap.routes.find(route => route.method === method && route.match === 'exact' && route.path === pathname);
+  if (exact) return exact;
+  return routeMap.routes
+    .filter(route => route.method === method && route.match === 'prefix' && pathname.startsWith(route.path))
+    .sort((a, b) => b.path.length - a.path.length)[0] ?? null;
 }
 
 function rewriteErrorEnvelope(rawBody) {
@@ -119,19 +113,43 @@ function unwrapSuccessEnvelope(rawBody) {
 
 export async function loadRouteMap(file) {
   const parsed = JSON.parse(await fs.readFile(file, 'utf8'));
-  const map = { prefixes: parsed.prefixes || {}, exact: parsed.exact || {}, upgrades: parsed.upgrades || {} };
-  for (const group of ['prefixes', 'exact', 'upgrades']) {
-    for (const key of Object.keys(map[group])) {
-      if (!key.startsWith('/') || key.includes('..') || key.includes('\0') || !['ts', 'legacy'].includes(map[group][key])) {
-        throw new Error(`invalid route map entry: ${group}[${JSON.stringify(key)}]`);
-      }
+  if (parsed.schema !== 'covert.facade-route-map.v2' || !Array.isArray(parsed.routes) || typeof parsed.upgrades !== 'object' || parsed.upgrades === null) {
+    throw new Error('unsupported facade route map schema');
+  }
+  const methods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+  const classes = {
+    PUBLIC_TYPED: 'ts',
+    LEGACY_COMPATIBILITY: 'legacy',
+    OUT_OF_V1: 'deny'
+  };
+  const identities = new Set();
+  for (const route of parsed.routes) {
+    const identity = `${route.method} ${route.match} ${route.path}`;
+    if (!methods.has(route.method) || !['exact', 'prefix'].includes(route.match) ||
+        typeof route.path !== 'string' || !route.path.startsWith('/') || route.path.includes('..') ||
+        route.path.includes('\0') || route.path.includes('?') || route.path.includes('#') ||
+        !['ts', 'legacy', 'deny'].includes(route.target) ||
+        !Object.prototype.hasOwnProperty.call(classes, route.classification) ||
+        classes[route.classification] !== route.target || identities.has(identity)) {
+      throw new Error(`invalid facade route entry: ${JSON.stringify(identity)}`);
+    }
+    if (route.classification !== 'PUBLIC_TYPED' && (typeof route.owner !== 'string' || !route.owner.trim() || typeof route.reason !== 'string' || !route.reason.trim())) {
+      throw new Error(`facade exception requires owner and reason: ${JSON.stringify(identity)}`);
+    }
+    identities.add(identity);
+  }
+  for (const [key, target] of Object.entries(parsed.upgrades)) {
+    if (!key.startsWith('/') || key.includes('..') || key.includes('\0') || !['ts', 'legacy'].includes(target)) {
+      throw new Error(`invalid route map upgrade: ${JSON.stringify(key)}`);
     }
   }
-  return map;
+  if (!Array.isArray(parsed.legacySourceAudit)) throw new Error('facade route map is missing legacy source audit');
+  return parsed;
 }
 
 export function createFacade({ port = 0, host = '127.0.0.1', routeMap, targets, authenticate }) {
   if (!targets?.ts || !targets?.legacy) throw new Error('targets.ts and targets.legacy are required');
+  if (routeMap?.schema !== 'covert.facade-route-map.v2' || !Array.isArray(routeMap.routes)) throw new Error('a validated method-aware facade route map is required');
   const closed = { value: false };
   const relays = new Set();
   const upstreamAgent = new http.Agent({ keepAlive: true, maxSockets: 16 });
@@ -183,7 +201,17 @@ export function createFacade({ port = 0, host = '127.0.0.1', routeMap, targets, 
         response.end(payload); return;
       }
     }
-    const targetName = pickTarget(routeMap, pathname);
+    const route = matchFacadeRoute(routeMap, request.method, pathname);
+    if (!route || route.target === 'deny') {
+      finish(404, 'unmapped');
+      const payload = apiFormat.kind === ENVELOPE_V1
+        ? JSON.stringify(envelopeError('NOT_FOUND', 'route not found'))
+        : JSON.stringify({ error: { code: 'not_found', message: 'route not found' } });
+      response.writeHead(404, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), ...(corsForRequest ?? {}) });
+      response.end(payload);
+      return;
+    }
+    const targetName = route.target;
     if (apiFormat.kind === ENVELOPE_V1 && targetName === 'legacy') {
       finish(400, targetName);
       const payload = JSON.stringify(envelopeError('BAD_REQUEST', 'envelope-v1 is unavailable for a legacy-owned route'));

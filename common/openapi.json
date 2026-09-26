@@ -15464,6 +15464,20 @@
         }
       }
     },
+    "/api/openapi.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/orch/context": {
       "get": {
         "responses": {

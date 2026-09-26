@@ -18,10 +18,20 @@ const HOST = '127.0.0.1';
 const ENVELOPE_HEADER = { 'X-AIDE-API-Format': 'envelope-v1' };
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 type BackendName = 'ts' | 'legacy';
+type FacadeRoute = {
+  method: string;
+  path: string;
+  match: 'exact' | 'prefix';
+  target: BackendName | 'deny';
+  classification: 'PUBLIC_TYPED' | 'LEGACY_COMPATIBILITY' | 'OUT_OF_V1';
+  owner?: string;
+  reason?: string;
+};
 type RouteMap = {
-  prefixes: Record<string, BackendName>;
-  exact: Record<string, BackendName>;
+  schema: 'covert.facade-route-map.v2';
+  routes: FacadeRoute[];
   upgrades: Record<string, BackendName>;
+  legacySourceAudit: unknown[];
 };
 type FacadeHandle = { server: http.Server; close(): Promise<void> };
 type FacadeModule = {
@@ -35,6 +45,21 @@ type FacadeModule = {
 };
 const facadeModuleSpecifier: string = '../../scripts/facade.mjs';
 const { createFacade, loadRouteMap } = (await import(facadeModuleSpecifier)) as FacadeModule;
+
+function fixtureRouteMap(routes: Array<{ method: string; path: string; target?: BackendName }>, upgrades: Record<string, BackendName> = {}): RouteMap {
+  return {
+    schema: 'covert.facade-route-map.v2',
+    routes: routes.map(route => ({
+      ...route,
+      match: 'exact',
+      target: route.target ?? 'ts',
+      classification: route.target === 'legacy' ? 'LEGACY_COMPATIBILITY' : 'PUBLIC_TYPED',
+      ...(route.target === 'legacy' ? { owner: 'browser fixture', reason: 'synthetic proxy test route' } : {})
+    })),
+    upgrades,
+    legacySourceAudit: []
+  };
+}
 
 function listen(server: http.Server): Promise<number> {
   return new Promise(resolve => server.listen(0, HOST, () => resolve((server.address() as net.AddressInfo).port)));
@@ -62,7 +87,7 @@ test('real typed browser client receives success, backend error, malformed respo
     else res.end(JSON.stringify(healthFixtures.healthy));
   });
   const backendPort = await listen(backend);
-  const facade = await createFacade({ port: 0, routeMap: { prefixes: { '/api/health': 'ts' }, exact: {}, upgrades: {} }, targets: { ts: { host: HOST, port: backendPort }, legacy: { host: HOST, port: 1 } } });
+  const facade = await createFacade({ port: 0, routeMap: fixtureRouteMap([{ method: 'GET', path: '/api/health' }]), targets: { ts: { host: HOST, port: backendPort }, legacy: { host: HOST, port: 1 } } });
   const facadePort = (facade.server.address() as net.AddressInfo).port;
   const base = `http://${HOST}:${facadePort}`;
   try {
@@ -91,7 +116,7 @@ test('legacy bare and typed envelope representations are explicit, with determin
     res.end(JSON.stringify(ok(healthFixtures.healthy)));
   });
   const backendPort = await listen(backend);
-  const facade = await createFacade({ port: 0, routeMap: { prefixes: { '/api/health': 'ts' }, exact: {}, upgrades: {} }, targets: { ts: { host: HOST, port: backendPort }, legacy: { host: HOST, port: 1 } } });
+  const facade = await createFacade({ port: 0, routeMap: fixtureRouteMap([{ method: 'GET', path: '/api/health' }]), targets: { ts: { host: HOST, port: backendPort }, legacy: { host: HOST, port: 1 } } });
   const port = (facade.server.address() as net.AddressInfo).port;
   try {
     const bare = await fetch(`http://${HOST}:${port}/api/health`);
@@ -129,7 +154,11 @@ test('shared browser stream transport stays incremental, reports stream errors a
   const backendPort = await listen(backend);
   const facade = await createFacade({
     port: 0,
-    routeMap: { prefixes: { '/api/chat': 'ts' }, exact: { '/api/authority/pair': 'ts' }, upgrades: {} },
+    routeMap: fixtureRouteMap([
+      { method: 'POST', path: '/api/chat' },
+      { method: 'POST', path: '/api/chat/stream' },
+      { method: 'POST', path: '/api/authority/pair' }
+    ]),
     targets: { ts: { host: HOST, port: backendPort }, legacy: { host: HOST, port: 1 } },
     authenticate: async token => { if (token !== streamToken) throw new Error('invalid actor credential'); }
   });
@@ -172,7 +201,18 @@ test('browser WebSocket client receives canonical EventHub data through facade a
   const archServer = await arch.listen(0);
   const archPort = (archServer.address() as net.AddressInfo).port;
   const pairOrigin = 'http://127.0.0.1:4173';
-  const routeMap = { prefixes: {}, exact: { '/api/authority/pair': 'ts' as const }, upgrades: { '/ws': 'ts' as const } };
+  const routeMap: RouteMap = {
+    schema: 'covert.facade-route-map.v2',
+    routes: [{
+      method: 'POST',
+      path: '/api/authority/pair',
+      match: 'exact',
+      target: 'ts',
+      classification: 'PUBLIC_TYPED'
+    }],
+    upgrades: { '/ws': 'ts' },
+    legacySourceAudit: []
+  };
   let facade = await createFacade({ port: 0, routeMap, targets: { ts: { host: HOST, port: archPort }, legacy: { host: HOST, port: 1 } } });
   const facadePort = (facade.server.address() as net.AddressInfo).port;
   const base = `http://${HOST}:${facadePort}`;
@@ -192,16 +232,17 @@ test('browser WebSocket client receives canonical EventHub data through facade a
     headers.set('Origin', pairOrigin);
     return realFetch(input, { ...init, headers });
   }) as typeof fetch;
-  try {
-    await withRelativeFetch(base, () => pairAuthority(arch.authority.control.createPairing(pairOrigin)));
-  } finally {
-    globalThis.fetch = realFetch;
-  }
   const statuses: boolean[] = [];
   const received: unknown[] = [];
-  const bus = connectEvents(`ws://${HOST}:${facadePort}/ws`, { onStatus: value => statuses.push(value) });
-  bus.subscribe('log', data => received.push(data));
+  let bus: ReturnType<typeof connectEvents> | undefined;
   try {
+    try {
+      await withRelativeFetch(base, () => pairAuthority(arch.authority.control.createPairing(pairOrigin)));
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    bus = connectEvents(`ws://${HOST}:${facadePort}/ws`, { onStatus: value => statuses.push(value) });
+    bus.subscribe('log', data => received.push(data));
     for (let i = 0; i < 100 && !bus.connected(); i++) await delay(20);
     assert.equal(bus.connected(), true);
     for (let i = 0; i < 100 && received.length === 0; i++) {
@@ -218,7 +259,8 @@ test('browser WebSocket client receives canonical EventHub data through facade a
     assert.equal(bus.connected(), true, 'browser event client did not reconnect through restarted facade');
     assert.ok(statuses.includes(false) && statuses.filter(Boolean).length >= 2);
   } finally {
-    bus.dispose();
+    bus?.dispose();
+    globalThis.fetch = realFetch;
     globalThis.WebSocket = previousWebSocket;
     await facade.close();
     arch.events.close();
@@ -231,8 +273,9 @@ test('browser WebSocket client receives canonical EventHub data through facade a
 
 test('browser-required route ownership and Vite HTTP/WebSocket proxies point to canonical facade', async () => {
   const map = await loadRouteMap(path.resolve('common/facade-route-map.json'));
-  assert.equal(map.prefixes['/api/chat'], 'ts');
-  assert.equal(map.prefixes['/api/workbenches'], 'ts');
+  assert.equal(map.routes.find(route => route.method === 'POST' && route.path === '/api/chat')?.target, 'ts');
+  assert.equal(map.routes.find(route => route.method === 'POST' && route.path === '/api/chat/stream')?.target, 'ts');
+  assert.ok(map.routes.some(route => route.path === '/api/workbenches' && route.target === 'ts'));
   assert.equal(map.upgrades['/ws'], 'ts');
   const config = viteConfig as { server?: { proxy?: Record<string, { target?: string }> }; preview?: { proxy?: Record<string, { target?: string }> } };
   assert.equal(config.server?.proxy?.['/api']?.target, 'http://127.0.0.1:4777');

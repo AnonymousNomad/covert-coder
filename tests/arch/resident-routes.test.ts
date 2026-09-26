@@ -244,5 +244,7 @@ test('resident HTTP: push-summary is a 200 advisory (READY or ATTENTION_REQUIRED
 test('resident arch: facade route map routes /api/resident to the TS stack', async () => {
   const mapPath = path.resolve(import.meta.dirname, '..', '..', 'common', 'facade-route-map.json');
   const map = JSON.parse(await fs.readFile(mapPath, 'utf8'));
-  assert.equal(map.prefixes['/api/resident'], 'ts');
+  assert.ok(map.routes.some((route: { method: string; path: string; target: string; classification: string }) =>
+    route.method === 'GET' && route.path === '/api/resident/summary' && route.target === 'ts' && route.classification === 'PUBLIC_TYPED'
+  ));
 });

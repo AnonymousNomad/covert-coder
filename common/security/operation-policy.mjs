@@ -66,6 +66,10 @@ const HTTP_POLICY = new Map([
   // carry exact route-owned descriptors (node/src/routes/notifications.ts).
   ['GET /api/notifications', 'capability.read'], ['GET /api/notifications/unread', 'capability.read'],
   ['GET /api/hooks', 'capability.read'],
+  // Retained read-only adapter for the development-only legacy diagnostics UI.
+  // The query-driven `?clear=` form is rejected by legacyOperation below so
+  // the mutating handler cannot inherit this read classification.
+  ['GET /api/diagnostics', 'capability.read'],
   // Read-only Bucket-C surfaces. Mutating/executing Bucket-C routes carry exact
   // route-owned descriptors (academy.ts, exercise.ts, community.ts, plugins.ts,
   // replays.ts); no mutation is authorized by path enrollment alone.
@@ -153,6 +157,9 @@ export function httpOperationKind(method, routePath) {
 
 export function legacyOperation(workspace, request, snapshot = null) {
   const url = new URL(request.path, 'http://127.0.0.1');
+  if (request.method === 'GET' && url.pathname === '/api/diagnostics' && url.searchParams.has('clear')) {
+    throw new TypeError('legacy diagnostics clear is not available through the read-only compatibility adapter');
+  }
   const kind = httpOperationKind(request.method, url.pathname);
   if (!kind || !request.path.startsWith('/') || request.path.startsWith('//') || url.hash) throw new TypeError('legacy capability has no authority policy');
   return { workspace, taskId: request.task_id, kind,

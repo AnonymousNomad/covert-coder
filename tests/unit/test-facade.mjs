@@ -67,8 +67,25 @@ const ENVELOPE_HEADER = { 'X-AIDE-API-Format': 'envelope-v1' };
 // token; the fail-closed behavior itself is asserted separately below.
 const AUTH = { Authorization: 'Bearer facade-fixture-token' };
 const AUTHENTICATE = async () => ({ actor_id: 'facade-fixture' });
+// Proxy mechanics tests use a compact synthetic route fixture. Expand it into
+// the production method-aware schema; loadRouteMap itself remains v2-only.
+function fixtureRouteMap(input) {
+  if (input?.schema === 'covert.facade-route-map.v2') return input;
+  const { prefixes = {}, exact = {}, upgrades = {} } = input;
+  const routes = [];
+  for (const [match, entries] of [['prefix', prefixes], ['exact', exact]]) {
+    for (const [routePath, target] of Object.entries(entries)) {
+      for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+        routes.push({ method, path: routePath, match, target,
+          classification: target === 'ts' ? 'PUBLIC_TYPED' : target === 'deny' ? 'OUT_OF_V1' : 'LEGACY_COMPATIBILITY',
+          ...(target !== 'ts' ? { owner: 'unit fixture', reason: 'synthetic proxy test route' } : {}) });
+      }
+    }
+  }
+  return { schema: 'covert.facade-route-map.v2', routes, upgrades, legacySourceAudit: [] };
+}
 function createTestFacade(options) {
-  return createFacade({ ...options, authenticate: AUTHENTICATE });
+  return createFacade({ ...options, routeMap: fixtureRouteMap(options.routeMap), authenticate: AUTHENTICATE });
 }
 
 test('prefix routes hit the mapped backend on both sides', async () => {
@@ -88,12 +105,12 @@ test('prefix routes hit the mapped backend on both sides', async () => {
   const r2 = await get(port, '/legacy-fam/deep/path');
   assert.equal(r2.headers['x-backend'], 'legacy');
   const r3 = await get(port, '/ts-family-similar');
-  assert.equal(r3.headers['x-backend'], 'legacy');
+  assert.equal(r3.headers['x-backend'], 'ts', 'prefix matching follows the typed server startsWith contract');
   await facade.close();
   for (const s of [ts.server, legacy.server]) { s.closeAllConnections?.(); s.close(); }
 });
 
-test('longest prefix wins and unknown paths fall to legacy', async () => {
+test('longest prefix wins and unknown method/path pairs fail closed', async () => {
   const ts = fakeBackend('ts');
   const legacy = fakeBackend('legacy');
   const tsPort = await listen(ts.server);
@@ -107,10 +124,39 @@ test('longest prefix wins and unknown paths fall to legacy', async () => {
   assert.equal((await get(port, '/api/other')).headers['x-backend'], 'ts');
   assert.equal((await get(port, '/api/nested/x')).headers['x-backend'], 'legacy');
   assert.equal((await get(port, '/api/exact-hit')).headers['x-backend'], 'legacy');
-  assert.equal((await get(port, '/unknown')).headers['x-backend'], 'legacy');
+  const unknown = await get(port, '/unknown');
+  assert.equal(unknown.status, 404);
+  assert.equal(legacy.seen.some(s => s.url === '/unknown'), false, 'unknown routes never fall through to legacy');
   assert.equal(ts.seen.some(s => s.url === '/api/nested/x'), false);
   await facade.close();
   for (const s of [ts.server, legacy.server]) { s.closeAllConnections?.(); s.close(); }
+});
+
+test('method-aware facade isolates operations and denies explicit out-of-V1 routes', async () => {
+  const ts = fakeBackend('ts');
+  const legacy = fakeBackend('legacy');
+  const tsPort = await listen(ts.server);
+  const legacyPort = await listen(legacy.server);
+  const routeMap = {
+    schema: 'covert.facade-route-map.v2',
+    routes: [
+      { method: 'GET', path: '/same-path', match: 'exact', target: 'ts', classification: 'PUBLIC_TYPED', owner: 'test' },
+      { method: 'POST', path: '/same-path', match: 'exact', target: 'legacy', classification: 'LEGACY_COMPATIBILITY', owner: 'test', reason: 'compat fixture' },
+      { method: 'GET', path: '/removed', match: 'exact', target: 'deny', classification: 'OUT_OF_V1', owner: 'test', reason: 'out of V1 fixture' }
+    ],
+    upgrades: {},
+    legacySourceAudit: []
+  };
+  const facade = await createTestFacade({ port: 0, routeMap, targets: { ts: { host: HOST, port: tsPort }, legacy: { host: HOST, port: legacyPort } } });
+  const port = facade.server.address().port;
+  assert.equal((await get(port, '/same-path')).headers['x-backend'], 'ts');
+  assert.equal((await request(port, '/same-path', { method: 'POST' })).headers['x-backend'], 'legacy');
+  assert.equal((await request(port, '/same-path', { method: 'PATCH' })).status, 404);
+  assert.equal((await get(port, '/removed')).status, 404);
+  assert.equal(ts.seen.some(entry => entry.url === '/removed'), false);
+  assert.equal(legacy.seen.some(entry => entry.url === '/removed' || entry.method === 'PATCH'), false);
+  await facade.close();
+  for (const server of [ts.server, legacy.server]) { server.closeAllConnections?.(); server.close(); }
 });
 
 test('OPTIONS preflight for a ts route is answered by the facade (204 + CORS) without hitting the backend', async () => {
@@ -242,14 +288,22 @@ test('unreachable backend yields a typed 502 instead of hanging', async () => {
   await facade.close();
 });
 
-test('loadRouteMap reads an override file and rejects traversal entries', async () => {
+test('loadRouteMap requires method-aware v2 and rejects traversal entries', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'aide-facade-'));
   try {
     const file = path.join(dir, 'routes.json');
-    await writeFile(file, JSON.stringify({ prefixes: { '/a': 'ts' }, exact: {}, upgrades: { '/ws': 'legacy' } }));
+    const valid = {
+      schema: 'covert.facade-route-map.v2',
+      routes: [{ method: 'GET', path: '/a', match: 'exact', target: 'ts', classification: 'PUBLIC_TYPED', owner: 'typed-server' }],
+      upgrades: { '/ws': 'legacy' },
+      legacySourceAudit: []
+    };
+    await writeFile(file, JSON.stringify(valid));
     const loaded = await loadRouteMap(file);
-    assert.deepEqual(loaded, { prefixes: { '/a': 'ts' }, exact: {}, upgrades: { '/ws': 'legacy' } });
-    await writeFile(file, JSON.stringify({ prefixes: { '/../evil': 'ts' }, exact: {}, upgrades: {} }));
+    assert.deepEqual(loaded, valid);
+    await writeFile(file, JSON.stringify({ prefixes: { '/a': 'ts' }, exact: {}, upgrades: {} }));
+    await assert.rejects(() => loadRouteMap(file));
+    await writeFile(file, JSON.stringify({ ...valid, routes: [{ ...valid.routes[0], path: '/../evil' }] }));
     await assert.rejects(() => loadRouteMap(file));
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -258,17 +312,21 @@ test('loadRouteMap reads an override file and rejects traversal entries', async 
 
 test('generated route map routes file/search/workspace/providers/dap to ts without touching legacy-only surface', async () => {
   const map = await loadRouteMap(path.resolve(import.meta.dirname, '../../common/facade-route-map.json'));
-  assert.equal(map.exact['/api/file'], 'ts');
-  assert.equal(map.exact['/api/file/write'], 'ts');
-  assert.equal(map.prefixes['/api/index'], 'ts');
-  assert.equal(map.prefixes['/api/git'], 'ts');
-  assert.equal(map.prefixes['/api/search'], 'ts');
-  assert.equal(map.prefixes['/api/workspace'], 'ts');
-  assert.equal(map.prefixes['/api/providers'], 'ts');
-  assert.equal(map.prefixes['/api/dap'], 'ts');
-  const allTargets = Object.values(map.prefixes).concat(Object.values(map.exact), Object.values(map.upgrades));
-  assert.ok(allTargets.every(t => t === 'ts' || t === 'legacy'));
-  assert.equal('/api/workspace/tree' in map.exact, false);
+  const target = (method, routePath) => map.routes.find(route => route.method === method && route.path === routePath)?.target;
+  assert.equal(target('GET', '/api/file'), 'ts');
+  assert.equal(target('POST', '/api/file/write'), 'ts');
+  assert.equal(target('GET', '/api/index/search'), 'ts');
+  assert.equal(target('GET', '/api/git/status'), 'ts');
+  assert.equal(target('GET', '/api/search'), 'ts');
+  assert.equal(target('GET', '/api/workspace/tree'), 'ts');
+  assert.equal(target('GET', '/api/providers'), 'ts');
+  assert.equal(target('POST', '/api/dap/request'), 'ts');
+  assert.ok(map.routes.every(route => ['ts', 'legacy', 'deny'].includes(route.target)));
+  assert.ok(map.routes.some(route => route.method === 'GET' && route.path === '/api/workspace/tree' && route.match === 'exact'));
+  assert.equal(target('GET', '/api/workflow/plan'), undefined);
+  assert.equal(map.routes.find(route => route.method === 'POST' && route.path === '/api/workflow/plan')?.classification, 'OUT_OF_V1');
+  assert.equal(target('POST', '/api/workflow/plan'), 'deny');
+  assert.equal(map.routes.find(route => route.method === 'GET' && route.path === '/api/openapi.json')?.rawResponse, true);
 });
 
 test('facade rewrites upstream structured errors into the legacy-compatible envelope', async () => {

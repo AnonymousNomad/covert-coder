@@ -250,7 +250,6 @@ export async function createModelRuntime(repoRoot: string, workspace: string, op
 export function generateOpenApi(routes: Route[], info: { title: string; version: string }): unknown {
   const paths: Record<string, Record<string, unknown>> = {};
   for (const route of routes) {
-    if (route.raw) continue;
     const method = route.method.toLowerCase();
     const pathItem: Record<string, unknown> = (paths[route.path] ??= {});
     const operation: Record<string, unknown> = {
@@ -1094,8 +1093,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForDapState(dapManager),
     routeForDapRawRequest(dapManager)
   ];
-  const doc = generateOpenApi(core, { title: 'AIDE Arch Daemon API', version });
-  return [...core, makeOpenApiRoute(doc)];
+  let doc: unknown;
+  const openApiRoute = makeOpenApiRoute(() => doc);
+  const routes = [...core, openApiRoute];
+  doc = generateOpenApi(routes, { title: 'AIDE Arch Daemon API', version });
+  return routes;
 }
 
 async function buildNotificationWiredRoutes(workspace: string, options: BuildRoutesOptions): Promise<Route[]> {
@@ -1177,12 +1179,12 @@ function makeWorkspaceTreeRoute(service: WorkspaceService): Route {
   };
 }
 
-function makeOpenApiRoute(openapi: unknown): Route {
+function makeOpenApiRoute(openapi: () => unknown): Route {
   return {
     method: 'GET',
     path: '/api/openapi.json',
     raw: true,
     response: z.any(),
-    handler: () => openapi
+    handler: () => openapi()
   };
 }

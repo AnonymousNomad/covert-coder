@@ -16,7 +16,20 @@ import { pairFixture, pairServiceFixture } from './authority-fixture.ts';
 // Test-local boundary for the existing untyped JS facade. No compiler
 // relaxation or production facade change is needed for this fixture.
 type Target = { host: string; port: number };
-type RouteMap = { prefixes: Record<string, string>; exact: Record<string, string>; upgrades?: Record<string, string> };
+type RouteMap = {
+  schema: 'covert.facade-route-map.v2';
+  routes: Array<{
+    method: string;
+    path: string;
+    match: 'exact' | 'prefix';
+    target: 'ts' | 'legacy' | 'deny';
+    classification: 'PUBLIC_TYPED' | 'LEGACY_COMPATIBILITY' | 'OUT_OF_V1';
+    owner?: string;
+    reason?: string;
+  }>;
+  upgrades: Record<string, 'ts' | 'legacy'>;
+  legacySourceAudit: unknown[];
+};
 const { createFacade, loadRouteMap } = await import(new URL('../../scripts/facade.mjs', import.meta.url).href) as {
   loadRouteMap(file: string): Promise<RouteMap>;
   createFacade(options: { routeMap: RouteMap; targets: { ts: Target; legacy: Target }; authenticate?: (token: string, origin: string) => unknown }): Promise<{ server: import('node:http').Server; close(): Promise<void> }>;

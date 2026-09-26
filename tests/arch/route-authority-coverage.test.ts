@@ -53,8 +53,7 @@ const MIGRATION_WAIVER: MigrationWaiverEntry[] = [
 ];
 
 interface FacadeMap {
-  prefixes?: Record<string, string>;
-  exact?: Record<string, string>;
+  routes: Array<{ method: string; path: string; match: 'exact' | 'prefix'; target: string; classification: string }>;
   upgrades?: Record<string, string>;
 }
 
@@ -73,10 +72,13 @@ function ownerOf(sources: Array<{ file: string; source: string }>, pathname: str
   return 'node/src/openapi.ts';
 }
 
-function facadeExposureOf(facade: FacadeMap, pathname: string): string {
-  if (facade.exact?.[pathname]) return `exact:${facade.exact[pathname]}`;
-  const prefixes = Object.keys(facade.prefixes ?? {}).sort((a, b) => b.length - a.length);
-  for (const prefix of prefixes) if (pathname.startsWith(prefix)) return `prefix:${facade.prefixes![prefix]}`;
+function facadeExposureOf(facade: FacadeMap, method: string, pathname: string): string {
+  const exact = facade.routes.find(route => route.method === method && route.match === 'exact' && route.path === pathname);
+  if (exact) return `exact:${exact.target}:${exact.classification}`;
+  const prefix = facade.routes
+    .filter(route => route.method === method && route.match === 'prefix' && pathname.startsWith(route.path))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+  if (prefix) return `prefix:${prefix.target}:${prefix.classification}`;
   if (facade.upgrades?.[pathname]) return `upgrade:${facade.upgrades[pathname]}`;
   return 'direct-only';
 }
@@ -100,7 +102,7 @@ test('every externally reachable TS route has exactly one deliberate authority d
     }
 
     const describeRoute = (route: Route): string =>
-      `route=${route.method} ${route.path} owner=${ownerOf(sources, route.path)} facade=${facadeExposureOf(facade, route.path)} flags=raw:${Boolean(route.raw)},stream:${Boolean(route.stream)}`;
+      `route=${route.method} ${route.path} owner=${ownerOf(sources, route.path)} facade=${facadeExposureOf(facade, route.method, route.path)} flags=raw:${Boolean(route.raw)},stream:${Boolean(route.stream)}`;
 
     const realKeys = new Set<string>();
     for (const route of routes) {
@@ -155,29 +157,30 @@ test('every externally reachable TS route has exactly one deliberate authority d
       problems.push(`PHASE2A ACCEPTANCE BLOCKED: migration waiver still holds ${MIGRATION_WAIVER.length} routes`);
     }
 
-    // Raw routes are reachable too (GET /api/openapi.json is excluded from its
-    // own generated document but must still carry exactly one disposition).
+    // Raw routes remain part of Authority accounting and public OpenAPI when
+    // they are externally callable.
     for (const route of routes.filter(candidate => candidate.raw)) {
       if (httpOperationKind(route.method, route.path) === null && !route.authorityMode) {
         problems.push(`RAW ROUTE WITHOUT CENTRAL ENROLLMENT ${describeRoute(route)}`);
       }
     }
 
-    // Every facade mapping that sends traffic to the TS surface must have a
-    // corresponding accounted route. Upgrades (e.g. /ws) map to the EventHub
-    // WebSocket channel, not an HTTP route, and are intentionally not checked.
-    const accountedPaths = new Set(routes.map(route => route.path));
-    for (const [prefix, mapping] of Object.entries(facade.prefixes ?? {})) {
-      if (mapping !== 'ts') continue;
-      if (![...accountedPaths].some(candidate => candidate.startsWith(prefix))) {
-        problems.push(`FACADE_TS_UNACCOUNTED prefix=${prefix} mappingOwner=${mapping} (no route in the authority surface)`);
+    // The facade route map is method-aware. Every typed registration must have
+    // exactly one matching public TS entry; no prefix-only map may enroll extra
+    // methods or expose a route that lacks Authority accounting.
+    for (const route of routes) {
+      const matching = facade.routes.filter(entry => entry.method === route.method && (
+        entry.match === 'exact' ? entry.path === route.path : route.path.startsWith(entry.path)
+      ));
+      if (matching.length !== 1 || matching[0]?.target !== 'ts' || matching[0]?.classification !== 'PUBLIC_TYPED') {
+        problems.push(`FACADE_TYPED_OWNERSHIP ${route.method} ${route.path} matches=${matching.length} target=${matching[0]?.target ?? 'NONE'} classification=${matching[0]?.classification ?? 'NONE'}`);
       }
     }
-    for (const [exactPath, mapping] of Object.entries(facade.exact ?? {})) {
-      if (mapping !== 'ts') continue;
-      if (!accountedPaths.has(exactPath)) {
-        problems.push(`FACADE_TS_UNACCOUNTED exact=${exactPath} mappingOwner=${mapping} (no route in the authority surface)`);
-      }
+    for (const entry of facade.routes.filter(candidate => candidate.target === 'ts')) {
+      const accounted = routes.some(route => route.method === entry.method && (
+        entry.match === 'exact' ? route.path === entry.path : route.path.startsWith(entry.path)
+      ));
+      if (!accounted) problems.push(`FACADE_TS_UNACCOUNTED ${entry.method} ${entry.match} ${entry.path}`);
     }
 
     console.log(JSON.stringify({ routes: routes.length, rawOwnership, finalDispositions, waiver: MIGRATION_WAIVER.length }));
