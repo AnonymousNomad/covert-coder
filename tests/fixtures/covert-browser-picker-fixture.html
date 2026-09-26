@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Covert Desktop Control Browser Fixture</title>
+  </head>
+  <body>
+    <h1>Covert Desktop Control Browser Fixture</h1>
+    <label for="fileInput">Fixture file</label>
+    <input type="file" id="fileInput" name="fileInput" />
+    <input type="text" id="fixtureSelectedPath" readonly />
+    <input type="text" id="fixtureSelectedSha256" readonly />
+    <div id="fixtureStatus">IDLE</div>
+    <script>
+      const input = document.getElementById('fileInput');
+      const pathOut = document.getElementById('fixtureSelectedPath');
+      const shaOut = document.getElementById('fixtureSelectedSha256');
+      const status = document.getElementById('fixtureStatus');
+      input.addEventListener('change', async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const buffer = await file.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', buffer);
+        const hex = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+        pathOut.value = file.name;
+        shaOut.value = hex;
+        status.textContent = 'FIXTURE_FILE_ACCEPTED';
+      });
+    </script>
+  </body>
+</html>
