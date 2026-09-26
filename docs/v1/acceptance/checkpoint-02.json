@@ -1,0 +1,61 @@
+{
+  "checkpoint": "CP02",
+  "scope": "Projects / Workspaces",
+  "status": "IN PROGRESS — BLOCKED BY OPERATOR ACTIVITY (fail-closed). Driver hardened; one idle-window run remains to conclude.",
+  "taxonomy_reference": "AUTHORITATIVE V1 ACCEPTANCE TAXONOMY (operator, 2026-09-26)",
+  "driver": "scripts/acceptance-checkpoint2-uia.mjs",
+  "last_full_driver_run": {
+    "pass": 11,
+    "fail": 3,
+    "of": 14,
+    "evidence": "docs/evidence/acceptance-cp02/driver-run-11of14.log",
+    "passing_proofs": [
+      "CP02-101 panel workspace meta matches the real filesystem count (basename + count vs live readdir)",
+      "CP02-102 status bar reports the canonical workspace identity",
+      "CP02-104 marker file created on disk is listed by the workspace surface",
+      "CP02-106 REFRESH surfaces a post-mount file with a truthful count",
+      "CP02-109 deleting fixture files removes them from the surface with a truthful count",
+      "CP02-105 opening a real workspace file reaches the EDITOR with the file present",
+      "CP02-108 REFRESH on a reopened surface lists the new marker exactly once",
+      "CP02-110 inventory: single fixed workspace (no open/switch/recent/close controls)",
+      "CP02-200 panic ends the owned shell and frees the ports",
+      "CP02-201 foreign survival (attribution-checked)"
+    ],
+    "remaining_failures_and_disposition": [
+      "CP02-105 (run 11/14): WebView2 UIA provider stall after the Monaco mount; driver now waits 45s with a forced EDITOR focus recovery and records provider_stalled truthfully.",
+      "CP02-107 (run 11/14): driver misread workspace/workbenches/registry.json as a bundle state; canonical bundle ids now come from registry.json bundles[].id and states from <workspace>/.aide/workbenches (canonical state root per workbenches/manager.mjs:84-94).",
+      "CP02-201 (run 11/14): count-drift assertion replaced by exact-PID attribution against the owned process tree; unrelated process churn is classified environmental, owned-tree deaths stay failures."
+    ],
+    "driver_hardening_since": [
+      "encoding-tolerant meta parse (the middle dot arrives as U+FFFD in the UIA dump)",
+      "settle predicates (required token / exact-match) instead of first-non-empty reads",
+      "REFRESH attempted before any editor mount to keep the name unique; relaunch fallback when ambiguous",
+      "wait for the boot DOM before maximizing (SW_MAXIMIZE racing WebView2 startup once wedged the renderer)",
+      "bounded transient retries for UIA_IDENTITY_MISMATCH / UIA_IDENTITY_UNVERIFIED / UIA_PROCESS_IDENTITY_MISMATCH",
+      "stale-instance reap limited to this exact executable before launch"
+    ]
+  },
+  "runs_4_to_7_and_repros": {
+    "classification": "ENVIRONMENTAL — OPERATOR ACTIVE. The operator returned to the keyboard; the battery-launched window was closed externally, the app exited cleanly (window close), and the stack launcher crashed on the broken parent pipe. GUI acceptance fails closed under operator activity by design.",
+    "evidence": [
+      "desktop_idle_seconds measured at 8.8s during the failing window (operator at the keyboard)",
+      "no WER crash records for the traced run; the Rust boot trace shows a fully successful setup followed by a clean exit (external window close)",
+      "AppHangTransient WER bucket at 12:50:02 (aide-sovereign-workbench 0.1.0.0) during the contaminated window"
+    ]
+  },
+  "genuine_defect_found": {
+    "id": "DC-EPIPE-001",
+    "title": "stack-launcher crashes with an unhandled EPIPE when the native parent closes the bootstrap pipe before the pairing write",
+    "file": "desktop/stack-launcher.mjs:130",
+    "evidence": "docs/evidence/acceptance-cp02/launcher-epipe-crash.log",
+    "behavior": "process.stdout.write() on the dead parent pipe raises ERR_STREAM_WRITE_AFTER_END/EPIPE as an unhandled 'error' event; the launcher dies with a Node.js stack trace instead of taking the parent-death path (the watchdog at desktop/stack-launcher.mjs:112-120 covers only the periodic ppid check).",
+    "impact": "when the app exits between stack readiness and the pairing write, the launcher crashes and its children churn/restart until retries exhaust; observed as transient stack restart loops and zombie facade/legacy writes in the staged logs.",
+    "ownership": "DEEPSEEK (desktop shell — this lane)",
+    "proposed_fix": "wrap the pairing write; on EPIPE treat it as parent death and call stop(0) through the existing watchdog path (bounded, no behavior change when the pipe is healthy). Product code is frozen at 1a7f80e — fix requires operator approval and a rebuild (invalidates the built artifact and the affected acceptance results)."
+  },
+  "cross_checkpoint_observations_recorded": [
+    "PUT /api/session returns 409 NOT_READY 'exact operation approval required' on every cockpit autosave cycle (arch-daemon.log) — editor/session persistence path for CP03.",
+    "POST /api/lsp/open returns 403 FORBIDDEN 'capability has no authority policy' on every editor load (arch-daemon.log) — LSP surface for CP03."
+  ],
+  "next": "One idle-window run of scripts/acceptance-checkpoint2-uia.mjs to conclude CP02 (expected green), then CP03 — EDITOR / FILES."
+}

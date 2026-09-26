@@ -1,283 +1,43 @@
 {
-  "battery": "COVERT-V1-OPERATOR-ACCEPTANCE-CHECKPOINT-1",
-  "scope": "Shell / Navigation / Security / Approvals",
-  "generated_at_utc": "2026-09-26T16:11:37.453Z",
-  "suite": "acceptance-checkpoint1-uia",
-  "pass": 20,
-  "fail": 0,
-  "results": [
+  "ledger": "COVERT-V1-OPERATOR-ACCEPTANCE",
+  "taxonomy": "AUTHORITATIVE V1 ACCEPTANCE TAXONOMY (operator, 2026-09-26) — do not redefine or renumber",
+  "accepted_product_checkpoint": "8173693",
+  "generated_at_utc": "2026-09-26T18:20:00Z",
+  "checkpoints": {
+    "CP01": { "scope": "Shell / Navigation / Security / Approvals", "status": "PASS 20/20", "evidence": "docs/v1/acceptance/checkpoint-01.json", "driver": "scripts/acceptance-checkpoint1-uia.mjs" },
+    "CP02": { "scope": "Projects / Workspaces", "status": "IN PROGRESS — BLOCKED BY OPERATOR ACTIVITY (fail-closed); driver hardened, one idle-window run remains", "evidence": "docs/v1/acceptance/checkpoint-02.json", "driver": "scripts/acceptance-checkpoint2-uia.mjs" },
+    "CP03": { "scope": "Editor / Files", "status": "PENDING", "cross_observations": ["PUT /api/session 409 on every autosave", "POST /api/lsp/open 403 capability has no authority policy on every editor load"] },
+    "CP04": { "scope": "Embedded Terminal", "status": "CLOSED", "evidence": ["docs/evidence/embedded-terminal-battery.json", "docs/evidence/embedded-terminal-battery-built.json"] },
+    "CP05": { "scope": "Resident / Chat / Context", "status": "PENDING" },
+    "CP06": { "scope": "Intelligence / Model Manager / Local Models", "status": "PENDING" },
+    "CP07": { "scope": "Providers / Chat Picker / Routing", "status": "PENDING" },
+    "CP08": { "scope": "Tools / Integrations / Deployments", "status": "PENDING" },
+    "CP09": { "scope": "Workflows / Missions / Evidence", "status": "PENDING" },
+    "CP10": { "scope": "Permission / Authority State Transitions", "status": "PENDING" },
+    "CP11": { "scope": "Settings / Onboarding / Discoverability / Persistence", "status": "PENDING", "candidate_dependency": "934f306ac0138cb92fdead769502d7acf880d7d8 (onboarding/provider-settings candidate) — integration into the tested baseline not yet confirmed" },
+    "CP12": { "scope": "Themes / Appearance / Accessibility", "status": "PENDING" },
+    "CP13": { "scope": "System Health / Status Truth", "status": "PENDING" },
+    "CP14": { "scope": "Resource Telemetry", "status": "PENDING" },
+    "CP15": { "scope": "Git / Development Operations", "status": "PENDING" },
+    "CP16": { "scope": "Desktop Control Integration", "status": "PENDING", "reuse": ["panic/ownership 5/5", "picker/modal/terminal/browser GUI gates", "built-shell terminal battery 16/16"] },
+    "CP17": { "scope": "Failure / Offline / Recovery UX", "status": "PENDING" },
+    "CP18": { "scope": "Shutdown / Restart / Persistence / Clean Recovery", "status": "PENDING" }
+  },
+  "known_handoffs": [
+    { "id": "UI-ID-001", "title": "Start Session build-identity discrepancy", "status": "UNRESOLVED_PACKAGING_HANDOFF", "reference": "docs/v1/desktop/EMBEDDED-TERMINAL-V1.md section 7" }
+  ],
+  "defects": [
     {
-      "id": "CH1-000",
-      "description": "build identity executable present",
-      "pass": true,
-      "detail": "E:\\aide-desktop-control-v1\\desktop\\target\\release\\aide-sovereign-workbench.exe"
-    },
-    {
-      "id": "CH1-001",
-      "description": "built shell boots, owns the stack, and renders its identity",
-      "pass": true,
-      "detail": {
-        "pid": 4244,
-        "health": 200,
-        "window_handle": 5834788,
-        "settled_ms": 684,
-        "identity": [
-          "AIDE Sovereign Workbench",
-          "Covert Coder",
-          "Covert Coder - Web content"
-        ]
-      }
-    },
-    {
-      "id": "CH1-102",
-      "description": "navigation RESIDENT dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 746,
-        "fresh": [
-          "Covert emblem",
-          "COVERT CODER",
-          "SOVEREIGN DEVELOPMENT ENVIRONMENT",
-          "PRIVATE MINDS"
-        ]
-      }
-    },
-    {
-      "id": "CH1-103",
-      "description": "navigation PROJECTS dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 784,
-        "fresh": [
-          "PROJECTS / WORKSPACE",
-          "AVAILABLE",
-          "WORKSPACE FILES",
-          "REFRESH"
-        ]
-      }
-    },
-    {
-      "id": "CH1-104",
-      "description": "navigation EDITOR dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 2379,
-        "fresh": [
-          "WARNING",
-          "RESIDENT PUSH � ATTENTION",
-          "g1",
-          "Split editor right"
-        ]
-      }
-    },
-    {
-      "id": "CH1-105",
-      "description": "navigation MODELS dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 729,
-        "fresh": [
-          "MODELS",
-          "AVAILABLE",
-          "Artifact, runtime, and readiness are separate facts. Start and stop require approval for the selected model.",
-          "Runtime available"
-        ]
-      }
-    },
-    {
-      "id": "CH1-106",
-      "description": "navigation SKILLS dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 707,
-        "fresh": [
-          "SKILLS",
-          "PARTIAL",
-          "Skill Intelligence & workflows",
-          "Methods, constraints, and verification expectations belong to the active workflow. The skill registry is not exposed to "
-        ]
-      }
-    },
-    {
-      "id": "CH1-107",
-      "description": "navigation MEMORY dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 651,
-        "fresh": [
-          "MEMORY",
-          "Recorded work. Explicit provenance.",
-          "Inspect day digests derived from recorded workspace events. Refreshing digests updates local memory and requires operato",
-          "Digest retrieval does not prove that a model recalled or used this information. Recall search and session pinning are no"
-        ]
-      }
-    },
-    {
-      "id": "CH1-108",
-      "description": "navigation VERIFICATION dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 709,
-        "fresh": [
-          "VERIFICATION",
-          "Veritas owns verification. A completed task is a claim; recorded evidence must support a verdict for the current scope.",
-          "CLAIM",
-          "What the task or agent says happened."
-        ]
-      }
-    },
-    {
-      "id": "CH1-109",
-      "description": "navigation SECURITY dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 745,
-        "fresh": [
-          "SECURITY",
-          "PARTIAL",
-          "Explicit authority. Bounded operations.",
-          "PAIRED � session expires 11:38:59 AM. No operation approval is implied."
-        ]
-      }
-    },
-    {
-      "id": "CH1-110",
-      "description": "navigation EXTENSIONS dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 756,
-        "fresh": [
-          "EXTENSIONS",
-          "DISABLED",
-          "?",
-          "PHASE-GATED"
-        ]
-      }
-    },
-    {
-      "id": "CH1-111",
-      "description": "navigation SETTINGS dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 743,
-        "fresh": [
-          "OPERATOR CONTROL",
-          "SETTINGS",
-          "Configure real operator preferences; inspect canonical system state; follow the owning surface for permissions, models, ",
-          "LOCAL PREFERENCES � SAVED IN THIS BROWSER PROFILE WHEN CHANGED � NOT SYNCED"
-        ]
-      }
-    },
-    {
-      "id": "CH1-101",
-      "description": "navigation COMMAND CENTER dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 8802,
-        "marker": "OPERATIONAL EVIDENCE",
-        "fresh": [
-          "THINKING",
-          "RESIDENT PUSH � READING",
-          "Resident workspace surfaces",
-          "CHAT"
-        ]
-      }
-    },
-    {
-      "id": "CH1-112",
-      "description": "navigation TERMINAL dispatches with a truthful view change",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "alive": true,
-        "settled_ms": 675,
-        "fresh": [
-          "EXPERIMENTAL",
-          "Interactive sessions run as approved operations. Opening a session spawns a real shell; input flows only inside that adm",
-          "Probing runtime providers.",
-          "TASK HISTORY (READ-ONLY)"
-        ]
-      }
-    },
-    {
-      "id": "CH1-201",
-      "description": "OPEN SESSION dispatches its approval dialog",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "verified": false,
-        "code": "UIA_POSTCONDITION_FAILED"
-      }
-    },
-    {
-      "id": "CH1-202",
-      "description": "approval rejection (Cancel) dispatches",
-      "pass": true,
-      "detail": {
-        "dispatched": true,
-        "verified": false,
-        "code": "UIA_POSTCONDITION_FAILED"
-      }
-    },
-    {
-      "id": "CH1-203",
-      "description": "rejected approval leaves NO terminal session",
-      "pass": true,
-      "detail": {
-        "shells": []
-      }
-    },
-    {
-      "id": "CH1-204",
-      "description": "panel truthfully re-offers OPEN SESSION after rejection",
-      "pass": true,
-      "detail": null
-    },
-    {
-      "id": "CH1-301",
-      "description": "panic ends the owned shell and frees the ports",
-      "pass": true,
-      "detail": {
-        "appGone": true,
-        "portsFree": true
-      }
-    },
-    {
-      "id": "CH1-302",
-      "description": "foreign shells survive (owned-only termination)",
-      "pass": true,
-      "detail": {
-        "before": {
-          "pwsh": 4,
-          "edge": 18
-        },
-        "after": {
-          "pwsh": 4,
-          "edge": 18
-        }
-      }
+      "id": "DC-EPIPE-001",
+      "title": "stack-launcher unhandled EPIPE when the native parent closes the bootstrap pipe before the pairing write",
+      "file": "desktop/stack-launcher.mjs:130",
+      "evidence": "docs/evidence/acceptance-cp02/launcher-epipe-crash.log",
+      "ownership": "DEEPSEEK (desktop shell — this lane)",
+      "status": "RECORDED — fix pending operator approval (product frozen at 1a7f80e)"
     }
-  ]
+  ],
+  "environmental_characteristics": [
+    { "id": "ENV-WEBVIEW2-SETTLE", "observation": "WebView2 UIA provider intermittently returns an empty subtree after first paint or heavy-panel switches (boot 17->0 names; command center recovered at 8.8s; settings stable at 249). Bounded settle-retries are test-apparatus only; failures remain truthful.", "status": "TRACKED — promote to defect ledger if frequency/severity grows" }
+  ],
+  "failure_ownership_key": { "DEEPSEEK": "acceptance/UI integration, lane-safe", "LUNA1": "models/providers/onboarding/themes", "LUNA2": "Authority/security/P0 backend", "PACKAGING": "installed build/version/package identity", "OPERATOR": "operator action required", "ENV": "external/environmental" }
 }
