@@ -65,7 +65,7 @@ All tests use injected fakes or local fixtures; no paid/cloud provider request w
 
 ## Closure decision
 
-C4-02 is **not closed**. The current work correctly blocks the enumerated managed HTTP/API paths, but arbitrary child-process/PTY egress, the still-running legacy model-manager surface, and protected publication/browser-control owners remain outside the canonical gate. A Local-Only setting must not be represented as globally enforced until those paths are mediated or technically confined and the complete egress inventory is revalidated.
+C4-02 is **not closed**. The current work correctly blocks the enumerated managed HTTP/API paths, but arbitrary child-process/PTY egress, the legacy model-manager surface still launched by the normal stack, and protected publication/browser-control owners remain outside the canonical gate. A Local-Only setting must not be represented as globally enforced until those paths are mediated or technically confined and the complete egress inventory is revalidated.
 
 Required next owner action: define a single, enforceable process/network boundary for execution-capable tools and reconcile the legacy daemon and protected egress owners with Authority's effective policy. This work is outside the current bounded patch because it requires a broader execution/egress ownership design; no heuristic-only fix would prove the security invariant.
 
