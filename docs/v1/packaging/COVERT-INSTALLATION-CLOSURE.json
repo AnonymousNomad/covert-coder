@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "run_id": "20260925T-packaging-preflight",
+  "status": "PREFLIGHT_FROZEN",
+  "scope": "Read-only installed-application, packaging, branding, and acceptance-contract preflight.",
+  "audit": {
+    "worktree": "E:\\aide-covert-packaging-preflight",
+    "branch": "audit/covert-packaging-preflight",
+    "starting_sha": "e23aec80cd05ab0c237eba793421bb5e7",
+    "ending_sha": null,
+    "ending_sha_note": "Final SHA is reported after the evidence commits to avoid embedding a self-referential commit identifier."
+  },
+  "installed_application": {
+    "identity": "AIDE Sovereign Workbench",
+    "version": "0.1.0",
+    "install_path": "E:\\pip_temp\\opencode\\covert-install-p4",
+    "provenance": "UNKNOWN INSTALLED COVERT BUILD",
+    "historical_hang_evidence": "VERIFIED",
+    "fresh_launch_reproduction": "NOT ATTEMPTED",
+    "failure_class": ["STARTUP BOOTSTRAP DEFECT", "UNKNOWN"],
+    "shared_state": {
+      "install_local_aide_tree": "UNIQUE TO LEGACY INSTALL",
+      "webview_profile": "SHARED WITH CURRENT DEVELOPMENT",
+      "payloads_read": false,
+      "state_modified": false
+    }
+  },
+  "source_build": {
+    "technology": "Tauri v2 Rust shell, WebView2 UI, bundled Node sidecar",
+    "build_command": "npm run desktop:build",
+    "version_consistency": "PARTIAL",
+    "application_identity": "AIDE Sovereign Workbench / org.ferrellsyntheticintelligence.aide",
+    "startup_contract": "INCOMPLETE"
+  },
+  "branding": {
+    "installed_mark": "Colorful A/I-style emblem",
+    "repository_desktop_mark": "Same A/I-style emblem",
+    "canonical_current_covert_logo": "NOT AVAILABLE",
+    "status": "BRANDING INPUT REQUIRED"
+  },
+  "acceptance_contracts": {
+    "first_user": "READY - PROCEDURE PREPARED, NOT EXECUTED",
+    "clean_machine": "READY - CONTRACT PREPARED, NOT EXECUTED"
+  },
+  "release_integrity": {
+    "version_source": "PARTIAL",
+    "artifact_naming": "PRESENT + UNVERIFIED",
+    "checksums": "PARTIAL",
+    "signing": "MISSING",
+    "sbom": "MISSING",
+    "dependency_scanning": "MISSING",
+    "license_inventory": "PARTIAL",
+    "provenance": "PARTIAL",
+    "update_authenticity": "MISSING"
+  },
+  "evidence_files": [
+    "artifacts/packaging-preflight/20260925T-packaging-preflight/installed-inventory.json",
+    "artifacts/packaging-preflight/20260925T-packaging-preflight/startup-failure-evidence.json",
+    "artifacts/packaging-preflight/20260925T-packaging-preflight/asset-inventory.json",
+    "artifacts/packaging-preflight/20260925T-packaging-preflight/packaging-source-inventory.json",
+    "artifacts/packaging-preflight/20260925T-packaging-preflight/installed-executable-icon.png"
+  ],
+  "destructive_actions": {
+    "installed_application_modified": false,
+    "installed_application_uninstalled": false,
+    "appdata_deleted": false,
+    "desktop_control_modified": false,
+    "replacement_installed": false
+  },
+  "limitations": [
+    "Fresh launch was not attempted due shared WebView state and occupied protected Desktop Control ports.",
+    "Historical hang evidence is not causally joined to the port-bind error.",
+    "No clean-user or clean-machine installation test was run.",
+    "No installer artifact or exact installed build commit was available."
+  ]
+}
