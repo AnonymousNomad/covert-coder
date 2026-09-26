@@ -1,17 +1,27 @@
 {
   "battery": "EMBEDDED-TERMINAL-V1",
-  "generated_at_utc": "2026-09-26T14:16:40.378Z",
+  "generated_at_utc": "2026-09-26T14:52:44.885Z",
   "suite": "terminal-acceptance",
-  "pass": 12,
+  "pass": 13,
   "fail": 0,
   "results": [
     {
       "id": "TERM-001",
-      "description": "TERMINAL panel opens and stays active after navigation",
+      "description": "TERMINAL panel opens and stays active after navigation (first-run race path)",
       "pass": true,
       "detail": {
         "panel": "terminal",
         "hidden": false,
+        "walkthroughOpen": true,
+        "stayedTerminal": true
+      }
+    },
+    {
+      "id": "ONB-001",
+      "description": "automatic onboarding never overrides explicit operator navigation",
+      "pass": true,
+      "detail": {
+        "panel": "resident",
         "walkthroughOpen": true
       }
     },
@@ -74,7 +84,11 @@
       "id": "TERM-010",
       "description": "a fresh session starts after exit",
       "pass": true,
-      "detail": null
+      "detail": {
+        "hasXterm": true,
+        "hasStop": true,
+        "text": " "
+      }
     },
     {
       "id": "TERM-011",

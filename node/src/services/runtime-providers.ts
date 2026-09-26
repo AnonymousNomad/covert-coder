@@ -251,7 +251,7 @@ class WslProvider implements RuntimeProvider {
         shells: []
       };
     }
-    const distros = result.stdout.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const distros = normalizeWslDistroOutput(result.stdout).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     if (distros.length === 0) {
       return {
         id: this.id,
@@ -332,11 +332,25 @@ export function loadNodePtyModule(): NodePtyEngine | null {
 
 function defaultExec(file: string, args: string[]): Promise<ExecResult> {
   return new Promise(resolve => {
-    execFile(file, args, { timeout: 5000, windowsHide: true }, (error, stdout, stderr) => {
+    // wsl.exe emits UTF-16LE text; decoding its output as UTF-8 produces the
+    // observed NUL-interleaved distro names. The command boundary selects the
+    // documented encoding; every other probe keeps the UTF-8 default.
+    const encoding: BufferEncoding = /(^|[\\/])wsl\.exe$/i.test(file) ? 'utf16le' : 'utf8';
+    execFile(file, args, { timeout: 5000, windowsHide: true, encoding }, (error, stdout, stderr) => {
       const code = error && typeof (error as { code?: unknown }).code === 'number' ? (error as { code: number }).code : error ? 1 : 0;
       resolve({ code, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
     });
   });
+}
+
+// Safety net for WSL output that was already decoded as UTF-8 elsewhere (older
+// callers, fixtures): the NUL-interleaved bytes are re-decoded losslessly to
+// UTF-16LE. Plain text passes through unchanged; only a leading BOM is
+// normalized. This is a decoding correction, never arbitrary stripping.
+export function normalizeWslDistroOutput(text: string): string {
+  const withoutBom = text.replace(/^\uFEFF/, '');
+  if (!withoutBom.includes('\u0000')) return withoutBom;
+  return Buffer.from(withoutBom, 'utf8').toString('utf16le').replace(/^\uFEFF/, '');
 }
 
 async function defaultFileExists(path: string): Promise<boolean> {

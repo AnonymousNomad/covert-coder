@@ -260,7 +260,13 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       infos = (await api.terminalProviders()).providers;
     } catch (e) {
       providerStrip.innerHTML = '';
-      providerStrip.appendChild(el('div', 'panel-error', `Provider probe failed: ${e instanceof Error ? e.message : String(e)}`));
+      const message = e instanceof Error ? e.message : String(e);
+      const timedOut = /timed out|timeout/i.test(message);
+      providerStrip.appendChild(el('div', 'panel-error', timedOut
+        ? 'Provider discovery timed out (bounded probe). Use REFRESH to retry.'
+        : `Provider probe failed: ${message}`));
+      // Retry affordance reuses the existing REFRESH control; no new state.
+      providerStrip.appendChild(refreshBtn);
       return;
     }
     providers = infos;
@@ -347,10 +353,13 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       renderSessionShell();
     }
     if (mine.state === 'stopped' || mine.state === 'disposed' || mine.state === 'failed') {
-      if (stopButton) stopButton.disabled = true;
-      activeSessionId = null;
+      // A terminal state must clear the dead terminal surface; previously this
+      // branch re-offered OPEN SESSION while the exited xterm stayed rendered.
+      const label = `SESSION ${mine.state.toUpperCase()}${mine.exitCode !== null ? ` \u00b7 exit ${mine.exitCode}` : ''}${mine.cleanup !== 'clean' ? ` \u00b7 cleanup=${mine.cleanup}` : ''}`;
+      renderSessionEnded(`${label}. Open a new one from the provider bar.`);
       openButton.disabled = false;
       renderOpenControls();
+      return;
     }
     const stateLab = `${mine.state.toUpperCase()}${mine.exitCode !== null ? ` \u00b7 exit ${mine.exitCode}` : ''}${mine.cleanup !== 'clean' ? ` \u00b7 cleanup=${mine.cleanup}` : ''}`;
     let chip = sessionShell.querySelector('.terminal-session-state');

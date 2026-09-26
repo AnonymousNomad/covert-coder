@@ -1,29 +1,54 @@
 {
-  "version": 2,
-  "generated_at_utc": "2026-09-26T14:20:00Z",
+  "version": 3,
+  "generated_at_utc": "2026-09-26T14:55:00Z",
   "lane": "feat/covert-desktop-control-v1",
-  "checkpoint_head_before_fix": "79cc9e8da38e7e549052554e5d47ab28130f4c19",
+  "checkpoint_head_before_fix": "79cc9e8",
+  "checkpoint_head_terminal_candidate": "70ee7e3",
   "subject": "embedded_terminal_v1",
   "operator_observation": "Terminal -> Start Session -> no visible result",
   "root_cause": {
     "owner": "browser/src/cockpit/Walkthrough.ts",
     "mechanism": "First-run walkthrough render() unconditionally wrote store panel to the tour step; the async onboarding check could auto-open after the operator navigated, mounting the terminal panel and then forcing panel back to command-center (stage hidden again).",
-    "live_race_evidence": "Dev stack, headless Edge: click TERMINAL at t0 -> panel=terminal, stage visible; walkthrough auto-opened at t~2s -> panel reverted to command-center (pre-fix). Post-fix: walkthrough opens at t~2s and panel stays terminal.",
-    "why_intermittent": "Clicking after the auto-open stuck; clicking during the load window reverted."
+    "status": "FIXED"
   },
-  "fix": {
-    "files": ["browser/src/cockpit/Walkthrough.ts", "browser/src/services/api.ts"],
-    "walkthrough": "render(navigate) navigates only on explicit intent; first-run auto-open never overrides operator navigation and aligns to the operator's current panel instead; manual open and BACK/NEXT keep real panel switching; operator navigation tracked while the tour is closed.",
-    "provider_timeout": "terminalProviders() read timeout raised to 45s for the cold provider discovery probe (measured 4.6s warm; one cold run exceeded the previous 15s read timeout)."
+  "fixes_this_round": [
+    {
+      "id": "UI-TERM-013",
+      "summary": "WSL distro names decoded as UTF-8 while wsl.exe emits UTF-16LE (NUL-interleaved names).",
+      "fix": "defaultExec selects utf16le for wsl.exe at the command boundary; normalizeWslDistroOutput() re-decodes already-mis-decoded output losslessly; only a leading BOM is normalized.",
+      "files": ["node/src/services/runtime-providers.ts"],
+      "regression": "tests/arch/runtime-providers-wsl.test.ts 3/3 (observed NUL-interleaved sample, passthrough, BOM, empty/error states); tests/arch/terminal-session-routes.test.ts 11/11 unchanged"
+    },
+    {
+      "id": "UI-TERM-014",
+      "summary": "After shell exit, the stopped-session branch re-offered OPEN SESSION while the dead xterm stayed rendered (stale terminal surface).",
+      "fix": "terminal-state branch clears the dead terminal through renderSessionEnded before re-rendering open controls.",
+      "files": ["browser/src/panels/terminal.ts"],
+      "regression": "TERM-009 (bounded poll) proves the closed state on every run"
+    },
+    {
+      "id": "UI-TERM-015",
+      "summary": "Provider discovery timeout UX: failure showed a generic error without a retry affordance.",
+      "fix": "Timeouts map to 'Provider discovery timed out (bounded probe). Use REFRESH to retry.' and the existing REFRESH control is re-attached on failure. Checking state 'Probing runtime providers...' was already truthful. No new provider state machine.",
+      "files": ["browser/src/panels/terminal.ts", "browser/src/services/api.ts"],
+      "regression": "success path covered by TERM-002; timeout path verified by inspection (bounded probe, existing retry control)"
+    }
+  ],
+  "onboarding_invariant": {
+    "statement": "Automatic onboarding may never override explicit operator navigation.",
+    "coverage": ["TERM-001 clicks TERMINAL before the first-run check resolves, waits for the tour to auto-open afterwards, and requires the panel to remain terminal throughout", "ONB-001 clicks RESIDENT while the tour is open and requires the panel to remain resident"],
+    "handoff": "Luna #1 onboarding lane: Walkthrough.render() stays navigate-explicit-only; the auto-open path aligns to store.get().panel and never writes it; manual open and BACK/NEXT are the only panel-driving actions."
   },
   "acceptance": {
     "script": "scripts/terminal-acceptance.mjs",
     "evidence": "docs/evidence/embedded-terminal-battery.json",
-    "runs": 2,
-    "result": "12/12 PASS (both runs)",
+    "runs_green": 4,
+    "consecutive_stable": 3,
+    "result": "13/13 PASS",
     "points": [
-      "TERM-001 TERMINAL panel opens and stays active after navigation (race path)",
-      "TERM-002 runtime provider probe resolves, provider AVAILABLE",
+      "TERM-001 panel opens and stays active (first-run race path)",
+      "ONB-001 onboarding never overrides operator navigation",
+      "TERM-002 provider probe resolves, provider AVAILABLE",
       "TERM-003 OPEN SESSION control offered",
       "TERM-004 approval-gated real session start (409 -> operator approval -> 200)",
       "TERM-005 real shell identified (PowerShell 7.6.6)",
@@ -35,33 +60,18 @@
       "TERM-011 canonical STOP SESSION closes the session",
       "TERM-012 no uncaught page errors"
     ],
-    "cleanup": "ports 4777-4779/5173 free and zero stack/shell processes after both runs"
-  },
-  "surface_mapping": {
-    "ui_panel": "browser/src/panels/terminal.ts (OPEN SESSION)",
-    "panel_mount": "browser/src/cockpit/CockpitShell.ts:298 (#cockpit-terminal-stage)",
-    "client_and_approval": "browser/src/services/api.ts:217-231 + browser/src/services/authority.ts:78-93",
-    "backend_owner": "node/src/routes/terminal-sessions.ts + node/src/services/terminal-sessions.ts",
-    "authority_kind": "terminal.session.start (operation-policy.mjs:54)"
-  },
-  "discrepancy_start_session": {
-    "operator_visible_label": "Start Session",
-    "repository_truth": "string does not exist in source, built bundle, or dev server of this worktree",
-    "candidate_sources": ["stale browser cache", "another dev server", "installed legacy package (packaging lane)", "different build"],
-    "ledger_id": "UI-ID-001",
-    "owner": "packaging/operator verification"
+    "harness_hardening": "Bounded polls replace fixed waits for prompt/exit/stop settlement; ports must be free before start and after teardown (removed back-to-back-run 403 contamination).",
+    "cleanup": "ports 4777-4779/5173 free and zero stack/shell processes after every run"
   },
   "defects_recorded": [
-    { "id": "UI-TERM-013", "summary": "WSL provider distro names contain interleaved NUL characters (decoding defect)", "owner": "current lane", "severity": "cosmetic" },
-    { "id": "UI-ID-001", "summary": "operator-visible build identity ambiguity vs current candidate", "owner": "packaging/operator", "severity": "acceptance integrity" }
+    { "id": "UI-ID-001", "summary": "operator-visible build identity ambiguity vs current candidate (Start Session label not present in this worktree)", "owner": "packaging/operator", "severity": "acceptance integrity" }
   ],
   "remaining": [
     "rebuild desktop bundle and rerun the terminal battery against the built shell on an idle desktop; rerun affected Desktop UIA gates",
-    "verify OS-level owned shell process counts during the built-app battery",
-    "fix WSL provider decoding defect plus regression"
+    "verify OS-level owned shell process counts during the built-app battery"
   ],
   "classification": {
     "status": "CODE_SIDE_CANDIDATE",
-    "v1_severity": "release_blocker_turned_candidate"
+    "final_ui_qualification": "PENDING_BUILT_SHELL"
   }
 }
