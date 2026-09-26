@@ -29,6 +29,8 @@ let owner: Awaited<ReturnType<typeof pairFixture>>;
 let hub: ReturnType<typeof createHubService>;
 
 const fetchedUrls: string[] = [];
+const authorizationAttached: boolean[] = [];
+const FAKE_AUTH_VALUE = 'fixture-credential-sentinel';
 let releaseSlow: (() => void) | null = null;
 let slowMode = false;
 let searchFailureStatus = 0;
@@ -37,9 +39,15 @@ const SEARCH_JSON = JSON.stringify([
   { id: 'org/model-2', downloads: 1, likes: 0, tags: [] }
 ]);
 
-const fakeFetch = (async (input: unknown) => {
+const fakeFetch = (async (input: unknown, init?: RequestInit) => {
   const target = String(input);
   fetchedUrls.push(target);
+  authorizationAttached.push(new Headers(init?.headers).has('authorization'));
+  if (target.includes('?blobs=true')) {
+    return new Response(JSON.stringify({ siblings: [{ rfilename: 'model.gguf', size: 42 }] }), {
+      status: 200, headers: { 'content-type': 'application/json' }
+    });
+  }
   if (target.includes('/api/models?')) {
     if (searchFailureStatus !== 0) {
       const status = searchFailureStatus;
@@ -72,7 +80,7 @@ const fakeFetch = (async (input: unknown) => {
 before(async () => {
   await fs.mkdir(modelsDir, { recursive: true });
   server = new ArchServer(workspace, path.join(workspace, 'arch-m.log'));
-  hub = createHubService({ workspace, modelsDir, fetchImpl: fakeFetch, onEvent: () => {} });
+  hub = createHubService({ workspace, modelsDir, fetchImpl: fakeFetch, onEvent: () => {}, authorization: async () => FAKE_AUTH_VALUE });
   for (const route of routesForAuthority()) server.route(route);
   for (const route of routesForModelHub(hub)) server.route(route);
   httpServer = await server.listen(0);
@@ -368,6 +376,44 @@ test('search: external enrollment binds the exact query, egress journal and pinn
   assert.equal(failure.status, 500, JSON.stringify(failure.body));
   assert.equal(failure.body.error?.code, 'BAD_RESPONSE');
   assert.equal((await searchJournal()).length, journalBeforeFailure + 1, 'attempt journaled before the failing fetch');
+});
+
+test('files: external enrollment binds repo identity and blocks unapproved or cross-route egress', async () => {
+  const pathname = '/api/modelhub/files?repo_id=org%2Fmodel-1';
+  const beforeFetch = fetchedUrls.length;
+  const beforeAuth = authorizationAttached.length;
+  const unapproved = await owner.request(pathname);
+  assert.equal(unapproved.status, 409);
+  const unapprovedBody = await unapproved.json() as Envelope<unknown>;
+  assert.equal(unapprovedBody.error?.code, 'NOT_READY');
+  assert.equal((unapprovedBody.error as { detail?: { reason?: string } } | undefined)?.detail?.reason, 'APPROVAL_REQUIRED');
+  assert.equal(fetchedUrls.length, beforeFetch, 'unapproved external file lookup produced no network request');
+
+  const proposed = await owner.propose('GET', pathname, {}, 'task:files-c4-04');
+  const actor = server.authority.authenticate(owner.headers.Authorization.slice(7), 'http://fixture.local');
+  const operation = server.authority.inspect(actor, proposed.operation_id);
+  assert.equal(operation.kind, 'capability.external');
+  assert.equal(operation.risk, 'external');
+  assert.equal(operation.state, 'pending');
+  assert.deepEqual(operation.args, { body: { repo_id: 'org/model-1' } });
+
+  const wrongHeaders = await owner.approve('GET', '/api/modelhub/search?q=wrong-route', {}, 'task:files-cross-route');
+  const wrongRoute = await owner.request(pathname, { headers: wrongHeaders });
+  assert.equal(wrongRoute.status, 409, 'search approval cannot authorize modelhub files');
+  assert.equal(fetchedUrls.length, beforeFetch, 'cross-route approval produced no network request');
+
+  const decision = await owner.decide(proposed.operation_id, 'approve');
+  assert.equal(decision.status, 200);
+  const response = await owner.request(pathname, {
+    headers: { 'X-AIDE-Operation': proposed.operation_id, 'X-AIDE-Task': 'task:files-c4-04' }
+  });
+  const responseBody = await response.json() as Envelope<{ repo_id: string; files: Array<{ filename: string; size: number | null }> }>;
+  assert.equal(response.status, 200);
+  assert.deepEqual(responseBody.data, { repo_id: 'org/model-1', files: [{ filename: 'model.gguf', size: 42 }] });
+  assert.equal(fetchedUrls.length, beforeFetch + 1);
+  assert.equal(authorizationAttached[beforeAuth], true);
+  const log = await fs.readFile(path.join(workspace, 'arch-m.log'), 'utf8');
+  assert.equal(log.includes(FAKE_AUTH_VALUE), false, 'fake bearer is not written to server logs');
 });
 
 test('downloads list holds shape for the authorized actor', async () => {

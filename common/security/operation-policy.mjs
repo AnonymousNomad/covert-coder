@@ -116,7 +116,7 @@ const HTTP_POLICY = new Map([
   ['GET /api/rg/quick-open', 'capability.read'], ['GET /api/rg/files', 'capability.read'],
   ['POST /api/rg/search', 'capability.read'],
   ['GET /api/editor/options', 'capability.read'],
-  ['GET /api/modelhub/files', 'capability.read'], ['GET /api/modelhub/downloads', 'capability.read'],
+  ['GET /api/modelhub/downloads', 'capability.read'],
   ['POST /api/problems/parse', 'capability.read'],
   ['GET /api/orch/context', 'capability.read'],
   // GET /api/memory/digests is NOT centrally enrolled: it refreshes day

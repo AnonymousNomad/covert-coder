@@ -68,10 +68,23 @@ export function routesForModelHub(service: HubService): Route[] {
         const parsed = HubSearchQuery.parse(query);
         return service.search(parsed.q, parsed.sort ?? 'downloads', parsed.limit ?? 20);
       }) },
-    { method: 'GET', path: '/api/modelhub/files', query: HubFilesQuery, response: HubFilesResponse, handler: wrap(async ({ query }) => {
-      const parsed = HubFilesQuery.parse(query);
-      return service.listRepoFiles(parsed.repo_id);
-    }) },
+    { method: 'GET', path: '/api/modelhub/files', query: HubFilesQuery, response: HubFilesResponse,
+      // Repository file enumeration is external egress and may attach the
+      // vaulted Hugging Face bearer. Bind the exact validated repository ID to
+      // an external approval; it is never an auto-approved read operation.
+      describeOperation: async ({ query }, taskId): Promise<OperationInput> => {
+        const parsed = HubFilesQuery.parse(query);
+        return {
+          workspace: service.workspace,
+          taskId,
+          kind: 'capability.external',
+          args: { body: { repo_id: parsed.repo_id } }
+        };
+      },
+      handler: wrap(async ({ query }) => {
+        const parsed = HubFilesQuery.parse(query);
+        return service.listRepoFiles(parsed.repo_id);
+      }) },
     { method: 'POST', path: '/api/modelhub/download', body: HubDownloadRequest, response: HubDownloadStartedResponse,
       // The approved operation binds the exact repository identity, artifact
       // filename, and quant label. Hostname, scheme, destination root, .part

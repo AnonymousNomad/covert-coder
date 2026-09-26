@@ -1,0 +1,34 @@
+{
+  "id": "C4-04",
+  "status": "IMPLEMENTED",
+  "base_sha": "d0d4e40a92de3e1aafcd6675a748bef3f5f2537e",
+  "reproduction": {
+    "route": "GET /api/modelhub/files",
+    "request": "repo_id=org/model-1",
+    "operation_kind": "capability.read",
+    "risk": "read",
+    "state": "approved",
+    "fake_endpoint_status": 200,
+    "fake_authorization_header_observed": true,
+    "live_provider_contacted": false,
+    "credential_logged": false
+  },
+  "fix": {
+    "operation_kind": "capability.external",
+    "binding": ["validated repo_id"],
+    "central_read_mapping_removed": true,
+    "unknown_or_missing_approval_dispatch": false
+  },
+  "verification": {
+    "modelhub_route_tests": "8/8 PASS",
+    "chat_authority_contract_and_security": "6/6 PASS",
+    "route_authority_coverage": {
+      "routes": 236,
+      "conflicting": 0,
+      "unclassified": 0
+    },
+    "typescript": "PASS",
+    "diff_check": "PASS"
+  },
+  "scope_note": "C4-02 Local-Only enforcement across the broader egress surface is not claimed by this checkpoint."
+}
