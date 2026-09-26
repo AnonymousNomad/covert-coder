@@ -1,0 +1,104 @@
+{
+  "schema": "covert.v1-release-matrix-addendum.v1",
+  "created": "2026-09-25",
+  "frozen_matrix": {
+    "commit": "3e42aad8a8741beae81f40906988b361929942ab",
+    "json_path": "docs/v1/COVERT-V1-RELEASE-CLOSURE-MATRIX.json",
+    "rule": "The frozen 176-row matrix is unchanged. This addendum records post-freeze requirements and evidence; it does not rewrite the baseline."
+  },
+  "post_freeze_checkpoint_update": {
+    "row_id": "RELS-10",
+    "evidence": "audit/v1-release-closure-matrix was pushed to origin and verified at 0 ahead / 0 behind on 2026-09-25.",
+    "note": "This is post-freeze closure evidence; the frozen matrix row text remains unchanged."
+  },
+  "mapping_checks": [
+    {
+      "question": "Multi-model workflow synchronization",
+      "result": "MATERIAL_GAP",
+      "related_frozen_rows": [
+        "C1-11",
+        "C1-12",
+        "C1-13",
+        "C1-14",
+        "C3-15",
+        "C3-16",
+        "C3-18",
+        "C3-19",
+        "C3-21",
+        "C5-23",
+        "C7-13",
+        "C7-15",
+        "C7-16",
+        "C7-30",
+        "RELS-03",
+        "RELS-04"
+      ],
+      "finding": "Existing rows cover adjacent mission, verification, handoff, identity, and long-horizon concerns, but no row requires the complete planner/coder/verifier/reviewer/repair/reverification DAG with the control plane owning state transitions and immutable review identity."
+    },
+    {
+      "question": "Legacy installed Covert application reconciliation",
+      "result": "MATERIAL_GAP",
+      "related_frozen_rows": [
+        "C6-07",
+        "C6-08",
+        "C6-11",
+        "C6-12",
+        "C2-03",
+        "C2-04",
+        "C2-05"
+      ],
+      "finding": "Generic installer, clean-machine, and store migration/corruption rows exist. No row requires a read-only inventory of the operator's reported pre-existing installed product and its files, state, credentials, ports, processes, or upgrade/replacement ownership."
+    }
+  ],
+  "rows": [
+    {
+      "id": "ADD-001",
+      "domain": "C1/C3/C5/C7 — multi-model workflow synchronization",
+      "requirement": "Control-plane-owned role workflow: Resident → mission creation → planner → coder → deterministic verification → reviewer → bounded repair → reverification → acceptance → Resident reporting",
+      "v1_required": true,
+      "owner": "CORE / WORKFLOW-ORCHESTRATOR",
+      "status": "PARTIAL",
+      "priority": "P1",
+      "release_blocker": true,
+      "implementation": "Related foundations exist in mission, agent-loop, handoff, verification, and continuation paths; no explicit frozen requirement binds the full role DAG and canonical transition owner.",
+      "evidence": "Frozen matrix 3e42aad8: C1-11, C1-12, C1-13, C1-14, C3-15, C3-16, C3-18, C3-19, C3-21, C5-23, C7-13, C7-15, C7-16, C7-30, RELS-03, RELS-04. The rows cover adjacent concerns but do not explicitly define planner/coder/reviewer sequencing, immutable candidate review, stale-review invalidation, bounded repair, parallel-worker barriers, or Resident completion ownership.",
+      "accepted_sha": "3e42aad8a8741beae81f40906988b361929942ab",
+      "exact_gap": "The matrix includes generic mission execution, verification, handoff, attempt/correlation, and long-horizon regression rows, but it does not define a synchronized multi-model workflow. In particular, no explicit contract found for mission DAG and role transitions, per-attempt identity, immutable candidate identity, handoff packet requirements for this pipeline, parallel-worker synchronization, stale-review invalidation after repair, bounded repair loops, interruption/reassignment, Resource Admission and Authority gates per transition, human approval, or terminal completion ownership. Models must remain proposal-only; the control plane must own canonical state transitions.",
+      "dependency": "C1-11; C1-12; C1-14; C3-15; C3-16; C5-23; C7-30; RELS-03; RELS-04",
+      "acceptance_condition": "Freeze a typed mission DAG/role-transition contract owned by the Workflow Engine/Orchestrator. Bind each attempt to mission, role, predecessor state, candidate digest, Authority and Resource Admission receipts, and verification evidence. Reviewer approval must bind the immutable candidate digest and be invalidated by any candidate change. Deterministic tests cover all edges, parallel-worker barriers, bounded repair/reverification, cancellation/interruption/reassignment, denied Authority/resource decisions, human approval, and attempted completion with unresolved obligations. Resident reports only accepted canonical state.",
+      "closure_sha": null,
+      "dogfood_evidence": "Reserved; ingest the parked Dogfood owner's evidence when available. No Dogfood result is asserted by this addendum.",
+      "comparison_evidence": "Reserved; not run in this audit.",
+      "dogfood_p0_p1_findings": "Reserved; not run in this audit."
+    },
+    {
+      "id": "ADD-002",
+      "domain": "C6 — distribution / installed-product reconciliation",
+      "requirement": "Read-only inventory and safe reconciliation plan for an obsolete Covert build already installed on the operator workstation before any in-place replacement, upgrade, uninstall, or reinstall",
+      "v1_required": true,
+      "owner": "DISTRIBUTION / RELEASE",
+      "status": "PARTIAL",
+      "priority": "P1",
+      "release_blocker": true,
+      "implementation": "Generic installer and lifecycle rows exist; no dedicated pre-existing-install inventory or data-ownership reconciliation row exists.",
+      "evidence": "Frozen matrix 3e42aad8: C6-07 installer targets; C6-08 Windows install/launch/health/reinstall/uninstall lifecycle; C6-11 V1.1 update/rollback/repair; C6-12 clean-machine install; C2-03/04/05 persisted-store validation/migration/corruption. These do not establish the identity, state paths, or upgrade behavior of the operator's existing installed build.",
+      "accepted_sha": "3e42aad8a8741beae81f40906988b361929942ab",
+      "exact_gap": "An older installed Covert application is reported on the operator workstation, but its identity and ownership of files/state are not recorded in the frozen matrix. No evidence establishes whether a new build would share executables, package identity, uninstall registration, shortcuts, AppData, databases, configuration, credentials, ports, processes/services, or other mutable state. No destructive action is authorized by this addendum.",
+      "dependency": "C6-07; C6-08; C6-12; C2-03; C2-04; C2-05",
+      "acceptance_condition": "Before touching the installed instance, capture a read-only inventory of product/package identity, executable and version/build, install path, uninstall registration, shortcuts, AppData/state/database/config locations, credential presence and owner without recording values, ports, background processes/services, shared mutable paths, and install/upgrade behavior. Define backup, side-by-side/replacement, data migration, rollback, uninstall, and reinstall ownership. Validate the proposed lifecycle against a copy or isolated fixture. Require operator approval before any destructive or replacement action.",
+      "closure_sha": null,
+      "dogfood_evidence": "Not applicable to installed-product identity; no Dogfood result asserted.",
+      "comparison_evidence": "Not applicable.",
+      "dogfood_p0_p1_findings": "Not applicable."
+    }
+  ],
+  "scope": {
+    "implementation": "NONE",
+    "installed_application_inspected": false,
+    "installed_application_modified": false,
+    "resident_modified": false,
+    "runtime_modified": false,
+    "protected_lanes_modified": false,
+    "priority_basis": "Both newly recorded rows are P1. No evidence of dangerous shared mutable state was collected; the legacy-installed-app issue is not escalated to P0. Release-blocker is conditional on performing the relevant multi-model V1 workflow or touching the installed product."
+  }
+}
