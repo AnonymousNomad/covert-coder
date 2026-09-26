@@ -39,14 +39,38 @@ $beforeWidth = $before.Right - $before.Left
 $beforeHeight = $before.Bottom - $before.Top
 $afterWidth = $after.Right - $after.Left
 $afterHeight = $after.Bottom - $after.Top
-if ($after.Left -ne $Left -or $after.Top -ne $Top -or $afterWidth -ne $Width -or $afterHeight -ne $Height -or
-    ($before.Left -eq $after.Left -and $before.Top -eq $after.Top -and $beforeWidth -eq $afterWidth -and $beforeHeight -eq $afterHeight)) {
+if ($after.Left -ne $Left -or $after.Top -ne $Top -or $afterWidth -ne $Width -or $afterHeight -ne $Height) {
   throw 'PICKER_LAYOUT_POSTCONDITION_FAILED'
+}
+# Windows persists common-dialog geometry per caller process, so a repeat run can
+# find the dialog already at the requested geometry. In that case prove a real
+# move and resize by staging the dialog at a distinct geometry first.
+$staged = $false
+if ($before.Left -eq $Left -and $before.Top -eq $Top -and $beforeWidth -eq $Width -and $beforeHeight -eq $Height) {
+  $staged = $true
+  $stageLeft = $Left + 64
+  $stageTop = $Top + 48
+  $stageWidth = $Width - 40
+  $stageHeight = $Height - 30
+  if (-not [DesktopPickerLayoutNative]::SetWindowPos($handle, [IntPtr]::Zero, $stageLeft, $stageTop, $stageWidth, $stageHeight, 0x0004 -bor 0x0010)) { throw 'PICKER_LAYOUT_MOVE_FAILED' }
+  $stage = New-Object DesktopPickerLayoutNative+RECT
+  if (-not [DesktopPickerLayoutNative]::GetWindowRect($handle, [ref]$stage)) { throw 'PICKER_LAYOUT_READ_FAILED' }
+  if ($stage.Left -ne $stageLeft -or $stage.Top -ne $stageTop -or ($stage.Right - $stage.Left) -ne $stageWidth -or ($stage.Bottom - $stage.Top) -ne $stageHeight) {
+    throw 'PICKER_LAYOUT_STAGE_FAILED'
+  }
+  if (-not [DesktopPickerLayoutNative]::SetWindowPos($handle, [IntPtr]::Zero, $Left, $Top, $Width, $Height, 0x0004 -bor 0x0010)) { throw 'PICKER_LAYOUT_MOVE_FAILED' }
+  if (-not [DesktopPickerLayoutNative]::GetWindowRect($handle, [ref]$after)) { throw 'PICKER_LAYOUT_READ_FAILED' }
+  $afterWidth = $after.Right - $after.Left
+  $afterHeight = $after.Bottom - $after.Top
+  if ($after.Left -ne $Left -or $after.Top -ne $Top -or $afterWidth -ne $Width -or $afterHeight -ne $Height) {
+    throw 'PICKER_LAYOUT_POSTCONDITION_FAILED'
+  }
 }
 [pscustomobject]@{
   ok = $true
   pid = $TargetPid
   hwnd = $DialogHandle
+  staged = $staged
   before = [pscustomobject]@{ left = $before.Left; top = $before.Top; width = $beforeWidth; height = $beforeHeight }
   after = [pscustomobject]@{ left = $after.Left; top = $after.Top; width = $afterWidth; height = $afterHeight }
 } | ConvertTo-Json -Compress -Depth 3
