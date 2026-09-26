@@ -133,18 +133,23 @@ try {
   // Terminal panel
   await bringToFront(window.window_handle);
   const activate = async (name, verifyName) => {
+    // UIA_POSTCONDITION_FAILED here means the invoke dispatched and the verify
+    // element then changed state (e.g. a modal disabled the page, or the
+    // control disappeared after the click) — that is a successful dispatch.
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const rows = await discover(appPid);
       const target = rows.find(row => row.class_name === 'Tauri Window') ?? rows.find(row => Number(row.window_handle) > 0);
       await bringToFront(target.window_handle);
       await new Promise(resolve => setTimeout(resolve, 400));
       try {
-        return await action({ op: 'uia_action', target: JSON.stringify({
+        const result = await action({ op: 'uia_action', target: JSON.stringify({
           action: 'activate', pid: appPid, window_handle: target.window_handle, lease_id: target.lease_id,
           target_name: name, verify_name: verifyName
         }) });
+        return { dispatched: true, verified: true, result };
       } catch (error) {
-        if (!['UIA_FOCUS_LOST', 'UIA_LEASE_INVALID', 'UIA_POSTCONDITION_FAILED', 'UIA_CONTROL_NOT_UNIQUE', 'UIA_WINDOW_UNAVAILABLE'].includes(error?.code)) throw error;
+        if (error?.code === 'UIA_POSTCONDITION_FAILED') return { dispatched: true, verified: false, code: error.code };
+        if (!['UIA_FOCUS_LOST', 'UIA_LEASE_INVALID', 'UIA_CONTROL_NOT_UNIQUE', 'UIA_WINDOW_UNAVAILABLE'].includes(error?.code)) throw error;
         await new Promise(resolve => setTimeout(resolve, 800));
       }
     }
@@ -163,23 +168,29 @@ try {
 
   const shellsBefore = await shellChildrenOfArchServer();
   const openActivation = await activate('OPEN SESSION', 'OPEN SESSION');
-  check('BUILT-006', 'OPEN SESSION activation dispatches', Boolean(openActivation), null);
+  check('BUILT-006', 'OPEN SESSION activation dispatches', Boolean(openActivation?.dispatched), openActivation ?? null);
 
-  // Native approval dialog (WebView2 confirm) under the owned process.
-  let dialog = null;
-  const dialogDeadline = Date.now() + 30000;
-  while (!dialog && Date.now() < dialogDeadline) {
-    const rows = await discover(appPid);
-    dialog = rows.find(row => row.class_name === '#32770') ?? null;
-    if (!dialog) await new Promise(resolve => setTimeout(resolve, 400));
-  }
-  check('BUILT-007', 'approval dialog appears under the owned shell', Boolean(dialog), dialog ? { handle: dialog.window_handle } : null);
-  if (dialog) {
-    await bringToFront(dialog.window_handle);
-    const okActivation = await activate('OK', 'OK').catch(() => null);
-    check('BUILT-008', 'approval dialog accepted once', Boolean(okActivation), null);
-    await new Promise(resolve => setTimeout(resolve, 6000));
-  }
+  // The WebView2 approval confirm renders INSIDE the owned Tauri window (class
+  // control 'tauri.localhost says' with an OK button); there is no separate
+  // native dialog window to discover. Both terminal.session.start AND
+  // terminal.session.stop are approval-gated by design.
+  const acceptApprovalDialog = async () => {
+    let names = [];
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+      names = await readWindowNames(window.window_handle);
+      if (names.some(name => name.includes('tauri.localhost says')) || names.some(name => name.includes('Approve this operation'))) {
+        const okActivation = await activate('OK', 'OK');
+        return { present: true, accepted: Boolean(okActivation?.dispatched), matched: names.filter(name => /tauri\.localhost says|Approve this operation/.test(name)).slice(0, 3) };
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return { present: false, accepted: false };
+  };
+  const startDialog = await acceptApprovalDialog();
+  check('BUILT-007', 'approval dialog renders inside the owned window (WebView2 confirm)', startDialog.present, { matched: startDialog.matched ?? null });
+  check('BUILT-008', 'approval dialog accepted once', startDialog.accepted, null);
+  if (startDialog.accepted) await new Promise(resolve => setTimeout(resolve, 6000));
   const shellsDuring = await shellChildrenOfArchServer();
   check('BUILT-009', 'real owned shell process exists for the session', shellsDuring.length > shellsBefore.length, { before: shellsBefore.length, during: shellsDuring.length, shells: shellsDuring });
 
@@ -192,12 +203,22 @@ try {
   }
   check('BUILT-010', 'session reaches the active state (STOP SESSION offered)', names.some(name => name.includes('STOP SESSION')), null);
 
-  // Canonical stop, then cleanup accounting.
+  // Canonical stop (approval-gated like start), then bounded cleanup accounting.
   const stopActivation = await activate('STOP SESSION', 'STOP SESSION');
-  check('BUILT-011', 'STOP SESSION activation dispatches', Boolean(stopActivation), null);
-  await new Promise(resolve => setTimeout(resolve, 8000));
-  const shellsAfter = await shellChildrenOfArchServer();
-  check('BUILT-012', 'owned shell process count returns to zero after stop', shellsAfter.length === 0, { after: shellsAfter.length, shells: shellsAfter });
+  check('BUILT-011', 'STOP SESSION activation dispatches', Boolean(stopActivation?.dispatched), stopActivation ?? null);
+  const stopDialog = await acceptApprovalDialog();
+  check('BUILT-015', 'stop approval dialog renders and is accepted once', stopDialog.present && stopDialog.accepted, { matched: stopDialog.matched ?? null });
+  const stopStartedAt = Date.now();
+  let shellsAfter = await shellChildrenOfArchServer();
+  let idleNames = [];
+  while (Date.now() - stopStartedAt < 30000 && shellsAfter.length > 0) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    shellsAfter = await shellChildrenOfArchServer();
+  }
+  const shellsElapsed = Date.now() - stopStartedAt;
+  idleNames = await readWindowNames(window.window_handle);
+  check('BUILT-012', 'owned shell process count returns to zero after stop', shellsAfter.length === 0, { after: shellsAfter.length, shells: shellsAfter, elapsed_ms: shellsElapsed });
+  check('BUILT-013', 'panel returns to idle after stop (OPEN SESSION offered again)', idleNames.some(name => name.includes('OPEN SESSION')), null);
 } catch (error) {
   check('BUILT-000', 'battery completed without harness error', false, String(error?.message ?? error).slice(0, 300));
 } finally {

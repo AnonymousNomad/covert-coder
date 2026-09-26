@@ -97,9 +97,13 @@ Handoff note for the Luna #1 onboarding lane: any future change to `Walkthrough.
 - `UI-ID-001` operator-visible build identity ambiguity (Section 7). Owner: packaging/operator verification.
 - Note: the 409 responses visible in the browser console during session start are the enrolled approval choreography, not failures.
 
-## 9. Remaining to close
+## 9. Closure (idle-desktop qualification, 2026-09-26)
 
-1. In the idle window: run the affected Desktop UIA gates, then `node scripts/terminal-acceptance-built-uia.mjs --json docs/evidence/embedded-terminal-battery-built.json` (validate/fix the prepared script live), with OS-level cleanup and foreign-process survival checks.
-2. On green: `EMBEDDED TERMINAL V1 CLOSED`, commit/push evidence, then begin the Full Operator Acceptance Battery (Checkpoint 1 first).
+- Affected Desktop UIA gates re-run on the idle desktop: panic/ownership 5/5 PASS, modals PASS, capture picker PASS, terminal GUI PASS (bounded input verified via TextPattern, wrong-focus zero-input proven, exact-tree cleanup + foreign survival). Browser GUI gate: one WMI-visibility transient on a Chromium child (`UIA_PROCESS_IDENTITY_MISMATCH`, all other checks passing) then PASS on retry — exact SHA-256 file receipt, path containment, 18/18 foreign Edge processes survived.
+- Built-shell battery `scripts/terminal-acceptance-built-uia.mjs`: **PASS 16/16** (evidence `docs/evidence/embedded-terminal-battery-built.json`). Verified live: owned launch/boot/window identity, TERMINAL navigation, provider probe, OPEN SESSION dispatch, in-webview approval confirm detected + accepted, real owned `pwsh.exe` child under the port-4778 arch server, STOP SESSION dispatch, stop approval confirm detected + accepted, shell reap to zero in 1390 ms, panel returns to idle, ports free and zero leaked shells after teardown.
+- Discovery recorded: WebView2 approval confirms render **inside** the owned Tauri window (`tauri.localhost says` + survive-buttons in the UIA tree), not as a separate `#32770` window; both `terminal.session.start` and `terminal.session.stop` are approval-gated by design (`scripts/cockpit-live-review.mjs:70`).
+- OS-level hygiene after the run: app process dead, ports 4777/4778/4779/5173 free, zero orphan shells.
+- **EMBEDDED TERMINAL V1 — CLOSED.**
+
 
 

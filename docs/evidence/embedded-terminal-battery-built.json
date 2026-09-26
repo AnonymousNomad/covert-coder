@@ -1,0 +1,153 @@
+{
+  "battery": "EMBEDDED-TERMINAL-V1-BUILT-UIA",
+  "generated_at_utc": "2026-09-26T15:44:39.765Z",
+  "suite": "terminal-acceptance-built-uia",
+  "pass": 16,
+  "fail": 0,
+  "results": [
+    {
+      "id": "BUILT-000",
+      "description": "build identity executable present",
+      "pass": true,
+      "detail": "E:\\aide-desktop-control-v1\\desktop\\target\\release\\aide-sovereign-workbench.exe"
+    },
+    {
+      "id": "BUILT-001",
+      "description": "owned built shell launched",
+      "pass": true,
+      "detail": {
+        "pid": 24272
+      }
+    },
+    {
+      "id": "BUILT-002",
+      "description": "owned stack reaches facade health",
+      "pass": true,
+      "detail": {
+        "health": 200
+      }
+    },
+    {
+      "id": "BUILT-003",
+      "description": "owned shell window discovered",
+      "pass": true,
+      "detail": {
+        "window_handle": 8325024,
+        "process_id": 24272,
+        "class_name": "Tauri Window",
+        "automation_id": null,
+        "lease_id": "06e8a31c-a8f6-4e45-9a57-df7112a5e018"
+      }
+    },
+    {
+      "id": "BUILT-004",
+      "description": "TERMINAL navigation activates",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "BUILT-005",
+      "description": "provider probe resolves and OPEN SESSION is offered",
+      "pass": true,
+      "detail": {
+        "available": true,
+        "open": true
+      }
+    },
+    {
+      "id": "BUILT-006",
+      "description": "OPEN SESSION activation dispatches",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "verified": false,
+        "code": "UIA_POSTCONDITION_FAILED"
+      }
+    },
+    {
+      "id": "BUILT-007",
+      "description": "approval dialog renders inside the owned window (WebView2 confirm)",
+      "pass": true,
+      "detail": {
+        "matched": [
+          "tauri.localhost says",
+          "tauri.localhost says",
+          "Approve this operation once?"
+        ]
+      }
+    },
+    {
+      "id": "BUILT-008",
+      "description": "approval dialog accepted once",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "BUILT-009",
+      "description": "real owned shell process exists for the session",
+      "pass": true,
+      "detail": {
+        "before": 0,
+        "during": 1,
+        "shells": [
+          {
+            "ProcessId": 2592,
+            "Name": "pwsh.exe"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BUILT-010",
+      "description": "session reaches the active state (STOP SESSION offered)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "BUILT-011",
+      "description": "STOP SESSION activation dispatches",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "verified": false,
+        "code": "UIA_POSTCONDITION_FAILED"
+      }
+    },
+    {
+      "id": "BUILT-015",
+      "description": "stop approval dialog renders and is accepted once",
+      "pass": true,
+      "detail": {
+        "matched": [
+          "tauri.localhost says",
+          "tauri.localhost says",
+          "Approve this operation once?"
+        ]
+      }
+    },
+    {
+      "id": "BUILT-012",
+      "description": "owned shell process count returns to zero after stop",
+      "pass": true,
+      "detail": {
+        "after": 0,
+        "shells": [],
+        "elapsed_ms": 1390
+      }
+    },
+    {
+      "id": "BUILT-013",
+      "description": "panel returns to idle after stop (OPEN SESSION offered again)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "BUILT-014",
+      "description": "ports free and zero owned terminal shells after teardown",
+      "pass": true,
+      "detail": {
+        "leaked": 0
+      }
+    }
+  ]
+}
