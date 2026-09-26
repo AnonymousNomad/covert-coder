@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "counts": {
+    "pass": 20,
+    "fail": 0,
+    "invalid": 0
+  },
+  "cases": [
+    "consistent package identity",
+    "unresolved version owner fail-closed",
+    "version mismatch rejected",
+    "independent version mapping accepted",
+    "blocked version CLI exits nonzero",
+    "known stale AIDE icon",
+    "missing icon",
+    "conflicting identity surface",
+    "stale branding CLI exits nonzero",
+    "valid manifest",
+    "tampered artifact hash",
+    "occupied port",
+    "free port",
+    "port ownership not inferred from process name",
+    "normal process start/exit",
+    "fast crash",
+    "hung fixture",
+    "foreign same-name process survival",
+    "owned child process cleanup",
+    "qualification JSON and referenced documents"
+  ],
+  "invalid": []
+}

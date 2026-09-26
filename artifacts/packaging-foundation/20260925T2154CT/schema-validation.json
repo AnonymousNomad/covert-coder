@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "validator": "PowerShell Test-Json",
+  "validator_version": "7.6.6",
+  "source_sha": "f9e1de9fc6bda2d9840182dc0d3689edbf15c38f",
+  "checks": [
+    {
+      "schema": "schemas/clean-machine-evidence.schema.json",
+      "validFixture": "PASS",
+      "invalidFixtureRejection": "PASS"
+    },
+    {
+      "schema": "schemas/version-owner.schema.json",
+      "validFixture": "PASS",
+      "invalidFixtureRejection": "PASS"
+    }
+  ]
+}

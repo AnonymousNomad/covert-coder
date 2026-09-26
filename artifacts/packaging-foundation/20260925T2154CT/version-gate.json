@@ -1,0 +1,15 @@
+{
+  "status": "BLOCKED — VERSION OWNER UNRESOLVED",
+  "canonical_source": null,
+  "versions": {
+    "package_json": "0.1.0-preflight",
+    "cargo": "0.1.0",
+    "tauri": "0.1.0"
+  },
+  "mapped_sources": [],
+  "mismatches": [],
+  "owner_policy": {
+    "path": "docs/v1/packaging/VERSION-OWNER.json",
+    "status": "MISSING — VERSION OWNER UNRESOLVED"
+  }
+}

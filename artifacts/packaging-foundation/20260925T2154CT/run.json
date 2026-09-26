@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "run_id": "20260925T2154CT",
+  "captured_at_utc": "2026-09-26T03:05:14.4080150Z",
+  "scope": "Packaging foundation apparatus qualification only; no product build, installation, or legacy application launch.",
+  "repository": {
+    "worktree": "E:\\aide-covert-packaging-foundation",
+    "branch": "feat/covert-packaging-foundation-v1",
+    "source_sha": "f9e1de9fc6bda2d9840182dc0d3689edbf15c38f",
+    "origin_parity": "0\t0"
+  },
+  "frozen_preflight": {
+    "branch": "audit/covert-packaging-preflight",
+    "sha": "72053e3b0787c30160457fec3968e6793f24994a",
+    "pushed_parity": "0 0"
+  },
+  "product_findings": {
+    "package_identity": "INVENTORIED; CURRENT AIDE IDENTITY NOT QUALIFIED AS COVERT",
+    "version_gate": "BLOCKED — VERSION OWNER UNRESOLVED",
+    "branding_gate": "FAIL — STALE AIDE ASSET",
+    "port_4777_design": "DEFECT; fixed listener with no alternate port selection and HTTP readiness not process-identity-bound",
+    "runtime_startup_contract": "SOURCE-TRACED; optional local model runtime appears nonfatal; fresh-profile acceptance not run"
+  },
+  "apparatus": {
+    "fixture_status": "PASS",
+    "pass": 20,
+    "fail": 0,
+    "invalid": 0,
+    "cases": [
+      "consistent package identity",
+      "unresolved version owner fail-closed",
+      "version mismatch rejected",
+      "independent version mapping accepted",
+      "blocked version CLI exits nonzero",
+      "known stale AIDE icon",
+      "missing icon",
+      "conflicting identity surface",
+      "stale branding CLI exits nonzero",
+      "valid manifest",
+      "tampered artifact hash",
+      "occupied port",
+      "free port",
+      "port ownership not inferred from process name",
+      "normal process start/exit",
+      "fast crash",
+      "hung fixture",
+      "foreign same-name process survival",
+      "owned child process cleanup",
+      "qualification JSON and referenced documents"
+    ]
+  },
+  "unperformed": [
+    "Tauri build",
+    "legacy app launch",
+    "install or uninstall",
+    "new Windows user",
+    "clean-machine VM",
+    "migration",
+    "signing",
+    "updater"
+  ],
+  "destructive_actions": {
+    "installed_application_modified": false,
+    "installed_application_uninstalled": false,
+    "webview_state_modified": false,
+    "signing_keys_generated": false,
+    "desktop_control_modified": false
+  }
+}

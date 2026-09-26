@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "status": "INSPECTED",
+  "product_name": {
+    "value": "AIDE Sovereign Workbench",
+    "status": "PRESENT + UNVERIFIED"
+  },
+  "window_title": {
+    "value": "AIDE Sovereign Workbench",
+    "status": "PRESENT + UNVERIFIED"
+  },
+  "tauri_identifier": {
+    "value": "org.ferrellsyntheticintelligence.aide",
+    "status": "PRESENT + UNVERIFIED"
+  },
+  "main_binary": {
+    "value": "aide-sovereign-workbench.exe",
+    "status": "PRESENT + UNVERIFIED",
+    "detail": "Derived from desktop/Cargo.toml package name; no explicit [[bin]] entry was found by this validator."
+  },
+  "package_name": {
+    "value": "aide-sovereign-workbench",
+    "status": "PRESENT + UNVERIFIED"
+  },
+  "versions": {
+    "package_json": {
+      "value": "0.1.0-preflight",
+      "status": "PRESENT + UNVERIFIED"
+    },
+    "cargo": {
+      "value": "0.1.0",
+      "status": "PRESENT + UNVERIFIED"
+    },
+    "tauri": {
+      "value": "0.1.0",
+      "status": "PRESENT + UNVERIFIED"
+    },
+    "values_agree": "NO"
+  },
+  "bundle_targets": {
+    "value": "all",
+    "status": "PRESENT + UNVERIFIED",
+    "detail": "Tauri target selection; actual artifacts require a build record."
+  },
+  "publisher": {
+    "configured": {
+      "status": "NOT CONFIGURED"
+    },
+    "inferred_from_identifier": "ferrellsyntheticintelligence",
+    "verified_signing_publisher": "UNVERIFIED"
+  },
+  "windows": {
+    "target_formats": [
+      "NSIS",
+      "MSI/WiX (default Tauri Windows formats)"
+    ],
+    "wix_upgrade_code": {
+      "status": "NOT CONFIGURED"
+    },
+    "nsis": "NOT CONFIGURED",
+    "wix": "NOT CONFIGURED",
+    "allow_downgrades": {
+      "status": "NOT CONFIGURED"
+    },
+    "config_present": false
+  },
+  "icons": [
+    {
+      "configured_path": "desktop/icons/icon.png",
+      "exists": true,
+      "size_bytes": 14196,
+      "sha256": "B860C258ADD7F7793DA687E646F98003C3A0CF0EC698F703BC295C393E23A753",
+      "classification": "KNOWN STALE AIDE IDENTITY"
+    },
+    {
+      "configured_path": "desktop/icons/icon.ico",
+      "exists": true,
+      "size_bytes": 14218,
+      "sha256": "039151F0685069DC7120FACC26AAF8EF3CE2A7C554F7319171E384143E54FF61",
+      "classification": "KNOWN STALE AIDE IDENTITY"
+    }
+  ],
+  "updater": "NOT CONFIGURED",
+  "source_files": [
+    "package.json",
+    "desktop/Cargo.toml",
+    "desktop/tauri.conf.json"
+  ]
+}

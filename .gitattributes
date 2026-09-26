@@ -32,3 +32,4 @@ Makefile text
 Dockerfile text
 *.diff text
 *.patch text
+artifacts/packaging-foundation/** -text

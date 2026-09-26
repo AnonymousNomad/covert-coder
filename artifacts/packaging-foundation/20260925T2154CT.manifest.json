@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "generated_at": null,
+  "generated_at_status": "UNVERIFIED",
+  "source_sha": "f9e1de9fc6bda2d9840182dc0d3689edbf15c38f",
+  "source_provenance_status": "SUPPLIED BY CALLER — NOT INDEPENDENTLY VERIFIED",
+  "build_version": null,
+  "build_version_status": "UNVERIFIED",
+  "product_identity": null,
+  "product_identity_status": "UNVERIFIED",
+  "signing_status": "UNVERIFIED",
+  "sbom_status": "UNVERIFIED",
+  "artifacts": [
+    {
+      "relative_path": "branding-inventory.json",
+      "size_bytes": 2862,
+      "sha256": "37ACF9CAA232471698DA2171E6D218A8093EA89201BA93E039B09BF016BE77D8",
+      "bundle_type": "JSON"
+    },
+    {
+      "relative_path": "fixture-results.json",
+      "size_bytes": 811,
+      "sha256": "521C34D3CA62E793E8503A96886DA84395C84875BB579632431C60367B64CE70",
+      "bundle_type": "JSON"
+    },
+    {
+      "relative_path": "identity.json",
+      "size_bytes": 2360,
+      "sha256": "F353C2AAF9860BBE24A83499F660BACE6485D0016F9ACA6D26394C9FA8B103D2",
+      "bundle_type": "JSON"
+    },
+    {
+      "relative_path": "run.json",
+      "size_bytes": 2355,
+      "sha256": "F8BC994BD94E85EEF7119F3859EB28242323FCCC1DCEA4B89800CF773EBB8D59",
+      "bundle_type": "JSON"
+    },
+    {
+      "relative_path": "schema-validation.json",
+      "size_bytes": 456,
+      "sha256": "AA961400F624E147166CB1B09A6699A5647F5BFF0D620D64B5673EA769397B1E",
+      "bundle_type": "JSON"
+    },
+    {
+      "relative_path": "version-gate.json",
+      "size_bytes": 360,
+      "sha256": "9414360A884E45A1D3ABE30A990AF939DBEB8EFE3C6AC8EEFA1B0B94EF3E525F",
+      "bundle_type": "JSON"
+    }
+  ]
+}
