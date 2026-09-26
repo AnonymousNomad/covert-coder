@@ -80,7 +80,7 @@
     "port_probe": "FIXTURE PASS",
     "startup_harness": "FIXTURE PASS",
     "artifact_manifest": "FIXTURE PASS",
-    "fixture_battery": { "pass": 19, "fail": 0, "invalid": 0 },
+    "fixture_battery": { "pass": 20, "fail": 0, "invalid": 0 },
     "product_acceptance": "NOT RUN"
   },
   "first_user": {

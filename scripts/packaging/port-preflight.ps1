@@ -17,10 +17,12 @@ $results = foreach ($port in ($Ports | Sort-Object -Unique)) {
     $executable = if ($process.ExecutablePath) { [IO.Path]::GetFullPath($process.ExecutablePath) } else { $null }
     $commandLine = [string]$process.CommandLine
     $ownership = 'UNKNOWN'
-    if ($repositoryFull -and $commandLine.IndexOf($repositoryFull, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
-      $ownership = 'CURRENT REPOSITORY PROCESS'
+    if ($repositoryFull -and $executable -and $executable.StartsWith($repositoryFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
+      $ownership = 'EXECUTABLE UNDER SPECIFIED REPOSITORY ROOT — PATH ASSOCIATION ONLY'
+    } elseif ($repositoryFull -and $commandLine.IndexOf($repositoryFull, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+      $ownership = 'REPOSITORY PATH IN COMMAND LINE — OWNERSHIP UNVERIFIED'
     } elseif ($installFull -and $executable -and $executable.StartsWith($installFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
-      $ownership = 'SPECIFIED INSTALL ROOT'
+      $ownership = 'EXECUTABLE UNDER SPECIFIED INSTALL ROOT — PATH ASSOCIATION ONLY'
     }
     [ordered]@{
       local_address = $connection.LocalAddress

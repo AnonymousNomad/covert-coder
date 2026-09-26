@@ -62,6 +62,7 @@ The fixture tests cover:
 | Stale configured branding at CLI boundary | Nonzero exit |
 | Listening fixture port | listening=true with PID/path metadata where available |
 | Free fixture port | listening=false |
+| Same-name/process-path association without an owned lease | remains UNKNOWN or PATH ASSOCIATION ONLY |
 | Normal process fixture | exit 0, no timeout |
 | Fast-crash fixture | exact nonzero exit recorded |
 | Hung fixture | bounded timeout and owned-root cleanup |

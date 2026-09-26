@@ -144,10 +144,11 @@ test('port probe distinguishes a listening fixture and a free port', { skip: pro
   const occupied = await inspectPort(occupiedPort);
   assert.equal(occupied.listening, true);
   assert.equal(occupied.listeners[0].pid, process.pid);
+  assert.notEqual(occupied.listeners[0].ownership, 'OWNED');
   await new Promise(resolve => server.close(resolve));
   const free = await inspectPort(await choosePort());
   assert.equal(free.listening, false);
-  pass.push('occupied port', 'free port');
+  pass.push('occupied port', 'free port', 'port ownership not inferred from process name');
 });
 
 test('startup harness captures normal exit and fast crash', async () => {
