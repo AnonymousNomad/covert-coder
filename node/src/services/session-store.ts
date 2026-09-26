@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { SessionFile, SessionPutRequest, type SessionFileT, type SessionPutRequestT } from '../../../common/contracts/session.ts';
+import { assertMissingStateLocationIsUsable, atomicWriteJson, AtomicJsonWriteError, StatePersistenceError, withFileMutationLock } from './atomic-json.ts';
 
 const SESSION_FILE = 'session.json';
 
@@ -52,61 +53,79 @@ function withoutUndefined<T extends object>(input: T): Record<string, unknown> {
 }
 
 export class SessionStore {
+  private readonly workspace: string;
   readonly file: string;
+  private readonly atomicWriter: typeof atomicWriteJson;
 
-  constructor(workspace: string, dataDir = '.aide') {
+  constructor(workspace: string, dataDir = '.aide', atomicWriter: typeof atomicWriteJson = atomicWriteJson) {
+    this.workspace = workspace;
     this.file = path.join(workspace, dataDir, SESSION_FILE);
+    this.atomicWriter = atomicWriter;
   }
 
   async load(): Promise<SessionFileT> {
+    return withFileMutationLock(this.file, () => this.loadUnlocked());
+  }
+
+  private async loadUnlocked(): Promise<SessionFileT> {
     let raw: string;
     try {
       raw = await fs.readFile(this.file, 'utf8');
-    } catch {
-      return { version: 1, tabs: [] };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        await assertMissingStateLocationIsUsable(this.file, this.workspace, 'session');
+        return { version: 1, tabs: [] };
+      }
+      throw new StatePersistenceError('session', 'READ_FAILED', 'read', 'read-canonical', (error as NodeJS.ErrnoException).code);
     }
     let json: unknown;
     try {
       json = JSON.parse(raw);
     } catch {
-      await this.backup();
-      return { version: 1, tabs: [] };
+      throw new StatePersistenceError('session', 'CORRUPT_STATE', 'read', 'parse-canonical');
     }
     const parsed = SessionFile.safeParse(json);
-    if (!parsed.success) {
+    if (parsed.success) return parsed.data;
+
+    const record = typeof json === 'object' && json !== null && !Array.isArray(json)
+      ? json as Record<string, unknown>
+      : null;
+    if (record !== null && Object.hasOwn(record, 'version') && record.version !== 1) {
+      throw new StatePersistenceError('session', 'UNSUPPORTED_SCHEMA', 'read', 'validate-canonical');
+    }
+    if (record !== null && !Object.hasOwn(record, 'version')) {
       const migrated = migrateLegacy(json);
       if (migrated !== null) {
         await this.persist(migrated);
         return migrated;
       }
-      await this.backup();
-      return { version: 1, tabs: [] };
     }
-    return parsed.data;
+    throw new StatePersistenceError('session', 'CORRUPT_STATE', 'read', 'validate-canonical');
   }
 
   async save(input: SessionPutRequestT): Promise<SessionFileT> {
     const parsedRequest = SessionPutRequest.safeParse(input);
     if (!parsedRequest.success) throw new Error('invalid session');
-    const current = await this.load();
-    const merged = { ...current, ...withoutUndefined(parsedRequest.data) };
-    const parsed = SessionFile.safeParse(merged);
-    if (!parsed.success) throw new Error('invalid session');
-    await this.persist(parsed.data);
-    return parsed.data;
+    return withFileMutationLock(this.file, async () => {
+      const current = await this.loadUnlocked();
+      const merged = { ...current, ...withoutUndefined(parsedRequest.data) };
+      const parsed = SessionFile.safeParse(merged);
+      if (!parsed.success) throw new Error('invalid session');
+      await this.persist(parsed.data);
+      return parsed.data;
+    });
   }
 
   private async persist(session: SessionFileT): Promise<void> {
-    await fs.mkdir(path.dirname(this.file), { recursive: true });
-    await fs.writeFile(this.file, JSON.stringify(session, null, 2), 'utf8');
-  }
-
-  private async backup(): Promise<void> {
     try {
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      await fs.rename(this.file, `${this.file}.legacy-${stamp}`);
-    } catch {
-      // nothing to back up
+      await this.atomicWriter(this.file, session, {
+        validate: value => { SessionFile.parse(value); }
+      });
+    } catch (error) {
+      if (error instanceof AtomicJsonWriteError) {
+        throw new StatePersistenceError('session', 'WRITE_FAILED', 'write', error.phase, error.osCode);
+      }
+      throw error;
     }
   }
 }

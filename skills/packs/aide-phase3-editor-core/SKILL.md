@@ -92,6 +92,8 @@ The following numbered steps are ordered by dependency. Steps 1–10 exist and p
 
 ### 9. Hot-exit recovery after restart (IMPLEMENTED — verified in journal 2026-08-13)
 
+> Current storage-owner update (2026-09-26): the route and store references below describe the historical legacy implementation. The supported typed facade routes `/api/session` through `node/src/routes/session.ts` to `node/src/services/session-store.ts`, and `/api/chat/history` through `node/src/routes/chat.ts` to `node/src/services/chat-store.ts`. Both use the bounded atomic JSON helper in `node/src/services/atomic-json.ts`. `daemon/server.mjs` no longer reads or writes canonical session state; `session/store.mjs` remains a standalone legacy utility and test target. See `docs/v1/state/C2-02-ATOMIC-PERSISTENCE.md` for the current contract.
+
 - Writes: `GET /api/session` / `PUT /api/session` (server.mjs:336-337) → `SessionStore` (session/store.mjs): sanitizes open_files (relative, no `..`, ≤ 32, ≤ 512 chars), buffers capped at 512 KiB/file and 4 MiB total, atomic tmp+rename write to `.aide/session.json`.
 - Restore: `restoreSession()` (app.js:246) fetches the session, reopens each file (fresh `UndoStack` from disk), replays each saved buffer via `diffOperation(stack.text(), recovered)` so the buffer comes back DIRTY with working undo, then logs `Recovered N unsaved buffer(s) without writing to disk.` It never auto-writes to disk — recovery is a frontend concern.
 - `[TODO] pagehide flush`: recovery depends on `syncDirty()` having run during editing. Add `window.addEventListener('pagehide', () => saveSession({...current}))` (best-effort, swallowed on failure) so a killed daemon or closed tab still persists the last keystroke.

@@ -388,6 +388,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const dapManager = options.dapManager ?? (await createDapManager(repoRoot, workspace, options));
   const modelRuntime = options.modelRuntime ?? (await createModelRuntime(repoRoot, workspace, options));
   const chatStore = new ChatStore(workspace);
+  const sessionStore = new SessionStore(workspace);
   const providerService =
     options.providerService ??
     new ProviderService(workspace, {
@@ -771,8 +772,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForPatchApply(fsService),
     ...routesForTerminal(fsService),
     ...(options.terminalSessions ? routesForTerminalSessions(options.terminalSessions) : []),
-    routeForSessionGet(new SessionStore(workspace)),
-    routeForSessionPut(new SessionStore(workspace)),
+    routeForSessionGet(sessionStore),
+    routeForSessionPut(sessionStore),
     routeForModelStatus(modelRuntime),
     routeForModelStart(modelRuntime),
     routeForModelStop(modelRuntime),

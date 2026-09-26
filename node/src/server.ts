@@ -14,6 +14,7 @@ import { createAuditTrail } from './services/audit-trail.mjs';
 import { httpOperationKind, type OperationInput } from '../../common/security/operation-policy.mjs';
 import { routesForAuthority } from './routes/authority.ts';
 import { connectAuthorityChannel, type AuthorityPeer } from '../../common/security/authority-channel.mjs';
+import { StatePersistenceError } from './services/atomic-json.ts';
 
 export class RouteError extends Error {
   readonly code: ErrorCode;
@@ -187,14 +188,54 @@ export class ArchServer {
       this.events.publish('log', { level: 'info', message: 'request ok', method: request.method, path: url.pathname, ms: Date.now() - started });
       return this.send(response, 200, ok(responseResult.data));
     } catch (error) {
-      const code: ErrorCode = error instanceof RouteError ? error.code : error instanceof AuthorityError ? error.code as ErrorCode : 'INTERNAL';
-      const message = error instanceof Error ? error.message : 'local daemon error';
-      const detail = error instanceof RouteError || error instanceof AuthorityError ? error.detail : undefined;
+      const stateFailure = error instanceof StatePersistenceError ? error : undefined;
+      const code: ErrorCode = stateFailure !== undefined
+        ? 'NOT_READY'
+        : error instanceof RouteError ? error.code : error instanceof AuthorityError ? error.code as ErrorCode : 'INTERNAL';
+      const message = stateFailure !== undefined
+        ? stateFailure.reason === 'CORRUPT_STATE' || stateFailure.reason === 'UNSUPPORTED_SCHEMA'
+          ? `${stateFailure.state} state requires recovery`
+          : stateFailure.operation === 'write'
+            ? `${stateFailure.state} state update was not committed`
+            : `${stateFailure.state} state could not be read`
+        : error instanceof Error ? error.message : 'local daemon error';
+      const recoveryAction = stateFailure === undefined
+        ? undefined
+        : stateFailure.reason === 'CORRUPT_STATE'
+          ? 'restore-or-repair-canonical-file'
+          : stateFailure.reason === 'UNSUPPORTED_SCHEMA'
+            ? 'use-compatible-build-or-explicit-migration'
+            : stateFailure.operation === 'write'
+              ? 'resolve-storage-error-before-retry'
+              : 'verify-workspace-path-and-permissions';
+      const detail = stateFailure !== undefined
+        ? {
+          state: stateFailure.state,
+          reason: stateFailure.reason,
+          operation: stateFailure.operation,
+          phase: stateFailure.phase,
+          recoveryAction,
+          ...(stateFailure.osCode !== undefined ? { osCode: stateFailure.osCode } : {})
+        }
+        : error instanceof RouteError || error instanceof AuthorityError ? error.detail : undefined;
       if (code === 'INTERNAL') {
         this.logger.error('request failed', { method: request.method, path: url.pathname, message, stack: (error as Error).stack });
         this.events.publish('log', { level: 'error', message: 'request failed', method: request.method, path: url.pathname, code });
       } else {
-        this.logger.warn('request failed', { method: request.method, path: url.pathname, code, message });
+        this.logger.warn('request failed', {
+          method: request.method,
+          path: url.pathname,
+          code,
+          message,
+          ...(stateFailure !== undefined ? {
+            state: stateFailure.state,
+            reason: stateFailure.reason,
+            operation: stateFailure.operation,
+            phase: stateFailure.phase,
+            ...(stateFailure.osCode !== undefined ? { osCode: stateFailure.osCode } : {}),
+            recoveryAction
+          } : {})
+        });
         this.events.publish('log', { level: 'warn', message: 'request failed', method: request.method, path: url.pathname, code });
       }
       return this.send(response, this.httpStatus(code), fail(code, message, detail));

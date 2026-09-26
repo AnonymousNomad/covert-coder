@@ -18,7 +18,6 @@ import { LearnerState } from '../academy/learner-state.mjs';
 import { PluginManager } from '../plugins/manager.mjs';
 import { Operator } from './operator.mjs';
 import { TaskManager } from '../tasks/manager.mjs';
-import { SessionStore } from '../session/store.mjs';
 import { ArtifactStore } from '../artifacts/store.mjs';
 import { ProviderManager } from '../providers/manager.mjs';
 import { WorkflowManager } from './workflow.mjs';
@@ -85,8 +84,6 @@ await pluginManager.load().catch(() => {});
 const operator = new Operator({ modelManager, workspaceManager, gitStatus: () => runGit(['status', '--short']).catch(() => '') });
 const taskManager = new TaskManager({ manifestPath: await workspaceConfig('tasks/manifest.json'), workspace: WORKSPACE });
 await taskManager.load().catch(() => {});
-const sessionStore = new SessionStore(path.join(STATE_DIR, 'session.json'));
-await sessionStore.load().catch(() => {});
 const artifactStore = new ArtifactStore(path.join(STATE_DIR, 'artifacts'));
 const providerManager = new ProviderManager(await workspaceConfig('providers/manifest.json'));
 await providerManager.load().catch(() => {});
@@ -468,8 +465,6 @@ async function handleLegacy(request, response) {
     if (request.method === 'POST' && request.url === '/api/tasks/run') return json(response, 200, taskManager.run((await body(request)).id));
     if (request.method === 'POST' && request.url === '/api/tasks/stop') return json(response, 200, taskManager.stop());
     if (request.method === 'GET' && request.url === '/api/tasks/status') return json(response, 200, taskManager.status());
-    if (request.method === 'GET' && request.url === '/api/session') return json(response, 200, await sessionStore.load());
-    if (request.method === 'PUT' && request.url === '/api/session') return json(response, 200, await sessionStore.save(await body(request)));
     if (request.method === 'GET' && request.url === '/api/artifacts') return json(response, 200, { artifacts: await artifactStore.list() });
     if (request.method === 'GET' && request.url === '/api/models/status') {
       return json(response, 200, { models: modelManager.status() });

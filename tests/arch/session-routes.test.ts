@@ -113,14 +113,46 @@ test('legacy session file migrates instead of 500ing', async () => {
   assert.equal(body.activeTab, 'file:///app.js');
 });
 
-test('corrupt session file is backed up and reset instead of 500ing', async () => {
-  await fs.writeFile(path.join(dir, '.aide', 'session.json'), '{ not json', 'utf8');
-  const res = await owner.request('/api/session');
-  assert.equal(res.status, 200);
-  const body = dataOf(await res.json()).data as { tabs: unknown[] };
-  assert.equal(body.tabs.length, 0);
-  const backups = await fs.readdir(path.join(dir, '.aide'));
-  assert.ok(backups.some(name => name.startsWith('session.json.legacy-')), 'legacy backup must exist');
+test('corrupt session state is preserved and classified as recovery-required', async () => {
+  const corrupt = '{ not json';
+  const file = path.join(dir, '.aide', 'session.json');
+  try {
+    await fs.writeFile(file, corrupt, 'utf8');
+    const res = await owner.request('/api/session');
+    assert.equal(res.status, 409);
+    const parsed = Envelope.safeParse(await res.json());
+    assert.ok(parsed.success);
+    assert.ok(!parsed.data.ok);
+    assert.equal(parsed.data.error.code, 'NOT_READY');
+    assert.deepEqual(parsed.data.error.detail, {
+      state: 'session', reason: 'CORRUPT_STATE', operation: 'read', phase: 'parse-canonical',
+      recoveryAction: 'restore-or-repair-canonical-file'
+    });
+    assert.equal(await sessionFile(), corrupt, 'corrupt canonical bytes remain available for recovery');
+  } finally {
+    await fs.rm(file, { force: true });
+  }
+});
+
+test('unsupported session schema is preserved and classified without migration', async () => {
+  const unsupported = JSON.stringify({ version: 2, tabs: [] });
+  const file = path.join(dir, '.aide', 'session.json');
+  try {
+    await fs.writeFile(file, unsupported, 'utf8');
+    const res = await owner.request('/api/session');
+    assert.equal(res.status, 409);
+    const parsed = Envelope.safeParse(await res.json());
+    assert.ok(parsed.success);
+    assert.ok(!parsed.data.ok);
+    assert.equal(parsed.data.error.code, 'NOT_READY');
+    assert.deepEqual(parsed.data.error.detail, {
+      state: 'session', reason: 'UNSUPPORTED_SCHEMA', operation: 'read', phase: 'validate-canonical',
+      recoveryAction: 'use-compatible-build-or-explicit-migration'
+    });
+    assert.equal(await sessionFile(), unsupported, 'unsupported canonical bytes remain untouched');
+  } finally {
+    await fs.rm(file, { force: true });
+  }
 });
 
 test('session preserves the legacy key set through PUT and GET', async () => {

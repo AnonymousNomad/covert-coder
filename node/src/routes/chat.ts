@@ -249,7 +249,10 @@ export function routeForChatHistory(store: ChatStore): Route {
     method: 'GET',
     path: '/api/chat/history',
     response: ChatHistoryResponse,
-    handler: async () => ({ conversations: store.list() })
+    handler: async () => {
+      await store.load();
+      return { conversations: store.list() };
+    }
   };
 }
 
