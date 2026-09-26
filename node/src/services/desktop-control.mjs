@@ -65,10 +65,10 @@ function projectActionOutput(operation, output) {
     details.windows_omitted = details.windows.length - 64;
     details.windows = details.windows.slice(0, 64);
   }
-  if (details && Array.isArray(details.controls) && details.controls.length > 64) {
+  if (details && Array.isArray(details.controls) && details.controls.length > 256) {
     details.controls_truncated = true;
-    details.controls_omitted = details.controls.length - 64;
-    details.controls = details.controls.slice(0, 64);
+    details.controls_omitted = details.controls.length - 256;
+    details.controls = details.controls.slice(0, 256);
   }
   const projected = JSON.stringify(result);
   if (projected.length > 16000) throw new DesktopRefusedError('UIA_RESULT_TOO_LARGE', 'bounded UI Automation result exceeded its response limit');
@@ -267,6 +267,54 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
     return lease;
   }
 
+  // Resolve the ownership context for a UIA target: the retained process itself
+  // or a verified retained ancestor (bounded to two hops). Every edge is
+  // re-read and creation-time ordered; no image or command-line sweeps.
+  async function resolveOwnedTarget(pid) {
+    const direct = ownedUiProcesses.get(pid);
+    const directLive = Boolean(direct && processes.alive(direct.handle) && direct.handle.pid === pid);
+    let observed;
+    try { observed = await readWindowsProcessIdentity(pid); }
+    catch { throw new DesktopRefusedError('UIA_IDENTITY_UNVERIFIED', 'target process identity could not be revalidated'); }
+    if (directLive) {
+      if (!sameWindowsProcessIdentity(direct.identity, observed)) throw new DesktopRefusedError('UIA_IDENTITY_MISMATCH', 'target PID no longer matches its captured process identity');
+      return { identity: observed, ownership: 'ATTEMPT_OWNED', parentPid: null, ancestryDepth: 0 };
+    }
+    let current = observed;
+    const ancestors = [];
+    let ownedAncestor = null;
+    for (let depth = 0; depth < 2 && current; depth += 1) {
+      const parentPid = current.parentPid;
+      if (!Number.isSafeInteger(parentPid) || parentPid <= 0) break;
+      const candidate = ownedUiProcesses.get(parentPid);
+      if (candidate && processes.alive(candidate.handle) && candidate.handle.pid === parentPid) {
+        let parentObserved;
+        try { parentObserved = await readWindowsProcessIdentity(parentPid); }
+        catch { break; }
+        if (!sameWindowsProcessIdentity(candidate.identity, parentObserved)) break;
+        if (Date.parse(current.createdAtUtc) < Date.parse(candidate.identity.createdAtUtc)) break;
+        ownedAncestor = { pid: parentPid, depth, ancestors };
+        break;
+      }
+      let parentIdentity;
+      try { parentIdentity = await readWindowsProcessIdentity(parentPid); }
+      catch { break; }
+      if (!parentIdentity) break;
+      if (Date.parse(current.createdAtUtc) < Date.parse(parentIdentity.createdAtUtc)) break;
+      ancestors.push(parentPid);
+      current = parentIdentity;
+    }
+    if (ownedAncestor === null) {
+      throw new DesktopRefusedError('UIA_TARGET_NOT_OWNED', 'UI Automation is restricted to a live process launched and retained by this Desktop Control session');
+    }
+    return {
+      identity: observed,
+      ownership: ownedAncestor.depth === 0 ? 'ATTEMPT_OWNED_DESCENDANT' : 'ATTEMPT_OWNED_DESCENDANT_CHAIN',
+      parentPid: ownedAncestor.pid,
+      ancestryDepth: ownedAncestor.ancestors.length
+    };
+  }
+
   async function validateSelectionPath(grants, selectionRoot, filePath) {
     const selectionRootText = String(selectionRoot);
     const filePathText = String(filePath);
@@ -430,14 +478,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
       let request;
       try { request = validateWindowsUiaRequest(JSON.parse(String(target))); }
       catch (error) { throw new DesktopRefusedError('UIA_INVALID_REQUEST', String(error?.message ?? error).slice(0, 180)); }
-      const owned = ownedUiProcesses.get(request.pid);
-      if (!owned || !processes.alive(owned.handle) || owned.handle.pid !== request.pid) {
-        throw new DesktopRefusedError('UIA_TARGET_NOT_OWNED', 'UI Automation is restricted to a live process launched and retained by this Desktop Control session');
-      }
-      let observed;
-      try { observed = await readWindowsProcessIdentity(request.pid); }
-      catch { throw new DesktopRefusedError('UIA_IDENTITY_UNVERIFIED', 'target process identity could not be revalidated'); }
-      if (!sameWindowsProcessIdentity(owned.identity, observed)) throw new DesktopRefusedError('UIA_IDENTITY_MISMATCH', 'target PID no longer matches its captured process identity');
+      const owned = await resolveOwnedTarget(request.pid);
       const actionId = randomUUID();
       let windowLease = null;
       let resultWindowLease = null;
@@ -477,11 +518,14 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
           windowClassName: windowLease.className
         };
         if (request.action === 'select_file') {
-          resultWindowLease = resolveWindowLease(sessionId, request.result_lease_id, request.pid, request.result_window_handle, owned.identity);
+          const resultPid = request.result_pid ?? request.pid;
+          const resultOwned = resultPid === request.pid ? owned : await resolveOwnedTarget(resultPid);
+          resultWindowLease = resolveWindowLease(sessionId, request.result_lease_id, resultPid, request.result_window_handle, resultOwned.identity);
           selection = await validateSelectionPath(grants, request.selection_root, request.file_path);
           helperRequest = { ...request, selection_root: selection.selectionRoot, file_path: selection.filePath };
           helperIdentity.resultWindowRuntimeId = resultWindowLease.runtimeId;
           helperIdentity.resultWindowClassName = resultWindowLease.className;
+          helperIdentity.resultWindowPid = resultOwned.identity.pid;
         }
         if (request.action === 'screenshot') {
           await fs.mkdir(captureRoot, { recursive: true });
@@ -495,7 +539,7 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
           workspaceRoot: workspace,
           helperDirectory,
           ...(capturePath ? { capturePath } : {}),
-          ...(request.action === 'select_file' ? { timeout: 12000 } : {})
+          ...(['select_file', 'activate', 'window_input', 'inspect'].includes(request.action) ? { timeout: 15000 } : {})
         });
         if (capturePath) {
           const bytes = await fs.readFile(capturePath);
@@ -516,9 +560,11 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
           process_id: owned.identity.pid,
           window_handle: windowLease.windowHandle,
           lease_id: windowLease.id,
-          ownership_state: 'ATTEMPT_OWNED',
+          ownership_state: owned.ownership,
+          parent_process_id: owned.parentPid,
+          ancestry_depth: owned.ancestryDepth ?? 0,
           requested_operation: request.action,
-          target_element: request.automation_id ?? (request.action === 'select_file' ? '1148' : null),
+          target_element: request.automation_id ?? request.target_name ?? (request.action === 'select_file' ? '1148' : null),
           precondition: 'owned_process_identity_and_window_lease_revalidated',
           result: 'SUCCESS',
           postcondition: String(result.details?.verified_by ?? result.details?.action ?? result.action),
@@ -551,9 +597,11 @@ export function createDesktopControl({ workspace, authority, clock = Date.now })
           process_id: owned.identity.pid,
           window_handle: windowLease?.windowHandle ?? request.window_handle,
           lease_id: windowLease?.id ?? request.lease_id,
-          ownership_state: 'ATTEMPT_OWNED',
+          ownership_state: owned.ownership,
+          parent_process_id: owned.parentPid,
+          ancestry_depth: owned.ancestryDepth ?? 0,
           requested_operation: request.action,
-          target_element: request.automation_id ?? (request.action === 'select_file' ? '1148' : null),
+          target_element: request.automation_id ?? request.target_name ?? (request.action === 'select_file' ? '1148' : null),
           precondition: 'owned_process_identity_and_window_lease_revalidated',
           result: 'FAILURE',
           postcondition: 'not_verified',

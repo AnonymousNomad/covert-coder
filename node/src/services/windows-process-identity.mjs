@@ -17,7 +17,12 @@ export function windowsProcessIdentityQuery(pid) {
     "if ($null -eq $item) { [Console]::Out.Write('null'); exit 0 }",
     '$created = $item.CreationDate',
     'if ($created -isnot [datetime]) { $created = [System.Management.ManagementDateTimeConverter]::ToDateTime([string]$created) }',
-    '[pscustomobject]@{ pid=[int]$item.ProcessId; parentPid=[int]$item.ParentProcessId; name=[string]$item.Name; executablePath=[string]$item.ExecutablePath; createdAtUtc=$created.ToUniversalTime().ToString(\'o\') } | ConvertTo-Json -Compress'
+    // Creation time is normalized to millisecond precision because CIM returns
+    // Win32_Process.CreationDate either as a DateTime (sub-millisecond) or as a
+    // DMTF string (millisecond) depending on the provider path; mixed precision
+    // made two reads of the same process compare unequal and spuriously invalidate
+    // leases and identity checks.
+    '[pscustomobject]@{ pid=[int]$item.ProcessId; parentPid=[int]$item.ParentProcessId; name=[string]$item.Name; executablePath=[string]$item.ExecutablePath; createdAtUtc=$created.ToUniversalTime().ToString(\'yyyy-MM-ddTHH:mm:ss.fffZ\') } | ConvertTo-Json -Compress'
   ].join('; ');
 }
 
@@ -52,19 +57,35 @@ export function sameWindowsProcessIdentity(expected, observed) {
 
 export async function readWindowsProcessIdentity(pid) {
   if (process.platform !== 'win32') throw new Error('Windows process identity is available only on Windows');
-  let stdout;
-  try {
-    ({ stdout } = await execFile('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', windowsProcessIdentityQuery(pid)], {
-      windowsHide: true,
-      timeout: 5000,
-      maxBuffer: 16 * 1024
-    }));
-  } catch (error) {
-    const wrapped = new Error(`process identity query failed for PID ${pid}: ${String(error?.message ?? error).slice(0, 240)}`);
-    wrapped.code = 'PROCESS_IDENTITY_QUERY_FAILED';
-    throw wrapped;
+  // WMI can transiently omit a live process under heavy spawn load (Chromium
+  // helpers, terminal hosts), so one bounded retry keeps identity checks stable
+  // without masking genuine absence: repeated absence still returns null.
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let stdout;
+    try {
+      ({ stdout } = await execFile('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', windowsProcessIdentityQuery(pid)], {
+        windowsHide: true,
+        timeout: 5000,
+        maxBuffer: 16 * 1024
+      }));
+    } catch (error) {
+      const wrapped = new Error(`process identity query failed for PID ${pid}: ${String(error?.message ?? error).slice(0, 240)}`);
+      wrapped.code = 'PROCESS_IDENTITY_QUERY_FAILED';
+      lastError = wrapped;
+      await new Promise(resolve => setTimeout(resolve, 150));
+      continue;
+    }
+    try {
+      const identity = parseWindowsProcessIdentity(pid, stdout);
+      if (identity !== null) return identity;
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 150));
   }
-  return parseWindowsProcessIdentity(pid, stdout);
+  if (lastError && lastError.code !== 'PROCESS_IDENTITY_INCOMPLETE' && lastError.code !== 'PROCESS_IDENTITY_QUERY_FAILED') throw lastError;
+  return null;
 }
 
 export async function waitForWindowsProcessIdentity(pid, { timeoutMs = 3000, pollIntervalMs = 50, expectedExecutablePath } = {}) {

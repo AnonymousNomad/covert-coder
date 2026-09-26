@@ -56,6 +56,42 @@ test('native picker command resolves the labeled nested edit, checks focus, and 
   assert.doesNotMatch(script, /fileNamePattern\.SetValue/);
 });
 
+test('semantic activate and window input are strict, leased, and carry verified postconditions', () => {
+  const activateById = { action: 'activate', pid: 41, window_handle: 123, lease_id: leaseId, automation_id: 'fileInput', verify_automation_id: 'fixtureSelectedPath' };
+  assert.deepEqual(validateWindowsUiaRequest(activateById), activateById);
+  const activateByName = { action: 'activate', pid: 41, window_handle: 123, lease_id: leaseId, target_name: 'SETTINGS: Operator config', verify_name: 'SYSTEM HEALTH' };
+  assert.deepEqual(validateWindowsUiaRequest(activateByName), activateByName);
+  assert.throws(() => validateWindowsUiaRequest({ ...activateById, target_name: 'also a name' }), /exactly one/);
+  assert.throws(() => validateWindowsUiaRequest({ action: 'activate', pid: 41, window_handle: 123, lease_id: leaseId }), /exactly one/);
+  assert.throws(() => validateWindowsUiaRequest({ action: 'activate', pid: 41, window_handle: 123, lease_id: leaseId, automation_id: 'x' }), /postcondition control/);
+  const activateDialog = { ...activateById, automation_id: 'fileInput', verify_automation_id: 'fileInput', expect_new_window_class: '#32770' };
+  assert.deepEqual(validateWindowsUiaRequest(activateDialog), activateDialog);
+  assert.throws(() => validateWindowsUiaRequest({ ...activateDialog, expect_new_window_class: 'bad class name' }), /window class expectation/);
+  const input = { action: 'window_input', pid: 41, window_handle: 123, lease_id: leaseId, text: 'echo COVERT_DESKTOP_CONTROL_TEST', expect_text: 'COVERT_DESKTOP_CONTROL_TEST', submit: true };
+  assert.deepEqual(validateWindowsUiaRequest(input), input);
+  assert.throws(() => validateWindowsUiaRequest({ ...input, submit: 'yes' }), /submit must be a boolean/);
+  assert.throws(() => validateWindowsUiaRequest({ ...input, expect_text: 'echo COVERT_DESKTOP_CONTROL_TEST' }), /must differ from the typed command/);
+  assert.throws(() => validateWindowsUiaRequest({ ...input, text: 'echo line\nsecond' }), /bounded plain text/);
+  const script = buildWindowsUiaCommand(activateById, identity);
+  assert.match(script, /function Find-ControlByName/);
+  assert.match(script, /function Resolve-SemanticControl/);
+  assert.match(script, /activate_dispatch/);
+  assert.match(script, /'INVOKE_PATTERN'/);
+  assert.match(script, /'FOCUS_ENTER'/);
+  assert.match(script, /'FOCUS_ENTER_FALLBACK'/);
+  assert.match(script, /verify_previsible/);
+  assert.match(script, /expect_new_window_class/);
+  assert.match(script, /new_window_handle/);
+  const inputScript = buildWindowsUiaCommand(input, identity);
+  assert.match(inputScript, /function Find-TextPatternSurface/);
+  assert.match(inputScript, /Read-TextPatternSurface/);
+  assert.match(inputScript, /UNICODE_TO_FOREGROUND_OWNED_WINDOW/);
+  assert.match(inputScript, /text_pattern_output_line/);
+  assert.match(inputScript, /output_line_matched/);
+  assert.match(inputScript, /post_text_sha256/);
+  assert.match(inputScript, /UIA_TEXT_PATTERN_UNAVAILABLE/);
+});
+
 test('UIA helper binds process identity, sends only bounded payload on stdin, and returns verified result', async () => {
   const request = { action: 'invoke', pid: 41, window_handle: 123, lease_id: leaseId, automation_id: 'fixtureButton', verify_automation_id: 'fixtureState', expected_state: 'ON' };
   const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-uia-'));
