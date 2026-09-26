@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "covert-version-owner-v1",
+  "title": "Approved Covert version ownership policy",
+  "type": "object",
+  "required": ["schema_version", "approved", "approved_by", "rationale", "canonical_source", "source_policy"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "approved": { "const": true },
+    "approved_by": { "type": "string", "minLength": 1 },
+    "rationale": { "type": "string", "minLength": 1 },
+    "canonical_source": { "enum": ["package_json", "cargo", "tauri"] },
+    "source_policy": {
+      "type": "object",
+      "required": ["package_json", "cargo", "tauri"],
+      "properties": {
+        "package_json": { "$ref": "#/$defs/source" },
+        "cargo": { "$ref": "#/$defs/source" },
+        "tauri": { "$ref": "#/$defs/source" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "source": {
+      "oneOf": [
+        { "type": "object", "required": ["relationship"], "properties": { "relationship": { "const": "canonical" } }, "additionalProperties": false },
+        { "type": "object", "required": ["relationship", "rule"], "properties": { "relationship": { "const": "derived" }, "rule": { "const": "exact" } }, "additionalProperties": false },
+        { "type": "object", "required": ["relationship", "rationale"], "properties": { "relationship": { "const": "independent" }, "rationale": { "type": "string", "minLength": 1 } }, "additionalProperties": false }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "status": "FOUNDATION READY; PRODUCT PACKAGING NOT QUALIFIED",
+  "source_checkpoint": {
+    "worktree": "E:\\aide-covert-packaging-foundation",
+    "branch": "feat/covert-packaging-foundation-v1",
+    "starting_sha": "72053e3b0787c30160457fec3968e6793f24994a",
+    "candidate_scope": "Packaging apparatus source checkpoint only; not an accepted Desktop Control candidate."
+  },
+  "package_identity": {
+    "product_name": { "value": "AIDE Sovereign Workbench", "status": "PRESENT + UNVERIFIED" },
+    "window_title": { "value": "AIDE Sovereign Workbench", "status": "PRESENT + UNVERIFIED" },
+    "tauri_identifier": { "value": "org.ferrellsyntheticintelligence.aide", "status": "PRESENT + UNVERIFIED" },
+    "main_binary": { "value": "aide-sovereign-workbench.exe", "status": "DERIVED FROM CARGO PACKAGE NAME" },
+    "package_json_version": "0.1.0-preflight",
+    "cargo_version": "0.1.0",
+    "tauri_version": "0.1.0",
+    "version_owner": "UNRESOLVED",
+    "version_gate": "BLOCKED — VERSION OWNER UNRESOLVED",
+    "bundle_targets_configured": "all",
+    "windows_target_formats": ["NSIS", "MSI/WiX"],
+    "actual_windows_artifacts_produced": "NOT VERIFIED IN THIS LANE",
+    "publisher_config": "NOT CONFIGURED; identifier-derived publisher text is not signing identity",
+    "explicit_windows_config": "NOT CONFIGURED",
+    "wix_upgrade_code": "NOT CONFIGURED; Tauri derives one from product name unless explicitly set",
+    "updater": "NOT CONFIGURED"
+  },
+  "branding": {
+    "configured_icon_paths": ["desktop/icons/icon.png", "desktop/icons/icon.ico"],
+    "configured_icons_status": "KNOWN STALE AIDE IDENTITY",
+    "source_svg_candidate": "desktop/icons/icon.svg; stale AIDE identity; not configured in Tauri bundle.icon",
+    "reference_candidate": "docs/assets/branding/covert-coder-emblem.png; unreferenced visual reference only",
+    "canonical_covert_asset": "BRANDING INPUT REQUIRED",
+    "validator_fixture_status": "PASS"
+  },
+  "startup": {
+    "desktop_ports": [4777, 4778, 4779],
+    "development_ports": [4173, 5173],
+    "model_server_port": "DYNAMIC FROM MODEL CONFIGURATION",
+    "port_design": "DEFECT — FIXED PORTS; NO ALTERNATE SELECTION; FINAL FACADE HTTP READINESS IS NOT PROCESS-IDENTITY-BOUND",
+    "port_4777_historical_eaddrinuse": "OBSERVED IN FROZEN PREFLIGHT; CAUSALITY TO HANG NOT PROVEN",
+    "required_node_sidecar_missing": "CURRENT SOURCE RETURNS STARTUP ERROR",
+    "optional_local_inference_missing": "SOURCE LOADS MODEL STATUS WITHOUT SPAWNING IT; FRESH-PROFILE UI ACCEPTANCE NOT RUN"
+  },
+  "state": {
+    "workspace_default": "Tauri resource_dir",
+    "mutable_aide_state": "workspace/.aide under resource_dir by packaged-shell default",
+    "provider_credential_locations": [
+      "workspace/.aide/credentials.dpapi",
+      "user-home/.aide/secrets.json"
+    ],
+    "webview_profile": "%LOCALAPPDATA%/org.ferrellsyntheticintelligence.aide/EBWebView",
+    "webview_shared_with_development": true,
+    "identity_decision": "OPERATOR / RELEASE DECISION REQUIRED",
+    "migration_implemented": false
+  },
+  "installer": {
+    "technology": "Tauri Windows bundle targets NSIS and MSI/WiX",
+    "legacy_observation": "HKCU registration and NSIS-style layout inferred; original installer unavailable",
+    "nsis_default_scope": "CURRENT USER; no administrator by default",
+    "msi_scope": "PER MACHINE in current Tauri WiX implementation; verify produced artifact",
+    "webview2_default": "downloadBootstrapper; requires internet if runtime absent",
+    "upgrade_repair_uninstall_reinstall": "NOT QUALIFIED",
+    "runtime_admin_requirement_applies_to_app_installer": false
+  },
+  "release_integrity": {
+    "lockfiles": "PRESENT + UNVERIFIED",
+    "sha256_manifest_apparatus": "IMPLEMENTED; fixture validation PASS",
+    "authenticode_signing": "MISSING / NOT VERIFIED FOR CURRENT CANDIDATE",
+    "updater_signature": "NOT CONFIGURED",
+    "sbom": "MISSING IN FROZEN PREFLIGHT",
+    "dependency_scanning": "MISSING IN FROZEN PREFLIGHT",
+    "source_provenance": "UNVERIFIED",
+    "artifact_manifest_schema_version": 1
+  },
+  "qualification_apparatus": {
+    "identity_validator": "FIXTURE PASS; CURRENT PRODUCT IDENTITY NOT QUALIFIED",
+    "version_gate": "FIXTURE PASS; CORRECTLY BLOCKS UNRESOLVED OWNER",
+    "branding_validator": "FIXTURE PASS",
+    "port_probe": "FIXTURE PASS",
+    "startup_harness": "FIXTURE PASS",
+    "artifact_manifest": "FIXTURE PASS",
+    "fixture_battery": { "pass": 19, "fail": 0, "invalid": 0 },
+    "product_acceptance": "NOT RUN"
+  },
+  "first_user": {
+    "preflight_script": "PREPARED; NOT RUN",
+    "new_account_created": false,
+    "installation_performed": false
+  },
+  "clean_machine": {
+    "evidence_schema": "docs/v1/packaging/schemas/clean-machine-evidence.schema.json",
+    "status": "PREPARED; NOT RUN"
+  },
+  "documents": [
+    "docs/v1/packaging/PORT-4777-STARTUP-CONTRACT.md",
+    "docs/v1/packaging/RUNTIME-BOOTSTRAP-STARTUP-CONTRACT.md",
+    "docs/v1/packaging/COVERT-STATE-MIGRATION-CONTRACT.md",
+    "docs/v1/packaging/COVERT-RELEASE-INTEGRITY-CONTRACT.md",
+    "docs/v1/packaging/COVERT-PACKAGING-QUALIFICATION.md",
+    "docs/v1/packaging/COVERT-FIRST-USER-QUALIFICATION-PREFLIGHT.md",
+    "docs/v1/packaging/schemas/clean-machine-evidence.schema.json",
+    "docs/v1/packaging/schemas/version-owner.schema.json"
+  ],
+  "destructive_actions": {
+    "installed_application_modified": false,
+    "installed_application_uninstalled": false,
+    "webview_state_modified": false,
+    "signing_keys_generated": false,
+    "desktop_control_modified": false
+  }
+}

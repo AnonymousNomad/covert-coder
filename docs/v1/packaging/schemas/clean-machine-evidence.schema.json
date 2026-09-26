@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "covert-clean-machine-evidence-v1",
+  "title": "Covert clean-machine packaging acceptance evidence",
+  "type": "object",
+  "required": ["schema_version", "candidate", "environment", "installation", "first_run", "lifecycle"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "candidate": {
+      "type": "object",
+      "required": ["source_sha", "version", "installer_filename", "installer_sha256"],
+      "properties": {
+        "source_sha": { "type": "string" },
+        "version": { "type": "string" },
+        "installer_filename": { "type": "string" },
+        "installer_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+        "signature_status": { "enum": ["VALID", "INVALID", "NOT SIGNED", "UNVERIFIED"] }
+      },
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "object",
+      "required": ["windows_version", "windows_build", "machine_classification", "user_privilege"],
+      "properties": {
+        "windows_version": { "type": "string" },
+        "windows_build": { "type": "string" },
+        "machine_classification": { "enum": ["CLEAN VM", "CLEAN MACHINE", "NOT CLEAN", "UNVERIFIED"] },
+        "user_privilege": { "enum": ["STANDARD", "ADMINISTRATOR", "UNVERIFIED"] },
+        "prerequisites": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": false
+    },
+    "installation": {
+      "type": "object",
+      "required": ["result", "product_identity", "install_scope", "install_path"],
+      "properties": {
+        "result": { "enum": ["PASS", "FAIL", "NOT RUN"] },
+        "product_identity": { "type": "string" },
+        "install_scope": { "enum": ["PER USER", "MACHINE", "UNVERIFIED"] },
+        "install_path": { "type": "string" },
+        "webview2_deployment": { "type": "string" },
+        "shortcuts": { "type": "array", "items": { "type": "string" } },
+        "uninstall_registration": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "first_run": {
+      "type": "object",
+      "required": ["launch", "ui_identity", "runtime_initial_state", "provider_initial_state", "system_health"],
+      "properties": {
+        "launch": { "enum": ["PASS", "FAIL", "NOT RUN"] },
+        "ui_identity": { "type": "string" },
+        "runtime_initial_state": { "type": "string" },
+        "provider_initial_state": { "type": "string" },
+        "system_health": { "type": "string" },
+        "workspace_flow": { "enum": ["PASS", "FAIL", "NOT RUN"] }
+      },
+      "additionalProperties": false
+    },
+    "lifecycle": {
+      "type": "object",
+      "required": ["close_reopen", "update", "repair", "uninstall", "retained_state", "reinstall", "final_cleanup"],
+      "properties": {
+        "close_reopen": { "enum": ["PASS", "FAIL", "NOT RUN"] },
+        "update": { "enum": ["PASS", "FAIL", "NOT RUN"] },
+        "repair": { "enum": ["PASS", "FAIL", "NOT RUN"] },
+        "uninstall": { "enum": ["PASS", "FAIL", "NOT RUN"] },
+        "retained_state": { "type": "object" },
+        "reinstall": { "enum": ["PASS", "FAIL", "NOT RUN"] },
+        "final_cleanup": { "enum": ["PASS", "FAIL", "NOT RUN"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
