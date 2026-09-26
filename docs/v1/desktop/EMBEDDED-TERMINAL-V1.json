@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "generated_at_utc": "2026-09-26T13:55:00Z",
+  "lane": "feat/covert-desktop-control-v1",
+  "checkpoint_head": "3e4cf1aa5df4e92c061e9b6a461d08931d9a244d",
+  "subject": "embedded_terminal_v1",
+  "operator_observation": "Terminal -> Start Session -> no visible result",
+  "surface_mapping": {
+    "ui_panel": "browser/src/panels/terminal.ts",
+    "ui_button_label": "OPEN SESSION",
+    "start_session_string_exists_in_repo": false,
+    "panel_mount": "browser/src/cockpit/CockpitShell.ts:298 lazyPanel(terminalStage)",
+    "stage_element": "#cockpit-terminal-stage (CockpitShell.ts:156)",
+    "panel_switch": "CockpitShell.ts:345-354 applyCenterPanel",
+    "client": "browser/src/services/api.ts:551-568",
+    "approval_choreography": "browser/src/services/api.ts:217-231 + browser/src/services/authority.ts:78-93",
+    "backend_owner": "node/src/routes/terminal-sessions.ts + node/src/services/terminal-sessions.ts",
+    "authority_kinds": "common/security/operation-policy.mjs:52-55 terminal.read/terminal.session.start/terminal.session.stop",
+    "facade_map": "common/facade-route-map.json:45 /api/terminal -> ts",
+    "second_implementation_created": false
+  },
+  "live_reproduction": {
+    "method": "qualified UIA activate (InvokePattern) on 'TERMINAL: Governed sessions' against the built shell",
+    "terminal_nav_found_and_invoked": true,
+    "app_alive_after_click": true,
+    "terminal_stage_present_within_10s": false,
+    "open_session_control_found": false,
+    "settings_nav_under_same_conditions": "surfaced correctly",
+    "failing_boundary": "panel mount/display for panel=terminal"
+  },
+  "ruled_out": [
+    "CSS hiding (cockpit.css:449 correct; settings proves the mechanism)",
+    "missing bundle strings (present in browser/dist/assets/index-*.js)",
+    "route/authority/facade enrollment (present per surface_mapping)",
+    "getSharedEvents null-safety (optional chaining, ws.ts:129-131)"
+  ],
+  "not_yet_captured": {
+    "reason": "release WebView2 does not forward page console",
+    "next_executable_action": [
+      "node scripts/start.mjs --frontend=vite; open Vite URL in Edge; pair; DevTools console; click TERMINAL",
+      "capture mount-time exception; fix createTerminalPanel factory or panel-switch path",
+      "re-run embedded terminal acceptance battery through the product UI (session create, echo COVERT_TERMINAL_OK, cwd, input, streaming, resize, exit, restart, stop, cleanup=0, foreign shell survival)"
+    ]
+  },
+  "environment_note": "Focus-gated GUI gates fail closed under operator activity (external IME focus contention observed: focused_process_id external while target window foreground). GUI batteries require an idle desktop.",
+  "classification": {
+    "owner": "CURRENT_LANE",
+    "v1_severity": "release_blocker",
+    "status": "INVESTIGATION_CHECKPOINT_ROOT_CAUSE_BOUNDARY_ISOLATED"
+  }
+}
