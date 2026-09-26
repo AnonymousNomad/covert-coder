@@ -72,6 +72,17 @@ export function createWalkthrough(
   let index = 0;
   let open = false;
   let opener: HTMLElement | null = null;
+  // The first-run check resolves asynchronously; if the operator navigates
+  // while it is in flight, the tour must align to their choice instead of
+  // driving the panel back to step 1 (operator navigation always wins).
+  let operatorNavigated = false;
+  let lastKnownPanel = store.get().panel;
+  const unbindPanelWatch = store.subscribe(state => {
+    if (state.panel === lastKnownPanel) return;
+    lastKnownPanel = state.panel;
+    if (!open) operatorNavigated = true;
+  });
+  window.addEventListener('unload', () => unbindPanelWatch());
 
   function highlight(step: Step | null): void {
     host.querySelectorAll<HTMLElement>('.cockpit-rail-item.cockpit-walkthrough-target').forEach(item => item.classList.remove('cockpit-walkthrough-target'));
@@ -80,7 +91,7 @@ export function createWalkthrough(
     if (item) item.classList.add('cockpit-walkthrough-target');
   }
 
-  function render(): void {
+  function render(navigate: boolean): void {
     const step = STEPS[index]!;
     counter.textContent = `STEP ${index + 1} OF ${STEPS.length}`;
     title.textContent = step.title;
@@ -89,14 +100,23 @@ export function createWalkthrough(
     next.hidden = index === STEPS.length - 1;
     finish.hidden = index !== STEPS.length - 1;
     highlight(step);
-    store.set(prev => ({ ...prev, panel: step.id }));
+    if (navigate) store.set(prev => ({ ...prev, panel: step.id }));
   }
 
-  function show(): void {
+  function show(options: { manual?: boolean } = {}): void {
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     open = true;
     root.hidden = false;
-    render();
+    if (options.manual === true) {
+      index = 0;
+      render(true);
+    } else if (operatorNavigated || store.get().panel !== 'command-center') {
+      const current = STEPS.findIndex(step => step.id === store.get().panel);
+      index = current >= 0 ? current : 0;
+      render(false);
+    } else {
+      render(true);
+    }
     next.focus();
   }
 
@@ -108,8 +128,8 @@ export function createWalkthrough(
   }
   root.addEventListener('keydown', event => { if (event.key === 'Escape') dismiss(); });
 
-  back.addEventListener('click', () => { if (index > 0) { index--; render(); } });
-  next.addEventListener('click', () => { if (index < STEPS.length - 1) { index++; render(); } });
+  back.addEventListener('click', () => { if (index > 0) { index--; render(true); } });
+  next.addEventListener('click', () => { if (index < STEPS.length - 1) { index++; render(true); } });
   skip.addEventListener('click', () => { opts.onToast('INFO', 'Walkthrough skipped. Reopen it any time from SETTINGS.'); dismiss(); });
   finish.addEventListener('click', () => {
     dismiss();
@@ -127,7 +147,7 @@ export function createWalkthrough(
   );
 
   return {
-    open(): void { index = 0; show(); },
+    open(): void { show({ manual: true }); },
     close(): void { dismiss(); },
     isOpen(): boolean { return open; }
   };

@@ -549,7 +549,10 @@ export const api = {
     return call('/api/workbenches/uninstall', { body: body.data, schema: WorkbenchUninstallResponse });
   },
   terminalProviders(): Promise<TerminalProviderListResponseT> {
-    return call('/api/terminal/providers', { schema: TerminalProviderListResponse });
+    // Runtime provider discovery spawns shell probes (PowerShell/WSL) and can
+    // exceed the generic read timeout on a cold machine; keep the call bounded
+    // but wide enough that the first probe does not fail closed.
+    return call('/api/terminal/providers', { schema: TerminalProviderListResponse, timeoutMs: 45000 });
   },
   terminalSessions(): Promise<TerminalSessionListResponseT> {
     return call('/api/terminal/sessions', { schema: TerminalSessionListResponse });

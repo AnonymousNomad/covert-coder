@@ -1,0 +1,95 @@
+{
+  "battery": "EMBEDDED-TERMINAL-V1",
+  "generated_at_utc": "2026-09-26T14:16:40.378Z",
+  "suite": "terminal-acceptance",
+  "pass": 12,
+  "fail": 0,
+  "results": [
+    {
+      "id": "TERM-001",
+      "description": "TERMINAL panel opens and stays active after navigation",
+      "pass": true,
+      "detail": {
+        "panel": "terminal",
+        "hidden": false,
+        "walkthroughOpen": true
+      }
+    },
+    {
+      "id": "TERM-002",
+      "description": "runtime provider probe resolves with an available provider",
+      "pass": true,
+      "detail": "TERMINALEXPERIMENTALInteractive sessions run as approved operations. Opening a session spawns a real shell; input flows only inside that admitted, actor-bound s"
+    },
+    {
+      "id": "TERM-003",
+      "description": "OPEN SESSION control is offered",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "TERM-004",
+      "description": "OPEN SESSION performs the approval-gated real session start",
+      "pass": true,
+      "detail": {
+        "approval409": 1,
+        "xterm": true,
+        "stop": true
+      }
+    },
+    {
+      "id": "TERM-005",
+      "description": "shell prompt is visible (real shell identified)",
+      "pass": true,
+      "detail": "PowerShell 7.6.6\nPS E:\\aide-desktop-control-v1>  "
+    },
+    {
+      "id": "TERM-006",
+      "description": "session starts in the workspace directory",
+      "pass": true,
+      "detail": "PowerShell 7.6.6\nPS E:\\aide-desktop-control-v1>  "
+    },
+    {
+      "id": "TERM-007",
+      "description": "keyboard input reaches the owned session and output streams back",
+      "pass": true,
+      "detail": "PowerShell 7.6.6\nPS E:\\aide-desktop-control-v1> echo COVERT_TERMINAL_OK\nCOVERT_TERMINAL_OK\nPS E:\\aide-desktop-control-v1>  "
+    },
+    {
+      "id": "TERM-008",
+      "description": "session survives a viewport resize",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "TERM-009",
+      "description": "shell exit returns the panel to the closed state",
+      "pass": true,
+      "detail": {
+        "hasXterm": false,
+        "hasOpenButton": true
+      }
+    },
+    {
+      "id": "TERM-010",
+      "description": "a fresh session starts after exit",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "TERM-011",
+      "description": "canonical STOP SESSION closes the session",
+      "pass": true,
+      "detail": {
+        "hasXterm": false,
+        "hasOpenButton": true
+      }
+    },
+    {
+      "id": "TERM-012",
+      "description": "no uncaught page errors across the battery",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}
