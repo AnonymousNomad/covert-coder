@@ -1,9 +1,29 @@
 {
-  "version": 3,
-  "generated_at_utc": "2026-09-26T14:55:00Z",
+  "version": 4,
+  "generated_at_utc": "2026-09-26T15:20:00Z",
   "lane": "feat/covert-desktop-control-v1",
   "checkpoint_head_before_fix": "79cc9e8",
   "checkpoint_head_terminal_candidate": "70ee7e3",
+  "checkpoint_head_frozen": "1a7f80e7407c54616e167a513bbe6022b3cdd950",
+  "build_identity": {
+    "source_sha": "1a7f80e7407c54616e167a513bbe6022b3cdd950",
+    "frontend_bundle": "browser/dist/assets/index-kemRXAAR.js",
+    "frontend_sha256": "e58665a18f88ad86dfe5c4cee608bf0552b382b7868ffda7b655050cb2e63cce",
+    "executable": "desktop/target/release/aide-sovereign-workbench.exe",
+    "executable_bytes": 12726272,
+    "executable_sha256": "d1d8a83fd16959ddae0aed2dd99a69c918c8ccff14634c3d4684f87662107bb5",
+    "stack_launcher_sha256": "9e44eeb80a0f48d70bdbb2de5ee48ef40e239bef6b0f8c6da6c583c9aca355cb"
+  },
+  "built_shell_route": {
+    "cdp": "BLOCKED: Tauri v2 explicit additionalBrowserArgs override WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS; --built fails fast",
+    "uia_script": "scripts/terminal-acceptance-built-uia.mjs (prepared; first live validation in the idle window)"
+  },
+  "ui_id_001_classification": {
+    "status": "UNRESOLVED_PACKAGING_HANDOFF",
+    "search_scope": "14 worktree frontend bundles, Program Files*, LocalAppData Programs, Start Menu/desktop shortcuts, packaged Tauri bundles, E: root executables",
+    "finding": "Start Session string absent from every searched surface; current candidate uses OPEN SESSION",
+    "next_action": "packaging/operator identify the exact installed instance the operator opened and inventory it"
+  },
   "subject": "embedded_terminal_v1",
   "operator_observation": "Terminal -> Start Session -> no visible result",
   "root_cause": {

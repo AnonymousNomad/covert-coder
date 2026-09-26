@@ -85,13 +85,21 @@ Invariant: **automatic onboarding may never override explicit operator navigatio
 
 Handoff note for the Luna #1 onboarding lane: any future change to `Walkthrough.ts` must preserve `navigate` being explicit-only. The auto-open path aligns to `store.get().panel` and must not write the panel; manual open and BACK/NEXT remain the only panel-driving actions.
 
-## 7. Defects recorded (not fixed here)
+## 7. Built-shell qualification route (prepared for the idle window)
 
-- `UI-ID-001` operator-visible build identity ambiguity (Section 4). Owner: packaging/operator verification.
+- **Build identity (frozen at `1a7f80e`):** source SHA `1a7f80e`; frontend bundle `browser/dist/assets/index-kemRXAAR.js` sha256 `e58665a18f88ad86dfe5c4cee608bf0552b382b7868ffda7b655050cb2e63cce`; executable `desktop/target/release/aide-sovereign-workbench.exe` 12,726,272 bytes sha256 `d1d8a83fd16959ddae0aed2dd99a69c918c8ccff14634c3d4684f87662107bb5` (rebuilt via `tauri build --no-bundle` with the fixed frontend embedded); staged `stack-launcher.mjs` sha256 `9e44eeb80a0f48d70bdbb2de5ee48ef40e239bef6b0f8c6da6c583c9aca355cb`. Launch: `desktop/target/release/aide-sovereign-workbench.exe` (native bootstrap auto-pairs; owns its own stack on 4777-4779).
+- **CDP route blocked:** launching the built shell with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=...` does not open a CDP port because Tauri v2 passes explicit `additionalBrowserArgs`, which override the environment variable. `scripts/terminal-acceptance.mjs --built` now fails fast with a typed message instead of hanging (the earlier version could hang because a top-level throw was suppressed by the uncaught-exception handler; fixed).
+- **Prepared UIA route:** `scripts/terminal-acceptance-built-uia.mjs` drives the built shell through Desktop Control's own UIA actions plus bounded read-only UIA name dumps: launch/boot/window identity, TERMINAL navigation, provider probe, OPEN SESSION, native approval dialog acceptance, real owned shell process accounting (children of the port-4778 arch server), STOP SESSION, and zero-leak teardown. It requires an idle desktop (focus-gated actions fail closed by design) and receives its first live validation and any needed adjustments in the idle window.
+- **UI-ID-001 classification:** bounded read-only provenance search found the string `Start Session` in none of the 14 worktree frontend bundles, none of the standard install roots (`Program Files*`, `LocalAppData\Programs`), no Start Menu/desktop shortcuts, no packaged Tauri bundles, and no product executables on the `E:` root. The operator-visible surface is therefore **not present on this machine's standard surfaces from this lane**; classification is `UNRESOLVED — PACKAGING LANE HANDOFF` (the installed historical package was to be handled by that lane). Next action for packaging/operator: identify the exact icon/application the operator opened and inventory that instance; the current candidate is verified by the captured build identity and uses `OPEN SESSION`.
+
+## 8. Defects recorded (not fixed here)
+
+- `UI-ID-001` operator-visible build identity ambiguity (Section 7). Owner: packaging/operator verification.
 - Note: the 409 responses visible in the browser console during session start are the enrolled approval choreography, not failures.
 
-## 8. Remaining to close
+## 9. Remaining to close
 
-1. Rebuild the desktop bundle (frontend already rebuilt; the Tauri exe embeds it at build time) and rerun this battery against the built shell when the desktop is idle, together with the affected Desktop UIA gates.
-2. Verify exact OS-level cleanup counts during the built-app terminal battery (owned shell processes = 0 after stop/exit).
+1. In the idle window: run the affected Desktop UIA gates, then `node scripts/terminal-acceptance-built-uia.mjs --json docs/evidence/embedded-terminal-battery-built.json` (validate/fix the prepared script live), with OS-level cleanup and foreign-process survival checks.
+2. On green: `EMBEDDED TERMINAL V1 CLOSED`, commit/push evidence, then begin the Full Operator Acceptance Battery (Checkpoint 1 first).
+
 
