@@ -248,6 +248,15 @@ test('session and chat save errors do not report success, alter old bytes, or pu
     assert.equal(await fs.readFile(chatPath, 'utf8'), oldChat);
     assert.equal(chat.get('c1')?.title, 'old', 'failed persistence leaves the prior in-memory view');
     assert.deepEqual(chat.get('c1')?.messages, [], 'failed persistence leaves the prior messages in memory');
+    await assert.rejects(
+      chat.saveMany([
+        { modelId: 'm1', title: 'batch one', messages: [] },
+        { modelId: 'm1', title: 'batch two', messages: [] }
+      ]),
+      error => error instanceof StatePersistenceError && error.reason === 'WRITE_FAILED' && error.phase === 'replace'
+    );
+    assert.equal(await fs.readFile(chatPath, 'utf8'), oldChat, 'a failed batch commit leaves prior canonical bytes unchanged');
+    assert.equal(chat.list().length, 1, 'a failed batch commit does not publish uncommitted conversations');
   } finally {
     await fs.rm(workspace, { recursive: true, force: true });
   }

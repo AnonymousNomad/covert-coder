@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { promises as fs } from 'node:fs';
 import { ChatStore } from '../../node/src/services/chat-store.ts';
+import { atomicWriteJson } from '../../node/src/services/atomic-json.ts';
 import { parseChatGptExport } from '../../node/src/services/importers/chatgpt.ts';
 import { parseClaudeExport } from '../../node/src/services/importers/claude.ts';
 import { importChatExport } from '../../node/src/services/importers/index.ts';
@@ -171,6 +172,30 @@ test('import writes additive conversations into the chat store', async () => {
     const after = store.list();
     assert.equal(after.length, 2);
     assert.notEqual(after[0]!.id, after[1]!.id, 'new import gets a fresh id');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('ChatStore imports a conversation batch with one atomic persistence commit', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-import-batch-'));
+  try {
+    let atomicCommits = 0;
+    const store = new ChatStore(dir, async (target, value, options = {}) => {
+      atomicCommits += 1;
+      await atomicWriteJson(target, value, options);
+    });
+    const first = chatGptFixture.conversations[0]!;
+    const payload = JSON.stringify({ conversations: [
+      first,
+      { ...first, id: 'conv-2', title: 'Second conversation' }
+    ] });
+
+    const outcome = await importChatExport(store, 'chatgpt', payload);
+
+    assert.equal(outcome.imported, 2);
+    assert.equal(atomicCommits, 1, 'the complete import is persisted by one atomic replacement');
+    assert.deepEqual(store.list().map(item => item.title).sort(), ['My conversation', 'Second conversation']);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

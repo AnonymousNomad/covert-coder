@@ -90,6 +90,54 @@ export class ChatStore {
     });
   }
 
+  async saveMany(conversations: ChatConversationInput[]): Promise<ChatConversation[]> {
+    if (conversations.length === 0) return [];
+    const parsedRequests = conversations.map(conversation => {
+      const { updatedAt, ...request } = conversation;
+      const parsedRequest = ChatHistorySaveRequest.safeParse(request);
+      if (!parsedRequest.success) throw new Error('invalid conversation');
+      return { request: parsedRequest.data, updatedAt };
+    });
+
+    return withFileMutationLock(this.filePath, async () => {
+      let next = await this.readCanonical();
+      const savedConversations: ChatConversation[] = [];
+
+      for (const { request, updatedAt } of parsedRequests) {
+        const existingIndex = request.id === undefined
+          ? -1
+          : next.findIndex(item => item.id === request.id);
+        let saved: ChatConversation;
+        if (existingIndex >= 0) {
+          const existing = next[existingIndex];
+          if (existing === undefined) throw new Error('chat history index invariant failed');
+          saved = ChatHistoryConversation.parse({
+            ...existing,
+            modelId: request.modelId,
+            title: request.title,
+            messages: request.messages,
+            updatedAt: updatedAt ?? Date.now()
+          });
+          next = next.map((item, index) => index === existingIndex ? saved : item);
+        } else {
+          saved = ChatHistoryConversation.parse({
+            id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            modelId: request.modelId,
+            title: request.title,
+            messages: request.messages,
+            updatedAt: updatedAt ?? Date.now()
+          });
+          next = [...next, saved].slice(-200);
+        }
+        savedConversations.push(saved);
+      }
+
+      await this.persist(next);
+      this.conversations = next;
+      return savedConversations;
+    });
+  }
+
   private async readCanonical(): Promise<ChatConversation[]> {
     let raw: string;
     try {
