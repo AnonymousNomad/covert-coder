@@ -38,6 +38,8 @@ export declare function createHubService(options: {
   fetchImpl?: typeof fetch;
   onEvent?: (event: HubEvent) => void;
   authorization?: () => Promise<string | null>;
+  metadataTimeoutMs?: number;
+  downloadIdleTimeoutMs?: number;
 }): {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<HubSearchResult>;

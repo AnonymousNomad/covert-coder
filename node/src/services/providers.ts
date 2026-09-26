@@ -184,7 +184,7 @@ export class ProviderService {
     providerId: string,
     model: string,
     messages: Array<{ role: string; content: string }>,
-    options: { maxTokens?: number; temperature?: number } = {}
+    options: { maxTokens?: number; temperature?: number; signal?: AbortSignal } = {}
   ): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
     const provider = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
     if (provider === undefined) throw new ProviderError('NOT_READY', `unknown provider ${providerId}`);
@@ -194,6 +194,7 @@ export class ProviderService {
     const started = Date.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 60_000);
+    const signal = options.signal !== undefined ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
     try {
       let response: Response;
       if (provider.kind === 'anthropic') {
@@ -219,7 +220,7 @@ export class ProviderService {
             'anthropic-version': '2023-06-01'
           },
           body: JSON.stringify(body),
-          signal: controller.signal
+          signal
         });
       } else {
         response = await this.fetchFn(`${baseUrl}/chat/completions`, {
@@ -234,7 +235,7 @@ export class ProviderService {
             temperature: options.temperature ?? 0.2,
             max_tokens: Math.min(options.maxTokens ?? 512, 8192)
           }),
-          signal: controller.signal
+          signal
         });
       }
       if (response.status === 429 || response.status === 503) throw new ProviderError('CHILD_FAILED', `provider ${providerId} is busy (HTTP ${response.status})`);
@@ -262,6 +263,7 @@ export class ProviderService {
       return result;
     } catch (error) {
       if (error instanceof ProviderError) throw error;
+      if (error instanceof Error && error.name === 'AbortError' && options.signal?.aborted) throw error;
       if (error instanceof Error && error.name === 'AbortError') throw new ProviderError('CHILD_FAILED', `provider ${providerId} timed out after 60s`);
       const message = error instanceof Error ? error.message : String(error);
       throw new ProviderError('CHILD_FAILED', scrubKey(message, key));

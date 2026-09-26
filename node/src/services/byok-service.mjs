@@ -10,6 +10,8 @@ export function createByokService(options) {
   const consentPath = path.join(byokDir, 'consent.json');
   const fetchImpl = options.fetchImpl ?? null;
   const onEgress = options.onEgress ?? (() => {});
+  const testTimeoutMs = Number.isFinite(options.testTimeoutMs) && options.testTimeoutMs > 0 ? Math.floor(options.testTimeoutMs) : 10_000;
+  const chatTimeoutMs = Number.isFinite(options.chatTimeoutMs) && options.chatTimeoutMs > 0 ? Math.floor(options.chatTimeoutMs) : 60_000;
 
   function readJson(filePath, fallback) {
     try {
@@ -88,12 +90,15 @@ export function createByokService(options) {
     const doFetch = fetchOverride ?? fetchImpl;
     if (!doFetch) throw Object.assign(new Error('no fetch transport available'), { code: 'NOT_READY' });
     onEgress({ kind: 'byok-test', provider_id: providerId, host: new URL(provider.base_url).host });
+    const timeoutSignal = AbortSignal.timeout(testTimeoutMs);
     try {
       const response = await doFetch(`${provider.base_url.replace(/\/$/, '')}/models`, {
-        headers: { authorization: `Bearer ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` },
+        signal: timeoutSignal
       });
       return { ok: response.ok, detail: response.ok ? `HTTP ${response.status}` : `HTTP ${response.status} from provider` };
     } catch (error) {
+      if (timeoutSignal.aborted || error?.name === 'TimeoutError') return { ok: false, detail: `provider test timed out after ${testTimeoutMs}ms` };
       return { ok: false, detail: String(error.message).slice(0, 200) };
     }
   }
@@ -105,16 +110,27 @@ export function createByokService(options) {
     if (!provider || !secretStore.getKey(target.provider_id)) return null;
     const doFetch = fetchImpl;
     if (!doFetch) return null;
-    return async messages => {
+    return async (messages, signal) => {
       onEgress({ kind: 'byok-chat', role, provider_id: provider.id, host: new URL(provider.base_url).host });
-      const response = await doFetch(`${provider.base_url.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${secretStore.getKey(target.provider_id)}` },
-        body: JSON.stringify({ model: target.model_id, messages })
-      });
-      if (!response.ok) throw new Error(`provider HTTP ${response.status}`);
-      const payload = await response.json();
-      return payload?.choices?.[0]?.message?.content ?? '';
+      const timeoutSignal = AbortSignal.timeout(chatTimeoutMs);
+      const requestSignal = signal !== undefined ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+      try {
+        const response = await doFetch(`${provider.base_url.replace(/\/$/, '')}/chat/completions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${secretStore.getKey(target.provider_id)}` },
+          body: JSON.stringify({ model: target.model_id, messages }),
+          signal: requestSignal
+        });
+        if (!response.ok) throw new Error(`provider HTTP ${response.status}`);
+        const payload = await response.json();
+        return payload?.choices?.[0]?.message?.content ?? '';
+      } catch (error) {
+        if (signal?.aborted) throw error;
+        if (timeoutSignal.aborted || error?.name === 'TimeoutError') {
+          throw Object.assign(new Error(`provider chat timed out after ${chatTimeoutMs}ms`), { code: 'TIMEOUT' });
+        }
+        throw error;
+      }
     };
   }
 

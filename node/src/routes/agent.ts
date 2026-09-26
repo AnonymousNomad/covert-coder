@@ -4,6 +4,8 @@ import {
   AgentStartResponse,
   AgentDecisionRequest,
   AgentDecisionResponse,
+  AgentCancelRequest,
+  AgentCancelResponse,
   AgentStatusQuery,
   AgentStatusResponse,
   AgentSessionsListResponse,
@@ -25,6 +27,7 @@ import type { ErrorCode } from '../../../common/errors.ts';
 type AgentLoopService = {
   start: CanonicalAgentLoop['start'];
   decide: CanonicalAgentLoop['decide'];
+  cancel: CanonicalAgentLoop['cancel'];
   status(sessionId: string): unknown;
   list(): unknown[];
 };
@@ -63,7 +66,7 @@ function wrap(handler: (ctx: RouteContext) => Promise<unknown> | unknown): (ctx:
 }
 
 export function routesForAgent(service: AgentLoopService, options: {
-  resolveProviderChatFn?: (role: 'plan' | 'act') => ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null;
+  resolveProviderChatFn?: (role: 'plan' | 'act') => ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
   dispatchTool?: (name: string, args: Record<string, string>, opts: { sandbox?: string }) => Promise<{ ok: boolean; output: string; terminal?: boolean }>;
   // Expert advisory: when set, the route layer consults this micro-expert
   // (e.g. task-router) BEFORE the main model call and prepends the result
@@ -82,11 +85,11 @@ export function routesForAgent(service: AgentLoopService, options: {
   return [
     { method: 'POST', path: '/api/agent/start', body: AgentStartRequest, response: AgentStartResponse, handler: wrap(async ({ body, execution }) => {
       const request = body as { task: string; mode?: 'plan' | 'act'; chat_source?: 'local' | 'provider'; architectEditor?: boolean; expertAdvisory?: boolean };
-      let chatFnOverride: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | undefined;
+      let chatFnOverride: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | undefined;
       if (request.chat_source === 'provider') {
         if (!options.resolveProviderChatFn) throw new RouteError('NOT_READY', 'no provider resolver wired');
         const role = request.mode === 'plan' ? 'plan' as const : 'act' as const;
-        let resolved: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null;
+        let resolved: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
         try {
           resolved = options.resolveProviderChatFn(role);
         } catch (error) {
@@ -106,7 +109,7 @@ export function routesForAgent(service: AgentLoopService, options: {
       // missing/slow, the main call proceeds unchanged.
       if (request.expertAdvisory && options.consultExpert && chatFnOverride) {
         const inner = chatFnOverride;
-        chatFnOverride = async (messages) => {
+        chatFnOverride = async (messages, signal) => {
           let advisory: { expert: string; phase: string; confidence: number } | null = null;
           try {
             const ac = new AbortController();
@@ -133,12 +136,12 @@ export function routesForAgent(service: AgentLoopService, options: {
                   ...messages.slice(0, sysIdx),
                   { ...sysMsg, content: block + sysMsg.content },
                   ...messages.slice(sysIdx + 1)
-                ]);
+                ], signal);
               }
             }
-            return inner([{ role: 'system', content: block }, ...messages]);
+            return inner([{ role: 'system', content: block }, ...messages], signal);
           }
-          return inner(messages);
+          return inner(messages, signal);
         };
       }
       return service.start(request.task, request.mode ?? 'act', chatFnOverride, {
@@ -150,6 +153,10 @@ export function routesForAgent(service: AgentLoopService, options: {
     { method: 'POST', path: '/api/agent/decision', body: AgentDecisionRequest, response: AgentDecisionResponse, handler: wrap(async ({ body, execution }) => {
       const request = body as { session_id: string; approval_id: string; decision: 'approve' | 'reject' | 'abort' };
       return service.decide(request.session_id, request.approval_id, request.decision, execution);
+    }) },
+    { method: 'POST', path: '/api/agent/cancel', body: AgentCancelRequest, response: AgentCancelResponse, handler: wrap(async ({ body, execution }) => {
+      const request = body as { session_id: string };
+      return service.cancel(request.session_id, execution);
     }) },
     { method: 'GET', path: '/api/agent/sessions', response: AgentSessionsListResponse, handler: wrap(async () => {
       return { sessions: service.list() };

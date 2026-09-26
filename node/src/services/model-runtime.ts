@@ -661,7 +661,7 @@ export class ModelRuntime {
     return kept;
   }
 
-  async chat(id: string, messages: Array<{ role: string; content: string }>, options: { maxTokens?: number; temperature?: number; timeoutMs?: number } = {}): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
+  async chat(id: string, messages: Array<{ role: string; content: string }>, options: { maxTokens?: number; temperature?: number; timeoutMs?: number; signal?: AbortSignal } = {}): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('CHILD_FAILED', 'model is not allowlisted');
     if (!this.processes.has(id)) {
@@ -683,7 +683,9 @@ export class ModelRuntime {
           temperature: options.temperature ?? 0.2,
           max_tokens: Math.min(options.maxTokens ?? 512, 512)
         }),
-        signal: AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))
+        signal: options.signal !== undefined
+          ? AbortSignal.any([options.signal, AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))])
+          : AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))
       });
     let response = await attemptRequest(messages);
     if (response.status === 400) {

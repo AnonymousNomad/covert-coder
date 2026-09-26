@@ -25,10 +25,19 @@ before(async () => {
   const routes = await buildRoutes(workspace, 'test', {
     authority: server.authority,
     events: server.events,
-    agentChatFn: async () => {
+    agentChatFn: async (_messages, signal) => {
       const reply = scriptedReplies[Math.min(scriptIndex, scriptedReplies.length - 1)] ?? '';
       scriptIndex += 1;
-      return reply;
+      if (reply !== '__BLOCK_UNTIL_CANCEL__') return reply;
+      return await new Promise<string>((_resolve, reject) => {
+        const rejectCancelled = (): void => {
+          const error = new Error('fixture chat cancelled');
+          error.name = 'AbortError';
+          reject(error);
+        };
+        if (signal?.aborted) rejectCancelled();
+        else signal?.addEventListener('abort', rejectCancelled, { once: true });
+      });
     }
   });
   for (const route of routes) server.route(route);
@@ -83,6 +92,12 @@ async function decideSession<T>(sessionId: string, approvalId: string, decision:
   return post<T>('/api/agent/decision', payload, headers);
 }
 
+async function cancelSession<T>(sessionId: string, taskId: string): Promise<{ status: number; body: Envelope<T> }> {
+  const payload = { session_id: sessionId };
+  const headers = await owner.approve('POST', '/api/agent/cancel', payload, taskId);
+  return post<T>('/api/agent/cancel', payload, headers);
+}
+
 function wsSubscribe(channels: string[]): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const url = base.replace('http://', 'ws://') + '/ws';
@@ -110,6 +125,18 @@ function nextEvent(socket: WebSocket): Promise<Record<string, unknown>> {
     };
     socket.on('message', handler);
   });
+}
+
+async function waitForStatus<T extends { state: string }>(sessionId: string, predicate: (status: T) => boolean, timeoutMs = 8000): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const current = await get<T>(`/api/agent/status?id=${encodeURIComponent(sessionId)}`);
+    assert.equal(current.status, 200);
+    const status = current.body.data;
+    if (status !== undefined && predicate(status)) return status;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  throw new Error(`timed out waiting for agent session ${sessionId}`);
 }
 
 test('agent stream event contract validates every emitted shape', () => {
@@ -214,6 +241,107 @@ test('e2e scripted session over HTTP: read → approved write → done, zero egr
 
   const journalExists = await fs.access(journalPath).then(() => true).catch(() => false);
   assert.equal(journalExists, false, 'purely-local agent session must produce zero egress journal entries');
+});
+
+test('agent cancellation aborts an in-flight model call and reaches a terminal aborted state', async () => {
+  scriptIndex = 0;
+  scriptedReplies.length = 0;
+  scriptedReplies.push('__BLOCK_UNTIL_CANCEL__');
+
+  const started = await startSession<{ session_id: string }>({ task: 'wait for cancellation', mode: 'act' }, 'task:agent-cancel-model-start');
+  assert.equal(started.status, 200);
+  const sessionId = started.body.data?.session_id;
+  assert.ok(sessionId);
+
+  await waitForStatus<{ state: string; iterations: number }>(sessionId, status => status.state === 'running' && status.iterations >= 1);
+  const cancelled = await cancelSession<{ ok: boolean; state: string }>(sessionId, 'task:agent-cancel-model');
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.body.data?.ok, true);
+  assert.equal(cancelled.body.data?.state, 'aborted');
+
+  const finalStatus = await waitForStatus<{ state: string; pending_approval: unknown; verification?: { execution: string } }>(
+    sessionId,
+    status => status.state === 'aborted'
+  );
+  assert.equal(finalStatus.pending_approval, null);
+  assert.equal(finalStatus.verification?.execution, 'aborted');
+});
+
+test('agent cancellation revokes a pending approval before any protected write executes', async () => {
+  scriptIndex = 0;
+  scriptedReplies.length = 0;
+  scriptedReplies.push('<write_file>\n<path>cancelled-before-write.txt</path>\n<content>must not exist</content>\n</write_file>');
+
+  const started = await startSession<{ session_id: string }>({ task: 'prepare a write then stop', mode: 'act' }, 'task:agent-cancel-approval-start');
+  assert.equal(started.status, 200);
+  const sessionId = started.body.data?.session_id;
+  assert.ok(sessionId);
+
+  await waitForStatus<{ state: string; pending_approval: { approval_id: string } | null }>(
+    sessionId,
+    status => status.state === 'awaiting_approval' && status.pending_approval !== null
+  );
+  const cancelled = await cancelSession<{ ok: boolean; state: string }>(sessionId, 'task:agent-cancel-approval');
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.body.data?.state, 'aborted');
+
+  const exists = await fs.access(path.join(workspace, 'cancelled-before-write.txt')).then(() => true).catch(() => false);
+  assert.equal(exists, false, 'cancelled approval must not execute the protected write');
+});
+
+test('agent cancellation kills an already-running command tree with no orphaned child', async () => {
+  const fixture = path.join(workspace, 'slow-agent-child.mjs');
+  const pidFile = path.join(workspace, 'slow-agent-child.pid');
+  await fs.rm(pidFile, { force: true });
+  await fs.writeFile(fixture, [
+    "import { writeFileSync } from 'node:fs';",
+    "writeFileSync('slow-agent-child.pid', String(process.pid));",
+    'setTimeout(() => {}, 30000);'
+  ].join('\n'), 'utf8');
+
+  scriptIndex = 0;
+  scriptedReplies.length = 0;
+  scriptedReplies.push('<run_command>\n<command>node slow-agent-child.mjs</command>\n</run_command>');
+
+  const started = await startSession<{ session_id: string }>({ task: 'run the slow fixture', mode: 'act' }, 'task:agent-cancel-command-start');
+  assert.equal(started.status, 200);
+  const sessionId = started.body.data?.session_id;
+  assert.ok(sessionId);
+
+  let approvalCount = 0;
+  const approvalDeadline = Date.now() + 8000;
+  while (Date.now() < approvalDeadline && approvalCount < 2) {
+    const current = await get<{ state: string; pending_approval: { approval_id: string } | null }>(`/api/agent/status?id=${encodeURIComponent(sessionId)}`);
+    const pending = current.body.data?.pending_approval;
+    if (current.body.data?.state === 'awaiting_approval' && pending !== null && pending !== undefined) {
+      approvalCount += 1;
+      const approvalResult: { status: number; body: Envelope<{ ok: boolean }> } = await decideSession<{ ok: boolean }>(sessionId, pending.approval_id, 'approve', `task:agent-cancel-command-approve-${approvalCount}`);
+      assert.equal(approvalResult.status, 200);
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+  assert.equal(approvalCount, 2, 'checkpoint and run_command approvals must both be consumed');
+
+  const pidDeadline = Date.now() + 5000;
+  while (Date.now() < pidDeadline && !(await fs.access(pidFile).then(() => true).catch(() => false))) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  const childPid = Number(await fs.readFile(pidFile, 'utf8'));
+  assert.ok(Number.isInteger(childPid) && childPid > 0, 'fixture child must publish its PID');
+
+  const cancelled = await cancelSession<{ ok: boolean; state: string }>(sessionId, 'task:agent-cancel-command');
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.body.data?.state, 'aborted');
+
+  let alive = true;
+  const reapDeadline = Date.now() + 5000;
+  while (Date.now() < reapDeadline && alive) {
+    try { process.kill(childPid, 0); }
+    catch { alive = false; break; }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.equal(alive, false, `cancelled command process ${childPid} must be reaped`);
 });
 
 // --- H2 chat_source provider guards ---

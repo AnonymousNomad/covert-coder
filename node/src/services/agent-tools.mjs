@@ -229,7 +229,13 @@ export function splitCommandLine(line) {
   return parts;
 }
 
-function runChild(command, args, workspace, timeoutMs) {
+function cancellationError() {
+  const error = new Error('agent session cancelled');
+  error.name = 'AbortError';
+  return error;
+}
+
+function runChild(command, args, workspace, timeoutMs, abortSignal = null) {
   return new Promise((resolve, reject) => {
     let child;
     const options = { cwd: workspace, env: process.env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] };
@@ -247,17 +253,40 @@ function runChild(command, args, workspace, timeoutMs) {
     let stdout = '';
     let stderr = '';
     let settled = false;
-    const timer = setTimeout(() => {
+    let timedOut = false;
+    let cancelled = false;
+    let terminationFallback = null;
+    const cleanup = () => {
+      clearTimeout(timer);
+      if (terminationFallback !== null) clearTimeout(terminationFallback);
+      abortSignal?.removeEventListener('abort', onAbort);
+    };
+    const finish = (code, signal) => {
       if (settled) return;
       settled = true;
+      cleanup();
+      if (cancelled) {
+        reject(cancellationError());
+        return;
+      }
+      resolve({ code, signal, stdout, stderr, timedOut });
+    };
+    const requestTermination = (reason) => {
+      if (settled || cancelled || timedOut) return;
+      cancelled = reason === 'cancel';
+      timedOut = reason === 'timeout';
       try {
         child.kill();
-        if (path.sep === '\\') {
+        if (path.sep === '\\' && child.pid) {
           spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
         }
       } catch {}
-      resolve({ code: null, signal: 'TIMEOUT', stdout, stderr, timedOut: true });
-    }, timeoutMs);
+      terminationFallback = setTimeout(() => finish(null, cancelled ? 'CANCELLED' : 'TIMEOUT'), 5000);
+    };
+    const onAbort = () => requestTermination('cancel');
+    const timer = setTimeout(() => requestTermination('timeout'), timeoutMs);
+    if (abortSignal?.aborted) onAbort();
+    else abortSignal?.addEventListener('abort', onAbort, { once: true });
     child.stdout?.on('data', chunk => {
       if (stdout.length < COMMAND_OUTPUT_CAP * 4) stdout += chunk.toString('utf8');
     });
@@ -267,15 +296,11 @@ function runChild(command, args, workspace, timeoutMs) {
     child.on('error', error => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
-      reject(error);
+      cleanup();
+      if (cancelled) reject(cancellationError());
+      else reject(error);
     });
-    child.on('close', (code, signal) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({ code, signal, stdout, stderr, timedOut: false });
-    });
+    child.on('close', (code, signal) => finish(code, signal));
   });
 }
 
@@ -401,7 +426,7 @@ export function createAgentTools({ workspace, rg, desktop = null, authority } = 
       description: 'Run one shell command in the workspace. Output is captured and truncated.',
       params: ['command'],
       readOnly: false,
-      async execute(args) {
+      async execute(args, _execution, signal) {
         const line = String(args.command ?? '').trim();
         if (line === '') throw new ToolError('VALIDATION', 'command must be a non-empty string');
         const parts = splitCommandLine(line);
@@ -409,7 +434,7 @@ export function createAgentTools({ workspace, rg, desktop = null, authority } = 
         if (isNetworkSuspiciousCommand(line)) {
           logEgress(rootAbs, { action: 'agent-run-command-network', url: line.slice(0, 300) });
         }
-        const result = await runChild(parts[0], parts.slice(1), rootAbs, COMMAND_TIMEOUT_MS);
+        const result = await runChild(parts[0], parts.slice(1), rootAbs, COMMAND_TIMEOUT_MS, signal ?? null);
         const status = result.timedOut ? 'timed out' : result.code === null ? `killed (${result.signal})` : `exit ${result.code}`;
         const combined = [`$ ${line}`, result.stdout.trim(), result.stderr.trim()].filter(section => section !== '').join('\n');
         return { ok: !result.timedOut && result.code === 0, output: capOutput(`${combined}\n[${status}]`, COMMAND_OUTPUT_CAP) };
@@ -494,10 +519,10 @@ export function createAgentTools({ workspace, rg, desktop = null, authority } = 
   for (const tool of tools) {
     if (tool.readOnly) continue;
     const execute = tool.execute;
-    tool.execute = async (args, execution) => {
+    tool.execute = async (args, execution, signal) => {
       guard(tool.name, args, execution);
       authority.claimExecution(execution, 'agent.tool', { name: tool.name, args });
-      return execute(args, execution);
+      return execute(args, execution, signal);
     };
   }
   return { tools, rootAbs };

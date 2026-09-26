@@ -12,6 +12,8 @@ const SUPPORTED_ARCHS = new Set([
   'deepseek2', 'olmo', 'internlm2', 'baichuan'
 ]);
 const MAX_EVENTS = 500;
+const DEFAULT_METADATA_TIMEOUT_MS = 15_000;
+const DEFAULT_DOWNLOAD_IDLE_TIMEOUT_MS = 45_000;
 
 // Effective-filesystem containment doctrine, mirrored from the accepted
 // daemon/eval-export.mjs implementation: lexical checks are necessary but not
@@ -68,7 +70,23 @@ function safeFilename(filename) {
   }
 }
 
-export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.fetch, onEvent, authorization }) {
+export function createHubService({
+  workspace,
+  modelsDir,
+  fetchImpl = globalThis.fetch,
+  onEvent,
+  authorization,
+  metadataTimeoutMs = DEFAULT_METADATA_TIMEOUT_MS,
+  downloadIdleTimeoutMs = DEFAULT_DOWNLOAD_IDLE_TIMEOUT_MS
+}) {
+  const metadataTimeout = Number.isFinite(metadataTimeoutMs) && metadataTimeoutMs > 0 ? Math.floor(metadataTimeoutMs) : DEFAULT_METADATA_TIMEOUT_MS;
+  const downloadIdleTimeout = Number.isFinite(downloadIdleTimeoutMs) && downloadIdleTimeoutMs > 0 ? Math.floor(downloadIdleTimeoutMs) : DEFAULT_DOWNLOAD_IDLE_TIMEOUT_MS;
+
+  function timeoutError(label, timeoutMs) {
+    const error = new Error(`${label} timed out after ${timeoutMs}ms`);
+    error.code = 'TIMEOUT';
+    return error;
+  }
 
   // Authorization is optional and operator-owned: when provided it yields a
   // bearer token (e.g. the vaulted Hugging Face access token) attached to HF
@@ -85,6 +103,18 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
     }
     return headers;
   }
+  async function fetchMetadata(url, headers, label) {
+    const signal = AbortSignal.timeout(metadataTimeout);
+    try {
+      return await fetchImpl(url, { headers, signal });
+    } catch (error) {
+      if (signal.aborted || error?.name === 'AbortError' || error?.name === 'TimeoutError') {
+        throw timeoutError(label, metadataTimeout);
+      }
+      throw error;
+    }
+  }
+
   const modelsDirLexical = path.resolve(modelsDir);
   const workspaceLexical = path.resolve(workspace);
 
@@ -176,7 +206,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
   async function search(q, sort = 'downloads', limit = 20) {
     const url = `${HF_API}?search=${encodeURIComponent(q)}&filter=gguf&sort=${sort}&direction=-1&limit=${limit}`;
     logEgress(workspace, { action: 'modelhub.search', url });
-    const response = await fetchImpl(url, { headers: await hubHeaders() });
+    const response = await fetchMetadata(url, await hubHeaders(), 'huggingface search');
     if (!response.ok) {
       const error = new Error(`huggingface search failed with ${response.status}`);
       error.code = 'UPSTREAM';
@@ -196,7 +226,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
   async function listRepoFiles(repoId) {
     const url = `${HF_API}/${repoId}?blobs=true`;
     logEgress(workspace, { action: 'modelhub.files', url });
-    const response = await fetchImpl(url, { headers: await hubHeaders() });
+    const response = await fetchMetadata(url, await hubHeaders(), 'huggingface repo lookup');
     if (!response.ok) {
       const error = new Error(`huggingface repo lookup failed with ${response.status}`);
       error.code = 'UPSTREAM';
@@ -266,6 +296,20 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
     const partPath = path.join(modelsDirLexical, `${job.filename}.part`);
     const finalPath = path.join(modelsDirLexical, job.filename);
     const finalUrl = urlTemplate.replace('{filename}', encodeURIComponent(job.filename));
+    let idleTimer = null;
+    let idleTimedOut = false;
+    let idleController = null;
+    const clearIdleTimer = () => {
+      if (idleTimer !== null) clearTimeout(idleTimer);
+      idleTimer = null;
+    };
+    const armIdleTimer = () => {
+      clearIdleTimer();
+      idleTimer = setTimeout(() => {
+        idleTimedOut = true;
+        idleController?.abort();
+      }, downloadIdleTimeout);
+    };
     logEgress(workspace, { action: 'modelhub.download', url: finalUrl });
     try {
       // Effective containment before any mutation: the models root must be a
@@ -275,7 +319,16 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       await ensureContainedParent(modelsReal, partPath, 'partial download file');
       const resumeFrom = await assertSafePartial(partPath);
       const headers = await hubHeaders(resumeFrom > 0 ? { range: `bytes=${resumeFrom}-` } : {});
-      const response = await fetchImpl(finalUrl, { headers });
+      idleController = new AbortController();
+      armIdleTimer();
+      let response;
+      try {
+        response = await fetchImpl(finalUrl, { headers, signal: AbortSignal.any([job.controller.signal, idleController.signal]) });
+      } catch (error) {
+        if (idleTimedOut) throw timeoutError('huggingface download', downloadIdleTimeout);
+        throw error;
+      }
+      armIdleTimer();
       let effectiveResume = resumeFrom;
       if (response.status === 200 && effectiveResume > 0) effectiveResume = 0;
       if (response.status !== 200 && response.status !== 206) {
@@ -297,6 +350,8 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
           if (job.controller.signal.aborted) {
             throw Object.assign(new Error('cancelled'), { code: 'CANCELLED' });
           }
+          if (idleTimedOut) throw timeoutError('huggingface download', downloadIdleTimeout);
+          armIdleTimer();
           await fileHandle.write(chunk, 0, chunk.length, position);
           position += chunk.length;
           job.bytes_done = position;
@@ -313,6 +368,7 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
             });
           }
         }
+        clearIdleTimer();
       } finally {
         await fileHandle.close();
       }
@@ -327,7 +383,8 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       const manifest = await persistManifest(job);
       emit({ event: 'done', job_id: job.job_id, bytes_done: job.bytes_done, bytes_total: job.bytes_total, filename: job.filename, manifest });
     } catch (error) {
-      const cancelled = job.controller.signal.aborted || error?.name === 'AbortError' || error?.code === 'CANCELLED';
+      if (idleTimedOut && error?.code !== 'TIMEOUT') error = timeoutError('huggingface download', downloadIdleTimeout);
+      const cancelled = job.controller.signal.aborted || error?.code === 'CANCELLED';
       if (!cancelled) {
         // keep the .part file so a later attempt resumes instead of restarting
         job.status = 'error';
@@ -349,6 +406,8 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       }
       job.status = 'cancelled';
       emit({ event: 'cancelled', job_id: job.job_id });
+    } finally {
+      clearIdleTimer();
     }
   }
 

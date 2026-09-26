@@ -51,6 +51,9 @@ export interface Route {
 }
 
 export const MAX_BODY_BYTES = 5 * 1024 * 1024;
+export const SERVER_REQUEST_TIMEOUT_MS = 120_000;
+export const SERVER_HEADERS_TIMEOUT_MS = 66_000;
+export const SERVER_KEEP_ALIVE_TIMEOUT_MS = 65_000;
 
 export class ArchServer {
   readonly authority: ExecutionAuthority;
@@ -101,6 +104,14 @@ export class ArchServer {
     const server = http.createServer((request, response) => {
       void this.handle(request, response);
     });
+    // Explicit ingress bounds. requestTimeout/headersTimeout limit how long a
+    // client may take to deliver an HTTP request; keepAliveTimeout avoids the
+    // short half-closed-socket window observed behind the local facade. Long
+    // upstream work is bounded at the owning service with abort signals rather
+    // than pretending these socket settings cancel async handler execution.
+    server.requestTimeout = SERVER_REQUEST_TIMEOUT_MS;
+    server.headersTimeout = SERVER_HEADERS_TIMEOUT_MS;
+    server.keepAliveTimeout = SERVER_KEEP_ALIVE_TIMEOUT_MS;
     server.on('error', error => {
       this.logger.error('server error', { message: error.message });
     });

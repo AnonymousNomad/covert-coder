@@ -50,6 +50,15 @@ export const AgentDecisionResponse = z.object({
   ok: z.boolean()
 }).strict();
 
+export const AgentCancelRequest = z.object({
+  session_id: z.string().min(1)
+}).strict();
+
+export const AgentCancelResponse = z.object({
+  ok: z.boolean(),
+  state: AgentSessionState
+}).strict();
+
 export const AgentStatusQuery = z.object({
   id: z.string().min(1)
 }).strict();

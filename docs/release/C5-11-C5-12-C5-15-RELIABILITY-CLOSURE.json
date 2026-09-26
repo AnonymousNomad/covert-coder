@@ -1,0 +1,24 @@
+{
+  "schema": "covert.v1.reliability-closure.v1",
+  "starting_sha": "f4da26b0b1c062dce8f3066f350f032dd3877ce4",
+  "branch": "fix/v1-mission-cancellation",
+  "items": {
+    "C5-11": {"status": "CANDIDATE_CLOSED", "scope": "BYOK/provider bounded fetch and caller cancellation"},
+    "C5-12": {"status": "CANDIDATE_CLOSED", "scope": "Model Hub metadata/download timeout plus explicit HTTP ingress timeout configuration"},
+    "C5-15": {"status": "CANDIDATE_CLOSED", "scope": "running in-memory agent mission cancellation with approval revocation and owned tool cleanup"}
+  },
+  "timeouts_ms": {
+    "byok_test": 10000,
+    "byok_chat": 60000,
+    "modelhub_metadata": 15000,
+    "modelhub_download_idle": 45000,
+    "server_request": 120000,
+    "server_headers": 66000,
+    "server_keep_alive": 65000
+  },
+  "focused_tests": {"total": 23, "passed": 23, "failed": 0},
+  "authority_arch_tests": {"total": 39, "passed": 39, "failed": 0},
+  "server_timeout_test": {"total": 1, "passed": 1, "failed": 0},
+  "final_full_check": {"total": 631, "passed": 620, "failed": 0, "skipped": 11},
+  "excluded_claims": ["C2-11 crash-resume durability", "C4-02 global egress enforcement", "universal async handler cancellation"]
+}

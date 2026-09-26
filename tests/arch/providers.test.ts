@@ -159,6 +159,33 @@ test('disconnect removes the credential and resets status', async () => {
   }
 });
 
+test('chat propagates caller cancellation instead of misreporting a provider timeout', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-'));
+  try {
+    let calls = 0;
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calls += 1;
+      if (calls === 1) return new Response(null, { status: 200 });
+      return await new Promise<Response>((_resolve, reject) => {
+        const rejectAbort = (): void => reject(new DOMException('caller cancelled', 'AbortError'));
+        if (init?.signal?.aborted) rejectAbort();
+        else init?.signal?.addEventListener('abort', rejectAbort, { once: true });
+      });
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn);
+    const connected = await service.connect({ providerId: 'openai', key: 'sk-test' });
+    assert.equal(connected.status, 'connected');
+
+    const controller = new AbortController();
+    const pending = service.chat('openai', 'gpt-4o-mini', [{ role: 'user', content: 'wait' }], { signal: controller.signal });
+    controller.abort();
+    await assert.rejects(pending, error => error instanceof Error && error.name === 'AbortError');
+    assert.equal(calls, 2, 'connect probe plus one chat request');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('unknown provider id is rejected', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-'));
   try {

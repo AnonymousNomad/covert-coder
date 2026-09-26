@@ -12,6 +12,8 @@ import { createOperatorIdentity, type OperatorIdentityHandles, type OperatorPres
 import {
   AgentDecisionRequest,
   AgentDecisionResponse,
+  AgentCancelRequest,
+  AgentCancelResponse,
   AgentStartRequest,
   AgentStartResponse,
   AgentStatusQuery,
@@ -171,6 +173,17 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
       }
       agentStatusMount.appendChild(actions);
     }
+    if (status.state === 'running' || status.state === 'awaiting_approval') {
+      const cancelActions = el('div', 'cockpit-resident-actions');
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'cockpit-resident-action';
+      cancel.textContent = 'STOP TASK';
+      cancel.setAttribute('aria-label', 'Stop the running governed Resident task');
+      cancel.addEventListener('click', () => { void cancelAgent(); });
+      cancelActions.appendChild(cancel);
+      agentStatusMount.appendChild(cancelActions);
+    }
     if (status.verification !== undefined) {
       agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `VERIFICATION · ${status.verification.state.toUpperCase()} · EXECUTION ${status.verification.execution.toUpperCase()}`));
     }
@@ -201,6 +214,17 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
       await pollAgent();
     } catch (error) {
       paintAgentStatus(activeStatus, `Resident decision failed · ${String((error as Error).message ?? error).slice(0, 180)}`);
+    }
+  }
+
+  async function cancelAgent(): Promise<void> {
+    if (activeSessionId === null) return;
+    try {
+      const body = AgentCancelRequest.parse({ session_id: activeSessionId });
+      await call('/api/agent/cancel', { method: 'POST', body, schema: AgentCancelResponse });
+      await pollAgent();
+    } catch (error) {
+      paintAgentStatus(activeStatus, `Resident cancellation failed · ${String((error as Error).message ?? error).slice(0, 180)}`);
     }
   }
 
