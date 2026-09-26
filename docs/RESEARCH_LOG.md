@@ -8,6 +8,33 @@ test, and an honest result. This is the project memory for architecture work.
 **This is the Way:** research, decide, implement surgically, test live, record
 the result, and refuse unsupported completion claims.
 
+## 2026-09-26 — V1 C2-02 Atomic Persistence
+
+- Research basis: the frozen V1 matrix identifies session.json and
+  chat-history.json as canonical file-backed state with direct in-place writes.
+  The baseline fault injection truncated a disposable canonical fixture to
+  partial JSON and demonstrated parse failure.
+- Decision: retain the existing file ownership and schemas; do not add a second
+  database, unbounded backup set, or cross-process lock in this slice. Require
+  same-directory atomic replacement, validated complete bytes, truthful
+  corruption/unsupported-schema errors, and one typed server writer per
+  workspace.
+- Change: implementation checkpoint e6c1dc12d894ec8b7d92f7122e1db17f6c6384ff
+  adds the shared atomic JSON helper, process-local path transaction lock,
+  truthful SessionStore/ChatStore recovery, one typed session owner, and
+  deterministic interrupted-write tests. Evidence is in
+  docs/v1/state/C2-02-ATOMIC-PERSISTENCE.md and .json.
+- Verification: focused persistence/session/chat/importer tests passed 26/26;
+  provider-routes passed 5/5 in isolation, including 200-conversation import
+  in 4.521 seconds. The final npm run check completed syntax, TypeScript,
+  browser TypeScript, and ESLint (0 errors, 63 warnings), but its architecture
+  run had 760 pass, 2 provider-routes failures, and 11 skips. The isolated
+  provider pass supports a load-sensitive timeout classification, but exact
+  host cause is not established; the full check remains failed overall.
+- Limits: no power-loss guarantee or cross-process writer coordination.
+  C4-02 remains blocked at the system/process-level and legacy egress boundary;
+  it was not changed. C1-02 reproduction was not started.
+
 ## 2026-08-16 — Editor-Default Gate 1 Slice
 
 - Research basis: the AIDE Phase 3 editor SOP requires a real workspace tree,

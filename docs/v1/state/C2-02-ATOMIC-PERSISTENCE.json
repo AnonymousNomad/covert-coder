@@ -1,0 +1,133 @@
+{
+  "id": "C2-02",
+  "title": "Non-atomic session and chat-history persistence",
+  "status": "CLOSED",
+  "scope": "Application-process crash consistency and truthful recovery in the supported single typed-server process topology.",
+  "branch": "fix/v1-p0-atomic-persistence",
+  "starting_sha": "1d6f4969db8b0d88abd285ab2cb8917d790b8567",
+  "implementation_checkpoint_sha": "e6c1dc12d894ec8b7d92f7122e1db17f6c6384ff",
+  "platform": {
+    "os": "Windows 11",
+    "node": "26.4.0",
+    "filesystem": "NTFS",
+    "test_volume": "E:"
+  },
+  "wave_0a": {
+    "checkpoint": "1d6f4969db8b0d88abd285ab2cb8917d790b8567",
+    "848af9_is_ancestor": true,
+    "clean": true,
+    "origin_parity": "0 ahead / 0 behind"
+  },
+  "ownership": [
+    {
+      "state": "session",
+      "canonical_file": ".aide/session.json",
+      "service": "node/src/services/session-store.ts",
+      "routes": ["GET /api/session", "PUT /api/session"],
+      "authoritative": true,
+      "legacy_daemon_writer_removed": true,
+      "schema": "SessionFile version 1; accepted legacy shape migrates atomically"
+    },
+    {
+      "state": "chat-history",
+      "canonical_file": ".aide/chat-history.json",
+      "service": "node/src/services/chat-store.ts",
+      "routes": ["GET /api/chat/history", "POST /api/chat/history"],
+      "additional_writer": "Local provider-export import through the same ChatStore",
+      "authoritative": true,
+      "schema": "Strict ChatHistoryResponse shape without an explicit version field"
+    }
+  ],
+  "baseline_failure": {
+    "starting_writer": "Direct fs.writeFile to canonical files",
+    "reproduction": "Interrupted in-place write against disposable fixture left canonical bytes as {; JSON.parse failed.",
+    "operator_state_touched": false
+  },
+  "atomicity_contract": {
+    "same_directory_temporary": true,
+    "exclusive_temporary_creation": true,
+    "contract_validation_before_write": true,
+    "file_sync_and_close": true,
+    "readback_byte_and_schema_validation": true,
+    "replacement": "Same-directory rename on tested Windows NTFS",
+    "interruption_points": [
+      "Partial temporary write: old canonical remains valid",
+      "Complete temporary before rename: old canonical remains valid",
+      "Immediately after rename: new canonical is complete and valid"
+    ],
+    "power_loss_durability_claim": false
+  },
+  "concurrency": {
+    "lock": "Normalized canonical path transaction mutex within one Node process",
+    "independent_store_instances_same_process": "PASS",
+    "standard_topology": "One typed ArchServer per workspace under scripts/start.mjs",
+    "cross_process_coordination": "UNSUPPORTED; no OS lock or compare-and-swap"
+  },
+  "recovery": [
+    {"condition": "Valid canonical file", "result": "Parse and validate"},
+    {"condition": "Missing file in usable existing workspace", "result": "First-run empty state"},
+    {"condition": "Malformed or zero-length JSON", "result": "CORRUPT_STATE; preserve bytes; NOT_READY route response"},
+    {"condition": "Unsupported schema/version", "result": "UNSUPPORTED_SCHEMA; preserve bytes"},
+    {"condition": "Unreadable or invalid workspace path", "result": "READ_FAILED; do not report empty state"},
+    {"condition": "Orphan helper temporary", "result": "Ignore at startup; remove only helper-named files older than 24 hours after a later successful commit"},
+    {"condition": "Backup candidate", "result": "No backup is created or consumed"}
+  ],
+  "write_failures": {
+    "serialization": "Preserves old canonical bytes",
+    "temp_creation": "Preserves old canonical bytes",
+    "temp_write_enospc_fixture": "Preserves old canonical bytes",
+    "flush_enospc_fixture": "Preserves old canonical bytes",
+    "readback_eio_fixture": "Preserves old canonical bytes",
+    "replace_eacces_fixture": "Preserves old canonical bytes",
+    "success_receipt_on_failure": false,
+    "diagnostics": "Sanitized state kind, reason, operation phase, optional OS code, and recovery action; no state content or absolute path"
+  },
+  "tests": {
+    "focused_c2": {
+      "status": "PASS",
+      "passed": 26,
+      "failed": 0,
+      "exit_code": 0,
+      "command": "node --test tests/arch/state-persistence-atomicity.test.ts tests/arch/session-routes.test.ts tests/arch/chat-history-authority.test.ts tests/arch/importers.test.ts",
+      "duration_ms": 3736
+    },
+    "provider_route_isolation": {
+      "status": "PASS",
+      "passed": 5,
+      "failed": 0,
+      "exit_code": 0,
+      "import_matrix_duration_ms": 4521,
+      "fixture_deadline_ms": 5000
+    },
+    "full_npm_check": {
+      "status": "PARTIAL_FAILURE",
+      "node_syntax": "PASS",
+      "typescript_node": "PASS",
+      "typescript_browser": "PASS",
+      "eslint": {"errors": 0, "warnings": 63},
+      "architecture": {"total": 773, "passed": 760, "failed": 2, "skipped": 11},
+      "failures": [
+        "POST /api/providers/import authority matrix timed out at 5.456 seconds against its fixed 5-second fixture deadline",
+        "ENOTEMPTY teardown on the same provider-routes fixture after timeout"
+      ],
+      "classification": "Load-sensitive timing is supported by isolated/full-run contrast; exact host cause is not proven. Full canonical check remains failed overall."
+    },
+    "workflow_handoff_continuation": {
+      "status": "PASS",
+      "passed": 89,
+      "evidence": "Earlier targeted run; the full architecture run after the final source change had no failures in these suites."
+    }
+  },
+  "limits": [
+    "No cross-process coordination for multiple typed servers sharing a workspace.",
+    "No last-known-good backup or automatic recovery from malformed canonical state.",
+    "No power-loss durability qualification.",
+    "Filesystem failures were injected; no real disk-full event was induced.",
+    "Provider-export import is per-conversation and non-transactional.",
+    "Provider import matrix is close to its 5-second test deadline and timed out at 5.456 seconds in the full architecture run."
+  ],
+  "preserved_findings": {
+    "C4-02": "BLOCKED — system/process-level and legacy egress remains outside a canonical Local-Only enforcement boundary; unchanged.",
+    "C1-02": "NOT STARTED — route-map drift reproduction was not started."
+  }
+}
