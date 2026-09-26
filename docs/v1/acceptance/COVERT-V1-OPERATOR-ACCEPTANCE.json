@@ -1,0 +1,283 @@
+{
+  "battery": "COVERT-V1-OPERATOR-ACCEPTANCE-CHECKPOINT-1",
+  "scope": "Shell / Navigation / Security / Approvals",
+  "generated_at_utc": "2026-09-26T16:11:37.453Z",
+  "suite": "acceptance-checkpoint1-uia",
+  "pass": 20,
+  "fail": 0,
+  "results": [
+    {
+      "id": "CH1-000",
+      "description": "build identity executable present",
+      "pass": true,
+      "detail": "E:\\aide-desktop-control-v1\\desktop\\target\\release\\aide-sovereign-workbench.exe"
+    },
+    {
+      "id": "CH1-001",
+      "description": "built shell boots, owns the stack, and renders its identity",
+      "pass": true,
+      "detail": {
+        "pid": 4244,
+        "health": 200,
+        "window_handle": 5834788,
+        "settled_ms": 684,
+        "identity": [
+          "AIDE Sovereign Workbench",
+          "Covert Coder",
+          "Covert Coder - Web content"
+        ]
+      }
+    },
+    {
+      "id": "CH1-102",
+      "description": "navigation RESIDENT dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 746,
+        "fresh": [
+          "Covert emblem",
+          "COVERT CODER",
+          "SOVEREIGN DEVELOPMENT ENVIRONMENT",
+          "PRIVATE MINDS"
+        ]
+      }
+    },
+    {
+      "id": "CH1-103",
+      "description": "navigation PROJECTS dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 784,
+        "fresh": [
+          "PROJECTS / WORKSPACE",
+          "AVAILABLE",
+          "WORKSPACE FILES",
+          "REFRESH"
+        ]
+      }
+    },
+    {
+      "id": "CH1-104",
+      "description": "navigation EDITOR dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 2379,
+        "fresh": [
+          "WARNING",
+          "RESIDENT PUSH � ATTENTION",
+          "g1",
+          "Split editor right"
+        ]
+      }
+    },
+    {
+      "id": "CH1-105",
+      "description": "navigation MODELS dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 729,
+        "fresh": [
+          "MODELS",
+          "AVAILABLE",
+          "Artifact, runtime, and readiness are separate facts. Start and stop require approval for the selected model.",
+          "Runtime available"
+        ]
+      }
+    },
+    {
+      "id": "CH1-106",
+      "description": "navigation SKILLS dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 707,
+        "fresh": [
+          "SKILLS",
+          "PARTIAL",
+          "Skill Intelligence & workflows",
+          "Methods, constraints, and verification expectations belong to the active workflow. The skill registry is not exposed to "
+        ]
+      }
+    },
+    {
+      "id": "CH1-107",
+      "description": "navigation MEMORY dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 651,
+        "fresh": [
+          "MEMORY",
+          "Recorded work. Explicit provenance.",
+          "Inspect day digests derived from recorded workspace events. Refreshing digests updates local memory and requires operato",
+          "Digest retrieval does not prove that a model recalled or used this information. Recall search and session pinning are no"
+        ]
+      }
+    },
+    {
+      "id": "CH1-108",
+      "description": "navigation VERIFICATION dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 709,
+        "fresh": [
+          "VERIFICATION",
+          "Veritas owns verification. A completed task is a claim; recorded evidence must support a verdict for the current scope.",
+          "CLAIM",
+          "What the task or agent says happened."
+        ]
+      }
+    },
+    {
+      "id": "CH1-109",
+      "description": "navigation SECURITY dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 745,
+        "fresh": [
+          "SECURITY",
+          "PARTIAL",
+          "Explicit authority. Bounded operations.",
+          "PAIRED � session expires 11:38:59 AM. No operation approval is implied."
+        ]
+      }
+    },
+    {
+      "id": "CH1-110",
+      "description": "navigation EXTENSIONS dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 756,
+        "fresh": [
+          "EXTENSIONS",
+          "DISABLED",
+          "?",
+          "PHASE-GATED"
+        ]
+      }
+    },
+    {
+      "id": "CH1-111",
+      "description": "navigation SETTINGS dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 743,
+        "fresh": [
+          "OPERATOR CONTROL",
+          "SETTINGS",
+          "Configure real operator preferences; inspect canonical system state; follow the owning surface for permissions, models, ",
+          "LOCAL PREFERENCES � SAVED IN THIS BROWSER PROFILE WHEN CHANGED � NOT SYNCED"
+        ]
+      }
+    },
+    {
+      "id": "CH1-101",
+      "description": "navigation COMMAND CENTER dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 8802,
+        "marker": "OPERATIONAL EVIDENCE",
+        "fresh": [
+          "THINKING",
+          "RESIDENT PUSH � READING",
+          "Resident workspace surfaces",
+          "CHAT"
+        ]
+      }
+    },
+    {
+      "id": "CH1-112",
+      "description": "navigation TERMINAL dispatches with a truthful view change",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "alive": true,
+        "settled_ms": 675,
+        "fresh": [
+          "EXPERIMENTAL",
+          "Interactive sessions run as approved operations. Opening a session spawns a real shell; input flows only inside that adm",
+          "Probing runtime providers.",
+          "TASK HISTORY (READ-ONLY)"
+        ]
+      }
+    },
+    {
+      "id": "CH1-201",
+      "description": "OPEN SESSION dispatches its approval dialog",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "verified": false,
+        "code": "UIA_POSTCONDITION_FAILED"
+      }
+    },
+    {
+      "id": "CH1-202",
+      "description": "approval rejection (Cancel) dispatches",
+      "pass": true,
+      "detail": {
+        "dispatched": true,
+        "verified": false,
+        "code": "UIA_POSTCONDITION_FAILED"
+      }
+    },
+    {
+      "id": "CH1-203",
+      "description": "rejected approval leaves NO terminal session",
+      "pass": true,
+      "detail": {
+        "shells": []
+      }
+    },
+    {
+      "id": "CH1-204",
+      "description": "panel truthfully re-offers OPEN SESSION after rejection",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "CH1-301",
+      "description": "panic ends the owned shell and frees the ports",
+      "pass": true,
+      "detail": {
+        "appGone": true,
+        "portsFree": true
+      }
+    },
+    {
+      "id": "CH1-302",
+      "description": "foreign shells survive (owned-only termination)",
+      "pass": true,
+      "detail": {
+        "before": {
+          "pwsh": 4,
+          "edge": 18
+        },
+        "after": {
+          "pwsh": 4,
+          "edge": 18
+        }
+      }
+    }
+  ]
+}
