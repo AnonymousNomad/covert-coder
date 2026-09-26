@@ -1,0 +1,116 @@
+{
+  "schema": "covert.packaging.installed-app-inventory.v1",
+  "captured_at_local": "2026-09-25T20:14:00.9614839-05:00",
+  "scope": "Product-scoped installed registration and file metadata. Unrelated processes and tasks excluded.",
+  "product": {
+    "display_name": "AIDE Sovereign Workbench",
+    "executable": "E:\\pip_temp\\opencode\\covert-install-p4\\aide-sovereign-workbench.exe",
+    "filename": "aide-sovereign-workbench.exe",
+    "file_version": "0.1.0.0",
+    "product_version": "0.1.0",
+    "product_name": "AIDE Sovereign Workbench",
+    "publisher_string": "ferrellsyntheticintelligence",
+    "tauri_identifier": "org.ferrellsyntheticintelligence.aide",
+    "sha256": "A6AFFA7A34A9CB926D2038C55E7EE436EB16176E793F36C3823F8EEAA0CC73A5",
+    "size_bytes": 12663296,
+    "last_write_local": "2026-09-20T12:50:44",
+    "authenticode": "NotSigned",
+    "original_filename": null
+  },
+  "registration": {
+    "registry_hive": "HKCU",
+    "registry_key": "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\AIDE Sovereign Workbench",
+    "install_location": "E:\\pip_temp\\opencode\\covert-install-p4",
+    "install_date": null,
+    "install_source": null,
+    "display_version": "0.1.0",
+    "uninstall_command": "E:\\pip_temp\\opencode\\covert-install-p4\\uninstall.exe",
+    "uninstaller_sha256": "E6C766D182E3C01BBD71275EAF1A52333F3AEA096BDA88DB1057EE90E5E48F49",
+    "uninstaller_authenticode": "NotSigned",
+    "quiet_uninstall_command": null,
+    "no_modify": 1,
+    "no_repair": 1,
+    "estimated_size_kb": 161216,
+    "package_format": "No AppX/MSIX registration found. NSIS-style uninstall layout inferred; original installer unavailable."
+  },
+  "shortcuts": [
+    {
+      "location": "User Start Menu",
+      "name": "AIDE Sovereign Workbench.lnk",
+      "target": "E:\\pip_temp\\opencode\\covert-install-p4\\aide-sovereign-workbench.exe",
+      "working_directory": "E:\\pip_temp\\opencode\\covert-install-p4",
+      "icon_location": ",0"
+    },
+    {
+      "location": "User Desktop",
+      "name": "AIDE Sovereign Workbench.lnk",
+      "target": "E:\\pip_temp\\opencode\\covert-install-p4\\aide-sovereign-workbench.exe",
+      "working_directory": "E:\\pip_temp\\opencode\\covert-install-p4",
+      "icon_location": ",0"
+    }
+  ],
+  "other_identity_surfaces": {
+    "appx_msix": [],
+    "execution_aliases": [],
+    "taskbar_pin": "No matching pin observed",
+    "services": [],
+    "scheduled_tasks_scoped_to_product": [],
+    "matching_installed_executable_processes_at_capture": []
+  },
+  "state_locations": [
+    {
+      "path": "E:\\pip_temp\\opencode\\covert-install-p4\\.aide",
+      "contents_examined": "Metadata and names only; payloads not displayed, parsed, or copied.",
+      "classification": "UNIQUE TO LEGACY INSTALL",
+      "observed_summary": {
+        "files": 10,
+        "directories": 4,
+        "approximate_size_bytes": 2760000,
+        "top_level_names": ["datasets", "exports", "index", "logs", "cipher-state.jsonl"],
+        "large_metadata_files": ["index/chunks.json", "index/manifest.json", "cipher-state.jsonl"]
+      }
+    },
+    {
+      "path": "C:\\Users\\Grey_\\AppData\\Local\\org.ferrellsyntheticintelligence.aide\\EBWebView",
+      "contents_examined": "Names and metadata only; database and profile payloads not opened.",
+      "classification": "SHARED WITH CURRENT DEVELOPMENT",
+      "observed_names_include": ["Default/History", "Default/Login Data", "Default/Web Data", "Default/Network/Cookies", "Default/Preferences", "Local State"],
+      "risk": "Potential login, cookie, browsing, and web profile state; preserve unchanged."
+    }
+  ],
+  "install_tree_summary": {
+    "top_level": [".aide", "models", "plugins", "resources", "aide-sovereign-workbench.exe", "uninstall.exe"],
+    "models_directory_empty": true,
+    "plugins_directory_empty": true,
+    "root_runtime_directory_present": false,
+    "resources_files": 1346,
+    "resources_directories": 84,
+    "resources_approximate_size_bytes": 152334254,
+    "bundled_node": {
+      "path": "resources/runtime/node.exe",
+      "version": "v22.20.0",
+      "size_bytes": 85588976,
+      "sha256": "FDDDBF4581E046B8102815D56208D6A248950BB554570B81519A8A5DACFEE95D"
+    },
+    "bundled_llama_server": false,
+    "gguf_files_found": 0
+  },
+  "provenance": {
+    "classification": "UNKNOWN INSTALLED COVERT BUILD",
+    "exact_repository_commit": null,
+    "release_artifact_link": null,
+    "partial_correspondence": {
+      "component": "resources/stack-launcher.mjs",
+      "installed_sha256": "0E72D2284CF2129DDBC0031E9D35A0B85EF6C7561759DDA723D48DC0DE0D57EA",
+      "release_source_assembly_sha256": "0E72D2284CF2129DDBC0031E9D35A0B85EF6C7561759DDA723D48DC0DE0D57EA",
+      "conclusion": "One matching source component does not prove executable or package provenance."
+    }
+  },
+  "destructive_actions": {
+    "launched": false,
+    "modified": false,
+    "uninstalled": false,
+    "state_deleted": false,
+    "replacement_installed": false
+  }
+}

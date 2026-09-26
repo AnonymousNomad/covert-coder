@@ -1,0 +1,100 @@
+{
+  "schema": "covert.packaging.startup-failure-evidence.v1",
+  "collection_date": "2026-09-25",
+  "launch_attempt_this_audit": false,
+  "launch_attempt_reason": [
+    "The installed app, clean release source snapshot, and active Desktop Control share the Tauri identifier and WebView profile location.",
+    "The installed launch environment uses fixed localhost ports 4777, 4778, and 4779, currently held by the protected Desktop Control worktree.",
+    "Launching now could mutate shared profile state or collide with protected running services."
+  ],
+  "historical_windows_events": [
+    {
+      "provider": "Application Hang",
+      "event_id": 1002,
+      "timestamp_local": "2026-09-20T14:25:48.662",
+      "executable": "E:\\pip_temp\\opencode\\covert-install-p4\\aide-sovereign-workbench.exe",
+      "file_version": "0.1.0.0",
+      "reported_pid_hex": "0x272c",
+      "hang_type": "Unknown",
+      "report_id": "8efe0c12-168e-487d-878d-400bbf891145"
+    },
+    {
+      "provider": "Windows Error Reporting",
+      "event_id": 1001,
+      "timestamp_local": "2026-09-20T14:25:48.662",
+      "report_type": "AppHangB1",
+      "report_id": "8efe0c12-168e-487d-878d-400bbf891145"
+    },
+    {
+      "provider": "Application Hang",
+      "event_id": 1002,
+      "timestamp_local": "2026-09-21T08:39:58.608",
+      "executable": "E:\\pip_temp\\opencode\\covert-install-p4\\aide-sovereign-workbench.exe",
+      "file_version": "0.1.0.0",
+      "reported_pid_hex": "0x4d84",
+      "hang_type": "Unknown",
+      "report_id": "554a68a0-7e04-45e3-a7df-61224327e7ac"
+    },
+    {
+      "provider": "Windows Error Reporting",
+      "event_id": 1001,
+      "timestamp_local": "2026-09-21T08:39:58.608",
+      "report_type": "AppHangB1",
+      "report_id": "554a68a0-7e04-45e3-a7df-61224327e7ac"
+    },
+    {
+      "provider": "Windows Error Reporting",
+      "event_id": 1001,
+      "timestamp_local": "2026-09-25T19:46:27.904",
+      "report_type": "AppHangTransient",
+      "status": "2049",
+      "report_id": "49db994f-76d2-4a02-a8ae-b62d79df1363",
+      "correlated_application_hang_event": false
+    }
+  ],
+  "existing_install_local_logs": [
+    {
+      "path": "E:\\pip_temp\\opencode\\covert-install-p4\\.aide\\logs\\desktop-facade-err.log",
+      "observation": "Facade failed to bind 127.0.0.1:4777 with EADDRINUSE.",
+      "sha256": "91DF58CC8619B96BB9C1AC53C6FEFEE97FFB307BA462EBC417829FB839B47F8C"
+    },
+    {
+      "path": "E:\\pip_temp\\opencode\\covert-install-p4\\.aide\\logs\\desktop-launcher.err.log",
+      "observation": "Authority IPC disconnected after a child exited; log identifies bundled Node.js v22.20.0.",
+      "sha256": "81A7B6B599946DAB9D676F5450BC806E6081B37EF019864845CB4A5CF51B62CD"
+    },
+    {
+      "path": "E:\\pip_temp\\opencode\\covert-install-p4\\.aide\\logs\\desktop-launcher.spawn.json",
+      "observation": {
+        "executable": "E:\\pip_temp\\opencode\\covert-install-p4\\resources\\runtime\\node.exe",
+        "launcher": "E:\\pip_temp\\opencode\\covert-install-p4\\resources\\stack-launcher.mjs",
+        "cwd_workspace": "E:\\pip_temp\\opencode\\covert-install-p4",
+        "model_directory": "E:\\pip_temp\\opencode\\covert-install-p4\\models",
+        "ports": [4777, 4778, 4779],
+        "llama_server": "E:\\pip_temp\\opencode\\covert-install-p4\\runtime\\llama-server.exe"
+      },
+      "sha256": "E93924BA570761B3CD21C4269CC5D5BAD3611C08432804CC50C57672CA58FD6C"
+    }
+  ],
+  "listener_observation": {
+    "ports": [4777, 4778, 4779],
+    "owning_processes": "node.exe processes launched from E:\\aide-desktop-control-v1\\desktop\\target\\release\\resources\\runtime\\node.exe",
+    "protected_worktree": "E:\\aide-desktop-control-v1",
+    "classification": "Observed at audit time; no listener was stopped and no process was modified."
+  },
+  "missing_observations": [
+    "No fresh-process start time, parent PID, child tree, window identity, exit code, fault module, .NET error, or causal WER-to-log correlation was collected.",
+    "No fresh launch was performed; historical Windows hang reports and existing install-local logs are preserved as evidence."
+  ],
+  "failure_classification": {
+    "classification": ["STARTUP BOOTSTRAP DEFECT", "UNKNOWN"],
+    "evidence": "Fixed-port bind failure and missing install-root runtime/llama-server path are concrete launch-configuration defects; causality for historical hangs is not established.",
+    "provenance": "UNKNOWN INSTALLED COVERT BUILD"
+  },
+  "destructive_actions": {
+    "installed_app_modified": false,
+    "installed_app_uninstalled": false,
+    "appdata_deleted": false,
+    "protected_processes_stopped": false
+  }
+}
