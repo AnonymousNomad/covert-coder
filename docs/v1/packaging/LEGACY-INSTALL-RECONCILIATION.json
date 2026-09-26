@@ -1,0 +1,176 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260926-pre-uninstall",
+  "status": "LEGACY_APP_REMOVED_STATE_PRESERVED_EMPTY_RESIDUE_RETAINED",
+  "starting_sha": "07d360953cda54f547a9ace71aa22f5368c3128e",
+  "cleanup_worktree": "E:\\aide-covert-legacy-cleanup",
+  "cleanup_branch": "fix/v1-legacy-install-reconciliation",
+  "legacy_application": {
+    "display_name": "AIDE Sovereign Workbench",
+    "version": "0.1.0",
+    "publisher": "ferrellsyntheticintelligence",
+    "install_path": "E:\\pip_temp\\opencode\\covert-install-p4",
+    "executable_name": "aide-sovereign-workbench.exe",
+    "executable_sha256_before": "A6AFFA7A34A9CB926D2038C55E7EE436EB16176E793F36C3823F8EEAA0CC73A5",
+    "executable_signed": false,
+    "app_user_model_id": "org.ferrellsyntheticintelligence.aide",
+    "provenance": "UNKNOWN_INSTALLED_COVERT_BUILD",
+    "ui_generation": "OLD_AIDE_ERA_CONFIRMED_BY_OPERATOR"
+  },
+  "uninstall": {
+    "performed": true,
+    "mechanism": "REGISTERED_HKCU_NSIS_UNINSTALLER",
+    "registry_key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\AIDE Sovereign Workbench",
+    "registered_command_before": "\"E:\\pip_temp\\opencode\\covert-install-p4\\uninstall.exe\"",
+    "uninstaller_sha256_before": "E6C766D182E3C01BBD71275EAF1A52333F3AEA096BDA88DB1057EE90E5E48F49",
+    "uninstaller_signed": false,
+    "operator_confirmed": true,
+    "exit_code": null,
+    "postcondition": {
+      "registration_absent": true,
+      "executable_absent": true,
+      "uninstaller_absent": true
+    }
+  },
+  "state": {
+    "install_local_aide": {
+      "original_path": "E:\\pip_temp\\opencode\\covert-install-p4\\.aide",
+      "hold_path": "E:\\aide-covert-legacy-migration-hold\\20260926-pre-uninstall\\legacy-install-aide",
+      "file_count": 11,
+      "bytes": 3958590,
+      "disposition": "MOVED_OPAQUE_INTACT",
+      "contents_read": false,
+      "content_hashes_computed": false,
+      "credential_payloads_exported": false
+    },
+    "shared_webview_profile": {
+      "path": "C:\\Users\\Grey_\\AppData\\Local\\org.ferrellsyntheticintelligence.aide\\EBWebView",
+      "exists_after": true,
+      "disposition": "PRESERVED_UNOPENED"
+    },
+    "dpapi_or_os_credentials": {
+      "inspected": false,
+      "copied": false,
+      "disposition": "NOT_TOUCHED"
+    },
+    "current_development_aide_state": {
+      "path": "E:\\aide-sovereign-workbench\\.aide",
+      "file_count_before": 105,
+      "file_count_after": 105,
+      "bytes_before": 127701934,
+      "bytes_after": 127701934,
+      "metadata_matches": true,
+      "contents_read": false
+    }
+  },
+  "shortcuts": {
+    "desktop": {
+      "path": "C:\\Users\\Grey_\\OneDrive\\Desktop\\AIDE Sovereign Workbench.lnk",
+      "target_before": "E:\\pip_temp\\opencode\\covert-install-p4\\aide-sovereign-workbench.exe",
+      "sha256_before": "7AA520B2B540A470034C43823C80542DF9D81CBE683DA645D6DBB2B61A606CFC",
+      "app_user_model_id": "org.ferrellsyntheticintelligence.aide",
+      "absent_after": true
+    },
+    "start_menu": {
+      "path": "C:\\Users\\Grey_\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\AIDE Sovereign Workbench.lnk",
+      "target_before": "E:\\pip_temp\\opencode\\covert-install-p4\\aide-sovereign-workbench.exe",
+      "sha256_before": "0A9B8D21219F1935A62E675DD28FAB5408D4B10E6B702FD9F8441087E03A75CA",
+      "app_user_model_id": "org.ferrellsyntheticintelligence.aide",
+      "absent_after": true
+    },
+    "taskbar": {
+      "matching_link_found_before": false,
+      "shell_pin_registry_inspected": false
+    }
+  },
+  "other_os_references": {
+    "app_paths_registrations_absent": true,
+    "matching_appx_package_found": false,
+    "matching_services_found": false,
+    "matching_run_startup_entry_found": false,
+    "disabled_task_preserved": {
+      "name": "aide-stack",
+      "action": "cd /d E:\\aide-sovereign-workbench && node scripts\\start.mjs",
+      "classification": "CURRENT_DEVELOPMENT_WORKTREE_TASK_NOT_LEGACY_INSTALL"
+    }
+  },
+  "processes_and_ports": {
+    "legacy_pid": 9056,
+    "shutdown": "NORMAL_CLOSE_REQUESTED_AND_EXIT_VERIFIED",
+    "forced_termination": false,
+    "old_process_tree_remaining": false,
+    "ports": {
+      "4777": "FREE",
+      "4778": "FREE",
+      "4779": "FREE"
+    }
+  },
+  "remaining_install_residue": {
+    "path": "E:\\pip_temp\\opencode\\covert-install-p4",
+    "root_exists": true,
+    "entries": [
+      {
+        "name": "models",
+        "type": "EMPTY_DIRECTORY",
+        "recursive_entry_count": 0,
+        "reparse_point": false
+      },
+      {
+        "name": "plugins",
+        "type": "EMPTY_DIRECTORY",
+        "recursive_entry_count": 0,
+        "reparse_point": false
+      }
+    ],
+    "disposition": "CLASSIFIED_EMPTY_INSTALLER_RESIDUE_RETAINED",
+    "removal_attempt": {
+      "result": "BLOCKED_BY_AUTOMATIC_COMMAND_POLICY",
+      "command_executed": false,
+      "alternate_deletion_route_attempted": false
+    }
+  },
+  "current_development_candidate": {
+    "worktree": "E:\\aide-desktop-control-v1",
+    "branch": "feat/covert-desktop-control-v1",
+    "head_observed": "3e4cf1aa5df4e92c061e9b6a461d08931d9a244d",
+    "worktree_dirty_and_owned": true,
+    "executable": "E:\\aide-desktop-control-v1\\desktop\\target\\release\\aide-sovereign-workbench.exe",
+    "executable_sha256": "155BEFF62C8AA4F56C6CD10CEA9D1B33A6218E62AB9ACB3E04295C02867E47CF",
+    "binary_version": "0.1.0",
+    "binary_product_name": "AIDE Sovereign Workbench",
+    "launch_command": "npm run desktop:dev",
+    "source_provenance": "PATH_ASSOCIATED_ONLY",
+    "launched_during_cleanup": false,
+    "reason_not_launched": "PROTECTED_ACTIVE_DESKTOP_CONTROL_WORKTREE"
+  },
+  "shared_identity": {
+    "current_source_product_name": "AIDE Sovereign Workbench",
+    "current_source_tauri_identifier": "org.ferrellsyntheticintelligence.aide",
+    "same_identifier_as_legacy": true,
+    "identifier_migration_performed": false,
+    "upgrade_identity_qualified": false
+  },
+  "external_safety_snapshot": {
+    "path": "E:\\aide-covert-legacy-migration-hold\\20260926-pre-uninstall\\safety-snapshot.json",
+    "sha256": "DEAA5581151A06125DFCECC053432EF7589FAB56DF08D5914E2577D075E72130",
+    "secret_pattern_scan": "NO_MATCH"
+  },
+  "provider_work_pause": {
+    "worktree": "E:\\aide-universal-intelligence-v1",
+    "branch": "feat/covert-universal-intelligence-v1",
+    "sha": "d80d18445b475d2ae2f6987b16cbb047224b2c5e",
+    "working_tree": "CLEAN",
+    "upstream": "NOT_CONFIGURED",
+    "changes_made": false
+  },
+  "scope": {
+    "current_development_state_modified": false,
+    "desktop_control_modified": false,
+    "packaging_foundation_modified": false,
+    "p0_release_closure_modified": false,
+    "replacement_app_installed": false,
+    "new_shortcut_created": false,
+    "fresh_user_install_qualified": false,
+    "clean_machine_install_qualified": false
+  }
+}
