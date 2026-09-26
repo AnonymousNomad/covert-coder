@@ -3,22 +3,28 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 function runDpapi(mode, data) {
-  // protect: data is the plaintext key -> transport as UTF-8 bytes.
-  // unprotect: data is the stored DPAPI blob (already base64) -> embed verbatim.
-  // (Fixing utf16le on BOTH branches made unprotect re-encode the ASCII blob as
-  // UTF-16LE bytes, so Unprotect always threw "The data is invalid".)
+  // Keep the payload out of process arguments and command text. The typed
+  // credential service uses this same environment-variable transport because
+  // PowerShell's command-line parsing can otherwise corrupt or expose payloads.
   const b64Payload = mode === 'protect' ? Buffer.from(data, 'utf8').toString('base64') : data;
   const script =
     mode === 'protect'
-      ? `Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String('${b64Payload}'); $e=[Security.Cryptography.ProtectedData]::Protect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser); [Convert]::ToBase64String($e)`
-      : `Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String('${b64Payload}'); $d=[Security.Cryptography.ProtectedData]::Unprotect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser); [Text.Encoding]::UTF8.GetString($d)`;
+      ? 'Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String($env:AIDE_DPAPI_IN); $e=[Security.Cryptography.ProtectedData]::Protect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser); [Convert]::ToBase64String($e)'
+      : 'Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String($env:AIDE_DPAPI_IN); $d=[Security.Cryptography.ProtectedData]::Unprotect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser); [Text.Encoding]::UTF8.GetString($d)';
   const result = spawnSync(
     'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
-    { encoding: 'utf8', timeout: 15000, windowsHide: true }
+    ['-NoProfile', '-NonInteractive', '-Command', script],
+    {
+      encoding: 'utf8',
+      timeout: 15000,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+      env: { ...process.env, AIDE_DPAPI_IN: b64Payload }
+    }
   );
-  if (result.status !== 0 || !result.stdout) throw new Error(`dpapi ${mode} failed`);
-  return result.stdout.trim();
+  const output = typeof result.stdout === 'string' ? result.stdout.trim() : '';
+  if (result.error || result.status !== 0 || !output) throw new Error(`dpapi ${mode} failed`);
+  return output;
 }
 
 export function createSecretStore(options = {}) {
