@@ -5,7 +5,7 @@
   "scope": "Application-process crash consistency and truthful recovery in the supported single typed-server process topology.",
   "branch": "fix/v1-p0-atomic-persistence",
   "starting_sha": "1d6f4969db8b0d88abd285ab2cb8917d790b8567",
-  "implementation_checkpoint_sha": "e6c1dc12d894ec8b7d92f7122e1db17f6c6384ff",
+  "implementation_checkpoint_sha": "75e50da039de35ed51a6676e39091d51da09fac6",
   "platform": {
     "os": "Windows 11",
     "node": "26.4.0",
@@ -34,6 +34,7 @@
       "service": "node/src/services/chat-store.ts",
       "routes": ["GET /api/chat/history", "POST /api/chat/history"],
       "additional_writer": "Local provider-export import through the same ChatStore",
+      "batch_import": "Typed provider import uses ChatStore.saveMany and one atomic replacement; save-only adapters retain sequential fallback",
       "authoritative": true,
       "schema": "Strict ChatHistoryResponse shape without an explicit version field"
     }
@@ -85,32 +86,51 @@
   "tests": {
     "focused_c2": {
       "status": "PASS",
-      "passed": 26,
+      "passed": 27,
       "failed": 0,
       "exit_code": 0,
-      "command": "node --test tests/arch/state-persistence-atomicity.test.ts tests/arch/session-routes.test.ts tests/arch/chat-history-authority.test.ts tests/arch/importers.test.ts",
-      "duration_ms": 3736
+      "command": "node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/state-persistence-atomicity.test.ts tests/arch/session-routes.test.ts tests/arch/chat-history-authority.test.ts tests/arch/importers.test.ts",
+      "duration_ms": 9165
     },
     "provider_route_isolation": {
       "status": "PASS",
       "passed": 5,
       "failed": 0,
       "exit_code": 0,
-      "import_matrix_duration_ms": 4521,
+      "import_matrix_duration_ms": 681,
       "fixture_deadline_ms": 5000
     },
+    "provider_import_exact_test": {
+      "status": "PASS",
+      "passed": 1,
+      "failed": 0,
+      "duration_ms": 2952,
+      "fixture_deadline_ms": 5000
+    },
+    "provenance_then_provider_routes": {
+      "status": "PASS",
+      "passed": 12,
+      "failed": 0,
+      "provenance_live_test_ms": 3486,
+      "provider_import_matrix_ms": 594
+    },
+    "full_architecture": {
+      "status": "PASS",
+      "total": 773,
+      "passed": 762,
+      "failed": 0,
+      "skipped": 11,
+      "duration_ms": 442231
+    },
     "full_npm_check": {
-      "status": "PARTIAL_FAILURE",
+      "status": "PASS",
+      "exit_code": 0,
       "node_syntax": "PASS",
       "typescript_node": "PASS",
       "typescript_browser": "PASS",
       "eslint": {"errors": 0, "warnings": 63},
-      "architecture": {"total": 773, "passed": 760, "failed": 2, "skipped": 11},
-      "failures": [
-        "POST /api/providers/import authority matrix timed out at 5.456 seconds against its fixed 5-second fixture deadline",
-        "ENOTEMPTY teardown on the same provider-routes fixture after timeout"
-      ],
-      "classification": "Load-sensitive timing is supported by isolated/full-run contrast; exact host cause is not proven. Full canonical check remains failed overall."
+      "architecture": {"total": 773, "passed": 762, "failed": 0, "skipped": 11},
+      "architecture_duration_ms": 462812
     },
     "workflow_handoff_continuation": {
       "status": "PASS",
@@ -118,13 +138,62 @@
       "evidence": "Earlier targeted run; the full architecture run after the final source change had no failures in these suites."
     }
   },
+  "raw_evidence_logs": [
+    {
+      "path": "E:\\pip_temp\\runtime-arch-20260926-083025.log",
+      "bytes": 75408,
+      "sha256": "5042F24B7BCB350DE77A6BA94FD71EF9729F412170E889DEABE253FB3C5B317D",
+      "purpose": "Full serialized architecture suite after the correction"
+    },
+    {
+      "path": "E:\\pip_temp\\runtime-npm-check-20260926-083811.log",
+      "bytes": 83345,
+      "sha256": "63A40B032B7A83D6D3322234F7327353B74C3EDB0EA5A9201D83310F89EE708E",
+      "purpose": "Full npm run check after the correction"
+    }
+  ],
+  "wave_0b_performance_reconciliation": {
+    "failure_classification": "C2-02 REGRESSION",
+    "downstream_teardown_effect": "Client request abort did not cancel the server-side import; teardown raced the still-running handler and could report ENOTEMPTY or leave fixture files.",
+    "timing_fixture": {
+      "platform": "Windows 11, Node 26.4.0, E: NTFS",
+      "initial_history_conversations": 3,
+      "imported_conversations": 200,
+      "pre_c2_writer_source_sha": "1d6f4969db8b0d88abd285ab2cb8917d790b8567",
+      "pre_c2_direct_writer_ms": 319,
+      "pre_batch_atomic_writer_ms": 7395,
+      "pre_batch_atomic_helper_total_ms": 7142,
+      "pre_batch_atomic_phase_totals_ms": {
+        "serialize": 26,
+        "validate": 45,
+        "create_temp": 199,
+        "write_temp": 62,
+        "flush_temp": 6239,
+        "close_temp": 61,
+        "verify_temp": 191,
+        "replace": 230
+      },
+      "estimated_other_save_work_ms": 247,
+      "lock_wait": "Not separately instrumented; sequential single-writer fixture had no competing writer.",
+      "runs_per_implementation": 1,
+      "qualification_claim": false
+    },
+    "correction": "ChatStore.saveMany applies the parsed batch under the canonical path lock and commits one validated atomic replacement; FileHandle.sync and old-or-new failure behavior remain enabled.",
+    "timeout_changed": false,
+    "client_abort_fixture_evidence": {
+      "path": "E:\\pip_temp\\aide-provider-routes-4ZqOqG\\.aide\\chat-history.json",
+      "bytes": 51628,
+      "sha256": "C84041F8357262FDAE1E16CBD219D24D86CDA8D851C7DD39732B1F503E563D43",
+      "observation": "The complete imported history existed after the client request timed out, confirming server-side import continued after client abort. Exact-path cleanup was rejected by command policy; fixture remains outside Git under E:\\pip_temp."
+    }
+  },
   "limits": [
     "No cross-process coordination for multiple typed servers sharing a workspace.",
     "No last-known-good backup or automatic recovery from malformed canonical state.",
     "No power-loss durability qualification.",
     "Filesystem failures were injected; no real disk-full event was induced.",
-    "Provider-export import is per-conversation and non-transactional.",
-    "Provider import matrix is close to its 5-second test deadline and timed out at 5.456 seconds in the full architecture run."
+    "Provider batches use one atomic commit; cross-process coordination remains unsupported.",
+    "A disconnected provider-import request can continue server-side work; generic cancellation semantics are outside this closure."
   ],
   "preserved_findings": {
     "C4-02": "BLOCKED — system/process-level and legacy egress remains outside a canonical Local-Only enforcement boundary; unchanged.",
