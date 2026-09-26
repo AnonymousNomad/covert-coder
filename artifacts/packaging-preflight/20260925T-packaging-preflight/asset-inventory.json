@@ -1,0 +1,51 @@
+{
+  "schema": "covert.packaging.asset-inventory.v1",
+  "installed_executable_identity": {
+    "sha256": "A6AFFA7A34A9CB926D2038C55E7EE436EB16176E793F36C3823F8EEAA0CC73A5",
+    "extracted_icon_evidence": "installed-executable-icon.png",
+    "extracted_icon_sha256": "61C01EEF7502B08F835BF1A119AC3AAC71AAC3DC30959DAC360FAB6D9D4FAB7A",
+    "visual_classification": "Colorful A/I-style emblem."
+  },
+  "repository_assets": [
+    {
+      "path": "desktop/icons/icon.svg",
+      "sha256": "C6A3E9840F40EB13ED2499FF9393E291658834328D3BDA8A8694D1456A28C416",
+      "role": "Desktop bundle icon source",
+      "classification": "Same colorful A/I-style identity."
+    },
+    {
+      "path": "desktop/icons/icon.png",
+      "sha256": "B860C258ADD7F7793DA687E646F98003C3A0CF0EC698F703BC295C393E23A753",
+      "role": "Desktop bundle icon source",
+      "classification": "Same colorful A/I-style identity."
+    },
+    {
+      "path": "desktop/icons/icon.ico",
+      "sha256": "039151F0685069DC7120FACC26AAF8EF3CE2A7C554F7319171E384143E54FF61",
+      "role": "Windows desktop bundle icon source",
+      "classification": "Same colorful A/I-style identity."
+    },
+    {
+      "path": "docs/assets/branding/covert-coder-emblem.png",
+      "sha256": "F0B0444B0FD1942A6DAA19695F2745D529C5B1554E48F7F61BC1ED2D8B992C67",
+      "size_bytes": 13536,
+      "role": "Documented visual reference/crop; not wired into app bundle",
+      "classification": "Does not establish an approved canonical packaged logo."
+    }
+  ],
+  "identity_surface_map": {
+    "window_icon": "Tauri bundle icon sources desktop/icons/icon.ico and icon.png; runtime appearance not reverified in a safe fresh launch.",
+    "taskbar_icon": "Expected to derive from executable/window icon; not separately verified.",
+    "executable_resources": "Installed executable contains colorful A/I-style icon; extracted to evidence PNG.",
+    "installer_icon": "Not independently observable; original installer artifact unavailable.",
+    "start_menu_shortcut": "Shortcut targets executable with default icon index.",
+    "desktop_shortcut": "Shortcut targets executable with default icon index.",
+    "apps_and_features_icon": "Uninstall DisplayIcon points to executable.",
+    "splash_launcher_about": "No separate canonical packaged asset identified in the frozen source snapshot."
+  },
+  "conclusion": {
+    "canonical_current_covert_logo_available": false,
+    "status": "BRANDING INPUT REQUIRED",
+    "legacy_a_i_source": "Frozen desktop icon assets still carry the A/I-style identity; installed icon matches those assets by visual classification."
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "schema": "covert.packaging.source-inventory.v1",
+  "source_snapshot": {
+    "worktree": "E:\\aide-covert-packaging-preflight",
+    "branch": "audit/covert-packaging-preflight",
+    "base_branch": "release/source-assembly",
+    "base_sha": "e23aec80cd05ab0c237eba793421bb5e7c5a57e7",
+    "scope_note": "Clean release source snapshot used for read-only inspection; active Desktop Control worktree was not modified."
+  },
+  "desktop_build": {
+    "technology": "Tauri v2 Rust shell with WebView2 UI and bundled Node sidecar.",
+    "entrypoint": "desktop/src/main.rs",
+    "development_command": "npm run desktop:dev",
+    "prepare_command": "npm run desktop:prepare",
+    "production_build_command": "npm run desktop:build",
+    "tauri_config": "desktop/tauri.conf.json",
+    "bundle_targets": "all",
+    "resources": ["resources/**/*"],
+    "version_sources": {
+      "package_json": "0.1.0-preflight",
+      "cargo_toml": "0.1.0",
+      "tauri_config": "0.1.0",
+      "finding": "Version values diverge; package version source is not unified."
+    },
+    "identity": {
+      "product_name": "AIDE Sovereign Workbench",
+      "window_title": "AIDE Sovereign Workbench",
+      "identifier": "org.ferrellsyntheticintelligence.aide",
+      "publisher": "No verified package signing identity found."
+    },
+    "installer": {
+      "source_definition": "Tauri bundle configuration; no separate checked-in installer source identified.",
+      "observed_install_registration": "Per-user HKCU uninstall entry and uninstaller.exe in custom install location.",
+      "specific_current_output_format": "Not established from source snapshot alone.",
+      "update_mechanism": "No updater plugin/configuration or signed update metadata identified."
+    }
+  },
+  "startup_and_optional_subsystems": {
+    "source_behavior": [
+      "Tauri startup waits for required local resources and sidecar pairing, then waits for facade health before creating the window.",
+      "Missing required-resource errors reach a fatal expect path rather than a truthful degraded shell.",
+      "Startup uses fixed localhost ports.",
+      "desktop/prepare.mjs stages frontend resources and Node; GGUF weights are optional by default."
+    ],
+    "installed_observations": [
+      "No root runtime directory, llama-server, GGUF model, or entries in models/plugins were observed.",
+      "The installed launch record points to a missing install-root runtime/llama-server.exe path."
+    ],
+    "contract_gaps": [
+      "Runtime unavailable/not configured startup path.",
+      "No-model and no-credentials truthful first-run states.",
+      "Provider unavailable without shell failure.",
+      "Malformed optional cache recovery/refusal behavior.",
+      "No-project shell startup and project-open path.",
+      "Fresh-profile startup timing and failure-recovery evidence."
+    ]
+  },
+  "installation_architecture": {
+    "observed": {
+      "scope": "Per-user registration observed; default install scope/elevation policy unverified.",
+      "directory": "Custom install path under E:\\pip_temp\\opencode\\covert-install-p4.",
+      "state": "Mutable .aide workspace/index/log state is inside install directory; WebView profile is under user AppData.",
+      "services_or_tasks": "No product-specific services or scheduled tasks observed.",
+      "process_cleanup": "Source includes sidecar process-tree cleanup; installed behavior not safely reprobed.",
+      "single_instance": "No dependency or acceptance evidence found.",
+      "runtime_admin_requirement": "Local runtime qualification is a separate contract and does not establish an app-installer admin requirement."
+    },
+    "required_unverified": [
+      "Per-user versus machine-wide policy and elevation.",
+      "Upgrade, downgrade, repair, rollback, uninstall, and reinstall lifecycle.",
+      "State retention/migration and credential retention/removal.",
+      "Shortcut replacement and duplicate-install prevention.",
+      "Single-instance behavior.",
+      "Background helper/service ownership.",
+      "Shared WebView profile isolation/replacement strategy."
+    ]
+  },
+  "release_integrity": {
+    "version_source": "PARTIAL",
+    "artifact_naming": "PRESENT + UNVERIFIED",
+    "checksums": "PARTIAL",
+    "code_and_installer_signing": "MISSING; installed executable and uninstaller are unsigned.",
+    "sbom": "MISSING in clean frozen source snapshot.",
+    "dependency_scanning": "MISSING in clean frozen source snapshot.",
+    "license_inventory": "PARTIAL; model metadata exists, software dependency/license review incomplete.",
+    "release_provenance": "PARTIAL; scripts can produce a manifest, but installed binary is not bound to source commit or artifact record.",
+    "update_authenticity": "MISSING",
+    "release_notes": "PARTIAL; no notes tied to installed hash."
+  },
+  "workflow_evidence": {
+    "workflow": ".github/workflows/desktop.yml",
+    "observed": "Windows CI matrix includes desktop build/smoke and lifecycle smoke, then uploads platform artifacts.",
+    "coverage_gaps": [
+      "No clean standard-user profile first-run acceptance.",
+      "No clean-machine/VM authenticity and prerequisite qualification.",
+      "No downgrade/rollback or credential/state retention contract proof."
+    ]
+  }
+}
