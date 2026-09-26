@@ -97,7 +97,7 @@ function targetRevision(value: Record<string, string>): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-function localEndpointOrigin(raw: string): string | null {
+export function localRuntimeEndpointOrigin(raw: string): string | null {
   try {
     const endpoint = new URL(raw);
     // The local runtime contract uses a numeric loopback endpoint. A model
@@ -224,7 +224,7 @@ export class ModelRouter {
     if (localId !== null) {
       const entry = this.runtime.list().find(candidate => candidate.id === localId);
       if (entry !== undefined) {
-        const endpointOrigin = localEndpointOrigin(entry.endpoint);
+        const endpointOrigin = localRuntimeEndpointOrigin(entry.endpoint);
         const artifactUri = typeof entry.artifact_uri === 'string' ? entry.artifact_uri : '';
         const artifactFile = typeof entry.file === 'string' ? entry.file : '';
         if (endpointOrigin === null || !artifactUri.startsWith('local://') || artifactUri.length <= 'local://'.length || artifactFile.length === 0) {

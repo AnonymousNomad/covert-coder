@@ -25,7 +25,7 @@ function okFetch(payload, etag = '"e1"') {
 }
 
 function makeHub({ ws, models, fetchImpl }) {
-  return createHubService({ workspace: ws, modelsDir: models, fetchImpl, onEvent: () => {} });
+  return createHubService({ workspace: ws, modelsDir: models, fetchImpl, onEvent: () => {}, assertExternalEgressAllowed: () => true });
 }
 
 async function waitFor(predicate, timeoutMs = 8000, label = 'condition') {
@@ -291,7 +291,7 @@ test('models root junction outside the workspace fails closed', async () => {
     await fs.mkdir(ws, { recursive: true });
     await fs.mkdir(outside, { recursive: true });
     await fs.symlink(outside, path.join(ws, 'models'), 'junction');
-    const hub = createHubService({ workspace: ws, modelsDir: path.join(ws, 'models'), fetchImpl: okFetch(Buffer.from('root-escape')), onEvent: () => {} });
+    const hub = createHubService({ workspace: ws, modelsDir: path.join(ws, 'models'), fetchImpl: okFetch(Buffer.from('root-escape')), onEvent: () => {}, assertExternalEgressAllowed: () => true });
     const job = await runDownload(hub, 'r.gguf');
     assert.equal(job.status, 'error');
     assert.match(job.error, /models root resolves outside the canonical workspace/i);

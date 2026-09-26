@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { normalizeOperation } from '../../../common/security/operation-policy.mjs';
+import { readRoutingPreference } from './routing-preference.mjs';
 
 export class AuthorityError extends Error {
   constructor(code, message, detail = undefined) {
@@ -94,6 +95,14 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
     return { operation_id: op.id, actor_id: op.actor.id, owner_id: op.ownerId,
       task_id: op.descriptor.taskId, kind: op.descriptor.kind, digest: op.descriptor.digest,
       policy_revision: op.revision, decision };
+  }
+
+  function assertExternalEgressAllowed() {
+    let preference;
+    try { preference = readRoutingPreference(workspace); }
+    catch { throw new AuthorityError('NOT_READY', 'external-egress policy is unavailable'); }
+    if (preference === 'local-only') deny('external egress is disabled by Local-Only policy');
+    return true;
   }
 
   function executionFor(handle, kind, body) {
@@ -193,6 +202,7 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
       return entry.handle;
     },
     assertActor(actor) { actorFor(actor); },
+    assertExternalEgressAllowed,
     assertExecution(handle, kind, body) {
       const op = executionFor(handle, kind, body);
       return Object.freeze({ actor: op.actor, owner: actors.get(op.ownerId).handle, operation: op.descriptor });
@@ -225,6 +235,7 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
     },
     async prepare(actor, input) {
       const normalized = descriptor(input);
+      if (normalized.risk === 'external') assertExternalEgressAllowed();
       const owner = scoped(actor, normalized);
       room(operations);
       const op = { id: randomUUID(), actor, ownerId: owner.ownerId, descriptor: normalized,
@@ -289,10 +300,15 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
       const normalized = descriptor(input);
       if (normalized.digest !== op.descriptor.digest) throw new AuthorityError('CONFLICT', 'operation changed after approval');
       scoped(actor, normalized); valid(op);
+      if (normalized.risk === 'external') assertExternalEgressAllowed();
       if (op.state !== 'approved') throw new AuthorityError('CONFLICT', 'operation is not approved or was already consumed');
       if (typeof executor !== 'function') throw new TypeError('executor required');
       op.state = 'consuming'; // synchronous claim before the persistence await
-      try { await required(event(op, 'consumed')); valid(op); }
+      try {
+        await required(event(op, 'consumed'));
+        valid(op);
+        if (normalized.risk === 'external') assertExternalEgressAllowed();
+      }
       catch (error) { if (op.state === 'consuming') op.state = 'rejected'; throw error; }
       op.state = 'executing';
       const execution = Object.freeze({ operation_id: op.id });

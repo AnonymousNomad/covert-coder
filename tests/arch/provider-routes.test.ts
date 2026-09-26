@@ -46,6 +46,7 @@ before(async () => {
   const modelRuntime = await createModelRuntime(REPO_ROOT, dir, { events: server.events, logger: server.logger });
   const providerService = new ProviderService(dir, {
     credentials: new CredentialStore(dir, new FakeCrypt()),
+    assertExternalEgressAllowed: () => server.authority.assertExternalEgressAllowed(),
     fetchFn: (async (_url: RequestInfo | URL, init?: RequestInit) => {
       const headers = new Headers(init?.headers);
       if (headers.get('authorization') === 'Bearer sk-valid') return new Response(null, { status: 200 });

@@ -74,6 +74,16 @@ export function createTelegramBridge({ workspace, onCommand, authority }) {
     if (!authority) throw new AuthorityError('FORBIDDEN', 'canonical authority required');
     return authority.assertExecution(execution, kind, body);
   }
+  function assertExternalEgressAllowed() {
+    if (typeof authority?.assertExternalEgressAllowed !== 'function') {
+      throw new AuthorityError('NOT_READY', 'external-egress Authority guard unavailable');
+    }
+    authority.assertExternalEgressAllowed();
+  }
+  async function externalFetch(...args) {
+    assertExternalEgressAllowed();
+    return telegramFetch(...args);
+  }
   const apiBase = process.env.TELEGRAM_API_BASE || 'https://api.telegram.org';
   let running = false;
   let lastPollAt = null;
@@ -125,7 +135,7 @@ export function createTelegramBridge({ workspace, onCommand, authority }) {
     const cfg = await loadConfig();
     if (!cfg?.chat_ids.includes(chatId)) return false;
     const t = await token();
-    await telegramFetch(apiBase, t, 'sendMessage', { chat_id: chatId, text: String(text).slice(0, 4000) });
+    await externalFetch(apiBase, t, 'sendMessage', { chat_id: chatId, text: String(text).slice(0, 4000) });
     return true;
   }
 
@@ -177,7 +187,7 @@ export function createTelegramBridge({ workspace, onCommand, authority }) {
         const offset = await readOffset();
         pollCycles += 1;
         lastPollAt = new Date().toISOString();
-        const updates = await telegramFetch(apiBase, t, 'getUpdates', { offset, timeout: 25, allowed_updates: ['message'] }, 35000);
+        const updates = await externalFetch(apiBase, t, 'getUpdates', { offset, timeout: 25, allowed_updates: ['message'] }, 35000);
         backoff = 1000;
         for (const update of updates) {
           await appendSpool(update); // durable BEFORE handling (crash-safe)
@@ -186,6 +196,10 @@ export function createTelegramBridge({ workspace, onCommand, authority }) {
         }
       } catch (error) {
         if (!running) break;
+        if (error?.code === 'FORBIDDEN' || error?.code === 'NOT_READY') {
+          running = false;
+          break;
+        }
         console.warn(`[telegram] poll cycle failed: ${error instanceof Error ? error.message : error}`);
         await new Promise(r => setTimeout(r, backoff));
         backoff = Math.min(backoff * 2, 30000);
@@ -197,7 +211,7 @@ export function createTelegramBridge({ workspace, onCommand, authority }) {
     async connect(input, execution) {
       authorized(execution, 'telegram.connect', input);
       const { token: plainToken } = input;
-      const me = await telegramFetch(apiBase, plainToken, 'getMe');
+      const me = await externalFetch(apiBase, plainToken, 'getMe');
       await saveConfig({
         enabled: true,
         token_b64: await dpapiProtect(plainToken),
@@ -237,6 +251,7 @@ export function createTelegramBridge({ workspace, onCommand, authority }) {
     ensurePolling(execution) {
       authorized(execution, 'telegram.start', {});
       if (running) return;
+      assertExternalEgressAllowed();
       running = true;
       abort = new AbortController();
       void pollLoop();

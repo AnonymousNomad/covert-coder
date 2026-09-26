@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { watch as fsWatch, constants as fsConstants } from 'node:fs';
+import { isIP } from 'node:net';
 import os from 'node:os';
 import { logEgress } from '../../node/src/services/egress-journal.mjs';
 import path from 'node:path';
@@ -170,6 +171,15 @@ export interface BuildRoutesOptions {
   skillsRoot?: string;
 }
 
+function externalEgressGuard(options: BuildRoutesOptions): () => true {
+  return () => {
+    if (!options.authority) {
+      throw Object.assign(new Error('external-egress Authority guard unavailable'), { code: 'NOT_READY' });
+    }
+    return options.authority.assertExternalEgressAllowed();
+  };
+}
+
 export function lspEntryPath(repoRoot: string): string {
   return path.join(repoRoot, 'node_modules', 'typescript-language-server', 'lib', 'cli.mjs');
 }
@@ -293,6 +303,7 @@ function recursiveWatch(): boolean {
 }
 
 type EmbedFn = (texts: string[]) => Promise<number[][]>;
+type EmbedGateOptions = { endpoint?: string | null; fetchImpl?: typeof fetch };
 
 // Embeddings gate: llama-server only answers /v1/embeddings when started with
 // --embeddings (verified live 2026-08-27 → HTTP 501 otherwise). Probe ONCE at
@@ -300,18 +311,32 @@ type EmbedFn = (texts: string[]) => Promise<number[][]>;
 // service treats a null-returning embed as a hard error, so it must receive
 // either a real function or null). Null verdict = stay BM25-only with the
 // honest degraded flag. Never fake dense mode, never probe per-request.
-export function createEmbedGate(events?: EventHub): { resolve(): Promise<EmbedFn | null> } {
+export function createEmbedGate(events?: EventHub, options: EmbedGateOptions = {}): { resolve(): Promise<EmbedFn | null> } {
   let verdict: Promise<EmbedFn | null> | null = null;
+  const endpoint = Object.prototype.hasOwnProperty.call(options, 'endpoint') ? options.endpoint : process.env.AIDE_EMBEDDINGS_URL;
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   function probe(): Promise<EmbedFn | null> {
     if (verdict === null) {
       verdict = (async () => {
-        const base = process.env.AIDE_EMBEDDINGS_URL;
+        const base = endpoint;
         if (!base) {
           events?.publish('index', { type: 'embed-disabled', reason: 'AIDE_EMBEDDINGS_URL not set' });
           return null;
         }
+        let parsedEndpoint: URL;
+        try { parsedEndpoint = new URL(base); }
+        catch {
+          events?.publish('index', { type: 'embed-disabled', reason: 'embedding endpoint is invalid' });
+          return null;
+        }
+        const host = parsedEndpoint.hostname.replace(/^\[|\]$/g, '');
+        const loopback = (isIP(host) === 4 && host.startsWith('127.')) || (isIP(host) === 6 && host === '::1');
+        if (!loopback || !['http:', 'https:'].includes(parsedEndpoint.protocol) || parsedEndpoint.username || parsedEndpoint.password) {
+          events?.publish('index', { type: 'embed-disabled', reason: 'embedding endpoint must be a loopback IP without credentials' });
+          return null;
+        }
         try {
-          const response = await fetch(`${base}/v1/embeddings`, {
+          const response = await fetchImpl(`${base}/v1/embeddings`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ input: ['probe'], model: 'default' }),
@@ -326,7 +351,7 @@ export function createEmbedGate(events?: EventHub): { resolve(): Promise<EmbedFn
             const out: number[][] = [];
             for (let i = 0; i < texts.length; i += 16) {
               const batch = texts.slice(i, i + 16);
-              const r = await fetch(`${base}/v1/embeddings`, {
+              const r = await fetchImpl(`${base}/v1/embeddings`, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ input: batch, model: 'default' })
@@ -355,6 +380,7 @@ export function createEmbedGate(events?: EventHub): { resolve(): Promise<EmbedFn
 }
 
 export async function buildRoutes(workspace: string, version: string, options: BuildRoutesOptions = {}): Promise<Route[]> {
+  const assertExternalEgressAllowed = externalEgressGuard(options);
   const fsService = new WorkspaceService(workspace);
   const repoRoot = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
   const manager =
@@ -366,6 +392,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     options.providerService ??
     new ProviderService(workspace, {
       credentials: new CredentialStore(workspace),
+      assertExternalEgressAllowed,
       logger: options.logger
     });
   const modelRouter = new ModelRouter(modelRuntime, providerService);
@@ -649,7 +676,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
   }
   const handoffService = createHandoffService({ workspace, agentLoop });
   const secretStore = options.byokSecretStore ?? createSecretStore({ secretsPath: path.join(os.homedir(), '.aide', 'secrets.json') });
-  const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch, onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
+  const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch,
+    assertExternalEgressAllowed,
+    onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
   const connectionsService = options.connectionsService ?? createProviderConnectionsService({
     workspace,
     providerService,
@@ -827,7 +856,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
       // consent signal is published to the egress journal when granted so the
       // decision is auditable.
       egressConsent: (server) => {
-        const allowed = Array.isArray(options.workbenchEgressAllowlist) && options.workbenchEgressAllowlist.includes(server);
+        let allowed = Array.isArray(options.workbenchEgressAllowlist) && options.workbenchEgressAllowlist.includes(server);
+        if (allowed) {
+          try { assertExternalEgressAllowed(); }
+          catch { allowed = false; }
+        }
         logEgress(workspace, { action: allowed ? 'workbench.egress.granted' : 'workbench.egress.denied', url: `mcp://${server}/`, role: 'workbench' });
         return allowed;
       }
@@ -899,11 +932,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForClosedLoop(workspace),
     ...routesForAgent(agentLoop, {
       resolveProviderChatFn: role => {
-        if (!byokService.getConsent()) throw Object.assign(new Error('BYOK egress consent is disabled'), { code: 'FORBIDDEN' });
-        // Unified routing preference (Unified Provider Connections): 'local-only'
-        // pins every role to the local runtime regardless of byok routing.
+        // Local-Only is a workspace-wide routing constraint and preserves the
+        // local agent path even when no external-provider consent is configured.
         const preference = (connectionsService as { getPreference(): string }).getPreference();
         if (preference === 'local-only') return null;
+        if (!byokService.getConsent()) throw Object.assign(new Error('BYOK egress consent is disabled'), { code: 'FORBIDDEN' });
         // Custom BYOK providers first (unchanged contract).
         const byokFn = byokService.resolveChatFn(role);
         if (byokFn) return byokFn;
@@ -927,6 +960,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
               .map(message => `${message.role.toUpperCase()}: ${message.content}`)
               .join('\n\n');
             const modelRef = parseOpenCodeModelRef(modelId);
+            assertExternalEgressAllowed();
             const result = await opencodeBridge.runTask({
               workspace,
               prompt,
@@ -1064,6 +1098,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
 }
 
 async function buildNotificationWiredRoutes(workspace: string, options: BuildRoutesOptions): Promise<Route[]> {
+  const assertExternalEgressAllowed = externalEgressGuard(options);
   const notifications = new NotificationService({
     workspace,
     authority: options.authority,
@@ -1075,7 +1110,8 @@ async function buildNotificationWiredRoutes(workspace: string, options: BuildRou
     workspace,
     modelsDir: path.join(workspace, 'models'),
     onEvent: event => options.events?.publish('modelhub', event),
-    ...(options.modelHubAuthorization ? { authorization: options.modelHubAuthorization } : {})
+    ...(options.modelHubAuthorization ? { authorization: options.modelHubAuthorization } : {}),
+    assertExternalEgressAllowed
   });
   return [
     ...routesForNotifications(notifications),

@@ -2,6 +2,7 @@ import type { Route } from '../server.ts';
 import { RouteError } from '../server.ts';
 import type { OperationInput } from '../../../common/security/operation-policy.mjs';
 import { ModelRuntimeError, validateRegistrationFilename, type ModelRuntime } from '../services/model-runtime.ts';
+import { localRuntimeEndpointOrigin } from '../services/model-router.ts';
 import {
   ModelStatusResponse,
   ModelIdRequest,
@@ -69,8 +70,16 @@ export function routeForModelStatus(manager: ModelRuntime): Route {
 }
 
 function toRouteError(error: unknown): RouteError {
+  if (error instanceof RouteError) return error;
   if (error instanceof ModelRuntimeError) return new RouteError(error.code, error.message);
   return new RouteError('CHILD_FAILED', error instanceof Error ? error.message : 'model operation failed');
+}
+
+function assertLocalRuntimeEndpoint(manager: ModelRuntime, id: string): void {
+  const model = manager.get(id);
+  if (model && localRuntimeEndpointOrigin(model.endpoint) === null) {
+    throw new RouteError('FORBIDDEN', 'model runtime endpoint must be a numeric loopback address');
+  }
 }
 
 export function routeForModelStart(manager: ModelRuntime): Route {
@@ -85,11 +94,13 @@ export function routeForModelStart(manager: ModelRuntime): Route {
     // and profile sidecar; none of it is caller-controlled.
     describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
       const { id } = body as { id: string };
+      assertLocalRuntimeEndpoint(manager, id);
       return { workspace: manager.workspace, taskId, kind: 'capability.execute', args: { body: { id } } };
     },
     handler: async ({ body }) => {
       const request = body as { id: string };
       try {
+        assertLocalRuntimeEndpoint(manager, request.id);
         const result = await manager.start(request.id);
         return { id: result.id, status: result.status as 'running' | 'starting', endpoint: result.endpoint };
       } catch (error) {
@@ -146,6 +157,7 @@ export function routeForModelReady(manager: ModelRuntime): Route {
     handler: async ({ query }) => {
       try {
         const request = query as { id: string };
+        assertLocalRuntimeEndpoint(manager, request.id);
         return await manager.isReady(request.id);
       } catch (error) {
         throw toRouteError(error);

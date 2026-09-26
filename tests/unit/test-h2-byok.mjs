@@ -21,6 +21,7 @@ function mkService(overrides = {}) {
     workspace: fs.mkdtempSync(path.join(os.tmpdir(), 'aide-h2-')),
     secretStore: fakeStore(),
     fetchImpl: overrides.fetchImpl ?? null,
+    assertExternalEgressAllowed: overrides.assertExternalEgressAllowed ?? (() => {}),
     onEgress: entry => egress.push(entry),
   });
   return { service, egress };
@@ -83,4 +84,52 @@ test('byok: testProvider journals egress before fetch and surfaces failure hones
   failing.setConsent(true);
   const bad = await failing.testProvider('p1');
   assert.equal(bad.ok, false);
+});
+
+test('byok: Local-Only guard blocks both provider probe and routed chat before egress journal/fetch', async () => {
+  let calls = 0;
+  let localOnly = true;
+  const { service, egress } = mkService({
+    fetchImpl: async () => { calls += 1; return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) }; },
+    assertExternalEgressAllowed: () => {
+      if (localOnly) throw Object.assign(new Error('external egress blocked by Local-Only'), { code: 'FORBIDDEN' });
+    }
+  });
+  service.setProvider(provider);
+  service.putKey('p1', 'fixture-key');
+  service.setConsent(true);
+  service.setRouting({ plan: 'local', act: { provider_id: 'p1', model_id: 'm-1' }, utility: 'local' });
+  const chat = service.resolveChatFn('act');
+  assert.equal(typeof chat, 'function');
+  await assert.rejects(() => service.testProvider('p1'), error => error.code === 'FORBIDDEN');
+  await assert.rejects(() => chat([{ role: 'user', content: 'fixture' }]), error => error.code === 'FORBIDDEN');
+  assert.equal(calls, 0);
+  assert.equal(egress.length, 0);
+
+  localOnly = false;
+  assert.equal((await service.testProvider('p1')).ok, true);
+  assert.equal(calls, 1);
+});
+
+test('byok: missing Authority egress guard fails closed before provider fetch', async () => {
+  let calls = 0;
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'aide-h2-no-authority-'));
+  try {
+    const service = createByokService({
+      workspace,
+      secretStore: fakeStore(),
+      fetchImpl: async () => { calls += 1; return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'unexpected' } }] }) }; }
+    });
+    service.setProvider(provider);
+    service.putKey('p1', 'fixture-key');
+    service.setConsent(true);
+    service.setRouting({ plan: 'local', act: { provider_id: 'p1', model_id: 'm-1' }, utility: 'local' });
+    const chat = service.resolveChatFn('act');
+    assert.equal(typeof chat, 'function');
+    await assert.rejects(() => service.testProvider('p1'), error => error.code === 'NOT_READY');
+    await assert.rejects(() => chat([{ role: 'user', content: 'fixture' }]), error => error.code === 'NOT_READY');
+    assert.equal(calls, 0);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
 });

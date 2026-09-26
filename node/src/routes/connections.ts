@@ -43,7 +43,7 @@ function wrap(handler: (ctx: RouteContext) => Promise<unknown> | unknown): (ctx:
       const message = String((error as Error)?.message ?? error).slice(0, 300);
       if (code === 'NOT_FOUND') throw new RouteError('NOT_FOUND', message);
       if (code === 'FORBIDDEN') throw new RouteError('FORBIDDEN', message);
-      if (code === 'NOT_READY' || code === 'NOT_SUPPORTED') throw new RouteError('CHILD_FAILED', message);
+      if (code === 'NOT_READY' || code === 'NOT_SUPPORTED') throw new RouteError('NOT_READY', message);
       throw new RouteError('CHILD_FAILED', message);
     }
   };

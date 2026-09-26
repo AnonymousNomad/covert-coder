@@ -11,6 +11,7 @@ import { probeGguf } from '../../node/src/services/gguf.ts';
 let tmpRoot;
 let ws;
 let modelsDir;
+const allowExternalEgress = () => true;
 
 beforeEach(async () => {
   tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-m-hub-'));
@@ -77,6 +78,7 @@ test('m1: search maps HF fixture through injectable fetcher and journals egress 
   const hub = createHubService({
     workspace: ws,
     modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
     fetchImpl: async () => {
       called = true;
       return {
@@ -95,6 +97,17 @@ test('m1: search maps HF fixture through injectable fetcher and journals egress 
   assert.match(journal, /huggingface\.co\/api\/models/);
 });
 
+test('modelhub: missing Authority egress guard fails closed before network contact', async () => {
+  let calls = 0;
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    fetchImpl: async () => { calls += 1; return new Response('unexpected', { status: 200 }); }
+  });
+  await assert.rejects(() => hub.search('fixture'), error => error.code === 'NOT_READY');
+  assert.equal(calls, 0);
+});
+
 test('m1: happy-path download streams to final file with manifest and no .part left', { timeout: 15000 }, async () => {
   const payload = Buffer.alloc(64 * 1024, 0xAB);
   const server = http.createServer((_req, res) => {
@@ -107,6 +120,7 @@ test('m1: happy-path download streams to final file with manifest and no .part l
   const hub = createHubService({
     workspace: ws,
     modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
     fetchImpl: (url, options) => fetch(url, options)
   });
   try {
@@ -166,6 +180,7 @@ test('m1: interrupted download auto-resumes via Range request and completes', { 
   const hub = createHubService({
     workspace: ws,
     modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
     fetchImpl: (url, options) => fetch(url, options)
   });
   try {
@@ -200,6 +215,7 @@ test('m1: cancel aborts mid-stream, deletes .part, emits cancelled and never don
   const hub = createHubService({
     workspace: ws,
     modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
     fetchImpl: (url, options) => fetch(url, options)
   });
   try {

@@ -68,7 +68,10 @@ function safeFilename(filename) {
   }
 }
 
-export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.fetch, onEvent, authorization }) {
+export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.fetch, onEvent, authorization, assertExternalEgressAllowed }) {
+  const assertEgress = assertExternalEgressAllowed ?? (() => {
+    throw Object.assign(new Error('external-egress Authority guard unavailable'), { code: 'NOT_READY' });
+  });
 
   // Authorization is optional and operator-owned: when provided it yields a
   // bearer token (e.g. the vaulted Hugging Face access token) attached to HF
@@ -175,8 +178,11 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
 
   async function search(q, sort = 'downloads', limit = 20) {
     const url = `${HF_API}?search=${encodeURIComponent(q)}&filter=gguf&sort=${sort}&direction=-1&limit=${limit}`;
+    assertEgress();
+    const headers = await hubHeaders();
+    assertEgress();
     logEgress(workspace, { action: 'modelhub.search', url });
-    const response = await fetchImpl(url, { headers: await hubHeaders() });
+    const response = await fetchImpl(url, { headers });
     if (!response.ok) {
       const error = new Error(`huggingface search failed with ${response.status}`);
       error.code = 'UPSTREAM';
@@ -195,8 +201,11 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
 
   async function listRepoFiles(repoId) {
     const url = `${HF_API}/${repoId}?blobs=true`;
+    assertEgress();
+    const headers = await hubHeaders();
+    assertEgress();
     logEgress(workspace, { action: 'modelhub.files', url });
-    const response = await fetchImpl(url, { headers: await hubHeaders() });
+    const response = await fetchImpl(url, { headers });
     if (!response.ok) {
       const error = new Error(`huggingface repo lookup failed with ${response.status}`);
       error.code = 'UPSTREAM';
@@ -266,7 +275,6 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
     const partPath = path.join(modelsDirLexical, `${job.filename}.part`);
     const finalPath = path.join(modelsDirLexical, job.filename);
     const finalUrl = urlTemplate.replace('{filename}', encodeURIComponent(job.filename));
-    logEgress(workspace, { action: 'modelhub.download', url: finalUrl });
     try {
       // Effective containment before any mutation: the models root must be a
       // real descendant of the workspace, and the partial's parent (created
@@ -274,7 +282,10 @@ export function createHubService({ workspace, modelsDir, fetchImpl = globalThis.
       const { modelsReal } = await canonicalModelsRoot();
       await ensureContainedParent(modelsReal, partPath, 'partial download file');
       const resumeFrom = await assertSafePartial(partPath);
+      assertEgress();
       const headers = await hubHeaders(resumeFrom > 0 ? { range: `bytes=${resumeFrom}-` } : {});
+      assertEgress();
+      logEgress(workspace, { action: 'modelhub.download', url: finalUrl });
       const response = await fetchImpl(finalUrl, { headers });
       let effectiveResume = resumeFrom;
       if (response.status === 200 && effectiveResume > 0) effectiveResume = 0;

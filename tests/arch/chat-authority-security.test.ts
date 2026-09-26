@@ -117,6 +117,7 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     const cloudBody = { modelId: 'cloud:openai:local-gguf-q4', messages: [{ role: 'user' as const, content: 'external fixture' }], harness: false };
     const localStreamBody = { modelId: localBody.modelId, messages: localBody.messages };
     const cloudStreamBody = { modelId: cloudBody.modelId, messages: cloudBody.messages };
+    const routingPreferenceFile = path.join(workspace, '.aide', 'routing-preference.json');
 
     for (const [url, body] of [
       ['/api/chat', { ...localBody, modelId: 'unknown:model' }],
@@ -129,6 +130,7 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     }
     assert.equal(runtime.chatCalls + runtime.streamCalls + providers.calls.length, 0, 'unknown requests never reach an executor');
 
+    await fs.writeFile(routingPreferenceFile, JSON.stringify({ preference: 'local-only' }), 'utf8');
     const localTask = 'contract-local';
     const localOperation = await owner.propose('POST', '/api/chat', localBody, localTask);
     const localReceipt = await inspect(localOperation.operation_id);
@@ -155,6 +157,18 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     assert.equal(streamResponse.status, 200);
     assert.match(await streamResponse.text(), /local-stream-result/);
     assert.equal(runtime.streamCalls, 1);
+
+    const localOnlyExternalPrepare = await owner.request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({
+      method: 'POST', path: '/api/chat', body: cloudBody, task_id: 'contract-local-only-cloud'
+    }) });
+    assert.equal(localOnlyExternalPrepare.status, 403, 'Local-Only blocks external chat before approval/dispatch');
+    assert.equal(providers.calls.length, 0, 'Local-Only never dispatches the provider');
+    const localOnlyExternalStreamPrepare = await owner.request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({
+      method: 'POST', path: '/api/chat/stream', body: cloudStreamBody, task_id: 'contract-local-only-cloud-stream'
+    }) });
+    assert.equal(localOnlyExternalStreamPrepare.status, 403, 'streaming cannot bypass Local-Only external-chat policy');
+    assert.equal(providers.calls.length, 0, 'blocked streaming request never dispatches the provider');
+    await fs.writeFile(routingPreferenceFile, JSON.stringify({ preference: 'local-first' }), 'utf8');
 
     const crossRouteTask = 'contract-cross-route-replay';
     const nonStreamApproval = await owner.propose('POST', '/api/chat', localStreamBody, crossRouteTask);

@@ -7,6 +7,7 @@ export declare function createByokService(options: {
     listProviderIds(): string[];
   };
   fetchImpl?: typeof fetch | null;
+  assertExternalEgressAllowed?: () => void;
   onEgress?: (entry: { kind: string; provider_id?: string; host?: string; role?: string }) => void;
 }): {
   status(): { providers: Array<Record<string, unknown> & { key_stored: boolean }>; routing: Record<string, unknown>; consent_enabled: boolean };

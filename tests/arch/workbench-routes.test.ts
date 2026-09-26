@@ -12,6 +12,7 @@ let server: ArchServer;
 let httpServer: http.Server;
 let base: string;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
+const remoteMcpAllowlist: string[] = [];
 
 const trustStateFile = () => path.join(workspace, '.aide', 'workbenches', 'sovereign-coder.json');
 const trustStateRaw = () => fs.readFile(trustStateFile(), 'utf8').catch(() => '');
@@ -34,7 +35,7 @@ before(async () => {
 
   server = new ArchServer(workspace, path.join(workspace, 'wb-routes.log'));
   const { buildRoutes } = await import('../../node/src/openapi.ts');
-  const routes = await buildRoutes(workspace, 'test', { authority: server.authority, events: server.events });
+  const routes = await buildRoutes(workspace, 'test', { authority: server.authority, events: server.events, workbenchEgressAllowlist: remoteMcpAllowlist });
   for (const route of routes) server.route(route);
   httpServer = await server.listen(0);
   const address = httpServer.address();
@@ -144,6 +145,23 @@ test('trusting an online server without consent returns FORBIDDEN + CONSENT_REQU
   assert.equal((envelope.error?.detail as { code?: string } | undefined)?.code, 'CONSENT_REQUIRED');
   const github = (await detail()).data?.workbench.mcp_servers.find(s => s.name === 'github');
   assert.equal(github?.trusted, false, 'server remains untrusted');
+});
+
+test('Local-Only blocks trust for an otherwise allowlisted online MCP server', async () => {
+  const preferenceFile = path.join(workspace, '.aide', 'routing-preference.json');
+  await fs.mkdir(path.dirname(preferenceFile), { recursive: true });
+  await fs.writeFile(preferenceFile, JSON.stringify({ preference: 'local-only' }), 'utf8');
+  remoteMcpAllowlist.push('github');
+  const before = await trustStateRaw();
+  try {
+    const result = await mutate('/api/workbenches/trust', { id: 'sovereign-coder', server: 'github', trusted: true }, 'task:wb-local-only-github');
+    assert.equal(result.status, 403);
+    assert.equal(result.envelope.error?.code, 'FORBIDDEN');
+    assert.equal(await trustStateRaw(), before, 'Local-Only denial prevents the trust state mutation');
+  } finally {
+    remoteMcpAllowlist.length = 0;
+    await fs.rm(preferenceFile, { force: true });
+  }
 });
 
 test('trusting an offline server succeeds and the API reports trusted=true', async () => {

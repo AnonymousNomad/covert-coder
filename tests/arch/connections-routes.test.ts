@@ -146,6 +146,7 @@ test('connections: routing preference is a governed write (approval + replay + c
 
   const view = await call<{ preference: string }>('GET', '/api/connections');
   assert.equal(view.body.data!.preference, 'local-only');
+  await fs.rm(path.join(workspace, '.aide', 'routing-preference.json'), { force: true });
 });
 
 test('connections: HF token write is governed + digest-bound and never leaks the credential', async () => {

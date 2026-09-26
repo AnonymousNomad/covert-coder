@@ -76,6 +76,7 @@ export type ProbeResult = 'connected' | 'invalid_key' | 'unreachable';
 export interface ProviderServiceOptions {
   credentials: CredentialStore;
   fetchFn?: typeof fetch;
+  assertExternalEgressAllowed?: () => void;
   allowlistFile?: string;
   logger?: { info(message: string): void } | undefined;
 }
@@ -115,12 +116,14 @@ export class ProviderService {
   private readonly fetchFn: typeof fetch;
   private readonly allowlistPath: string;
   private readonly logger: { info(message: string): void } | undefined;
+  private readonly externalEgressGuard: (() => void) | undefined;
   private allowlist: Set<string> | null = null;
   private readonly probeCache = new Map<string, ProbeCacheEntry>();
 
   constructor(workspace: string, options: ProviderServiceOptions) {
     this.credentials = options.credentials;
     this.fetchFn = options.fetchFn ?? globalThis.fetch.bind(globalThis);
+    this.externalEgressGuard = options.assertExternalEgressAllowed;
     this.allowlistPath = options.allowlistFile ?? path.join(workspace, '.aide', 'provider-hosts.json');
     this.logger = options.logger;
   }
@@ -146,6 +149,7 @@ export class ProviderService {
   }
 
   async connect(request: ProviderConnectRequestT): Promise<{ status: ProbeResult; message: string }> {
+    this.assertExternalEgressAllowed();
     const provider = BUILTIN_PROVIDERS.find(entry => entry.id === request.providerId);
     if (provider === undefined) throw new ProviderError('NOT_READY', `unknown provider ${request.providerId}`);
     const baseUrl = request.baseUrl ?? provider.baseUrl;
@@ -161,6 +165,7 @@ export class ProviderService {
     if (!(await this.credentials.available())) {
       throw new ProviderError('NOT_READY', 'credential store unavailable on this platform');
     }
+    this.assertExternalEgressAllowed();
     await this.credentials.set(request.providerId, request.key);
     const model = request.model ?? provider.models[0]!;
     const probe = await this.probe(provider, request.key, baseUrl, model, host);
@@ -186,6 +191,7 @@ export class ProviderService {
     messages: Array<{ role: string; content: string }>,
     options: { maxTokens?: number; temperature?: number } = {}
   ): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
+    this.assertExternalEgressAllowed();
     const provider = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
     if (provider === undefined) throw new ProviderError('NOT_READY', `unknown provider ${providerId}`);
     const key = await this.credentials.get(providerId);
@@ -196,6 +202,7 @@ export class ProviderService {
     const timer = setTimeout(() => controller.abort(), 60_000);
     try {
       let response: Response;
+      this.assertExternalEgressAllowed();
       if (provider.kind === 'anthropic') {
         const systemParts = messages.filter(message => message.role === 'system' || message.role === 'developer').map(message => message.content);
         const conversation: Array<{ role: string; content: string }> = [];
@@ -261,6 +268,7 @@ export class ProviderService {
       if (tokens !== undefined) result.tokens = tokens;
       return result;
     } catch (error) {
+      if ((error as { code?: string })?.code === 'FORBIDDEN' || (error as { code?: string })?.code === 'NOT_READY') throw error;
       if (error instanceof ProviderError) throw error;
       if (error instanceof Error && error.name === 'AbortError') throw new ProviderError('CHILD_FAILED', `provider ${providerId} timed out after 60s`);
       const message = error instanceof Error ? error.message : String(error);
@@ -278,10 +286,12 @@ export class ProviderService {
     host: string
   ): Promise<ProbeResult> {
     if (!(await this.isHostApproved(host)) && host !== provider.egressHost) return 'unreachable';
+    this.assertExternalEgressAllowed();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
     try {
       let response: Response;
+      this.assertExternalEgressAllowed();
       if (provider.kind === 'anthropic') {
         response = await this.fetchFn(`${baseUrl.replace(/\/$/, '')}/messages`, {
           method: 'POST',
@@ -308,6 +318,7 @@ export class ProviderService {
       if (response.status === 401 || response.status === 403) return 'invalid_key';
       return 'unreachable';
     } catch (error) {
+      if ((error as { code?: string })?.code === 'FORBIDDEN' || (error as { code?: string })?.code === 'NOT_READY') throw error;
       if (error instanceof Error && error.name === 'AbortError') return 'unreachable';
       const message = error instanceof Error ? error.message : String(error);
       this.logger?.info(`PROVIDER: ${provider.id} probe error: ${scrubKey(message, key)}`);
@@ -320,6 +331,11 @@ export class ProviderService {
   private async isHostApproved(host: string): Promise<boolean> {
     if (this.allowlist === null) await this.loadAllowlist();
     return this.allowlist!.has(host);
+  }
+
+  private assertExternalEgressAllowed(): void {
+    if (!this.externalEgressGuard) throw new ProviderError('NOT_READY', 'external-egress Authority guard unavailable');
+    this.externalEgressGuard();
   }
 
   private async approveHost(host: string): Promise<void> {

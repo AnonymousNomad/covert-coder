@@ -10,6 +10,9 @@ export function createByokService(options) {
   const consentPath = path.join(byokDir, 'consent.json');
   const fetchImpl = options.fetchImpl ?? null;
   const onEgress = options.onEgress ?? (() => {});
+  const assertExternalEgressAllowed = options.assertExternalEgressAllowed ?? (() => {
+    throw Object.assign(new Error('external-egress Authority guard unavailable'), { code: 'NOT_READY' });
+  });
 
   function readJson(filePath, fallback) {
     try {
@@ -87,6 +90,7 @@ export function createByokService(options) {
     if (!getConsent()) throw Object.assign(new Error('egress consent disabled'), { code: 'FORBIDDEN' });
     const doFetch = fetchOverride ?? fetchImpl;
     if (!doFetch) throw Object.assign(new Error('no fetch transport available'), { code: 'NOT_READY' });
+    assertExternalEgressAllowed();
     onEgress({ kind: 'byok-test', provider_id: providerId, host: new URL(provider.base_url).host });
     try {
       const response = await doFetch(`${provider.base_url.replace(/\/$/, '')}/models`, {
@@ -106,6 +110,7 @@ export function createByokService(options) {
     const doFetch = fetchImpl;
     if (!doFetch) return null;
     return async messages => {
+      assertExternalEgressAllowed();
       onEgress({ kind: 'byok-chat', role, provider_id: provider.id, host: new URL(provider.base_url).host });
       const response = await doFetch(`${provider.base_url.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',

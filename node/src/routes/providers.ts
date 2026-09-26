@@ -17,6 +17,8 @@ import {
 
 function toRouteError(error: unknown): RouteError {
   if (error instanceof ProviderError) return new RouteError(error.code, error.message);
+  const code = (error as { code?: unknown })?.code;
+  if (code === 'FORBIDDEN' || code === 'NOT_READY') return new RouteError(code, error instanceof Error ? error.message : 'external egress is unavailable');
   return new RouteError('CHILD_FAILED', error instanceof Error ? error.message : 'provider operation failed');
 }
 

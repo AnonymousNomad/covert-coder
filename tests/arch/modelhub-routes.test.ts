@@ -33,6 +33,8 @@ const authorizationAttached: boolean[] = [];
 const FAKE_AUTH_VALUE = 'fixture-credential-sentinel';
 let releaseSlow: (() => void) | null = null;
 let slowMode = false;
+let beforeAuthorization: (() => Promise<void>) | null = null;
+let authorizationUnavailable = false;
 let searchFailureStatus = 0;
 const SEARCH_JSON = JSON.stringify([
   { id: 'org/model-1', downloads: 5, likes: 2, tags: ['gguf', 'text-generation'] },
@@ -80,7 +82,20 @@ const fakeFetch = (async (input: unknown, init?: RequestInit) => {
 before(async () => {
   await fs.mkdir(modelsDir, { recursive: true });
   server = new ArchServer(workspace, path.join(workspace, 'arch-m.log'));
-  hub = createHubService({ workspace, modelsDir, fetchImpl: fakeFetch, onEvent: () => {}, authorization: async () => FAKE_AUTH_VALUE });
+  hub = createHubService({
+    workspace,
+    modelsDir,
+    fetchImpl: fakeFetch,
+    onEvent: () => {},
+    authorization: async () => {
+      const transition = beforeAuthorization;
+      beforeAuthorization = null;
+      await transition?.();
+      if (authorizationUnavailable) throw new Error('fixture credential source unavailable');
+      return FAKE_AUTH_VALUE;
+    },
+    assertExternalEgressAllowed: () => server.authority.assertExternalEgressAllowed()
+  });
   for (const route of routesForAuthority()) server.route(route);
   for (const route of routesForModelHub(hub)) server.route(route);
   httpServer = await server.listen(0);
@@ -414,6 +429,98 @@ test('files: external enrollment binds repo identity and blocks unapproved or cr
   assert.equal(authorizationAttached[beforeAuth], true);
   const log = await fs.readFile(path.join(workspace, 'arch-m.log'), 'utf8');
   assert.equal(log.includes(FAKE_AUTH_VALUE), false, 'fake bearer is not written to server logs');
+});
+
+test('C4-04: unavailable credential source falls back anonymously without exposing error details', async () => {
+  const pathname = '/api/modelhub/files?repo_id=org%2Fmodel-1';
+  const beforeFetch = fetchedUrls.length;
+  const beforeAuth = authorizationAttached.length;
+  const headers = await owner.approve('GET', pathname, {}, 'task:files-credential-unavailable');
+  authorizationUnavailable = true;
+  try {
+    const response = await owner.request(pathname, { headers });
+    assert.equal(response.status, 200, 'public metadata remains available without optional credentials');
+    assert.equal(fetchedUrls.length, beforeFetch + 1);
+    assert.equal(authorizationAttached.length, beforeAuth + 1);
+    assert.equal(authorizationAttached[beforeAuth], false, 'credential failure cannot attach an authorization header');
+    const log = await fs.readFile(path.join(workspace, 'arch-m.log'), 'utf8');
+    assert.equal(log.includes(FAKE_AUTH_VALUE), false, 'credential value is never written to logs');
+    assert.equal(log.includes('fixture credential source unavailable'), false, 'credential failure detail is never written to logs');
+  } finally {
+    authorizationUnavailable = false;
+  }
+});
+
+test('C4-02: Local-Only blocks modelhub before preparation and stale approved dispatch', async () => {
+  const preferenceFile = path.join(workspace, '.aide', 'routing-preference.json');
+  const egressJournal = path.join(workspace, '.aide', 'egress', 'journal.jsonl');
+  await fs.mkdir(path.dirname(preferenceFile), { recursive: true });
+  const pathname = '/api/modelhub/files?repo_id=org%2Fmodel-1';
+  const beforeFetch = fetchedUrls.length;
+  const beforeJournal = await fs.readFile(egressJournal, 'utf8').catch(() => '');
+  try {
+    await fs.writeFile(preferenceFile, JSON.stringify({ preference: 'local-only' }), 'utf8');
+    const prepare = await owner.request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({ method: 'GET', path: pathname, task_id: 'task:local-only-c4-02-prepare' }) });
+    assert.equal(prepare.status, 403);
+    assert.equal((await prepare.json() as Envelope<unknown>).error?.code, 'FORBIDDEN');
+    assert.equal(fetchedUrls.length, beforeFetch, 'Local-Only denial happens before fake provider contact');
+
+    await fs.writeFile(preferenceFile, JSON.stringify({ preference: 'local-first' }), 'utf8');
+    const headers = await owner.approve('GET', pathname, {}, 'task:local-only-c4-02-stale-approval');
+    await fs.writeFile(preferenceFile, JSON.stringify({ preference: 'local-only' }), 'utf8');
+    const dispatch = await owner.request(pathname, { headers });
+    assert.equal(dispatch.status, 403);
+    assert.equal((await dispatch.json() as Envelope<unknown>).error?.code, 'FORBIDDEN');
+    assert.equal(fetchedUrls.length, beforeFetch, 'a prior external approval cannot cross a Local-Only transition');
+    assert.equal(await fs.readFile(egressJournal, 'utf8').catch(() => ''), beforeJournal, 'denied requests are not recorded as completed egress');
+
+    const localRead = await get('/api/modelhub/downloads');
+    assert.equal(localRead.status, 200, 'local model-job state remains readable');
+    assert.equal(fetchedUrls.length, beforeFetch, 'local read did not contact the provider');
+  } finally {
+    await fs.rm(preferenceFile, { force: true });
+  }
+});
+
+test('C4-02: transport rechecks Local-Only after credential resolution and before fetch', async () => {
+  const preferenceFile = path.join(workspace, '.aide', 'routing-preference.json');
+  const egressJournal = path.join(workspace, '.aide', 'egress', 'journal.jsonl');
+  await fs.mkdir(path.dirname(preferenceFile), { recursive: true });
+  await fs.writeFile(preferenceFile, JSON.stringify({ preference: 'local-first' }), 'utf8');
+  const pathname = '/api/modelhub/files?repo_id=org%2Fmodel-1';
+  const beforeFetch = fetchedUrls.length;
+  const beforeAuth = authorizationAttached.length;
+  const beforeJournal = await fs.readFile(egressJournal, 'utf8').catch(() => '');
+  try {
+    const headers = await owner.approve('GET', pathname, {}, 'task:local-only-c4-02-transport-race');
+    beforeAuthorization = async () => fs.writeFile(preferenceFile, JSON.stringify({ preference: 'local-only' }), 'utf8').then(() => {});
+    const response = await owner.request(pathname, { headers });
+    assert.equal(response.status, 403);
+    assert.equal((await response.json() as Envelope<unknown>).error?.code, 'FORBIDDEN');
+    assert.equal(fetchedUrls.length, beforeFetch, 'transport guard blocks after async credential resolution and before fetch');
+    assert.equal(authorizationAttached.length, beforeAuth, 'no authorization-bearing request was issued');
+    assert.equal(await fs.readFile(egressJournal, 'utf8').catch(() => ''), beforeJournal, 'transport-time denial creates no egress record');
+  } finally {
+    beforeAuthorization = null;
+    await fs.rm(preferenceFile, { force: true });
+  }
+});
+
+test('C4-02: malformed Local-Only policy is UNKNOWN and blocks modelhub before fetch', async () => {
+  const preferenceFile = path.join(workspace, '.aide', 'routing-preference.json');
+  await fs.mkdir(path.dirname(preferenceFile), { recursive: true });
+  await fs.writeFile(preferenceFile, '{invalid-json', 'utf8');
+  const beforeFetch = fetchedUrls.length;
+  try {
+    const response = await owner.request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({
+      method: 'GET', path: '/api/modelhub/files?repo_id=org%2Fmodel-1', task_id: 'task:local-only-c4-02-unknown'
+    }) });
+    assert.equal(response.status, 409, 'ArchServer maps NOT_READY to HTTP 409');
+    assert.equal((await response.json() as Envelope<unknown>).error?.code, 'NOT_READY');
+    assert.equal(fetchedUrls.length, beforeFetch);
+  } finally {
+    await fs.rm(preferenceFile, { force: true });
+  }
 });
 
 test('downloads list holds shape for the authorized actor', async () => {

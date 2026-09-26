@@ -38,6 +38,7 @@ export declare function createHubService(options: {
   fetchImpl?: typeof fetch;
   onEvent?: (event: HubEvent) => void;
   authorization?: () => Promise<string | null>;
+  assertExternalEgressAllowed?: () => void;
 }): {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<HubSearchResult>;

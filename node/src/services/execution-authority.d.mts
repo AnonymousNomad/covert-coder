@@ -21,6 +21,7 @@ export interface ExecutionAuthority {
   pair(proof: string, origin: string): Promise<{ token: string; actor_id: string; expires_at: number }>;
   authenticate(token: string, origin: string): ActorHandle;
   assertActor(actor: ActorHandle): void;
+  assertExternalEgressAllowed(): true;
   claimExecution(handle: ExecutionHandle, kind: string, body: unknown): void;
   assertExecution(handle: ExecutionHandle, kind: string, body: unknown): { actor: ActorHandle; owner: ActorHandle; operation: OperationDescriptor };
   claimTelegramMessage(handle: TelegramMessageHandle): { actor: ActorHandle; chatId: number; userId: number; text: string; taskId: string };

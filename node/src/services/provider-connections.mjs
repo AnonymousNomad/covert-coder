@@ -14,10 +14,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
+import { readRoutingPreference } from './routing-preference.mjs';
 
 const HF_SLOT = 'huggingface';
 const PREFERENCE_FILE = '.aide/routing-preference.json';
-const DEFAULT_PREFERENCE = 'local-first';
 const SUBSCRIPTION_RUNTIMES = {
   codex: { exec: 'codex', authFile: () => path.join(os.homedir(), '.codex', 'auth.json'), display: 'Codex' },
   claude: { exec: 'claude', authFile: () => path.join(os.homedir(), '.claude', '.credentials.json'), display: 'Claude Code' }
@@ -34,14 +34,6 @@ export function createProviderConnectionsService(options) {
   const secretStore = options.secretStore;
   const findExecutable = options.findExecutable ?? defaultFindExecutable;
   const preferencePath = options.preferencePath ?? path.join(workspace, PREFERENCE_FILE);
-
-  function readJson(filePath, fallback) {
-    try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch {
-      return fallback;
-    }
-  }
 
   function writeJson(filePath, value) {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -231,9 +223,7 @@ export function createProviderConnectionsService(options) {
   }
 
   function getPreference() {
-    const value = readJson(preferencePath, null);
-    const candidate = value && typeof value.preference === 'string' ? value.preference : DEFAULT_PREFERENCE;
-    return ['local-first', 'local-only', 'api-keys-with-approval'].includes(candidate) ? candidate : DEFAULT_PREFERENCE;
+    return readRoutingPreference(workspace, preferencePath);
   }
 
   function setPreference(preference) {
@@ -249,7 +239,7 @@ export function createProviderConnectionsService(options) {
         return { ok: result.ok === true, detail: String(result.detail ?? '').slice(0, 240) || (result.ok === true ? 'probe passed' : 'probe failed') };
       } catch (error) {
         if (error && error.code === 'NOT_FOUND') return { ok: false, detail: 'provider is not configured' };
-        if (error && error.code === 'FORBIDDEN') return { ok: false, detail: 'egress consent is disabled; enable consent, then restore the exact test approval' };
+        if (error && error.code === 'FORBIDDEN') return { ok: false, detail: 'external egress is blocked by Local-Only policy or egress consent' };
         return { ok: false, detail: `test failed: ${String((error && error.message) ?? error).slice(0, 200)}` };
       }
     }

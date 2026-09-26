@@ -20,11 +20,12 @@ class FakeCrypt implements CryptService {
   }
 }
 
-function makeService(dir: string, fetchFn: typeof fetch): { service: ProviderService; logs: string[] } {
+function makeService(dir: string, fetchFn: typeof fetch, assertExternalEgressAllowed?: () => void): { service: ProviderService; logs: string[] } {
   const logs: string[] = [];
   const options: ProviderServiceOptions = {
     credentials: new CredentialStore(dir, new FakeCrypt()),
     fetchFn,
+    assertExternalEgressAllowed: assertExternalEgressAllowed ?? (() => {}),
     logger: { info: (message: string) => logs.push(message) }
   };
   return { service: new ProviderService(dir, options), logs };
@@ -54,6 +55,22 @@ test('list reports not_connected before any credential exists', async () => {
     const providers = await service.list();
     assert.equal(providers.length, 6);
     assert.ok(providers.every(provider => provider.status === 'not_connected'));
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('connect fails closed when no Authority egress guard is wired', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-no-authority-'));
+  try {
+    let calls = 0;
+    const service = new ProviderService(dir, {
+      credentials: new CredentialStore(dir, new FakeCrypt()),
+      fetchFn: (async () => { calls += 1; return new Response(null, { status: 200 }); }) as typeof fetch
+    });
+    await assert.rejects(() => service.connect({ providerId: 'openai', key: 'fixture-key' }), { code: 'NOT_READY' });
+    assert.equal(calls, 0);
+    assert.equal(await new CredentialStore(dir, new FakeCrypt()).has('openai'), false);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
@@ -164,6 +181,30 @@ test('unknown provider id is rejected', async () => {
   try {
     const { service } = makeService(dir, (() => Promise.resolve(new Response(null, { status: 200 }))) as typeof fetch);
     await assert.rejects(() => service.connect({ providerId: 'nope', key: 'k' }), error => error instanceof ProviderError && error.code === 'NOT_READY');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('Local-Only guard blocks provider credential probe and chat before fake fetch', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-local-only-'));
+  try {
+    let localOnly = true;
+    let calls = 0;
+    const fetchFn = (async () => { calls += 1; return new Response(null, { status: 200 }); }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn, () => {
+      if (localOnly) throw Object.assign(new Error('external egress blocked by Local-Only'), { code: 'FORBIDDEN' });
+    });
+    await assert.rejects(() => service.connect({ providerId: 'openai', key: 'fixture-key' }), { code: 'FORBIDDEN' });
+    assert.equal(calls, 0, 'blocked provider connection performs no probe');
+    assert.equal(await new CredentialStore(dir, new FakeCrypt()).has('openai'), false, 'blocked connect stores no provider credential');
+
+    localOnly = false;
+    await service.connect({ providerId: 'openai', key: 'fixture-key' });
+    assert.equal(calls, 1);
+    localOnly = true;
+    await assert.rejects(() => service.chat('openai', 'gpt-fixture', [{ role: 'user', content: 'hello' }]), { code: 'FORBIDDEN' });
+    assert.equal(calls, 1, 'blocked chat performs no provider request');
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
