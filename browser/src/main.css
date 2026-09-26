@@ -644,6 +644,11 @@ body {
   background: #4caf50;
 }
 
+.provider-dot.configured,
+.provider-dot.unknown {
+  background: #c59a55;
+}
+
 .provider-dot.invalid_key {
   background: #e6a23c;
 }
@@ -665,6 +670,12 @@ body {
   font-size: 11px;
   color: var(--dim);
   flex: 1 1 auto;
+}
+
+.provider-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
 .provider-action,

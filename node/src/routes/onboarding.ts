@@ -1,7 +1,5 @@
-// node/src/routes/onboarding.ts (cline/T4, 2026-09-02)
-//
-// PR A of aide-onboarding-walkthrough. 4 routes: state get/put + next + complete.
-// Pattern matches workbenches.ts (the worktree routes are in there).
+// Covert setup state is an approved, resumable progress transition over the
+// canonical product configuration services.
 //
 // Authority binding: next/complete descriptors bind the origin step (and the
 // completion flag) that the operator approves. The handler retrieves those
@@ -18,6 +16,12 @@ import {
   OnboardingStateResponse,
   OnboardingNextResponse,
   OnboardingCompleteResponse,
+  OnboardingRestartRequest,
+  OnboardingRestartResponse,
+  OnboardingDeferRequest,
+  OnboardingDeferResponse,
+  OnboardingResumeRequest,
+  OnboardingResumeResponse,
   OnboardingUserChoices,
   type OnboardingStateT,
   type OnboardingUserChoicesT
@@ -67,24 +71,89 @@ export function routesForOnboarding(workspace: string): Route[] {
     } },
     { method: "POST", path: "/api/onboarding/next", body: OnboardingUserChoices.partial(), response: OnboardingNextResponse, describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
       const current = await svc.getState();
-      return transitionOperation(workspace, taskId, { partial: body as Record<string, unknown>, from_step: current.current_step });
+      return transitionOperation(workspace, taskId, { partial: body as Record<string, unknown>, from_step: current.current_step, walkthrough_complete: current.walkthrough_complete, deferred: current.deferred });
     }, handler: async (context) => {
       const approved = approvedTransitionBody(context);
       try {
-        return await svc.nextStep(context.body as Partial<OnboardingUserChoicesT>, { from_step: approved.from_step as OnboardingStateT['current_step'] });
+        return await svc.nextStep(context.body as Partial<OnboardingUserChoicesT>, {
+          from_step: approved.from_step as OnboardingStateT['current_step'],
+          walkthrough_complete: approved.walkthrough_complete === true,
+          deferred: approved.deferred === true
+        });
+      } catch (error) {
+        rethrowTransitionError(error);
+      }
+    } },
+    { method: "POST", path: "/api/onboarding/skip", body: OnboardingUserChoices.partial(), response: OnboardingNextResponse, describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
+      const current = await svc.getState();
+      return transitionOperation(workspace, taskId, { partial: body as Record<string, unknown>, from_step: current.current_step, walkthrough_complete: current.walkthrough_complete, deferred: current.deferred, skipped: true });
+    }, handler: async (context) => {
+      const approved = approvedTransitionBody(context);
+      try {
+        return await svc.skipStep(context.body as Partial<OnboardingUserChoicesT>, {
+          from_step: approved.from_step as OnboardingStateT['current_step'],
+          walkthrough_complete: approved.walkthrough_complete === true,
+          deferred: approved.deferred === true
+        });
+      } catch (error) {
+        rethrowTransitionError(error);
+      }
+    } },
+    { method: "POST", path: "/api/onboarding/restart", body: OnboardingRestartRequest, response: OnboardingRestartResponse, describeOperation: async (_ctx, taskId): Promise<OperationInput> => {
+      const current = await svc.getState();
+      return transitionOperation(workspace, taskId, { action: 'restart-progress', from_step: current.current_step, walkthrough_complete: current.walkthrough_complete, deferred: current.deferred });
+    }, handler: async (context) => {
+      const approved = approvedTransitionBody(context);
+      try {
+        return { state: await svc.restart({
+          from_step: approved.from_step as OnboardingStateT['current_step'],
+          walkthrough_complete: approved.walkthrough_complete === true,
+          deferred: approved.deferred === true
+        }) };
+      } catch (error) {
+        rethrowTransitionError(error);
+      }
+    } },
+    { method: "POST", path: "/api/onboarding/defer", body: OnboardingDeferRequest, response: OnboardingDeferResponse, describeOperation: async (_ctx, taskId): Promise<OperationInput> => {
+      const current = await svc.getState();
+      return transitionOperation(workspace, taskId, { action: 'defer-setup', from_step: current.current_step, walkthrough_complete: current.walkthrough_complete, deferred: current.deferred });
+    }, handler: async (context) => {
+      const approved = approvedTransitionBody(context);
+      try {
+        return { state: await svc.defer({
+          from_step: approved.from_step as OnboardingStateT['current_step'],
+          walkthrough_complete: approved.walkthrough_complete === true,
+          deferred: approved.deferred === true
+        }) };
+      } catch (error) {
+        rethrowTransitionError(error);
+      }
+    } },
+    { method: "POST", path: "/api/onboarding/resume", body: OnboardingResumeRequest, response: OnboardingResumeResponse, describeOperation: async (_ctx, taskId): Promise<OperationInput> => {
+      const current = await svc.getState();
+      return transitionOperation(workspace, taskId, { action: 'resume-setup', from_step: current.current_step, walkthrough_complete: current.walkthrough_complete, deferred: current.deferred });
+    }, handler: async (context) => {
+      const approved = approvedTransitionBody(context);
+      try {
+        return { state: await svc.resume({
+          from_step: approved.from_step as OnboardingStateT['current_step'],
+          walkthrough_complete: approved.walkthrough_complete === true,
+          deferred: approved.deferred === true
+        }) };
       } catch (error) {
         rethrowTransitionError(error);
       }
     } },
     { method: "POST", path: "/api/onboarding/complete", response: OnboardingCompleteResponse, describeOperation: async (_ctx, taskId): Promise<OperationInput> => {
       const current = await svc.getState();
-      return transitionOperation(workspace, taskId, { from_step: current.current_step, walkthrough_complete: current.walkthrough_complete });
+      return transitionOperation(workspace, taskId, { from_step: current.current_step, walkthrough_complete: current.walkthrough_complete, deferred: current.deferred });
     }, handler: async (context) => {
       const approved = approvedTransitionBody(context);
       try {
         const state = await svc.complete({
           from_step: approved.from_step as OnboardingStateT['current_step'],
-          walkthrough_complete: approved.walkthrough_complete === true
+          walkthrough_complete: approved.walkthrough_complete === true,
+          deferred: approved.deferred === true
         });
         return { state, complete: true };
       } catch (error) {

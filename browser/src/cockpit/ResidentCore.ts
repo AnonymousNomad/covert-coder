@@ -33,6 +33,7 @@ export interface ResidentCoreHandles {
 
 export interface ResidentCoreOptions {
   onToast?: (code: string, message: string) => void;
+  onManageProviders?: () => void;
 }
 
 interface ResidentData {
@@ -133,7 +134,10 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   root.appendChild(composer);
 
   parent.appendChild(root);
-  createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
+  createChatPanel(chatMount, {
+    ...(opts.onToast === undefined ? {} : { onToast: opts.onToast }),
+    ...(opts.onManageProviders === undefined ? {} : { onManageProviders: opts.onManageProviders })
+  });
 
   let alive = true;
   let activeSessionId: string | null = null;

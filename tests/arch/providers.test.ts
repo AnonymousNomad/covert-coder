@@ -81,6 +81,38 @@ test('connect probes with a successful response -> connected and persists the ke
   }
 });
 
+test('a stored key is configured after service restart until an explicit live probe passes', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-restart-'));
+  try {
+    const calls: string[] = [];
+    const fetchFn = (async (url: RequestInfo | URL) => {
+      calls.push(String(url));
+      return new Response(null, { status: 200 });
+    }) as typeof fetch;
+    const first = makeService(dir, fetchFn).service;
+    await first.connect({ providerId: 'openai', key: 'sk-restart-sentinel' });
+    assert.equal(calls.length, 1, 'connect performs one explicit live probe');
+
+    const restarted = makeService(dir, fetchFn).service;
+    const beforeProbe = (await restarted.list()).find(provider => provider.id === 'openai');
+    assert.equal(beforeProbe?.status, 'configured', 'credential presence survives restart but live evidence does not');
+    assert.equal(beforeProbe?.configured, true);
+    assert.equal(calls.length, 1, 'listing providers never contacts the network');
+
+    const absent = await restarted.test('anthropic');
+    assert.equal(absent.status, 'not_connected');
+    assert.equal(calls.length, 1, 'testing an unconfigured provider does not contact the network');
+
+    const result = await restarted.test('openai');
+    assert.equal(result.status, 'connected');
+    assert.ok(!result.message.includes('sk-restart-sentinel'));
+    assert.equal(calls.length, 2, 'the explicit test performs one bounded probe');
+    assert.equal((await restarted.list()).find(provider => provider.id === 'openai')?.status, 'connected');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('connect maps 401 to invalid_key and 403 to invalid_key', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-'));
   try {

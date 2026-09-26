@@ -24,7 +24,7 @@ import { createMemoryPanel } from '../panels/memory.ts';
 import { createSecurityPanel } from '../panels/security.ts';
 import { renderWorkflowStrip } from '../panels/workflow.ts';
 import { createProjectsSurface, type ProjectsSurfaceHandles } from './ProjectsSurface.ts';
-import { createSettingsSurface } from './SettingsSurface.ts';
+import { createSettingsSurface, type SettingsSection, type SettingsSurfaceHandles } from './SettingsSurface.ts';
 import { createWalkthrough, type WalkthroughHandles } from './Walkthrough.ts';
 import { createSetupSession, type SetupSessionHandles } from './SetupSession.ts';
 import { showToast } from '../ui/toast.ts';
@@ -191,10 +191,20 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
 
   const notify = (code: string, message: string): void => showToast(statusRoot, code, message);
   const walkthrough = createWalkthrough(app, store, { onToast: notify });
-  const setup = createSetupSession(app, store, { onToast: notify, onNavigate: (panel) => store.set(prev => ({ ...prev, panel })) });
+  const setup = createSetupSession(app, store, {
+    onToast: notify,
+    onNavigate: (panel) => store.set(prev => ({ ...prev, panel })),
+    onOpenProviders: () => openSettingsSection('providers')
+  });
   const topbar = createTopbar(topbarHost, store);
   const navigation = createNavigationRail(navHost, store);
-  const resident = createResidentCore(residentMount, store, { onToast: notify });
+  let settingsSurface: SettingsSurfaceHandles | null = null;
+  function openSettingsSection(section: SettingsSection): void {
+    store.set(prev => ({ ...prev, panel: 'settings' }));
+    settingsSurface?.openSection(section);
+  }
+  const openProviders = (): void => openSettingsSection('providers');
+  const resident = createResidentCore(residentMount, store, { onToast: notify, onManageProviders: openProviders });
   const modelLineup = createModelLineup(modelSlot, store);
   const telemetry = createSystemTelemetry(telemetrySlot, store);
   const activity = createActivityTimeline(activitySlot, store);
@@ -212,13 +222,21 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     return projects;
   });
   const terminal = lazyPanel(terminalStage, () => createTerminalPanel(terminalStage, store));
-  const models = lazyPanel(modelsStage, () => createModelsPanel(modelsStage, store));
+  const models = lazyPanel(modelsStage, () => createModelsPanel(modelsStage, store, { onManageProviders: openProviders }));
   const skills = lazyPanel(skillsStage, () => createSkillsPanel(skillsStage, store));
   const memory = lazyPanel(memoryStage, () => createMemoryPanel(memoryStage, store));
   const verification = lazyPanel(verificationStage, () => createVerificationPanel(verificationStage, store));
   const security = lazyPanel(securityStage, () => createSecurityPanel(securityStage, store));
   const extensions = lazyPanel(extensionsStage, () => phaseGatedPanel(extensionsStage, 'EXTENSIONS', 'DISABLED', 'The extension host is not integrated into this cockpit phase. No extension capability or authority is implied.'));
-  const settings = lazyPanel(settingsStage, () => createSettingsSurface(settingsStage, store, { onToast: notify, onReopenWalkthrough: () => walkthrough.open(), onRunSetup: () => setup.open() }));
+  const settings = lazyPanel(settingsStage, () => {
+    settingsSurface = createSettingsSurface(settingsStage, store, {
+      onToast: notify,
+      onReopenWalkthrough: () => walkthrough.open(),
+      onRunSetup: () => setup.open(),
+      onNavigate: (panel) => store.set(prev => ({ ...prev, panel }))
+    });
+    return settingsSurface;
+  });
 
   const panelRegistry: Record<Panel, PanelRegistration> = {
     'command-center': {

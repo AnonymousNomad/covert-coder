@@ -63,68 +63,135 @@ async function teardown(workspace: string, server: ArchServer, httpServer: http.
   }
 }
 
-test('onboarding walkthrough: state machine + atomic persistence (PR A)', async () => {
+test('onboarding setup: eight-step progress, skip, and atomic persistence', async () => {
   const { workspace, server, httpServer, owner } = await setup();
   try {
-    // 1. GET state returns the default state.
     const initial = await read(owner, '/api/onboarding/state');
     assert.equal(initial.status, 200);
     assert.equal(initial.body.ok, true);
     const initialState = OnboardingState.parse((initial.body.data as { state: unknown }).state);
     assert.equal(initialState.current_step, 'welcome');
     assert.equal(initialState.walkthrough_complete, false);
+    assert.equal(initialState.deferred, false);
 
-    // 2. POST next with no body advances to privacy.
-    const next1 = await mutate(owner, 'POST', '/api/onboarding/next', {}, 'task:onboarding-next-1');
-    assert.equal(next1.status, 200);
-    assert.equal((next1.body.data as { advanced_to: string }).advanced_to, 'privacy');
+    const transitions: Array<{ route: '/api/onboarding/next' | '/api/onboarding/skip'; task: string; expected: string; payload?: unknown }> = [
+      { route: '/api/onboarding/next', task: 'task:onboarding-welcome', expected: 'local_intelligence', payload: { name: 'Operator', role: 'developer', workbench: 'sovereign-coder' } },
+      { route: '/api/onboarding/next', task: 'task:onboarding-local', expected: 'providers' },
+      { route: '/api/onboarding/skip', task: 'task:onboarding-skip-providers', expected: 'workflow' },
+      { route: '/api/onboarding/next', task: 'task:onboarding-workflow', expected: 'security' },
+      { route: '/api/onboarding/next', task: 'task:onboarding-security', expected: 'workspace' },
+      { route: '/api/onboarding/next', task: 'task:onboarding-workspace', expected: 'verify' },
+      { route: '/api/onboarding/next', task: 'task:onboarding-verify', expected: 'finish' }
+    ];
+    let lastState = initialState;
+    for (const transition of transitions) {
+      const result = await mutate(owner, 'POST', transition.route, transition.payload ?? {}, transition.task);
+      assert.equal(result.status, 200);
+      const data = result.body.data as { advanced_to: string; state: unknown };
+      assert.equal(data.advanced_to, transition.expected);
+      lastState = OnboardingState.parse(data.state);
+    }
+    assert.equal(lastState.user_choices.name, 'Operator');
+    assert.equal(lastState.user_choices.workbench, 'sovereign-coder');
+    assert.equal(lastState.completed.providers?.skipped, true);
+    assert.equal(lastState.current_step, 'finish');
 
-    // 3. POST next with user choices (welcome step) advances to byok_optin.
-    const next2 = await mutate(owner, 'POST', '/api/onboarding/next', {
-      name: 'Operator',
-      role: 'developer',
-      workbench: 'sovereign-coder'
-    }, 'task:onboarding-next-2');
-    assert.equal(next2.status, 200);
-    assert.equal((next2.body.data as { advanced_to: string }).advanced_to, 'byok_optin');
-    const state2 = OnboardingState.parse((next2.body.data as { state: unknown }).state);
-    assert.equal(state2.user_choices.name, 'Operator');
-    assert.equal(state2.user_choices.workbench, 'sovereign-coder');
-
-    // 4. PUT state replaces the full state (operator override path).
-    const override = { ...state2, current_step: 'desktop_optin' as const, walkthrough_complete: false };
-    const put1 = await mutate(owner, 'PUT', '/api/onboarding/state', override, 'task:onboarding-put');
-    assert.equal(put1.status, 200);
-    const state3 = OnboardingState.parse((put1.body.data as { state: unknown }).state);
-    assert.equal(state3.current_step, 'desktop_optin');
-
-    // 5. POST next advances to system_map.
-    const next3 = await mutate(owner, 'POST', '/api/onboarding/next', {}, 'task:onboarding-next-3');
-    assert.equal(next3.status, 200);
-    assert.equal((next3.body.data as { advanced_to: string }).advanced_to, 'system_map');
-
-    // 6. POST complete sets walkthrough_complete = true.
     const complete = await mutate(owner, 'POST', '/api/onboarding/complete', {}, 'task:onboarding-complete');
     assert.equal(complete.status, 200);
     assert.equal((complete.body.data as { complete: boolean }).complete, true);
     const finalState = OnboardingState.parse((complete.body.data as { state: unknown }).state);
     assert.equal(finalState.walkthrough_complete, true);
-    assert.equal(finalState.current_step, 'system_map');
+    assert.equal(finalState.current_step, 'finish');
+    assert.equal(finalState.deferred, false);
 
-    // 7. Atomic persistence: state file exists, parses, matches the final state.
     const stateFile = path.join(workspace, '.aide', 'onboarding-state.json');
     const raw = await fsp.readFile(stateFile, 'utf8');
     const persisted = OnboardingState.parse(JSON.parse(raw));
     assert.equal(persisted.walkthrough_complete, true);
-
-    // 8. No .partial file left over (atomic rename worked).
     await assert.rejects(() => fsp.access(stateFile + '.partial'), /ENOENT/);
-
-    // 9. Reject: empty state PUT returns 400 (zod strict) before authority.
     const badPut = await unapproved(owner, 'PUT', '/api/onboarding/state', {});
     assert.equal(badPut.status, 400);
   } finally {
     await teardown(workspace, server, httpServer);
+  }
+});
+
+test('onboarding defer, resume, and restart preserve canonical configuration boundaries', async () => {
+  const { workspace, server, httpServer, owner } = await setup();
+  try {
+    const first = await mutate(owner, 'POST', '/api/onboarding/next', { name: 'Operator', role: 'developer', workbench: 'sovereign-coder' }, 'task:resume-first-step');
+    assert.equal(first.status, 200);
+    const atLocal = OnboardingState.parse((first.body.data as { state: unknown }).state);
+    assert.equal(atLocal.current_step, 'local_intelligence');
+
+    const unauthorizedDefer = await unapproved(owner, 'POST', '/api/onboarding/defer', {});
+    assert.equal(unauthorizedDefer.status, 409, 'deferring setup requires the normal approved write');
+
+    const deferred = await mutate(owner, 'POST', '/api/onboarding/defer', {}, 'task:defer-setup');
+    assert.equal(deferred.status, 200);
+    const deferredState = OnboardingState.parse((deferred.body.data as { state: unknown }).state);
+    assert.equal(deferredState.deferred, true);
+    assert.equal(deferredState.current_step, 'local_intelligence');
+    assert.equal(deferredState.user_choices.name, 'Operator');
+
+    const resumed = await mutate(owner, 'POST', '/api/onboarding/resume', {}, 'task:resume-setup');
+    assert.equal(resumed.status, 200);
+    const resumedState = OnboardingState.parse((resumed.body.data as { state: unknown }).state);
+    assert.equal(resumedState.deferred, false);
+    assert.equal(resumedState.current_step, 'local_intelligence');
+    assert.equal(resumedState.user_choices.name, 'Operator');
+
+    const deferredAgain = await mutate(owner, 'POST', '/api/onboarding/defer', {}, 'task:defer-again');
+    assert.equal(deferredAgain.status, 200);
+    const restarted = await mutate(owner, 'POST', '/api/onboarding/restart', {}, 'task:restart-progress');
+    assert.equal(restarted.status, 200);
+    const restartedState = OnboardingState.parse((restarted.body.data as { state: unknown }).state);
+    assert.equal(restartedState.current_step, 'welcome');
+    assert.equal(restartedState.deferred, false);
+    assert.equal(restartedState.user_choices.name, 'Operator');
+
+    const stateDirectory = path.join(workspace, '.aide');
+    await assert.rejects(() => fsp.access(path.join(stateDirectory, 'setup-session.json')), /ENOENT/);
+    const persisted = OnboardingState.parse(JSON.parse(await fsp.readFile(path.join(stateDirectory, 'onboarding-state.json'), 'utf8')));
+    assert.deepEqual(persisted, restartedState);
+  } finally {
+    await teardown(workspace, server, httpServer);
+  }
+});
+
+test('onboarding migrates legacy progress without confusing it with current configuration', async () => {
+  const workspace = await fsp.mkdtemp(path.join(os.tmpdir(), 'aide-onboarding-legacy-'));
+  try {
+    const stateFile = path.join(workspace, '.aide', 'onboarding-state.json');
+    await fsp.mkdir(path.dirname(stateFile), { recursive: true });
+    await fsp.writeFile(stateFile, JSON.stringify({
+      current_step: 'byok_optin',
+      completed: {
+        welcome: { skipped: false, completed_at: 100 },
+        privacy: { skipped: true, completed_at: 200 },
+        byok_optin: { skipped: false, completed_at: null },
+        desktop_optin: { skipped: false, completed_at: null },
+        system_map: { skipped: false, completed_at: null }
+      },
+      user_choices: { name: 'Operator', role: 'developer', workbench: 'sovereign-coder' },
+      walkthrough_complete: false,
+      started_at: 50,
+      updated_at: 250
+    }), 'utf8');
+
+    const service = createOnboardingService({ workspace });
+    const migrated = await service.getState();
+    assert.equal(migrated.current_step, 'providers');
+    assert.equal(migrated.completed.local_intelligence?.skipped, true);
+    assert.equal(migrated.user_choices.name, 'Operator');
+    assert.equal(migrated.deferred, false);
+
+    const advanced = await service.nextStep({}, { from_step: 'providers' });
+    assert.equal(advanced.advanced_to, 'workflow');
+    const persisted = OnboardingState.parse(JSON.parse(await fsp.readFile(stateFile, 'utf8')));
+    assert.equal(persisted.current_step, 'workflow');
+  } finally {
+    await fsp.rm(workspace, { recursive: true, force: true });
   }
 });
 
@@ -148,13 +215,13 @@ test('onboarding authority: transitions bind origin state and fail closed on dri
     const staleNext = await owner.approve('POST', '/api/onboarding/next', { name: 'Drifted' }, 'task:onboarding-stale');
     const moved = await mutate(owner, 'PUT', '/api/onboarding/state', {
       ...initialState,
-      current_step: 'privacy'
+      current_step: 'local_intelligence'
     }, 'task:onboarding-move');
     assert.equal(moved.status, 200);
     const staleRun = await owner.request('/api/onboarding/next', { method: 'POST', headers: staleNext, body: JSON.stringify({ name: 'Drifted' }) });
     assert.equal(staleRun.status, 409, 'next approval cannot authorize a different transition after drift');
     const afterDrift = OnboardingState.parse(JSON.parse(await stateRaw()));
-    assert.equal(afterDrift.current_step, 'privacy', 'drifted state is untouched by the stale approval instance');
+    assert.equal(afterDrift.current_step, 'local_intelligence', 'drifted state is untouched by the stale approval instance');
 
     // A next approval cannot be used for complete, and vice versa.
     const nextApproval = await owner.approve('POST', '/api/onboarding/next', {}, 'task:onboarding-cross');
@@ -173,6 +240,14 @@ test('onboarding authority: transitions bind origin state and fail closed on dri
 
     // Complete: approval binds walkthrough_complete; replay fails; a second
     // complete approval after the state changed cannot replay the old one.
+    const earlyComplete = await mutate(owner, 'POST', '/api/onboarding/complete', undefined, 'task:onboarding-early-complete');
+    assert.equal(earlyComplete.status, 409, 'setup cannot be completed before the finish step');
+    const earlyState = OnboardingState.parse(JSON.parse(await stateRaw()));
+    assert.equal(earlyState.walkthrough_complete, false, 'early completion leaves setup incomplete');
+    for (const expected of ['providers', 'workflow', 'security', 'workspace', 'verify', 'finish']) {
+      const advanced = await mutate(owner, 'POST', '/api/onboarding/next', {}, `task:onboarding-finish-${expected}`);
+      assert.equal((advanced.body.data as { advanced_to: string }).advanced_to, expected);
+    }
     const completeHeaders = await owner.approve('POST', '/api/onboarding/complete', undefined, 'task:onboarding-complete-bound');
     const completed = await owner.request('/api/onboarding/complete', { method: 'POST', headers: completeHeaders });
     assert.equal(completed.status, 200);
@@ -221,19 +296,19 @@ test('onboarding TOCTOU repair: serialization prevents approval for N executing 
     await criticalReadReached;
 
     // B tries to replace state N while A holds the transition critical section.
-    const bPromise = mutate(owner, 'PUT', '/api/onboarding/state', { ...initialState, current_step: 'privacy' }, 'task:toctou-b');
+    const bPromise = mutate(owner, 'PUT', '/api/onboarding/state', { ...initialState, current_step: 'local_intelligence' }, 'task:toctou-b');
     const bOutcome = await Promise.race([
       bPromise.then(() => 'settled', () => 'settled'),
       new Promise<string>(resolve => setTimeout(() => resolve('pending'), 250))
     ]);
     assert.equal(bOutcome, 'pending', 'PUT must not complete while a transition holds the critical section');
 
-    // Release A: it must commit exactly its approved welcome -> privacy step.
+    // Release A: it must commit exactly its approved welcome -> local-intelligence step.
     releaseCriticalRead();
     const aResponse = await aPromise;
     const aBody = (await aResponse.json()) as Envelope<{ advanced_to?: string }>;
     assert.equal(aResponse.status, 200);
-    assert.equal(aBody.data?.advanced_to, 'privacy', 'A executed exactly its approved transition');
+    assert.equal(aBody.data?.advanced_to, 'local_intelligence', 'A executed exactly its approved transition');
 
     // B's replacement applies afterwards (last-write-wins for PUT).
     const bResponse = await bPromise;
@@ -241,9 +316,9 @@ test('onboarding TOCTOU repair: serialization prevents approval for N executing 
     mutableFsp.readFile = originalReadFile;
     const finalRead = await read(owner, '/api/onboarding/state');
     const finalState = OnboardingState.parse((finalRead.body.data as { state: unknown }).state);
-    console.log(JSON.stringify({ approved: 'welcome->privacy', aAdvancedTo: aBody.data?.advanced_to ?? null, finalStep: finalState.current_step }));
-    assert.equal(finalState.current_step, 'privacy');
-    assert.notEqual(finalState.current_step, 'byok_optin', 'no transition may derive from the unexpected state');
+    console.log(JSON.stringify({ approved: 'welcome->local_intelligence', aAdvancedTo: aBody.data?.advanced_to ?? null, finalStep: finalState.current_step }));
+    assert.equal(finalState.current_step, 'local_intelligence');
+    assert.notEqual(finalState.current_step, 'providers', 'no transition may derive from the unexpected state');
   } finally {
     mutableFsp.readFile = originalReadFile;
     await teardown(workspace, server, httpServer);
@@ -255,12 +330,12 @@ test('onboarding concurrency: stale approvals fail CONFLICT with zero mutation a
   try {
     const stateRaw = async (): Promise<string> => fsp.readFile(path.join(workspace, '.aide', 'onboarding-state.json'), 'utf8').catch(() => '');
 
-    // Two independent approvals from the same N=welcome. A commits N->privacy.
+    // Two independent approvals from the same N=welcome. A commits N->local_intelligence.
     const aHeaders = await owner.approve('POST', '/api/onboarding/next', {}, 'task:same-n-a');
     const bHeaders = await owner.approve('POST', '/api/onboarding/next', {}, 'task:same-n-b');
     const aRun = await owner.request('/api/onboarding/next', { method: 'POST', headers: aHeaders, body: '{}' });
     assert.equal(aRun.status, 200);
-    assert.equal(((await aRun.json()) as Envelope<{ advanced_to?: string }>).data?.advanced_to, 'privacy');
+    assert.equal(((await aRun.json()) as Envelope<{ advanced_to?: string }>).data?.advanced_to, 'local_intelligence');
 
     const beforeStale = await stateRaw();
     const bRun = await owner.request('/api/onboarding/next', { method: 'POST', headers: bHeaders, body: '{}' });
@@ -271,13 +346,13 @@ test('onboarding concurrency: stale approvals fail CONFLICT with zero mutation a
     // Failed transition must not poison the queue: a fresh approval still works.
     const fresh = await mutate(owner, 'POST', '/api/onboarding/next', {}, 'task:fresh-next');
     assert.equal(fresh.status, 200);
-    assert.equal((fresh.body.data as { advanced_to: string }).advanced_to, 'byok_optin');
+    assert.equal((fresh.body.data as { advanced_to: string }).advanced_to, 'providers');
 
-    // Stale complete: approved at (byok_optin,false); state advances first.
+    // Stale complete: approved at (providers,false); state advances first.
     const completeHeaders = await owner.approve('POST', '/api/onboarding/complete', undefined, 'task:stale-complete');
     const advance = await mutate(owner, 'POST', '/api/onboarding/next', {}, 'task:advance');
     assert.equal(advance.status, 200);
-    assert.equal((advance.body.data as { advanced_to: string }).advanced_to, 'desktop_optin');
+    assert.equal((advance.body.data as { advanced_to: string }).advanced_to, 'workflow');
     const beforeComplete = await stateRaw();
     const staleComplete = await owner.request('/api/onboarding/complete', { method: 'POST', headers: completeHeaders });
     assert.equal(staleComplete.status, 409, 'stale complete must fail');
@@ -302,11 +377,11 @@ test('onboarding service serialization: CAS, write-failure recovery, cross-servi
 
     // Compare-and-commit is enforced by the service itself.
     const first = await serviceA.nextStep(undefined, { from_step: 'welcome' });
-    assert.equal(first.advanced_to, 'privacy');
+    assert.equal(first.advanced_to, 'local_intelligence');
     await assert.rejects(() => serviceA.nextStep(undefined, { from_step: 'welcome' }), OnboardingConflictError);
     await assert.rejects(() => serviceA.complete({ from_step: 'welcome', walkthrough_complete: false }), OnboardingConflictError);
     const afterCas = await serviceA.getState();
-    assert.equal(afterCas.current_step, 'privacy', 'conflicts leave durable state unchanged');
+    assert.equal(afterCas.current_step, 'local_intelligence', 'conflicts leave durable state unchanged');
 
     // A write failure releases the queue and propagates.
     let failed = false;
@@ -314,10 +389,10 @@ test('onboarding service serialization: CAS, write-failure recovery, cross-servi
       if (!failed && String(file).endsWith('onboarding-state.json.partial')) { failed = true; throw new Error('simulated disk failure'); }
       return originalWriteFile(file, ...rest);
     };
-    await assert.rejects(() => serviceA.nextStep(undefined, { from_step: 'privacy' }), /simulated disk failure/);
+    await assert.rejects(() => serviceA.nextStep(undefined, { from_step: 'local_intelligence' }), /simulated disk failure/);
     mutableFsp.writeFile = originalWriteFile;
-    const recovered = await serviceA.nextStep(undefined, { from_step: 'privacy' });
-    assert.equal(recovered.advanced_to, 'byok_optin', 'queue recovers after a failed write');
+    const recovered = await serviceA.nextStep(undefined, { from_step: 'local_intelligence' });
+    assert.equal(recovered.advanced_to, 'providers', 'queue recovers after a failed write');
 
     // Cross-service independence: B resolves while A is held inside its read.
     let reachedRead!: () => void;
@@ -328,13 +403,13 @@ test('onboarding service serialization: CAS, write-failure recovery, cross-servi
       if (String(file).startsWith(dirA) && String(file).endsWith('onboarding-state.json')) { reachedRead(); await readGate; }
       return originalReadFile(file, ...rest);
     };
-    const heldA = serviceA.nextStep(undefined, { from_step: 'byok_optin' });
+    const heldA = serviceA.nextStep(undefined, { from_step: 'providers' });
     await readReached;
     const bResult = await serviceB.nextStep(undefined, { from_step: 'welcome' });
-    assert.equal(bResult.advanced_to, 'privacy', 'a separate service instance is not blocked');
+    assert.equal(bResult.advanced_to, 'local_intelligence', 'a separate service instance is not blocked');
     releaseRead();
     const releasedA = await heldA;
-    assert.equal(releasedA.advanced_to, 'desktop_optin');
+    assert.equal(releasedA.advanced_to, 'workflow');
     mutableFsp.readFile = originalReadFile;
   } finally {
     mutableFsp.readFile = originalReadFile;

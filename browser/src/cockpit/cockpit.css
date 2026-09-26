@@ -1717,6 +1717,47 @@ html, body {
   border-top: 1px solid var(--ck-line-soft);
 }
 
+.cockpit-settings-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 0;
+  background: var(--ck-bg-panel);
+  border-bottom: 1px solid var(--ck-line-soft);
+}
+
+.cockpit-settings-nav-item,
+.mm-provider-link,
+.chat-provider-link {
+  border: 1px solid var(--ck-line-soft);
+  border-radius: 3px;
+  padding: 7px 9px;
+  background: var(--ck-bg-panel);
+  color: var(--ck-text-muted);
+  font: 10px var(--ck-font-mono);
+  cursor: pointer;
+}
+
+.cockpit-settings-nav-item:hover,
+.cockpit-settings-nav-item[aria-current="page"],
+.mm-provider-link:hover,
+.chat-provider-link:hover {
+  border-color: var(--ck-cyan);
+  color: var(--ck-text);
+}
+
+.cockpit-settings-content { min-width: 0; }
+.cockpit-settings-section[hidden] { display: none; }
+.cockpit-settings-provider-overview,
+.cockpit-settings-provider-config { margin-top: 12px; }
+.cockpit-settings-panel-mount { min-width: 0; }
+.cockpit-settings-primary { border-color: var(--ck-cyan); color: var(--ck-cyan); }
+.mm-provider-link { margin-left: auto; white-space: nowrap; }
+.chat-provider-link { white-space: nowrap; }
+
 .cockpit-settings-section-title {
   margin: 0 0 10px;
   font-size: 13px;
@@ -1747,6 +1788,11 @@ html, body {
 
 .provider-dot.unavailable {
   background: #d0576e;
+}
+
+.provider-dot.configured,
+.provider-dot.unknown {
+  background: #d29d52;
 }
 
 .provider-action.danger,
@@ -1989,6 +2035,9 @@ html, body {
 .cockpit-setup-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .cockpit-setup-stage { font-size: 10px; letter-spacing: 0.14em; color: #00e5ff; }
 .cockpit-setup-title { margin: 0; font-size: 14px; letter-spacing: 0.12em; color: #e8f6ff; }
+.cockpit-setup-dismiss { margin-left: auto; padding: 4px 8px; color: #9fb4c8; background: transparent; border: 1px solid rgba(159, 180, 200, 0.3); border-radius: 5px; cursor: pointer; }
+.cockpit-setup-dismiss:focus-visible { outline: 2px solid #00e5ff; outline-offset: 2px; }
+.cockpit-setup-dismiss:disabled { opacity: 0.4; cursor: default; }
 .cockpit-setup-body { display: flex; flex-direction: column; gap: 10px; }
 .cockpit-setup-detail { margin: 0; font-size: 12px; line-height: 1.55; color: #9fb4c8; }
 .cockpit-setup-note { margin: 0; font-size: 11px; line-height: 1.5; color: #ffb000; }

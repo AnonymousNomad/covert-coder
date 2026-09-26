@@ -16,6 +16,7 @@ function statusClass(status: ProviderConnectionStatusT): string {
 }
 
 const STATE_LABELS: Record<ProviderConnectionStatusT, string> = {
+  configured: 'CONFIGURED · TEST REQUIRED',
   connected: 'CONNECTED',
   invalid_key: 'INVALID CREDENTIAL',
   not_connected: 'NOT CONFIGURED',
@@ -27,7 +28,9 @@ function statusText(status: ProviderConnectionStatusT): string {
   return STATE_LABELS[status];
 }
 
-function renderRow(list: HTMLElement, provider: ProviderInfoT, onAction: (row: HTMLElement) => void): void {
+type ProviderAction = 'connect' | 'test' | 'disconnect';
+
+function renderRow(list: HTMLElement, provider: ProviderInfoT, onAction: (row: HTMLElement, action: ProviderAction) => void): void {
   const row = document.createElement('div');
   row.className = 'provider-row';
   row.dataset.providerId = provider.id;
@@ -40,15 +43,26 @@ function renderRow(list: HTMLElement, provider: ProviderInfoT, onAction: (row: H
   const status = document.createElement('span');
   status.className = 'provider-status';
   status.textContent = statusText(provider.status);
-  const action = document.createElement('button');
-  action.type = 'button';
-  action.className = 'provider-action';
-  action.textContent = provider.status === 'connected' ? 'Disconnect' : 'Connect';
-  action.addEventListener('click', () => onAction(row));
+  const actions = document.createElement('div');
+  actions.className = 'provider-actions';
+  const addAction = (label: string, action: ProviderAction): void => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'provider-action';
+    button.textContent = label;
+    button.addEventListener('click', () => onAction(row, action));
+    actions.appendChild(button);
+  };
+  if (provider.status === 'not_connected') addAction('Connect', 'connect');
+  else {
+    if (provider.status !== 'invalid_key') addAction('Test connection', 'test');
+    else addAction('Replace key', 'connect');
+    addAction('Disconnect', 'disconnect');
+  }
   row.appendChild(dot);
   row.appendChild(name);
   row.appendChild(status);
-  row.appendChild(action);
+  row.appendChild(actions);
   list.appendChild(row);
 }
 
@@ -196,12 +210,19 @@ export function createProvidersPanel(container: HTMLElement, opts: ProvidersPane
     }
     listEl.textContent = '';
     for (const provider of providers) {
-      renderRow(listEl, provider, row => {
-        if (provider.status === 'connected') {
+      renderRow(listEl, provider, (row, action) => {
+        if (action === 'disconnect') {
           api
             .providerDisconnect(provider.id)
             .then(() => void refresh())
             .catch((error: unknown) => opts.onToast('INTERNAL', error instanceof Error ? error.message : 'disconnect failed'));
+        } else if (action === 'test') {
+          api.connectionsTest(`builtin:${provider.id}`)
+            .then(result => {
+              opts.onToast(result.ok ? 'OK' : 'NOT_READY', result.detail);
+              void refresh();
+            })
+            .catch((error: unknown) => opts.onToast('INTERNAL', error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'provider test failed'));
         } else {
           renderConnectForm(row, provider, opts.onToast, refresh);
         }

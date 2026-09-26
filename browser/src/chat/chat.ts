@@ -7,6 +7,7 @@ import type { RouteEntryT } from '../../../common/contracts/routing.ts';
 
 export interface ChatPanelOptions {
   onToast?: (code: string, message: string) => void;
+  onManageProviders?: () => void;
 }
 
 export interface ChatPanel {
@@ -26,6 +27,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
       <div class="chat-toolbar">
         <label class="chat-model-label">Model</label>
         <select id="chat-model" class="chat-model-select"></select>
+        <button type="button" id="chat-manage-providers" class="chat-provider-link">Connect or manage providers</button>
         <span id="chat-meter" class="chat-meter"></span>
       </div>
       <div id="chat-banner" class="chat-banner"></div>
@@ -44,7 +46,8 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   const stopBtnEl = container.querySelector<HTMLButtonElement>('#chat-stop');
   const bannerEl = container.querySelector<HTMLElement>('#chat-banner');
   const meterEl = container.querySelector<HTMLElement>('#chat-meter');
-  if (modelSelectEl === null || messagesEl === null || inputEl === null || sendBtnEl === null || stopBtnEl === null || bannerEl === null || meterEl === null) throw new Error('chat panel mount failed');
+  const manageProvidersEl = container.querySelector<HTMLButtonElement>('#chat-manage-providers');
+  if (modelSelectEl === null || messagesEl === null || inputEl === null || sendBtnEl === null || stopBtnEl === null || bannerEl === null || meterEl === null || manageProvidersEl === null) throw new Error('chat panel mount failed');
   const modelSelect: HTMLSelectElement = modelSelectEl;
   const messages: HTMLElement = messagesEl;
   const input: HTMLTextAreaElement = inputEl;
@@ -52,6 +55,8 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   const stopButton: HTMLButtonElement = stopBtnEl;
   const banner: HTMLElement = bannerEl;
   const meter: HTMLElement = meterEl;
+  manageProvidersEl.addEventListener('click', () => opts.onManageProviders?.());
+  manageProvidersEl.hidden = opts.onManageProviders === undefined;
 
   let routes: RouteEntryT[] = [];
   let boundModelId = '';

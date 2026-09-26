@@ -1,14 +1,18 @@
-// node/src/services/onboarding.mjs (cline/T4, 2026-09-02)
-//
-// PR A of aide-onboarding-walkthrough. State machine + atomic persistence.
-// Pattern: same as worktree.mjs (synchronous factory, createXxxService({workspace})).
+// Resumable Covert setup progress with atomic persistence.
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { z } from 'zod';
-import { OnboardingState, OnboardingStep } from '../../../common/contracts/onboarding.ts';
+import { OnboardingState } from '../../../common/contracts/onboarding.ts';
 
-const STEP_ORDER = ["welcome", "privacy", "byok_optin", "desktop_optin", "system_map"];
+const STEP_ORDER = ["welcome", "local_intelligence", "providers", "workflow", "security", "workspace", "verify", "finish"];
+const LEGACY_STEP_MAP = {
+  welcome: "welcome",
+  privacy: "local_intelligence",
+  byok_optin: "providers",
+  desktop_optin: "security",
+  system_map: "verify"
+};
+const LEGACY_STEP_IDS = new Set(["privacy", "byok_optin", "desktop_optin", "system_map"]);
 
 function makeDefaultState() {
   const now = Date.now();
@@ -19,6 +23,7 @@ function makeDefaultState() {
     completed,
     user_choices: {},
     walkthrough_complete: false,
+    deferred: false,
     started_at: now,
     updated_at: now
   };
@@ -33,8 +38,30 @@ function nextStepName(current) {
 async function readState(filePath) {
   try {
     const raw = await fs.readFile(filePath, "utf8");
-    const parsed = OnboardingState.parse(JSON.parse(raw));
-    return parsed;
+    const value = JSON.parse(raw);
+    const hasLegacyProgress = value && typeof value === "object" && (
+      (typeof value.current_step === "string" && !STEP_ORDER.includes(value.current_step)) ||
+      (value.completed && Object.keys(value.completed).some((step) => LEGACY_STEP_IDS.has(step)))
+    );
+    if (hasLegacyProgress) {
+      const migratedStep = LEGACY_STEP_MAP[value.current_step];
+      if (!migratedStep) return makeDefaultState();
+      const migrated = makeDefaultState();
+      migrated.current_step = migratedStep;
+      migrated.user_choices = value.user_choices && typeof value.user_choices === "object" ? value.user_choices : {};
+      migrated.walkthrough_complete = value.walkthrough_complete === true;
+      migrated.deferred = value.deferred === true;
+      migrated.started_at = Number.isInteger(value.started_at) ? value.started_at : migrated.started_at;
+      migrated.updated_at = Number.isInteger(value.updated_at) ? value.updated_at : migrated.updated_at;
+      for (const [legacyStep, newStep] of Object.entries(LEGACY_STEP_MAP)) {
+        const status = value.completed?.[legacyStep];
+        if (status && typeof status === "object" && typeof status.skipped === "boolean" && (status.completed_at === null || Number.isInteger(status.completed_at))) {
+          migrated.completed[newStep] = status;
+        }
+      }
+      return OnboardingState.parse(migrated);
+    }
+    return OnboardingState.parse(value);
   } catch (error) {
     if (error && error.code === "ENOENT") return makeDefaultState();
     // Corrupt state: reset (atomic write protects the next save).
@@ -103,16 +130,19 @@ export function createOnboardingService({ workspace }) {
     return critical(async () => {
       const current = await readState(stateFile);
       assertExpectedStep(current, expected);
+      if (expected.walkthrough_complete !== undefined && current.walkthrough_complete !== expected.walkthrough_complete) {
+        throw new OnboardingConflictError(`approved walkthrough_complete ${expected.walkthrough_complete} does not match current state ${current.walkthrough_complete}`);
+      }
+      if (expected.deferred !== undefined && current.deferred !== expected.deferred) {
+        throw new OnboardingConflictError(`approved deferred ${expected.deferred} does not match current state ${current.deferred}`);
+      }
       if (partial && typeof partial === "object") {
         Object.assign(current.user_choices, partial);
       }
       current.completed[current.current_step] = { skipped: false, completed_at: Date.now() };
+      current.deferred = false;
       const advanced = nextStepName(current.current_step);
       current.current_step = advanced;
-      if (advanced === "system_map") {
-        // Stay on the last step until complete() is called.
-        current.current_step = "system_map";
-      }
       await writeStateAtomic(stateFile, current);
       return { state: current, advanced_to: current.current_step };
     });
@@ -122,13 +152,20 @@ export function createOnboardingService({ workspace }) {
     return critical(async () => {
       const current = await readState(stateFile);
       assertExpectedStep(current, expected);
+      if (expected.walkthrough_complete !== undefined && current.walkthrough_complete !== expected.walkthrough_complete) {
+        throw new OnboardingConflictError(`approved walkthrough_complete ${expected.walkthrough_complete} does not match current state ${current.walkthrough_complete}`);
+      }
+      if (expected.deferred !== undefined && current.deferred !== expected.deferred) {
+        throw new OnboardingConflictError(`approved deferred ${expected.deferred} does not match current state ${current.deferred}`);
+      }
       if (partial && typeof partial === "object") {
         Object.assign(current.user_choices, partial);
       }
       current.completed[current.current_step] = { skipped: true, completed_at: Date.now() };
+      current.deferred = false;
       current.current_step = nextStepName(current.current_step);
       await writeStateAtomic(stateFile, current);
-      return current;
+      return { state: current, advanced_to: current.current_step };
     });
   }
 
@@ -136,15 +173,71 @@ export function createOnboardingService({ workspace }) {
     return critical(async () => {
       const current = await readState(stateFile);
       assertExpectedStep(current, expected);
+      if (current.current_step !== "finish") {
+        throw new OnboardingConflictError(`setup can only complete from the finish step; current step is ${current.current_step}`);
+      }
       if (expected.walkthrough_complete !== undefined && current.walkthrough_complete !== expected.walkthrough_complete) {
         throw new OnboardingConflictError(`approved walkthrough_complete ${expected.walkthrough_complete} does not match current state ${current.walkthrough_complete}`);
       }
-      current.completed.system_map = { skipped: false, completed_at: Date.now() };
+      if (expected.deferred !== undefined && current.deferred !== expected.deferred) {
+        throw new OnboardingConflictError(`approved deferred ${expected.deferred} does not match current state ${current.deferred}`);
+      }
+      current.completed.finish = { skipped: false, completed_at: Date.now() };
       current.walkthrough_complete = true;
+      current.deferred = false;
       await writeStateAtomic(stateFile, current);
       return current;
     });
   }
 
-  return { getState, setState, nextStep, skipStep, complete };
+  async function restart(expected = {}) {
+    return critical(async () => {
+      const current = await readState(stateFile);
+      assertExpectedStep(current, expected);
+      if (expected.walkthrough_complete !== undefined && current.walkthrough_complete !== expected.walkthrough_complete) {
+        throw new OnboardingConflictError(`approved walkthrough_complete ${expected.walkthrough_complete} does not match current state ${current.walkthrough_complete}`);
+      }
+      if (expected.deferred !== undefined && current.deferred !== expected.deferred) {
+        throw new OnboardingConflictError(`approved deferred ${expected.deferred} does not match current state ${current.deferred}`);
+      }
+      const restarted = makeDefaultState();
+      restarted.user_choices = current.user_choices;
+      await writeStateAtomic(stateFile, restarted);
+      return restarted;
+    });
+  }
+
+  async function defer(expected = {}) {
+    return critical(async () => {
+      const current = await readState(stateFile);
+      assertExpectedStep(current, expected);
+      if (expected.walkthrough_complete !== undefined && current.walkthrough_complete !== expected.walkthrough_complete) {
+        throw new OnboardingConflictError(`approved walkthrough_complete ${expected.walkthrough_complete} does not match current state ${current.walkthrough_complete}`);
+      }
+      if (expected.deferred !== undefined && current.deferred !== expected.deferred) {
+        throw new OnboardingConflictError(`approved deferred ${expected.deferred} does not match current state ${current.deferred}`);
+      }
+      current.deferred = true;
+      await writeStateAtomic(stateFile, current);
+      return current;
+    });
+  }
+
+  async function resume(expected = {}) {
+    return critical(async () => {
+      const current = await readState(stateFile);
+      assertExpectedStep(current, expected);
+      if (expected.walkthrough_complete !== undefined && current.walkthrough_complete !== expected.walkthrough_complete) {
+        throw new OnboardingConflictError(`approved walkthrough_complete ${expected.walkthrough_complete} does not match current state ${current.walkthrough_complete}`);
+      }
+      if (expected.deferred !== undefined && current.deferred !== expected.deferred) {
+        throw new OnboardingConflictError(`approved deferred ${expected.deferred} does not match current state ${current.deferred}`);
+      }
+      current.deferred = false;
+      await writeStateAtomic(stateFile, current);
+      return current;
+    });
+  }
+
+  return { getState, setState, nextStep, skipStep, complete, restart, defer, resume };
 }

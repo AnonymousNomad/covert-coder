@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const ProviderKind = z.enum(['openai-compatible', 'anthropic']);
 
-export const ProviderConnectionStatus = z.enum(['not_connected', 'connected', 'invalid_key', 'unreachable', 'checking']);
+export const ProviderConnectionStatus = z.enum(['not_connected', 'configured', 'connected', 'invalid_key', 'unreachable', 'checking']);
 
 export const ProviderInfo = z.object({
   id: z.string(),

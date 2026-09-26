@@ -10,7 +10,7 @@ import { RoleRouting } from './byok.ts';
 export const ConnectionKind = z.enum(['subscription', 'api-key', 'local-runtime', 'catalog-token']);
 export type ConnectionKindT = z.infer<typeof ConnectionKind>;
 
-export const ConnectionStatus = z.enum(['not_configured', 'sign_in_required', 'connected', 'invalid_key', 'unreachable', 'unavailable']);
+export const ConnectionStatus = z.enum(['not_configured', 'sign_in_required', 'configured', 'connected', 'invalid_key', 'unreachable', 'unavailable', 'unknown']);
 export type ConnectionStatusT = z.infer<typeof ConnectionStatus>;
 
 export const ConnectionCapability = z.enum(['chat', 'act', 'utility', 'catalog']);

@@ -1,85 +1,44 @@
-// tests/arch/onboarding-walkthrough-doctrine.test.ts (cline/T4, sleeper-mode 2026-09-01)
-// Verifies the aide-onboarding-walkthrough skill exists + has the 5 steps + the
-// 13 files-to-touch + the gates. R3 verifier (per hard-rules + aide-ide-research).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SKILL_PATH = path.join(
-  __dirname,
-  '..',
-  '..',
-  'skills',
-  'packs',
-  'aide-onboarding-walkthrough',
-  'SKILL.md'
-);
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const read = (file: string): Promise<string> => fs.readFile(path.join(root, file), 'utf8');
 
-test('aide-onboarding-walkthrough doctrine is loadable + shaped correctly', async () => {
-  const skill = await fs.readFile(SKILL_PATH, 'utf8');
-  // 1. YAML frontmatter (CRLF-tolerant)
+test('Covert onboarding uses canonical configuration owners and stays rerunnable', async () => {
+  const [skill, contract, service, routes, setup, settings, shell, models, chat, walkthrough] = await Promise.all([
+    read('skills/packs/aide-onboarding-walkthrough/SKILL.md'),
+    read('common/contracts/onboarding.ts'),
+    read('node/src/services/onboarding.mjs'),
+    read('node/src/routes/onboarding.ts'),
+    read('browser/src/cockpit/SetupSession.ts'),
+    read('browser/src/cockpit/SettingsSurface.ts'),
+    read('browser/src/cockpit/CockpitShell.ts'),
+    read('browser/src/panels/models.ts'),
+    read('browser/src/chat/chat.ts'),
+    read('browser/src/cockpit/Walkthrough.ts')
+  ]);
+
   assert.match(skill, /^---\r?\nname: aide-onboarding-walkthrough\r?\ndescription: /);
-  // 2. The 5 step names
-  for (const step of ['Welcome', 'Privacy', 'BYOK opt-in', 'Desktop control opt-in', 'System map']) {
-    assert.ok(skill.includes(step), 'missing step: ' + step);
+  for (const stage of ['welcome', 'local_intelligence', 'providers', 'workflow', 'security', 'workspace', 'verify', 'finish']) {
+    assert.ok(contract.includes(`'${stage}'`), `missing canonical setup stage: ${stage}`);
+    assert.ok(setup.includes(`id: '${stage}'`), `wizard does not render stage: ${stage}`);
   }
-  // 3. The 7 vendor sources (R2 ask-dont-circle)
-  const urls = [
-    'https://docs.cursor.com/welcome',
-    'https://code.visualstudio.com/docs/copilot/chat/copilot-chat',
-    'https://docs.cline.bot/getting-started/installing-cline',
-    'https://docs.codeium.com/windsurf/getting-started',
-    'https://docs.anthropic.com/en/docs/claude-code/overview',
-    'https://aider.chat/docs/install.html',
-    'https://docs.continue.dev/getting-started/overview'
-  ];
-  for (const url of urls) {
-    assert.ok(skill.includes(url), 'missing source citation: ' + url);
+  for (const route of ['/api/onboarding/skip', '/api/onboarding/restart', '/api/onboarding/defer', '/api/onboarding/resume']) {
+    assert.ok(routes.includes(route), `missing approved progress route: ${route}`);
   }
-  // 4. BYOK step cites Cline + Claude Code copy
-  const byokIdx = skill.indexOf('Step 3');
-  const desktopIdx = skill.indexOf('Step 4');
-  const byokSection = skill.slice(byokIdx, desktopIdx);
-  assert.ok(byokSection.includes('bring your own provider key'), 'BYOK step must cite Cline copy');
-  assert.ok(byokSection.includes('third-party providers'), 'BYOK step must cite Claude Code copy');
-  // 5. Privacy step quotes the credo (offline-first + No-Phone-Home)
-  const privacyIdx = skill.indexOf('Step 2');
-  const byokIdx2 = skill.indexOf('Step 3');
-  const privacySection = skill.slice(privacyIdx, byokIdx2);
-  assert.ok(privacySection.includes('offline-first'), 'privacy step must invoke offline-first');
-  assert.ok(privacySection.includes('No-Phone-Home'), 'privacy step must cite law #2');
-  // 6. The 13 files-to-touch
-  const expectedFiles = [
-    'common/contracts/onboarding.ts',
-    'node/src/services/onboarding.mjs',
-    'node/src/routes/onboarding.ts',
-    'browser/src/cockpit/walkthrough/Walkthrough.tsx',
-    'browser/src/cockpit/walkthrough/steps/Welcome.tsx',
-    'browser/src/cockpit/walkthrough/steps/Privacy.tsx',
-    'browser/src/cockpit/walkthrough/steps/ByokOptin.tsx',
-    'browser/src/cockpit/walkthrough/steps/DesktopOptin.tsx',
-    'browser/src/cockpit/walkthrough/steps/SystemMap.tsx',
-    'browser/src/cockpit/walkthrough/index.ts',
-    'node/src/openapi.ts',
-    'common/openapi.json',
-    'tests/arch/onboarding-walkthrough-doctrine.test.ts'
-  ];
-  for (const f of expectedFiles) {
-    assert.ok(skill.includes(f), 'missing file in files-to-touch: ' + f);
-  }
-  // 7. The 6 verification gates
-  const gates = [
-    'node --check browser/src/cockpit/walkthrough/*.tsx',
-    'onboarding-walkthrough-doctrine.test.ts',
-    'walkthrough-state-shape.test.ts',
-    'npm run contracts',
-    'egress-audit.mjs',
-    'cold-start the daemon'
-  ];
-  for (const gate of gates) {
-    assert.ok(skill.includes(gate), 'missing gate: ' + gate);
-  }
+  assert.ok(contract.includes('deferred: z.boolean().default(false)'));
+  assert.ok(service.includes('current.user_choices = current.user_choices') || service.includes('restarted.user_choices = current.user_choices'));
+  assert.ok(setup.includes('api.onboardingDefer()'));
+  assert.ok(setup.includes('api.onboardingResume()'));
+  assert.ok(setup.includes('api.byokSetRouting(nextRouting)'), 'workflow choices must write through canonical routing');
+  assert.ok(!setup.includes('setup-session.json'), 'configuration must not be persisted in an onboarding-only file');
+  assert.ok(settings.includes("label: 'INTELLIGENCE · PROVIDERS'"));
+  assert.ok(settings.includes("label: 'SETUP & ONBOARDING'"));
+  assert.ok(models.includes('onManageProviders'));
+  assert.ok(chat.includes('onManageProviders'));
+  assert.ok(shell.includes("openSettingsSection('providers')"));
+  assert.ok(!walkthrough.includes('onboardingComplete'), 'the product tour must not complete setup');
 });

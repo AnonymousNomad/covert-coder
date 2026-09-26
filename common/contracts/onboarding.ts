@@ -1,17 +1,17 @@
-// common/contracts/onboarding.ts (cline/T4, 2026-09-02)
-//
-// PR A of aide-onboarding-walkthrough. The 5-step walkthrough state machine.
-// Resumable: state is persisted to <workspace>/.aide/onboarding-state.json.
-// READ-ONLY from the system map side (aide-system-map card 8 reads this).
+// Guided setup progress only. Product configuration remains owned by the
+// provider, Model Manager, routing, workspace, and security services.
 
 import { z } from 'zod';
 
 export const OnboardingStep = z.enum([
   'welcome',
-  'privacy',
-  'byok_optin',
-  'desktop_optin',
-  'system_map'
+  'local_intelligence',
+  'providers',
+  'workflow',
+  'security',
+  'workspace',
+  'verify',
+  'finish'
 ]);
 
 export const OnboardingRole = z.enum(['developer', 'researcher', 'student', 'other']);
@@ -45,6 +45,7 @@ export const OnboardingState = z.object({
   completed: z.record(OnboardingStep, OnboardingStepStatus),
   user_choices: OnboardingUserChoices.partial(),
   walkthrough_complete: z.boolean(),
+  deferred: z.boolean().default(false),
   started_at: z.number().int(),
   updated_at: z.number().int()
 }).strict();
@@ -63,6 +64,13 @@ export const OnboardingCompleteResponse = z.object({
   complete: z.literal(true)
 }).strict();
 
+export const OnboardingRestartRequest = z.strictObject({});
+export const OnboardingRestartResponse = z.strictObject({ state: OnboardingState });
+export const OnboardingDeferRequest = z.strictObject({});
+export const OnboardingDeferResponse = z.strictObject({ state: OnboardingState });
+export const OnboardingResumeRequest = z.strictObject({});
+export const OnboardingResumeResponse = z.strictObject({ state: OnboardingState });
+
 export type OnboardingStepT = z.infer<typeof OnboardingStep>;
 export type OnboardingRoleT = z.infer<typeof OnboardingRole>;
 export type OnboardingWorkbenchT = z.infer<typeof OnboardingWorkbench>;
@@ -73,3 +81,6 @@ export type OnboardingStateT = z.infer<typeof OnboardingState>;
 export type OnboardingStateResponseT = z.infer<typeof OnboardingStateResponse>;
 export type OnboardingNextResponseT = z.infer<typeof OnboardingNextResponse>;
 export type OnboardingCompleteResponseT = z.infer<typeof OnboardingCompleteResponse>;
+export type OnboardingRestartResponseT = z.infer<typeof OnboardingRestartResponse>;
+export type OnboardingDeferResponseT = z.infer<typeof OnboardingDeferResponse>;
+export type OnboardingResumeResponseT = z.infer<typeof OnboardingResumeResponse>;

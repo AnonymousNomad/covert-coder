@@ -20,13 +20,13 @@ function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['pro
   row.className = 'byok-row';
   row.dataset.providerId = provider.id;
   const dot = document.createElement('span');
-  dot.className = provider.key_stored ? 'provider-dot connected' : 'provider-dot disconnected';
+  dot.className = provider.key_stored ? 'provider-dot configured' : 'provider-dot disconnected';
   const name = document.createElement('span');
   name.className = 'provider-name';
   name.textContent = provider.name;
   const status = document.createElement('span');
   status.className = 'provider-status';
-  status.textContent = provider.key_stored ? 'CONNECTED (key stored — run Test to verify)' : 'NOT CONFIGURED';
+  status.textContent = provider.key_stored ? 'CONFIGURED · LIVE TEST NOT RUN' : 'NOT CONFIGURED';
   const test = document.createElement('button');
   test.type = 'button';
   test.className = 'provider-action';

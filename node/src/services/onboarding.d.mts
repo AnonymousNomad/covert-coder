@@ -20,13 +20,17 @@ export declare class OnboardingConflictError extends Error {
 export declare interface OnboardingExpectedState {
   from_step?: OnboardingStateT['current_step'];
   walkthrough_complete?: boolean;
+  deferred?: boolean;
 }
 
 export declare interface OnboardingService {
   getState(): Promise<OnboardingStateT>;
   setState(next: OnboardingStateT): Promise<OnboardingStateT>;
   nextStep(partial?: Partial<OnboardingUserChoicesT>, expected?: OnboardingExpectedState): Promise<OnboardingNextResponseT>;
-  skipStep(partial?: Partial<OnboardingUserChoicesT>, expected?: OnboardingExpectedState): Promise<OnboardingStateT>;
+  skipStep(partial?: Partial<OnboardingUserChoicesT>, expected?: OnboardingExpectedState): Promise<OnboardingNextResponseT>;
+  restart(expected?: OnboardingExpectedState): Promise<OnboardingStateT>;
+  defer(expected?: OnboardingExpectedState): Promise<OnboardingStateT>;
+  resume(expected?: OnboardingExpectedState): Promise<OnboardingStateT>;
   complete(expected?: OnboardingExpectedState): Promise<OnboardingStateT>;
 }
 

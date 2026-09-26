@@ -1,14 +1,18 @@
-// Resident Adaptive Setup Session — interview → configuration plan → approval
-// → provisioning over the REAL systems (onboarding, hardware, models, BYOK,
-// workflow). Nothing is applied before the explicit approval step; every
-// mutation is an approved operation. No duplicate stores, no alternate
-// authority path. The reusable profile persists to <workspace>/.aide/setup-session.json.
+// Guided first-run configuration over the canonical Model Manager, provider,
+// routing, workspace, and onboarding services. Durable onboarding data stores
+// progress only; actual configuration remains in its existing owners.
 
 import type { Store } from '../store/store.ts';
 import type { AppState, Panel } from '../store/state.ts';
-import { api } from '../services/api.ts';
-import type { OnboardingUserChoicesT } from '../../../common/contracts/onboarding.ts';
-import type { HardwareRecommendResponseT } from '../../../common/contracts/hardware.ts';
+import { api, ApiError } from '../services/api.ts';
+import type { OnboardingStateT, OnboardingStepT } from '../../../common/contracts/onboarding.ts';
+import type { ConnectionsViewResponseT } from '../../../common/contracts/connections.ts';
+import type { ByokStatusResponseT } from '../../../common/contracts/byok.ts';
+import type { HardwareProfileResponseT } from '../../../common/contracts/hardware.ts';
+import type { ModelManagerSnapshotResponseT } from '../../../common/contracts/model-manager.ts';
+import type { HealthResponseT } from '../../../common/contracts/health.ts';
+import type { ModelStatusResponseT } from '../../../common/contracts/models.ts';
+import type { RoutesResponseT } from '../../../common/contracts/routing.ts';
 
 export interface SetupSessionHandles {
   open(): void;
@@ -16,336 +20,514 @@ export interface SetupSessionHandles {
   isOpen(): boolean;
 }
 
-interface Answers {
-  workType: string;
-  secondaryWork: string;
-  mode: 'LOCAL_FIRST' | 'HYBRID' | 'CLOUD';
-  providers: string[];
-  projectLocations: string;
-  localModelUse: string;
-  approvalStrictness: string;
-  integrations: string[];
-  importantWorkflows: string;
-}
+const STEPS: Array<{ id: OnboardingStepT; title: string }> = [
+  { id: 'welcome', title: 'WELCOME TO COVERT' },
+  { id: 'local_intelligence', title: 'THIS COMPUTER & LOCAL MODELS' },
+  { id: 'providers', title: 'YOUR PROVIDER CONNECTIONS' },
+  { id: 'workflow', title: 'CHOOSE A WORKFLOW' },
+  { id: 'security', title: 'PERMISSIONS & TRUST' },
+  { id: 'workspace', title: 'YOUR WORKSPACE' },
+  { id: 'verify', title: 'VERIFY THE SETUP' },
+  { id: 'finish', title: 'READY TO WORK' }
+];
 
-interface Recommendation { role: string; modelId: string; name: string; quant: string; fileBytes: number; contextTokens: number; fit: string; onDisk: boolean; }
+const ROUTES = [
+  { id: 'plan', label: 'Planner' },
+  { id: 'act', label: 'Implementer' },
+  { id: 'utility', label: 'Utility' }
+] as const;
+type Role = (typeof ROUTES)[number]['id'];
+type WorkflowProfile = 'local' | 'custom';
 
-const DEFAULT_ANSWERS: Answers = {
-  workType: 'Software Engineering',
-  secondaryWork: 'None',
-  mode: 'LOCAL_FIRST',
-  providers: [],
-  projectLocations: '',
-  localModelUse: 'Primary driver',
-  approvalStrictness: 'STRICT (every operation is approved)',
-  integrations: [],
-  importantWorkflows: ''
-};
-
-const WORK_TYPES = ['Software Engineering', 'Web Development', 'Model Training', 'Research', 'Security & Audit', 'Documentation', 'Creative & Interface', 'Game Development'];
-const SECONDARY = ['None', 'Web Development', 'Documentation', 'Research', 'Security & Audit', 'Creative & Interface'];
-const PROVIDERS = ['OpenAI / compatible', 'Anthropic / Claude', 'Hugging Face', 'Local only'];
-const LOCAL_USE = ['Primary driver', 'Assistant / copilot', 'Offline fallback', 'Evaluate only'];
-const INTEGRATIONS = ['Telegram', 'GitHub', 'Discord (unavailable today)'];
-const STRICTNESS = ['STRICT (every operation is approved)', 'BALANCED (planned)', 'RELAXED (planned)'];
-
-function el(tag: string, cls: string, text?: string): HTMLElement {
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
-  node.className = cls;
+  if (cls) node.className = cls;
   if (text !== undefined) node.textContent = text;
   return node;
 }
 
-function bytes(size: number): string {
-  if (size >= 1073741824) return `${(size / 1073741824).toFixed(1)} GB`;
-  return `${Math.round(size / 1048576)} MB`;
+function stepIndex(step: OnboardingStepT): number {
+  return Math.max(0, STEPS.findIndex(entry => entry.id === step));
+}
+
+function statusLine(status: string): string {
+  return status.replaceAll('_', ' ').toUpperCase();
+}
+
+function bytesGiB(value: number): string {
+  return `${(value / 1073741824).toFixed(1)} GiB`;
 }
 
 export function createSetupSession(
   host: HTMLElement,
   _store: Store<AppState>,
-  opts: { onToast: (code: string, message: string) => void; onNavigate: (panel: Panel) => void }
+  opts: {
+    onToast: (code: string, message: string) => void;
+    onNavigate: (panel: Panel) => void;
+    onOpenProviders?: () => void;
+  }
 ): SetupSessionHandles {
   const root = el('div', 'cockpit-setup');
   root.hidden = true;
   root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-label', 'Resident adaptive setup session');
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-label', 'Covert first-run setup');
   const card = el('div', 'cockpit-setup-card');
   const header = el('div', 'cockpit-setup-header');
-  const stageLabel = el('span', 'cockpit-setup-stage', '');
-  const title = el('h2', 'cockpit-setup-title', '');
-  header.append(stageLabel, title);
+  const counter = el('span', 'cockpit-setup-stage');
+  const title = el('h2', 'cockpit-setup-title');
+  const dismiss = el('button', 'cockpit-setup-dismiss', 'CLOSE') as HTMLButtonElement;
+  dismiss.type = 'button';
+  dismiss.setAttribute('aria-label', 'Close setup and return to Covert');
+  header.append(counter, title, dismiss);
+  const resume = el('div', 'cockpit-setup-resume');
   const body = el('div', 'cockpit-setup-body');
   const controls = el('div', 'cockpit-setup-controls');
   const back = el('button', 'cockpit-setup-btn', 'BACK') as HTMLButtonElement;
+  const skipStep = el('button', 'cockpit-setup-btn', 'SKIP THIS STEP') as HTMLButtonElement;
+  const defer = el('button', 'cockpit-setup-btn', 'SKIP FOR NOW') as HTMLButtonElement;
   const next = el('button', 'cockpit-setup-btn cockpit-setup-primary', 'CONTINUE') as HTMLButtonElement;
-  const skip = el('button', 'cockpit-setup-btn', 'CLOSE') as HTMLButtonElement;
-  for (const b of [back, next, skip]) b.type = 'button';
-  controls.append(back, next, skip);
-  card.append(header, body, controls);
+  for (const button of [back, skipStep, defer, next]) button.type = 'button';
+  controls.append(back, skipStep, defer, next);
+  card.append(header, resume, body, controls);
   root.appendChild(card);
   host.appendChild(root);
 
-  const STAGES = ['WELCOME', 'INTERVIEW', 'CONFIGURATION PLAN', 'APPROVAL', 'PROVIDERS / SECRETS', 'HARDWARE SCAN', 'MODEL RECOMMENDATIONS', 'MODEL SETUP', 'WORKFLOW / SKILLS', 'INTEGRATIONS', 'VALIDATION', 'WORKSPACE READY'];
+  let state: OnboardingStateT | null = null;
   let stage = 0;
   let open = false;
-  let answers: Answers = { ...DEFAULT_ANSWERS };
-  let recommendations: Recommendation[] = [];
-  let selected: Recommendation | null = null;
-  let hardwareLine = 'not scanned yet';
-  let providersLine = 'not inspected yet';
-  let workflowLine = 'not inspected yet';
-  let checks: Array<{ label: string; ok: boolean; detail: string }> = [];
-  let ready = false;
+  let busy = false;
+  let workflowProfile: WorkflowProfile = 'local';
+  let routing: ByokStatusResponseT['routing'] = { plan: 'local', act: 'local', utility: 'local' };
+  let providerStatus: ByokStatusResponseT = { providers: [], routing, consent_enabled: false };
+  let connections: ConnectionsViewResponseT | null = null;
+  let hardware: HardwareProfileResponseT | null = null;
+  let models: ModelManagerSnapshotResponseT | null = null;
+  let runtimeModels: ModelStatusResponseT | null = null;
+  let workspace: HealthResponseT | null = null;
+  let routes: RoutesResponseT | null = null;
+  const testedProviders = new Set<string>();
+  const testResults = new Map<string, string>();
 
-  function renderField(labelText: string, control: HTMLElement): HTMLElement {
-    const field = el('label', 'cockpit-setup-field');
-    field.appendChild(el('span', 'cockpit-setup-label', labelText));
-    field.appendChild(control);
-    return field;
+  function setBusy(value: boolean): void {
+    busy = value;
+    next.disabled = value;
+    back.disabled = value || stage === 0;
+    skipStep.disabled = value || stage === STEPS.length - 1;
+    defer.disabled = value;
+    dismiss.disabled = value;
   }
 
-  function select(value: string, options: string[], onChange: (value: string) => void): HTMLElement {
-    const node = document.createElement('select');
-    node.className = 'cockpit-setup-input';
-    for (const option of options) {
-      const item = document.createElement('option');
-      item.value = option; item.textContent = option;
-      if (option === value) item.selected = true;
-      node.appendChild(item);
-    }
-    node.addEventListener('change', () => onChange(node.value));
-    return node;
+  function addParagraph(text: string, className = 'cockpit-setup-detail'): void {
+    body.appendChild(el('p', className, text));
   }
 
-  function multiSelect(values: string[], options: string[], onChange: (values: string[]) => void): HTMLElement {
-    const group = el('div', 'cockpit-setup-multi');
-    for (const option of options) {
-      const label = el('label', 'cockpit-setup-check');
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = values.includes(option);
-      input.addEventListener('change', () => {
-        const set = new Set(values);
-        if (input.checked) set.add(option); else set.delete(option);
-        onChange([...set]);
-      });
-      label.append(input, el('span', '', option));
-      group.appendChild(label);
-    }
-    return group;
-  }
-
-  function line(labelText: string, value: string): HTMLElement {
+  function addKeyValue(label: string, value: string): HTMLElement {
     const row = el('div', 'cockpit-setup-kv');
-    row.append(el('span', 'cockpit-setup-k', labelText), el('span', 'cockpit-setup-v', value));
+    row.append(el('span', 'cockpit-setup-k', label), el('span', 'cockpit-setup-v', value));
+    body.appendChild(row);
     return row;
   }
 
-  function planName(): string {
-    return answers.secondaryWork === 'None' ? answers.workType : `${answers.workType} + ${answers.secondaryWork}`;
+  function button(label: string, action: () => void, className = 'cockpit-setup-btn'): HTMLButtonElement {
+    const control = el('button', className, label) as HTMLButtonElement;
+    control.type = 'button';
+    control.addEventListener('click', action);
+    return control;
   }
 
-  function renderStage(): void {
-    stageLabel.textContent = `SETUP ${stage + 1} OF ${STAGES.length}`;
-    title.textContent = STAGES[stage]!;
-    body.innerHTML = '';
-    back.disabled = stage === 0;
-    next.hidden = stage === STAGES.length - 1;
-    next.textContent = stage === 3 ? 'APPROVE AND APPLY' : stage === 2 ? 'APPROVE CONFIGURATION' : 'CONTINUE';
+  function currentRoleValue(role: Role): string {
+    const target = routing[role];
+    return target === 'local' ? 'local' : target.provider_id;
+  }
 
-    if (stage === 0) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'This is not a tutorial. It is adaptive provisioning: your answers become a concrete configuration plan, you approve it, and Covert applies it to the real systems on this machine. Nothing is applied before your approval.'));
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Every write crosses the same evaluation gate as the rest of the product. Secrets stay in the OS-backed credential store; models stay in the existing registry.'));
-    } else if (stage === 1) {
-      body.appendChild(renderField('Primary work', select(answers.workType, WORK_TYPES, v => { answers.workType = v; })));
-      body.appendChild(renderField('Secondary work', select(answers.secondaryWork, SECONDARY, v => { answers.secondaryWork = v; })));
-      const modes = el('div', 'cockpit-setup-multi');
-      for (const mode of ['LOCAL_FIRST', 'HYBRID', 'CLOUD'] as const) {
-        const label = el('label', 'cockpit-setup-check');
-        const input = document.createElement('input');
-        input.type = 'radio'; input.name = 'cockpit-mode'; input.checked = answers.mode === mode;
-        input.addEventListener('change', () => { answers.mode = mode; });
-        label.append(input, el('span', '', mode.replace('_', '-').toLowerCase()));
-        modes.appendChild(label);
+  function routeSelect(role: Role, label: string): HTMLSelectElement {
+    const field = el('label', 'cockpit-setup-field');
+    field.appendChild(el('span', 'cockpit-setup-label', label));
+    const select = el('select', 'cockpit-setup-input') as HTMLSelectElement;
+    select.dataset.role = role;
+    const local = el('option', '', 'Local model route') as HTMLOptionElement;
+    local.value = 'local';
+    select.appendChild(local);
+    for (const provider of providerStatus.providers) {
+      if (!provider.key_stored) continue;
+      const option = el('option', '', `${provider.name} · ${provider.model_id}${testedProviders.has(provider.id) ? '' : ' · TEST REQUIRED'}`) as HTMLOptionElement;
+      option.value = provider.id;
+      option.disabled = !testedProviders.has(provider.id);
+      select.appendChild(option);
+    }
+    select.value = currentRoleValue(role);
+    select.disabled = workflowProfile === 'local';
+    field.appendChild(select);
+    body.appendChild(field);
+    return select;
+  }
+
+  function renderProviderConnections(): void {
+    const group = el('div', 'cockpit-setup-plan');
+    if (connections === null) {
+      group.appendChild(el('p', 'cockpit-setup-note', 'Connection status is unavailable. The workbench can still open; review Providers in Settings when the connection service is reachable.'));
+    } else if (connections.connections.length === 0) {
+      group.appendChild(el('p', 'cockpit-setup-note', 'No provider or local-runtime connection is configured yet. You can continue with the workbench and configure this later.'));
+    } else {
+      for (const connection of connections.connections) {
+        const row = el('div', 'cockpit-setup-kv');
+        row.append(
+          el('span', 'cockpit-setup-k', connection.name),
+          el('span', 'cockpit-setup-v', `${statusLine(connection.status)} · ${connection.detail}`)
+        );
+        group.appendChild(row);
       }
-      body.appendChild(renderField('Model preference', modes));
-      body.appendChild(renderField('Subscriptions / providers you hold', multiSelect(answers.providers, PROVIDERS, v => { answers.providers = v; })));
-      body.appendChild(renderField('Project locations (comma-separated)', (() => { const i = document.createElement('input'); i.className = 'cockpit-setup-input'; i.value = answers.projectLocations; i.placeholder = 'e.g. E:\\projects'; i.addEventListener('input', () => { answers.projectLocations = i.value; }); return i; })()));
-      body.appendChild(renderField('Desired local model use', select(answers.localModelUse, LOCAL_USE, v => { answers.localModelUse = v; })));
-      body.appendChild(renderField('Approval strictness', select(answers.approvalStrictness, STRICTNESS, v => { answers.approvalStrictness = v; })));
-      body.appendChild(renderField('Integrations', multiSelect(answers.integrations, INTEGRATIONS, v => { answers.integrations = v; })));
-      body.appendChild(renderField('Important recurring workflows', (() => { const i = document.createElement('input'); i.className = 'cockpit-setup-input'; i.value = answers.importantWorkflows; i.placeholder = 'e.g. review PRs, write tests, audit changes'; i.addEventListener('input', () => { answers.importantWorkflows = i.value; }); return i; })()));
-    } else if (stage === 2) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Proposed configuration — nothing is applied yet.'));
-      const plan = el('div', 'cockpit-setup-plan');
-      plan.appendChild(line('WORKFLOW', planName()));
-      plan.appendChild(line('MODE', answers.mode.replace('_', '-').toLowerCase()));
-      plan.appendChild(line('MODEL USE', answers.localModelUse));
-      plan.appendChild(line('EXECUTION POLICY', answers.approvalStrictness));
-      plan.appendChild(line('PROVIDERS', answers.providers.length > 0 ? answers.providers.join(', ') : 'local only'));
-      plan.appendChild(line('INTEGRATIONS', answers.integrations.length > 0 ? answers.integrations.join(', ') : 'none selected'));
-      plan.appendChild(line('PROJECTS', answers.projectLocations.trim() !== '' ? answers.projectLocations : 'current workspace'));
-      if (answers.importantWorkflows.trim() !== '') plan.appendChild(line('RECURRING', answers.importantWorkflows));
-      body.appendChild(plan);
-    } else if (stage === 3) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Approval applies the plan: onboarding choices are recorded, hardware is scanned, and model recommendations are calculated. Mutations use the same approved-operation path you will see for every action in Covert.'));
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Secrets are never part of this plan and never enter the record; provider credentials are configured separately under SETTINGS → SECURITY.'));
-      if (answers.approvalStrictness !== STRICTNESS[0]) body.appendChild(el('p', 'cockpit-setup-note', 'BALANCED and RELAXED policies are planned; today every operation is approved (STRICT).'));
-    } else if (stage === 4) {
-      body.appendChild(el('p', 'cockpit-setup-detail', `Providers: ${providersLine}`));
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Custody of secrets: the OS-backed credential store is the only owner. Configure keys under SETTINGS → SECURITY → provider panels; this session never reads, stores, or transmits credential values.'));
-      const openSettings = el('button', 'cockpit-setup-btn', 'OPEN SETTINGS') as HTMLButtonElement;
-      openSettings.type = 'button';
-      openSettings.addEventListener('click', () => { close(); opts.onNavigate('settings'); });
-      body.appendChild(openSettings);
-    } else if (stage === 5) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Hardware scan (real probe, unknown stays unknown):'));
-      body.appendChild(el('div', 'cockpit-setup-plan', undefined)).appendChild(line('HARDWARE', hardwareLine));
-    } else if (stage === 6) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Recommended for this machine (from the existing hardware recommender; advisory, you stay in control):'));
-      if (recommendations.length === 0) body.appendChild(el('p', 'cockpit-setup-note', 'No recommendations available — open MODELS to search Hugging Face directly.'));
-      for (const rec of recommendations) {
-        const row = el('label', 'cockpit-setup-rec');
-        const input = document.createElement('input');
-        input.type = 'radio'; input.name = 'cockpit-rec'; input.checked = selected?.modelId === rec.modelId;
-        input.addEventListener('change', () => { selected = rec; });
-        const text = el('span', 'cockpit-setup-rec-text', `${rec.name} (${rec.quant}) · ${bytes(rec.fileBytes)} · ${rec.contextTokens} ctx · ${rec.fit}${rec.onDisk ? ' · ON DISK' : ''}`);
-        row.append(input, text);
-        body.appendChild(row);
+    }
+    body.appendChild(group);
+    addParagraph('A stored API key is configured, not proof of a live connection. Covert never reads passwords or copies credentials from Codex, Claude, or another client. Only connection methods that are actually available are shown in Settings.', 'cockpit-setup-note');
+    body.appendChild(button('OPEN SETTINGS → INTELLIGENCE → PROVIDERS', () => {
+      close();
+      if (opts.onOpenProviders !== undefined) opts.onOpenProviders();
+      else opts.onNavigate('settings');
+    }));
+    body.appendChild(button('TEST CONFIGURED API CONNECTIONS', () => { void testConnections(); }));
+    if (providerStatus.providers.length > 0 && !providerStatus.consent_enabled) {
+      addParagraph('Provider egress consent is off. Enable it in Providers before running a live connection test.', 'cockpit-setup-note');
+    }
+    for (const [id, result] of testResults) addKeyValue(`TEST · ${id}`, result);
+  }
+
+  function renderWorkflow(): void {
+    addParagraph('Choose which existing route Covert uses for its Planner, Implementer, and Utility calls. This edits the canonical BYOK role routing. It never creates automatic fallback across providers or billing sources.');
+    const localChoice = el('label', 'cockpit-setup-check');
+    const localRadio = el('input') as HTMLInputElement;
+    localRadio.type = 'radio';
+    localRadio.name = 'covert-workflow-profile';
+    localRadio.value = 'local';
+    localRadio.checked = workflowProfile === 'local';
+    localRadio.addEventListener('change', () => { workflowProfile = 'local'; render(); });
+    localChoice.append(localRadio, el('span', '', 'LOCAL WORKFLOW — keep all three roles on local routing'));
+    body.appendChild(localChoice);
+
+    const customChoice = el('label', 'cockpit-setup-check');
+    const customRadio = el('input') as HTMLInputElement;
+    customRadio.type = 'radio';
+    customRadio.name = 'covert-workflow-profile';
+    customRadio.value = 'custom';
+    customRadio.checked = workflowProfile === 'custom';
+    customRadio.addEventListener('change', () => { workflowProfile = 'custom'; render(); });
+    customChoice.append(customRadio, el('span', '', 'CUSTOM — select a verified route for each role'));
+    body.appendChild(customChoice);
+
+    if (workflowProfile === 'custom') {
+      const selects = new Map<Role, HTMLSelectElement>();
+      for (const role of ROUTES) selects.set(role.id, routeSelect(role.id, role.label));
+      body.appendChild(button('APPLY WORKFLOW ROUTING', () => { void applyWorkflow(selects); }));
+      addParagraph('API routes appear only after the provider has stored a key, egress consent is enabled, and Test Connections passes in this setup session. Subscription CLI clients are not offered as model routes until an official execution adapter is verified.', 'cockpit-setup-note');
+    } else {
+      body.appendChild(button('APPLY LOCAL WORKFLOW', () => { void applyWorkflow(new Map()); }));
+    }
+    addParagraph('Local model routing does not claim that a model is installed or qualified. Check Model Manager for the current installation and qualification state.', 'cockpit-setup-note');
+    body.appendChild(button('OPEN MODEL MANAGER', () => { close(); opts.onNavigate('models'); }));
+  }
+
+  function render(): void {
+    if (!open) return;
+    const step = STEPS[stage]!;
+    counter.textContent = `SETUP ${stage + 1} OF ${STEPS.length}`;
+    title.textContent = step.title;
+    body.replaceChildren();
+    resume.replaceChildren();
+    back.disabled = busy || stage === 0;
+    skipStep.hidden = stage === STEPS.length - 1;
+    next.textContent = stage === 0 ? 'SET UP COVERT' : stage === STEPS.length - 1 ? 'FINISH & OPEN COVERT' : 'CONTINUE';
+
+    if (state !== null && (state.walkthrough_complete || stepIndex(state.current_step) > 0)) {
+      const message = state.walkthrough_complete
+        ? 'You are reviewing setup again. Existing connections, model state, routing, workspace, and permissions are preserved.'
+        : `Saved progress is at “${STEPS[stepIndex(state.current_step)]!.title}”. Continue from that step or restart the wizard steps. Existing application settings are preserved.`;
+      resume.appendChild(el('p', 'cockpit-setup-note', message));
+      if (!state.walkthrough_complete) {
+        resume.appendChild(button('CONTINUE SETUP', () => { resume.replaceChildren(); }, 'cockpit-setup-btn'));
+        resume.appendChild(button('START OVER', () => { void restartProgress(); }, 'cockpit-setup-btn'));
       }
-    } else if (stage === 7) {
-      if (selected === null) body.appendChild(el('p', 'cockpit-setup-note', 'No model selected — you can install one any time from MODELS.'));
-      else if (selected.onDisk) body.appendChild(el('p', 'cockpit-setup-detail', `${selected.name} (${selected.quant}) is already on disk in this workspace. Role assignment and runtime start live under MODELS and remain explicit operations.`));
-      else body.appendChild(el('p', 'cockpit-setup-detail', `${selected.name} is recommended but not installed yet. Open MODELS to download/import it through the existing Hugging Face pipeline; setup continues without it.`));
-      const openModels = el('button', 'cockpit-setup-btn', 'OPEN MODELS') as HTMLButtonElement;
-      openModels.type = 'button';
-      openModels.addEventListener('click', () => { close(); opts.onNavigate('models'); });
-      body.appendChild(openModels);
-    } else if (stage === 8) {
-      body.appendChild(line('WORKFLOW PROFILE', planName()));
-      body.appendChild(el('p', 'cockpit-setup-detail', `Workflow runtime: ${workflowLine}`));
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Skills: the in-loop loader selects relevant skills automatically per task; no manual packaging is required here.'));
-    } else if (stage === 9) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Integrations are verified against their real surfaces:'));
-      body.appendChild(el('div', 'cockpit-setup-plan')).appendChild(line('TELEGRAM', 'configurable — status surface available; connect under SETTINGS when a bot token exists'));
-      body.appendChild(line('GITHUB', 'available through the existing Git surface (status, diff, stage, commit)'));
-      body.appendChild(line('DISCORD', 'not available today — no adapter exists; deferred, not faked'));
-    } else if (stage === 10) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Validation runs real checks before anything is called ready:'));
-      const list = el('div', 'cockpit-setup-plan');
-      for (const check of checks) list.appendChild(line(`${check.ok ? 'PASS' : 'INFO'} — ${check.label}`, check.detail));
-      body.appendChild(list);
-      ready = checks.filter(c => c.label !== 'providers').every(c => c.ok);
-      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED' : 'CORE VALIDATION INCOMPLETE — review the checks above'));
-    } else if (stage === 11) {
-      body.appendChild(el('p', 'cockpit-setup-ready', ready ? 'YOUR WORKFLOW IS READY.' : 'SETUP SAVED — SOME CHECKS REMAIN'));
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Talk to Resident to begin.'));
-      const actions = el('div', 'cockpit-setup-actions');
-      const makeAction = (label: string, panel: Panel): HTMLElement => {
-        const button = el('button', 'cockpit-setup-btn', label) as HTMLButtonElement;
-        button.type = 'button';
-        button.addEventListener('click', () => { close(); opts.onNavigate(panel); });
-        return button;
-      };
-      actions.append(makeAction('OPEN PROJECT', 'projects'), makeAction('OPEN EDITOR TO PASTE CODE', 'editor'), makeAction('DESCRIBE TO RESIDENT', 'resident'), makeAction('OPEN COMMAND CENTER', 'command-center'));
-      body.appendChild(actions);
+    }
+
+    if (step.id === 'welcome') {
+      addParagraph('Covert is your engineering control plane. Use local models, provider connections you already have, or a deliberate combination of both.');
+      addParagraph('This setup reads the current workstation and saves choices through the same Model Manager, provider, routing, workspace, and permission services used after setup.');
+      addParagraph('Local models run on this computer. Provider account and API billing are different connection types; Covert will show the method it can verify.');
+      body.appendChild(button('ADVANCED SETUP', () => {
+        close();
+        if (opts.onOpenProviders !== undefined) opts.onOpenProviders();
+        else opts.onNavigate('settings');
+      }));
+    } else if (step.id === 'local_intelligence') {
+      if (hardware === null) addKeyValue('HARDWARE PROFILE', 'UNKNOWN · hardware probe unavailable');
+      else {
+        addKeyValue('CPU', `${hardware.logicalCpus} logical processors`);
+        addKeyValue('RAM', `${bytesGiB(hardware.totalRamBytes)} total · ${bytesGiB(hardware.freeRamBytes)} available`);
+        addKeyValue('GPU BACKEND', hardware.backend.toUpperCase());
+        addKeyValue('VRAM', hardware.vramSource === 'none' || hardware.vramBytes === 0
+          ? 'UNKNOWN · dedicated VRAM telemetry unavailable'
+          : `${bytesGiB(hardware.vramBytes - Math.min(hardware.vramBytes, hardware.freeVramBytes))} used · ${bytesGiB(hardware.freeVramBytes)} available · ${bytesGiB(hardware.vramBytes)} total`);
+        addKeyValue('AVAILABLE STORAGE', 'UNKNOWN · current hardware profile does not report disk capacity');
+      }
+      if (models !== null) {
+        addKeyValue('LOCAL RUNTIME', `${models.runtime.canonical_name} · ${models.runtime.registered ? models.runtime.health : 'NOT CONFIGURED'}`);
+        addKeyValue('QUALIFIED MODELS', String(models.models.filter(model => model.qualification.state === 'QUALIFIED').length));
+        addKeyValue('LOCAL MODEL PACKS', models.model_packs.catalog_status === 'AVAILABLE'
+          ? `${models.model_packs.items.length} listed · ${models.model_packs.items.filter(item => item.qualification_state === 'QUALIFIED').length} qualified`
+          : 'UNKNOWN · Model Manager pack catalog unavailable');
+      } else if (runtimeModels !== null) {
+        addKeyValue('LOCAL RUNTIME', runtimeModels.runtime ? 'AVAILABLE' : 'NOT CONFIGURED');
+        addKeyValue('MODEL RECORDS', String(runtimeModels.models.length));
+      } else addKeyValue('LOCAL RUNTIME', 'UNKNOWN · Model Manager is unavailable');
+      addParagraph('Covert can run local models without a provider account. Hardware fit, installation, qualification, and active runtime are separate states.');
+      body.appendChild(button('OPEN MODEL MANAGER', () => { close(); opts.onNavigate('models'); }));
+    } else if (step.id === 'providers') {
+      addParagraph('Connect only through a method that Covert currently supports. A subscription login remains owned by its official client. An API key is stored by Covert in the encrypted credential store and may use separate usage billing.');
+      renderProviderConnections();
+    } else if (step.id === 'workflow') {
+      renderWorkflow();
+    } else if (step.id === 'security') {
+      addParagraph('Files, terminal, Git, desktop control, network access, and provider calls are separate capabilities. Covert asks for approval where the current Authority policy requires it.');
+      addParagraph('Selecting a project folder does not make its code trusted. Review workspace trust and execution permissions in their owning Security and Workspace surfaces before running project code.');
+      addParagraph('This build does not expose a first-run permission profile. No permission is granted by continuing; current per-action Authority checks remain in force.', 'cockpit-setup-note');
+      addParagraph('The system-wide Local-Only release gate is still open. This wizard does not claim that every network path is blocked by a local routing choice.', 'cockpit-setup-note');
+      body.appendChild(button('OPEN SECURITY', () => { close(); opts.onNavigate('security'); }));
+    } else if (step.id === 'workspace') {
+      addKeyValue('CURRENT WORKSPACE', workspace?.workspace ?? 'UNKNOWN · workspace service unavailable');
+      addParagraph('Open an existing project from Projects, or continue without a project. Choosing a folder does not automatically grant trust or execution permission.');
+      body.appendChild(button('OPEN PROJECTS', () => { close(); opts.onNavigate('projects'); }));
+    } else if (step.id === 'verify') {
+      addKeyValue('WORKSPACE', workspace?.workspace ?? 'UNKNOWN');
+      addKeyValue('LOCAL MODEL RECORDS', models !== null ? `${models.models.length} catalog entries` : runtimeModels !== null ? `${runtimeModels.models.length} runtime records` : 'UNKNOWN');
+      addKeyValue('QUALIFIED LOCAL MODELS', models === null ? 'UNKNOWN' : String(models.models.filter(model => model.qualification.state === 'QUALIFIED').length));
+      const liveConnections = connections?.connections.filter(connection => connection.status === 'connected') ?? [];
+      addKeyValue('RECENTLY VERIFIED CONNECTIONS', connections === null ? 'UNKNOWN' : liveConnections.length === 0 ? 'NONE' : liveConnections.map(connection => connection.name).join(', '));
+      addKeyValue('ROLE ROUTING', ROUTES.map(role => {
+        const target = routing[role.id];
+        const provider = target === 'local' ? undefined : providerStatus.providers.find(candidate => candidate.id === target.provider_id);
+        return `${role.label}: ${target === 'local' ? 'Local' : provider?.name ?? 'Unknown provider'}`;
+      }).join(' · '));
+      addParagraph('Use Test Connections on the Providers step for an explicit, small live health check. No provider is contacted automatically by this summary.');
+    } else {
+      const readyLocal = routes?.routes.some(route => route.providerType === 'local' && route.status === 'ready') === true;
+      const readyProvider = routes?.routes.some(route => route.providerType === 'cloud' && route.status === 'ready') === true;
+      const hasReadyRoute = readyLocal || readyProvider;
+      addParagraph('Your current settings remain available in the workbench. The summary reflects saved state; it does not mark uninstalled or unqualified models ready.');
+      addParagraph(readyLocal
+        ? 'A local model route is ready. Open Resident for a first interaction.'
+        : readyProvider
+          ? 'A connected provider route is ready. Open Resident for a first interaction; its billing follows the provider connection shown in Settings.'
+          : 'No model or provider route is currently verified. Covert still opens; review Models or Providers when ready.');
+      body.appendChild(button(hasReadyRoute ? 'OPEN RESIDENT' : 'OPEN PROJECTS', () => { close(); opts.onNavigate(hasReadyRoute ? 'resident' : 'projects'); }));
+      body.appendChild(button('OPEN MODEL MANAGER', () => { close(); opts.onNavigate('models'); }));
     }
   }
 
-  async function loadProfile(): Promise<void> {
-    try {
-      const file = await api.fileRead('.aide/setup-session.json');
-      if (typeof file.content === 'string' && file.content.trim() !== '') {
-        const parsed = JSON.parse(file.content) as { answers?: Partial<Answers> };
-        if (parsed.answers) answers = { ...DEFAULT_ANSWERS, ...parsed.answers };
-        return;
-      }
-    } catch { /* first run: defaults */ }
-    answers = { ...DEFAULT_ANSWERS };
+  async function refreshSnapshot(): Promise<void> {
+    const [connectionResult, byokResult, hardwareResult, modelResult, runtimeResult, workspaceResult, routesResult] = await Promise.allSettled([
+      api.connections(), api.byokStatus(), api.hardwareProfile(), api.modelsManager(), api.modelsStatus(), api.health(), api.routes()
+    ]);
+    connections = connectionResult.status === 'fulfilled' ? connectionResult.value : null;
+    if (byokResult.status === 'fulfilled') {
+      providerStatus = byokResult.value;
+      routing = byokResult.value.routing;
+      workflowProfile = Object.values(routing).some(target => target !== 'local') ? 'custom' : 'local';
+    }
+    hardware = hardwareResult.status === 'fulfilled' ? hardwareResult.value : null;
+    models = modelResult.status === 'fulfilled' ? modelResult.value : null;
+    runtimeModels = runtimeResult.status === 'fulfilled' ? runtimeResult.value : null;
+    workspace = workspaceResult.status === 'fulfilled' ? workspaceResult.value : null;
+    routes = routesResult.status === 'fulfilled' ? routesResult.value : null;
   }
 
-  async function approvalApply(): Promise<void> {
+  async function testConnections(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    testResults.clear();
     try {
-      const roleMap: Record<string, OnboardingUserChoicesT['role']> = { Research: 'researcher', 'Security & Audit': 'other', Documentation: 'other', 'Creative & Interface': 'other' };
-      const workbench: OnboardingUserChoicesT['workbench'] = answers.workType === 'Model Training' || answers.workType === 'Research' ? 'sovereign-pipeline' : answers.workType === 'Security & Audit' ? 'sovereign-architect' : 'sovereign-coder';
-      await api.onboardingNext({ role: roleMap[answers.workType] ?? 'developer', workbench });
-      opts.onToast('BAD_REQUEST', 'Setup plan approved and recorded.');
+      const [status, connectionView] = await Promise.all([api.byokStatus(), api.connections()]);
+      providerStatus = status;
+      connections = connectionView;
+      let tested = 0;
+      if (!status.consent_enabled) {
+        testResults.set('provider egress', 'NOT RUN · enable provider egress consent in Settings first');
+      } else {
+        for (const provider of status.providers.filter(entry => entry.key_stored)) {
+          tested++;
+          try {
+            const result = await api.byokTest(provider.id);
+            testResults.set(provider.name, result.ok ? `PASS · ${result.detail}` : `FAIL · ${result.detail}`);
+            if (result.ok) testedProviders.add(provider.id);
+            else testedProviders.delete(provider.id);
+          } catch {
+            testedProviders.delete(provider.id);
+            testResults.set(provider.name, 'FAIL · provider test did not complete; inspect Provider settings');
+          }
+        }
+        for (const connection of connectionView.connections.filter(entry => entry.kind === 'api-key' && entry.id.startsWith('builtin:') && entry.status !== 'not_configured')) {
+          tested++;
+          try {
+            const result = await api.connectionsTest(connection.id);
+            testResults.set(connection.name, result.ok ? `PASS · ${result.detail}` : `FAIL · ${result.detail}`);
+          } catch {
+            testResults.set(connection.name, 'FAIL · provider test did not complete; inspect Provider settings');
+          }
+        }
+        if (tested === 0) testResults.set('provider connections', 'NOT RUN · no configured API key is available to test');
+      }
+      try { connections = await api.connections(); } catch { /* Keep the last read-only snapshot. */ }
+    } catch {
+      testResults.set('provider connections', 'FAIL · connection state is unavailable');
+    } finally {
+      setBusy(false);
+      render();
+    }
+  }
+
+  async function applyWorkflow(selects: Map<Role, HTMLSelectElement>): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const nextRouting: ByokStatusResponseT['routing'] = { plan: 'local', act: 'local', utility: 'local' };
+      if (workflowProfile === 'custom') {
+        for (const role of ROUTES) {
+          const providerId = selects.get(role.id)?.value ?? 'local';
+          if (providerId === 'local') continue;
+          if (!testedProviders.has(providerId) || !providerStatus.consent_enabled) {
+            opts.onToast('NOT_READY', 'Test the provider in this setup session and enable provider egress consent before routing a role to it.');
+            return;
+          }
+          const provider = providerStatus.providers.find(entry => entry.id === providerId && entry.key_stored);
+          if (provider === undefined) {
+            opts.onToast('NOT_READY', 'The selected provider is no longer configured. Refresh Provider settings.');
+            return;
+          }
+          nextRouting[role.id] = { provider_id: provider.id, model_id: provider.model_id };
+        }
+      }
+      await api.byokSetRouting(nextRouting);
+      routing = nextRouting;
+      opts.onToast('OK', 'Workflow routing saved through the existing role-routing service.');
     } catch (error) {
-      opts.onToast('BAD_REQUEST', `Onboarding step needs approval or failed (${String((error as Error).message).slice(0, 80)}); continuing with local plan.`);
+      const code = error instanceof ApiError ? error.code : 'INTERNAL';
+      opts.onToast(code, 'Workflow routing was not saved. Resolve the approval or configuration issue and try again.');
+    } finally {
+      setBusy(false);
+      render();
     }
-
-    try {
-      const profile = await api.hardwareProfile();
-      hardwareLine = `${Math.round(profile.totalRamBytes / 1073741824)} GB RAM · ${profile.logicalCpus} CPUs · ${profile.freeRamBytes >= 2147483648 ? Math.round(profile.freeRamBytes / 1073741824) + ' GB free' : Math.round(profile.freeRamBytes / 1048576) + ' MB free'}`;
-    } catch { hardwareLine = 'unavailable (probe failed)'; }
-
-    try {
-      const recommend = await api.hardwareRecommend() as HardwareRecommendResponseT;
-      recommendations = recommend.recommendations.map(r => ({ role: r.role, modelId: r.modelId, name: r.name, quant: r.quant, fileBytes: r.fileBytes, contextTokens: r.contextTokens, fit: r.fit, onDisk: r.onDisk }));
-      selected = recommendations.find(r => r.onDisk) ?? recommendations[0] ?? null;
-    } catch { recommendations = []; }
-
-    try {
-      const status = await api.byokStatus();
-      providersLine = `${status.providers.length} configured · consent ${status.consent_enabled ? 'enabled' : 'disabled'}`;
-    } catch { providersLine = 'unavailable'; }
-
-    try {
-      const state = await api.workflowState();
-      workflowLine = `stage ${state.stage} (governed runtime reachable)`;
-    } catch { workflowLine = 'unavailable'; }
   }
 
-  async function runValidation(): Promise<void> {
-    const results: Array<{ label: string; ok: boolean; detail: string }> = [];
-    const attempt = async (label: string, run: () => Promise<string>) => {
-      try { results.push({ label, ok: true, detail: await run() }); }
-      catch (error) { results.push({ label, ok: false, detail: String((error as Error).message).slice(0, 90) }); }
-    };
-    await attempt('daemon', async () => (await api.health()).workspace ?? 'reachable');
-    await attempt('hardware', async () => { const p = await api.hardwareProfile(); return `${Math.round(p.totalRamBytes / 1073741824)} GB RAM`; });
-    await attempt('model registry', async () => { const s = await api.modelsStatus(); return `${s.models.length} models configured`; });
-    await attempt('workflow runtime', async () => { const w = await api.workflowState(); return `stage ${w.stage}`; });
-    await attempt('evidence bus', async () => { const a = await api.auditRead({ limit: 5 }); return `${a.events.length} recent events`; });
-    await attempt('providers', async () => { const b = await api.byokStatus(); return `${b.providers.length} configured`; });
-    checks = results;
-  }
-
-  async function finish(): Promise<void> {
-    const payload = JSON.stringify({ version: 1, answers, planName: planName(), selectedModelId: selected?.modelId ?? null, completedAt: new Date().toISOString() }, null, 2);
+  async function restartProgress(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
     try {
-      await api.fileWrite('.aide/setup-session.json', payload);
-      opts.onToast('BAD_REQUEST', 'Workflow profile saved to .aide/setup-session.json.');
+      state = await api.onboardingRestart();
+      stage = 0;
+      opts.onToast('OK', 'Setup steps restarted. Existing application settings were preserved.');
+      render();
     } catch (error) {
-      opts.onToast('BAD_REQUEST', `Profile save needs approval or failed (${String((error as Error).message).slice(0, 70)}).`);
+      const code = error instanceof ApiError ? error.code : 'INTERNAL';
+      opts.onToast(code, 'Setup progress was not restarted. Existing settings were not changed.');
+    } finally {
+      setBusy(false);
     }
-    try { await api.onboardingComplete(); } catch { /* completion remains reopenable */ }
-    close();
   }
 
-  async function advance(): Promise<void> {
-    if (stage === 3) await approvalApply();
-    if (stage === 10) await runValidation();
-    if (stage === 11) { await finish(); return; }
-    stage = Math.min(stage + 1, STAGES.length - 1);
-    if (stage === 4) {
-      try { const b = await api.byokStatus(); providersLine = `${b.providers.length} configured · consent ${b.consent_enabled ? 'enabled' : 'disabled'}`; } catch { providersLine = 'unavailable'; }
+  async function deferSetup(): Promise<void> {
+    if (busy || state === null) return;
+    setBusy(true);
+    try {
+      state = await api.onboardingDefer();
+      close();
+      opts.onToast('OK', 'Setup was deferred. You can resume it from Settings → Setup & Onboarding.');
+    } catch (error) {
+      const code = error instanceof ApiError ? error.code : 'INTERNAL';
+      opts.onToast(code, 'Setup could not be deferred. Your saved progress remains available.');
+    } finally {
+      setBusy(false);
     }
-    renderStage();
   }
 
-  back.addEventListener('click', () => { if (stage > 0) { stage--; renderStage(); } });
-  next.addEventListener('click', () => { void advance(); });
-  skip.addEventListener('click', () => close());
-
-  function show(): void {
+  async function show(restartCompleted: boolean): Promise<void> {
+    if (busy) return;
+    setBusy(true);
     open = true;
     root.hidden = false;
-    stage = 0;
-    renderStage();
-    void loadProfile().then(() => renderStage());
+    body.replaceChildren(el('p', 'cockpit-setup-detail', 'Loading saved setup and current Covert state…'));
+    try {
+      state = await api.onboardingState();
+      if (state.walkthrough_complete) {
+        if (!restartCompleted) { close(); return; }
+        state = await api.onboardingRestart();
+      } else if (state.deferred) {
+        if (!restartCompleted) { close(); return; }
+        state = await api.onboardingResume();
+      }
+      stage = stepIndex(state.current_step);
+      await refreshSnapshot();
+      render();
+    } catch (error) {
+      body.replaceChildren(el('p', 'cockpit-setup-note', 'Setup state is unavailable. Covert remains open; try again from Settings when the onboarding service is available.'));
+      opts.onToast(error instanceof ApiError ? error.code : 'NOT_READY', 'The setup wizard could not read its saved progress.');
+    } finally {
+      setBusy(false);
+    }
   }
+
+  async function advance(skip: boolean): Promise<void> {
+    if (busy || state === null) return;
+    const persistedIndex = stepIndex(state.current_step);
+    if (stage < persistedIndex) {
+      stage = Math.min(stage + 1, STEPS.length - 1);
+      render();
+      return;
+    }
+    if (stage === STEPS.length - 1) {
+      setBusy(true);
+      try {
+        await api.onboardingComplete();
+        state = { ...state, walkthrough_complete: true };
+        close();
+        opts.onToast('OK', 'Setup progress saved. Covert is opening with the currently verified configuration.');
+        opts.onNavigate('command-center');
+      } catch (error) {
+        const code = error instanceof ApiError ? error.code : 'INTERNAL';
+        opts.onToast(code, 'Setup could not be marked complete. Your saved settings remain unchanged.');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = skip ? await api.onboardingSkip() : await api.onboardingNext({});
+      state = result.state;
+      stage = stepIndex(result.advanced_to);
+      if (stage === 0 && !skip) stage = Math.min(persistedIndex + 1, STEPS.length - 1);
+      await refreshSnapshot();
+      render();
+    } catch (error) {
+      const code = error instanceof ApiError ? error.code : 'INTERNAL';
+      opts.onToast(code, 'Setup progress was not saved. Resolve the approval or connection issue, then retry.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  back.addEventListener('click', () => {
+    if (!busy && stage > 0) { stage--; render(); }
+  });
+  skipStep.addEventListener('click', () => { void advance(true); });
+  next.addEventListener('click', () => { void advance(false); });
+  defer.addEventListener('click', () => { void deferSetup(); });
+  dismiss.addEventListener('click', close);
+  root.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !busy) close();
+  });
+
+  // First-run configuration is resumable and does not block the workbench if
+  // the onboarding service is unavailable.
+  void show(false);
 
   function close(): void {
     open = false;
@@ -353,8 +535,8 @@ export function createSetupSession(
   }
 
   return {
-    open(): void { show(); },
-    close(): void { close(); },
+    open(): void { void show(true); },
+    close,
     isOpen(): boolean { return open; }
   };
 }

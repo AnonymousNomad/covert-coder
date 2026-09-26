@@ -12,15 +12,14 @@
 // The only durable state owned here is the routing preference file.
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { execFile } from 'node:child_process';
 
 const HF_SLOT = 'huggingface';
 const PREFERENCE_FILE = '.aide/routing-preference.json';
 const DEFAULT_PREFERENCE = 'local-first';
 const SUBSCRIPTION_RUNTIMES = {
-  codex: { exec: 'codex', authFile: () => path.join(os.homedir(), '.codex', 'auth.json'), display: 'Codex' },
-  claude: { exec: 'claude', authFile: () => path.join(os.homedir(), '.claude', '.credentials.json'), display: 'Claude Code' }
+  codex: { exec: 'codex', display: 'Codex' },
+  claude: { exec: 'claude', display: 'Claude Code' }
 };
 
 export function createProviderConnectionsService(options) {
@@ -114,8 +113,8 @@ export function createProviderConnectionsService(options) {
         provider_id: provider.id,
         name: String(provider.name || provider.id),
         kind: 'api-key',
-        status: configured ? 'connected' : 'not_configured',
-        detail: configured ? 'API key stored in the encrypted vault' : 'no key stored',
+        status: configured ? 'configured' : 'not_configured',
+        detail: configured ? 'API key stored in the encrypted vault; live connection not verified' : 'no key stored',
         capabilities: ['chat', 'act', 'utility'],
         routing_available: true,
         account_label: 'api-key vault'
@@ -136,8 +135,8 @@ export function createProviderConnectionsService(options) {
         provider_id: provider.id,
         name: String(provider.name || provider.id),
         kind: 'api-key',
-        status: state === 'connected' ? 'connected' : state === 'invalid_key' ? 'invalid_key' : state === 'unreachable' ? 'unreachable' : 'not_configured',
-        detail: state === 'connected' ? 'live probe passed' : state === 'invalid_key' ? 'stored key rejected by the provider' : state === 'unreachable' ? 'provider unreachable' : 'no key configured',
+        status: state === 'connected' ? 'connected' : state === 'configured' ? 'configured' : state === 'invalid_key' ? 'invalid_key' : state === 'unreachable' ? 'unreachable' : 'not_configured',
+        detail: state === 'connected' ? 'live probe passed recently' : state === 'configured' ? 'API key stored in the encrypted vault; run a live connection test' : state === 'invalid_key' ? 'stored key rejected by the provider' : state === 'unreachable' ? 'provider unreachable' : 'no key configured',
         capabilities: ['chat', 'act', 'utility'],
         routing_available: true,
         account_label: 'builtin provider'
@@ -150,21 +149,13 @@ export function createProviderConnectionsService(options) {
     const result = [];
     for (const [id, runtime] of Object.entries(SUBSCRIPTION_RUNTIMES)) {
       const exePath = await findExecutable(runtime.exec);
-      let authenticated = false;
-      if (exePath) {
-        try {
-          authenticated = fs.existsSync(runtime.authFile());
-        } catch {
-          authenticated = false;
-        }
-      }
       result.push({
         id: `subscription:${id}`,
         provider_id: id,
         name: `${runtime.display} subscription`,
         kind: 'subscription',
-        status: !exePath ? 'unavailable' : authenticated ? 'connected' : 'sign_in_required',
-        detail: !exePath ? `${runtime.exec} CLI not detected on PATH` : authenticated ? `authenticated with the official ${runtime.exec} runtime` : 'run the official sign-in, then refresh',
+        status: !exePath ? 'unavailable' : 'unknown',
+        detail: !exePath ? `${runtime.exec} CLI not detected on PATH` : `${runtime.exec} CLI detected at ${exePath}; authentication state is not verified by Covert`,
         capabilities: ['chat'],
         routing_available: false,
         account_label: 'official CLI'
@@ -242,6 +233,16 @@ export function createProviderConnectionsService(options) {
   }
 
   async function test(connectionId) {
+    if (connectionId.startsWith('builtin:')) {
+      const providerId = connectionId.slice('builtin:'.length);
+      try {
+        const result = await providerService.test(providerId);
+        return { ok: result.status === 'connected', detail: String(result.message ?? '').slice(0, 240) || (result.status === 'connected' ? 'probe passed' : 'probe failed') };
+      } catch (error) {
+        if (error && error.code === 'NOT_READY') return { ok: false, detail: 'provider is not configured or is unavailable' };
+        return { ok: false, detail: `test failed: ${String((error && error.message) ?? error).slice(0, 200)}` };
+      }
+    }
     if (connectionId.startsWith('api:')) {
       const providerId = connectionId.slice('api:'.length);
       try {
@@ -269,16 +270,7 @@ export function createProviderConnectionsService(options) {
     if (!exePath) {
       return { ok: false, command: '', status: 'unavailable', detail: `${runtime.exec} CLI not detected on PATH; install the official runtime first` };
     }
-    let authenticated = false;
-    try {
-      authenticated = fs.existsSync(runtime.authFile());
-    } catch {
-      authenticated = false;
-    }
-    if (authenticated) {
-      return { ok: true, command: '', status: 'connected', detail: `${runtime.exec} is authenticated with the official runtime` };
-    }
-    return { ok: true, command: `${runtime.exec} login`, status: 'sign_in_required', detail: `run the official sign-in, then refresh this view` };
+    return { ok: false, command: '', status: 'unknown', detail: `Covert can detect ${runtime.exec}, but no verified official auth-status or sign-in launcher is integrated` };
   }
 
   function getHfTokenStored() {

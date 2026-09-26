@@ -126,12 +126,12 @@ export class ProviderService {
   }
 
   async list(): Promise<ProviderInfoT[]> {
-    const connected = new Set(await this.credentials.ids());
+    const configured = new Set(await this.credentials.ids());
     return BUILTIN_PROVIDERS.map(provider => {
       let status: ProviderInfoT['status'] = 'not_connected';
-      if (connected.has(provider.id)) {
+      if (configured.has(provider.id)) {
         const cached = this.probeCache.get(provider.id);
-        status = cached !== undefined && Date.now() - cached.at < PROBE_CACHE_TTL_MS ? cached.status : 'connected';
+        status = cached !== undefined && Date.now() - cached.at < PROBE_CACHE_TTL_MS ? cached.status : 'configured';
       }
       return {
         id: provider.id,
@@ -140,7 +140,7 @@ export class ProviderService {
         baseUrl: provider.baseUrl,
         models: provider.models,
         status,
-        configured: status !== 'not_connected'
+        configured: configured.has(provider.id)
       };
     });
   }
@@ -172,6 +172,22 @@ export class ProviderService {
         : probe === 'invalid_key'
           ? 'the key was rejected by the provider'
           : 'the provider could not be reached';
+    return { status: probe, message };
+  }
+
+  async test(providerId: string): Promise<{ status: ProbeResult | 'not_connected'; message: string }> {
+    const provider = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
+    if (provider === undefined) throw new ProviderError('NOT_READY', `unknown provider ${providerId}`);
+    const key = await this.credentials.get(providerId);
+    if (key === undefined) return { status: 'not_connected', message: 'no API key configured' };
+    const probe = await this.probe(provider, key, provider.baseUrl, provider.models[0]!, provider.egressHost);
+    this.probeCache.set(providerId, { status: probe, at: Date.now() });
+    this.logger?.info(`PROVIDER: ${provider.id} explicit probe -> ${probe} (host=${provider.egressHost}, model=${provider.models[0]})`);
+    const message = probe === 'connected'
+      ? `connected (${provider.models[0]})`
+      : probe === 'invalid_key'
+        ? 'the key was rejected by the provider'
+        : 'the provider could not be reached';
     return { status: probe, message };
   }
 

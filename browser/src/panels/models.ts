@@ -70,12 +70,18 @@ function persistDismissed(ids: Set<string>): void {
   catch { /* session preference only; persistence failure does not block the view */ }
 }
 
-export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>): PanelHandles {
+export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>, opts: { onManageProviders?: () => void } = {}): PanelHandles {
   parent.textContent = '';
   const root = el('div', 'panel-content models-panel model-manager-panel');
   const header = el('header', 'panel-header mm-header');
   header.appendChild(el('h2', 'panel-title', 'MODEL MANAGER'));
   header.appendChild(badge('REGISTRY VIEW', 'mm-heading-badge'));
+  if (opts.onManageProviders !== undefined) {
+    const providerButton = el('button', 'mm-provider-link', 'PROVIDER CONNECTIONS') as HTMLButtonElement;
+    providerButton.type = 'button';
+    providerButton.addEventListener('click', () => opts.onManageProviders!());
+    header.appendChild(providerButton);
+  }
   root.appendChild(header);
   root.appendChild(el('p', 'panel-intro', 'Manage available intelligence without conflating a model being present with evidence that it is qualified. Model discovery is bounded to configured locations; cloud state is read locally and is never contacted here.'));
 

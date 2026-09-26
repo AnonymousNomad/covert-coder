@@ -17,7 +17,10 @@ export interface ProviderConnectionsService {
 
 export interface ProviderConnectionsServiceOptions {
   workspace: string;
-  providerService: { list(): Promise<Array<Record<string, unknown>>> };
+  providerService: {
+    list(): Promise<Array<Record<string, unknown>>>;
+    test(providerId: string): Promise<{ status: string; message: string }>;
+  };
   byokService: {
     status(): unknown;
     testProvider(providerId: string): Promise<{ ok: boolean; detail: string }>;

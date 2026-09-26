@@ -27,10 +27,12 @@ type Role = (typeof ROLES)[number];
 const STATUS_LABELS: Record<ConnectionStatusT, string> = {
   not_configured: 'NOT CONFIGURED',
   sign_in_required: 'SIGN IN REQUIRED',
+  configured: 'CONFIGURED · NOT VERIFIED',
   connected: 'CONNECTED',
   invalid_key: 'INVALID CREDENTIAL',
   unreachable: 'UNREACHABLE',
-  unavailable: 'UNAVAILABLE'
+  unavailable: 'UNAVAILABLE',
+  unknown: 'UNKNOWN'
 };
 
 const PREFERENCES: RoutingPreferenceT[] = ['local-first', 'local-only', 'api-keys-with-approval'];
@@ -128,36 +130,7 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
     const actions = document.createElement('div');
     actions.className = 'conn-actions';
 
-    if (conn.kind === 'subscription') {
-      const signIn = document.createElement('button');
-      signIn.type = 'button';
-      signIn.className = 'provider-action';
-      signIn.textContent = 'Sign in';
-      signIn.addEventListener('click', () => {
-        signIn.disabled = true;
-        api
-          .connectionsSubscriptionAuth(conn.provider_id)
-          .then(result => {
-            if (result.ok) {
-              meta.textContent = `signed in via ${result.command}`;
-              toast('OK', `subscription auth: ${result.detail}`);
-              void refresh();
-            } else {
-              meta.textContent = result.detail;
-              toast('NOT_READY', `subscription auth unavailable: ${result.detail}`);
-            }
-          })
-          .catch((error: unknown) => {
-            const message = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'sign-in failed';
-            meta.textContent = message;
-            toast('INTERNAL', message);
-          })
-          .finally(() => {
-            signIn.disabled = false;
-          });
-      });
-      actions.appendChild(signIn);
-    } else if (conn.kind === 'api-key') {
+    if (conn.kind === 'api-key' && (conn.id.startsWith('api:') || conn.id.startsWith('builtin:'))) {
       const test = document.createElement('button');
       test.type = 'button';
       test.className = 'provider-action';
@@ -182,6 +155,13 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
           });
       });
       actions.appendChild(test);
+    } else if (conn.kind === 'subscription') {
+      const note = document.createElement('span');
+      note.className = 'conn-meta';
+      note.textContent = conn.status === 'unknown'
+        ? 'Official client detected; verified account login and launch flow are not integrated yet.'
+        : 'Install an officially supported client to make this connection available.';
+      actions.appendChild(note);
     } else if (conn.kind === 'catalog-token') {
       if (conn.status === 'connected') {
         const remove = document.createElement('button');

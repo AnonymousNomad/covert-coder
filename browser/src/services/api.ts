@@ -174,6 +174,12 @@ import {
   OnboardingStateResponse,
   OnboardingCompleteResponse,
   OnboardingNextResponse,
+  OnboardingRestartRequest,
+  OnboardingRestartResponse,
+  OnboardingDeferRequest,
+  OnboardingDeferResponse,
+  OnboardingResumeRequest,
+  OnboardingResumeResponse,
   OnboardingUserChoices,
   type OnboardingStateT,
   type OnboardingCompleteResponseT,
@@ -511,6 +517,26 @@ export const api = {
     const body = OnboardingUserChoices.partial().safeParse(choices);
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid onboarding choices');
     return call('/api/onboarding/next', { body: body.data, schema: OnboardingNextResponse });
+  },
+  onboardingSkip(choices: Partial<OnboardingUserChoicesT> = {}): Promise<OnboardingNextResponseT> {
+    const body = OnboardingUserChoices.partial().safeParse(choices);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid onboarding choices');
+    return call('/api/onboarding/skip', { method: 'POST', body: body.data, schema: OnboardingNextResponse });
+  },
+  onboardingRestart(): Promise<OnboardingStateT> {
+    const body = OnboardingRestartRequest.safeParse({});
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid onboarding restart request');
+    return call('/api/onboarding/restart', { method: 'POST', body: body.data, schema: OnboardingRestartResponse }).then(response => response.state);
+  },
+  onboardingDefer(): Promise<OnboardingStateT> {
+    const body = OnboardingDeferRequest.safeParse({});
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid onboarding defer request');
+    return call('/api/onboarding/defer', { method: 'POST', body: body.data, schema: OnboardingDeferResponse }).then(response => response.state);
+  },
+  onboardingResume(): Promise<OnboardingStateT> {
+    const body = OnboardingResumeRequest.safeParse({});
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid onboarding resume request');
+    return call('/api/onboarding/resume', { method: 'POST', body: body.data, schema: OnboardingResumeResponse }).then(response => response.state);
   },
   onboardingComplete(): Promise<OnboardingCompleteResponseT> {
     return call('/api/onboarding/complete', { method: 'POST', schema: OnboardingCompleteResponse });

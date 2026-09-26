@@ -1,11 +1,8 @@
-// First-run walkthrough — a concise guided tour of the real cockpit.
-// The overlay points at the actual navigation rail and drives real panel
-// switches; completion is persisted through the onboarding API (an approved
-// operation). It never fabricates a fake slideshow.
+// Optional product tour. Setup progress and completion are owned only by
+// SetupSession; viewing this tour never marks configuration complete.
 
 import type { Store } from '../store/store.ts';
 import type { AppState, Panel } from '../store/state.ts';
-import { api } from '../services/api.ts';
 
 export interface WalkthroughHandles {
   open(): void;
@@ -49,7 +46,7 @@ export function createWalkthrough(
   const root = el('div', 'cockpit-walkthrough');
   root.hidden = true;
   root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-label', 'Covert Coder first-run walkthrough');
+  root.setAttribute('aria-label', 'Covert Coder product tour');
 
   const header = el('div', 'cockpit-walkthrough-header');
   const counter = el('span', 'cockpit-walkthrough-counter', '');
@@ -108,18 +105,8 @@ export function createWalkthrough(
   skip.addEventListener('click', () => { opts.onToast('BAD_REQUEST', 'Walkthrough skipped. Reopen it any time from SETTINGS.'); dismiss(); });
   finish.addEventListener('click', () => {
     dismiss();
-    void api.onboardingComplete().then(
-      () => opts.onToast('BAD_REQUEST', 'Walkthrough complete. Welcome to Covert Coder.'),
-      () => opts.onToast('BAD_REQUEST', 'Walkthrough closed. Completion needs an approved operation; reopen from SETTINGS.')
-    );
+    opts.onToast('OK', 'Product tour closed. Setup progress is unchanged.');
   });
-
-  // First-run only: show when the onboarding state says the walkthrough is
-  // incomplete. Unknown/unreachable state never fabricates a first run.
-  void api.onboardingState().then(
-    state => { if (state.walkthrough_complete === false) show(); },
-    () => {}
-  );
 
   return {
     open(): void { index = 0; show(); },

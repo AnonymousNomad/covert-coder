@@ -4729,10 +4729,12 @@
                             "enum": [
                               "not_configured",
                               "sign_in_required",
+                              "configured",
                               "connected",
                               "invalid_key",
                               "unreachable",
-                              "unavailable"
+                              "unavailable",
+                              "unknown"
                             ]
                           },
                           "detail": {
@@ -4947,10 +4949,12 @@
                       "enum": [
                         "not_configured",
                         "sign_in_required",
+                        "configured",
                         "connected",
                         "invalid_key",
                         "unreachable",
-                        "unavailable"
+                        "unavailable",
+                        "unknown"
                       ]
                     },
                     "detail": {
@@ -14368,10 +14372,13 @@
                           "type": "string",
                           "enum": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "completed": {
@@ -14403,10 +14410,13 @@
                           },
                           "required": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "user_choices": {
@@ -14460,6 +14470,10 @@
                         "walkthrough_complete": {
                           "type": "boolean"
                         },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
                         "started_at": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -14476,6 +14490,7 @@
                         "completed",
                         "user_choices",
                         "walkthrough_complete",
+                        "deferred",
                         "started_at",
                         "updated_at"
                       ],
@@ -14492,6 +14507,171 @@
                   ],
                   "additionalProperties": false
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboarding/defer": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "object",
+                      "properties": {
+                        "current_step": {
+                          "type": "string",
+                          "enum": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "completed": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "skipped": {
+                                "type": "boolean"
+                              },
+                              "completed_at": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "skipped",
+                              "completed_at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "required": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "user_choices": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "developer",
+                                "researcher",
+                                "student",
+                                "other"
+                              ]
+                            },
+                            "workbench": {
+                              "type": "string",
+                              "enum": [
+                                "sovereign-coder",
+                                "sovereign-pipeline",
+                                "sovereign-architect"
+                              ]
+                            },
+                            "byok_provider": {
+                              "type": "string",
+                              "enum": [
+                                "openai",
+                                "anthropic",
+                                "cohere",
+                                "openrouter",
+                                "mistral",
+                                "groq",
+                                "gemini"
+                              ]
+                            },
+                            "byok_key_stored": {
+                              "default": false,
+                              "type": "boolean"
+                            },
+                            "desktop_enabled": {
+                              "default": false,
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "walkthrough_complete": {
+                          "type": "boolean"
+                        },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "started_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updated_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "current_step",
+                        "completed",
+                        "user_choices",
+                        "walkthrough_complete",
+                        "deferred",
+                        "started_at",
+                        "updated_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
               }
             }
           }
@@ -14515,10 +14695,13 @@
                           "type": "string",
                           "enum": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "completed": {
@@ -14550,10 +14733,13 @@
                           },
                           "required": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "user_choices": {
@@ -14607,6 +14793,10 @@
                         "walkthrough_complete": {
                           "type": "boolean"
                         },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
                         "started_at": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -14623,6 +14813,7 @@
                         "completed",
                         "user_choices",
                         "walkthrough_complete",
+                        "deferred",
                         "started_at",
                         "updated_at"
                       ],
@@ -14632,10 +14823,565 @@
                       "type": "string",
                       "enum": [
                         "welcome",
-                        "privacy",
-                        "byok_optin",
-                        "desktop_optin",
-                        "system_map"
+                        "local_intelligence",
+                        "providers",
+                        "workflow",
+                        "security",
+                        "workspace",
+                        "verify",
+                        "finish"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "advanced_to"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "developer",
+                      "researcher",
+                      "student",
+                      "other"
+                    ]
+                  },
+                  "workbench": {
+                    "type": "string",
+                    "enum": [
+                      "sovereign-coder",
+                      "sovereign-pipeline",
+                      "sovereign-architect"
+                    ]
+                  },
+                  "byok_provider": {
+                    "type": "string",
+                    "enum": [
+                      "openai",
+                      "anthropic",
+                      "cohere",
+                      "openrouter",
+                      "mistral",
+                      "groq",
+                      "gemini"
+                    ]
+                  },
+                  "byok_key_stored": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "desktop_enabled": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboarding/restart": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "object",
+                      "properties": {
+                        "current_step": {
+                          "type": "string",
+                          "enum": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "completed": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "skipped": {
+                                "type": "boolean"
+                              },
+                              "completed_at": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "skipped",
+                              "completed_at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "required": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "user_choices": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "developer",
+                                "researcher",
+                                "student",
+                                "other"
+                              ]
+                            },
+                            "workbench": {
+                              "type": "string",
+                              "enum": [
+                                "sovereign-coder",
+                                "sovereign-pipeline",
+                                "sovereign-architect"
+                              ]
+                            },
+                            "byok_provider": {
+                              "type": "string",
+                              "enum": [
+                                "openai",
+                                "anthropic",
+                                "cohere",
+                                "openrouter",
+                                "mistral",
+                                "groq",
+                                "gemini"
+                              ]
+                            },
+                            "byok_key_stored": {
+                              "default": false,
+                              "type": "boolean"
+                            },
+                            "desktop_enabled": {
+                              "default": false,
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "walkthrough_complete": {
+                          "type": "boolean"
+                        },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "started_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updated_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "current_step",
+                        "completed",
+                        "user_choices",
+                        "walkthrough_complete",
+                        "deferred",
+                        "started_at",
+                        "updated_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboarding/resume": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "object",
+                      "properties": {
+                        "current_step": {
+                          "type": "string",
+                          "enum": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "completed": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "skipped": {
+                                "type": "boolean"
+                              },
+                              "completed_at": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "skipped",
+                              "completed_at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "required": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "user_choices": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "developer",
+                                "researcher",
+                                "student",
+                                "other"
+                              ]
+                            },
+                            "workbench": {
+                              "type": "string",
+                              "enum": [
+                                "sovereign-coder",
+                                "sovereign-pipeline",
+                                "sovereign-architect"
+                              ]
+                            },
+                            "byok_provider": {
+                              "type": "string",
+                              "enum": [
+                                "openai",
+                                "anthropic",
+                                "cohere",
+                                "openrouter",
+                                "mistral",
+                                "groq",
+                                "gemini"
+                              ]
+                            },
+                            "byok_key_stored": {
+                              "default": false,
+                              "type": "boolean"
+                            },
+                            "desktop_enabled": {
+                              "default": false,
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "walkthrough_complete": {
+                          "type": "boolean"
+                        },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "started_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updated_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "current_step",
+                        "completed",
+                        "user_choices",
+                        "walkthrough_complete",
+                        "deferred",
+                        "started_at",
+                        "updated_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboarding/skip": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "object",
+                      "properties": {
+                        "current_step": {
+                          "type": "string",
+                          "enum": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "completed": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "skipped": {
+                                "type": "boolean"
+                              },
+                              "completed_at": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "skipped",
+                              "completed_at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "required": [
+                            "welcome",
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
+                          ]
+                        },
+                        "user_choices": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "developer",
+                                "researcher",
+                                "student",
+                                "other"
+                              ]
+                            },
+                            "workbench": {
+                              "type": "string",
+                              "enum": [
+                                "sovereign-coder",
+                                "sovereign-pipeline",
+                                "sovereign-architect"
+                              ]
+                            },
+                            "byok_provider": {
+                              "type": "string",
+                              "enum": [
+                                "openai",
+                                "anthropic",
+                                "cohere",
+                                "openrouter",
+                                "mistral",
+                                "groq",
+                                "gemini"
+                              ]
+                            },
+                            "byok_key_stored": {
+                              "default": false,
+                              "type": "boolean"
+                            },
+                            "desktop_enabled": {
+                              "default": false,
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "walkthrough_complete": {
+                          "type": "boolean"
+                        },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "started_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updated_at": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "current_step",
+                        "completed",
+                        "user_choices",
+                        "walkthrough_complete",
+                        "deferred",
+                        "started_at",
+                        "updated_at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "advanced_to": {
+                      "type": "string",
+                      "enum": [
+                        "welcome",
+                        "local_intelligence",
+                        "providers",
+                        "workflow",
+                        "security",
+                        "workspace",
+                        "verify",
+                        "finish"
                       ]
                     }
                   },
@@ -14723,10 +15469,13 @@
                           "type": "string",
                           "enum": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "completed": {
@@ -14758,10 +15507,13 @@
                           },
                           "required": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "user_choices": {
@@ -14815,6 +15567,10 @@
                         "walkthrough_complete": {
                           "type": "boolean"
                         },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
                         "started_at": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -14831,6 +15587,7 @@
                         "completed",
                         "user_choices",
                         "walkthrough_complete",
+                        "deferred",
                         "started_at",
                         "updated_at"
                       ],
@@ -14863,10 +15620,13 @@
                           "type": "string",
                           "enum": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "completed": {
@@ -14898,10 +15658,13 @@
                           },
                           "required": [
                             "welcome",
-                            "privacy",
-                            "byok_optin",
-                            "desktop_optin",
-                            "system_map"
+                            "local_intelligence",
+                            "providers",
+                            "workflow",
+                            "security",
+                            "workspace",
+                            "verify",
+                            "finish"
                           ]
                         },
                         "user_choices": {
@@ -14955,6 +15718,10 @@
                         "walkthrough_complete": {
                           "type": "boolean"
                         },
+                        "deferred": {
+                          "default": false,
+                          "type": "boolean"
+                        },
                         "started_at": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -14971,6 +15738,7 @@
                         "completed",
                         "user_choices",
                         "walkthrough_complete",
+                        "deferred",
                         "started_at",
                         "updated_at"
                       ],
@@ -14997,10 +15765,13 @@
                     "type": "string",
                     "enum": [
                       "welcome",
-                      "privacy",
-                      "byok_optin",
-                      "desktop_optin",
-                      "system_map"
+                      "local_intelligence",
+                      "providers",
+                      "workflow",
+                      "security",
+                      "workspace",
+                      "verify",
+                      "finish"
                     ]
                   },
                   "completed": {
@@ -15032,10 +15803,13 @@
                     },
                     "required": [
                       "welcome",
-                      "privacy",
-                      "byok_optin",
-                      "desktop_optin",
-                      "system_map"
+                      "local_intelligence",
+                      "providers",
+                      "workflow",
+                      "security",
+                      "workspace",
+                      "verify",
+                      "finish"
                     ]
                   },
                   "user_choices": {
@@ -15089,6 +15863,10 @@
                   "walkthrough_complete": {
                     "type": "boolean"
                   },
+                  "deferred": {
+                    "default": false,
+                    "type": "boolean"
+                  },
                   "started_at": {
                     "type": "integer",
                     "minimum": -9007199254740991,
@@ -15105,6 +15883,7 @@
                   "completed",
                   "user_choices",
                   "walkthrough_complete",
+                  "deferred",
                   "started_at",
                   "updated_at"
                 ],
@@ -16404,6 +17183,7 @@
                             "type": "string",
                             "enum": [
                               "not_connected",
+                              "configured",
                               "connected",
                               "invalid_key",
                               "unreachable",
@@ -16452,6 +17232,7 @@
                       "type": "string",
                       "enum": [
                         "not_connected",
+                        "configured",
                         "connected",
                         "invalid_key",
                         "unreachable",

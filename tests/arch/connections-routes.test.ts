@@ -19,6 +19,8 @@ let base: string;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
 
 const secrets = new Map<string, string>();
+let builtinProviderStatus = 'configured';
+let builtinProbeCalls = 0;
 let byokStatusValue: Record<string, unknown> = {
   providers: [],
   routing: { plan: 'local', act: 'local', utility: 'local' },
@@ -29,7 +31,14 @@ before(async () => {
   server = new ArchServer(workspace, path.join(workspace, 'arch-connections.log'));
   const service = createProviderConnectionsService({
     workspace,
-    providerService: { list: async () => [] },
+    providerService: {
+      list: async () => [{ id: 'openai', name: 'OpenAI', status: builtinProviderStatus, configured: true }],
+      test: async () => {
+        builtinProbeCalls++;
+        builtinProviderStatus = 'connected';
+        return { status: 'connected', message: 'connected (fixture model)' };
+      }
+    },
     byokService: {
       status: () => byokStatusValue,
       testProvider: async () => {
@@ -107,9 +116,11 @@ test('connections: unified view composes existing surfaces truthfully', async ()
   const localEntry = res.body.data!.connections.find(entry => entry.id === 'local-runtime');
   assert.equal(localEntry!.status, 'not_configured');
   assert.equal(localEntry!.routing_available, true);
+  const builtinEntry = res.body.data!.connections.find(entry => entry.id === 'builtin:openai');
+  assert.equal(builtinEntry!.status, 'configured', 'stored built-in provider key is not live evidence');
 
-  // A configured BYOK provider + stored key surfaces as a connected api-key
-  // connection and shifts the consensus (all truthful derived state).
+  // A configured BYOK provider + stored key surfaces as configured, not live
+  // connected, until its exact provider test succeeds.
   secrets.set('prov1', 'sk-prov1');
   byokStatusValue = {
     providers: [{ id: 'prov1', name: 'GW', base_url: 'https://gw.example.com/v1', api_type: 'chat-completions', model_id: 'm-1', tool_calling: false, key_stored: true }],
@@ -117,9 +128,9 @@ test('connections: unified view composes existing surfaces truthfully', async ()
     consent_enabled: false
   };
   const second = await call<{ consensus: string; connections: Array<{ id: string; status: string; capabilities: string[] }> }>('GET', '/api/connections');
-  assert.equal(second.body.data!.consensus, 'api-keys');
+  assert.equal(second.body.data!.consensus, 'none', 'a stored key alone is not live connection evidence');
   const apiEntry = second.body.data!.connections.find(entry => entry.id === 'api:prov1');
-  assert.equal(apiEntry!.status, 'connected');
+  assert.equal(apiEntry!.status, 'configured');
   assert.deepEqual(apiEntry!.capabilities, ['chat', 'act', 'utility']);
   const privacy = JSON.stringify(second.body);
   assert.ok(!privacy.includes('sk-prov1'), 'the unified view never leaks stored credentials');
@@ -245,4 +256,17 @@ test('connections: test and subscription-auth are governed external/execute capa
   assert.match(authedBody.data!.detail, /CLI not detected/);
   const authReplay = await owner.request('/api/connections/subscription/auth', { method: 'POST', headers: authHeaders, body: JSON.stringify({ subscription_id: 'claude' }) });
   assert.equal(authReplay.status, 409, 'consumed auth approval cannot replay');
+
+  const builtinUnapproved = await call<{ ok: boolean; detail: string }>('POST', '/api/connections/test', { connection_id: 'builtin:openai' });
+  assert.equal(builtinUnapproved.status, 409, 'built-in provider probes require external authorization');
+  assert.equal(builtinProbeCalls, 0, 'denial happens before provider contact');
+  const builtinHeaders = await owner.approve('POST', '/api/connections/test', { connection_id: 'builtin:openai' }, 'task:conn-test-builtin');
+  const builtinTest = await owner.request('/api/connections/test', { method: 'POST', headers: builtinHeaders, body: JSON.stringify({ connection_id: 'builtin:openai' }) });
+  assert.equal(builtinTest.status, 200);
+  const builtinBody = (await builtinTest.json()) as { data?: { ok: boolean; detail: string } };
+  assert.equal(builtinBody.data!.ok, true);
+  assert.match(builtinBody.data!.detail, /connected/);
+  assert.equal(builtinProbeCalls, 1, 'one authorized test produces one provider probe');
+  const builtinReplay = await owner.request('/api/connections/test', { method: 'POST', headers: builtinHeaders, body: JSON.stringify({ connection_id: 'builtin:openai' }) });
+  assert.equal(builtinReplay.status, 409, 'the provider probe approval cannot replay');
 });
