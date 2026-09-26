@@ -79,6 +79,7 @@
     "version_source": "PARTIAL",
     "artifact_naming": "PRESENT + UNVERIFIED",
     "checksums": "PARTIAL",
+    "dependency_lockfiles": {"status": "PRESENT + UNVERIFIED", "files": ["package-lock.json", "desktop/Cargo.lock"]},
     "code_and_installer_signing": "MISSING; installed executable and uninstaller are unsigned.",
     "sbom": "MISSING in clean frozen source snapshot.",
     "dependency_scanning": "MISSING in clean frozen source snapshot.",

@@ -59,6 +59,7 @@ A clean Windows VM or machine remains separate from first-user acceptance. It mu
 | Version source | PARTIAL | package.json and Cargo/Tauri versions differ |
 | Artifact naming | PRESENT + UNVERIFIED | CI names platform artifacts; no installed hash binding |
 | Checksums | PARTIAL | manifest script exists; no verified manifest for installed package |
+| Dependency lockfiles | PRESENT + UNVERIFIED | package-lock.json and desktop/Cargo.lock are present; release linkage was not verified |
 | Code/installer signing | MISSING | installed executable and uninstaller are unsigned |
 | SBOM | MISSING | none found in clean source snapshot |
 | Dependency scanning | MISSING | none found in clean source snapshot |
