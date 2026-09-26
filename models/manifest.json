@@ -263,22 +263,6 @@
       "gguf_max_context": null
     },
     {
-      "id": "aide-cipher-v1",
-      "name": "Cipher v1 (DEPRECATED — replaced by north-mini-code-1.0)",
-      "status": "ready",
-      "endpoint": "http://127.0.0.1:8091/v1",
-      "artifact_uri": "local://aide-house/base.q8_0.gguf (REMOVED — see north-mini-code-1.0)",
-      "model": "base.q8_0.gguf",
-      "context_tokens": 3072,
-      "roles": [
-        "coder",
-        "chat",
-        "planning",
-        "reviewer"
-      ],
-      "lora_adapter": "models/aide-house/frontier-lora.gguf"
-    },
-    {
       "id": "north-mini-code-1.0",
       "name": "North-Mini-Code 1.0 (Cohere Labs 30B-A3B MoE, Q2_K_XL)",
       "status": "ready",
