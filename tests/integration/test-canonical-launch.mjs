@@ -38,21 +38,57 @@ async function waitFor(url, timeoutMs = 30000) {
 
 function waitForExit(child, timeoutMs = 15000) {
   if (child.exitCode !== null) return Promise.resolve({ code: child.exitCode, signal: child.signalCode });
-  return Promise.race([
-    new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal }))),
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`process ${child.pid} did not exit`)), timeoutMs))
-  ]);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`process ${child.pid} did not exit`)), timeoutMs);
+    child.once('exit', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ code, signal });
+    });
+  });
 }
 
-function killTree(child) {
-  if (child.exitCode !== null || child.pid === undefined) return Promise.resolve();
-  if (process.platform !== 'win32') {
-    child.kill('SIGTERM');
-    return waitForExit(child).then(() => undefined);
-  }
+function execFileResult(command, args) {
   return new Promise(resolve => {
-    execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => resolve());
+    execFile(command, args, { windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (error, stdout, stderr) => {
+      resolve({ error: error?.message ?? null, code: error?.code ?? 0, stdout, stderr });
+    });
   });
+}
+
+async function windowsProcessInventory() {
+  if (process.platform !== 'win32') return [];
+  const script = '$items=Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CreationDate,ExecutablePath; ConvertTo-Json -InputObject @($items) -Compress';
+  const result = await execFileResult('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]);
+  if (result.error || result.code !== 0) throw new Error(`could not capture Windows process ownership: ${result.error ?? result.stderr.trim()}`);
+  const parsed = JSON.parse(result.stdout || '[]');
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+function descendantsOf(rootPid, processes) {
+  const descendants = [];
+  const pending = [Number(rootPid)];
+  const seen = new Set(pending);
+  while (pending.length > 0) {
+    const parent = pending.shift();
+    for (const processInfo of processes) {
+      const pid = Number(processInfo.ProcessId);
+      if (Number(processInfo.ParentProcessId) !== parent || seen.has(pid)) continue;
+      seen.add(pid);
+      pending.push(pid);
+      descendants.push(processInfo);
+    }
+  }
+  return descendants;
+}
+
+async function killTree(child) {
+  if (child.pid === undefined) return { skipped: 'launcher pid unavailable' };
+  if (process.platform !== 'win32') {
+    if (child.exitCode === null) child.kill('SIGTERM');
+    return { exit: await waitForExit(child).catch(error => ({ error: error.message })) };
+  }
+  if (child.exitCode !== null) return { skipped: `launcher already exited (${child.exitCode})` };
+  return await execFileResult('taskkill.exe', ['/PID', String(child.pid), '/T', '/F']);
 }
 
 async function portClosed(port) {
@@ -63,6 +99,68 @@ async function portClosed(port) {
     socket.once('timeout', () => { socket.destroy(); resolve(true); });
     socket.once('error', () => resolve(true));
   });
+}
+
+async function waitForOwnedPortsClosed(ports, ownedProcesses, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  const deadline = Date.now() + timeoutMs;
+  let lastOpen = [];
+  while (Date.now() < deadline) {
+    const open = [];
+    for (const port of Object.values(ports)) if (!(await portClosed(port))) open.push(port);
+    const processes = process.platform === 'win32' ? await windowsProcessInventory() : [];
+    const survivingOwned = ownedProcesses.filter(before => processes.some(after =>
+      Number(after.ProcessId) === Number(before.ProcessId) &&
+      String(after.CreationDate) === String(before.CreationDate) &&
+      String(after.Name) === String(before.Name) &&
+      String(after.ExecutablePath ?? '') === String(before.ExecutablePath ?? '')
+    ));
+    lastOpen = open;
+    if (open.length === 0 && survivingOwned.length === 0) return { closed: true, waitMs: Date.now() - startedAt, open, survivingOwned: [] };
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  let listeners = [];
+  if (process.platform === 'win32') {
+    const wanted = Object.values(ports).join(',');
+    const script = `$ports=@(${wanted}); $all=Get-CimInstance Win32_Process; $byPid=@{}; foreach($item in $all){$byPid[[string]$item.ProcessId]=$item}; $rows=@(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object {$ports -contains $_.LocalPort} | ForEach-Object {$owner=$byPid[[string]$_.OwningProcess]; [pscustomobject]@{Address=$_.LocalAddress;Port=$_.LocalPort;PID=$_.OwningProcess;Name=$owner.Name;ParentPID=$owner.ParentProcessId;Started=$owner.CreationDate;Path=$owner.ExecutablePath}}); ConvertTo-Json -InputObject $rows -Compress`;
+    const result = await execFileResult('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]);
+    if (!result.error && result.code === 0) {
+      const parsed = JSON.parse(result.stdout || '[]');
+      listeners = Array.isArray(parsed) ? parsed : [parsed];
+    } else {
+      listeners = [{ diagnosticError: result.error ?? result.stderr.trim() }];
+    }
+  }
+  const processes = process.platform === 'win32' ? await windowsProcessInventory().catch(error => [{ diagnosticError: error.message }]) : [];
+  const survivingOwned = ownedProcesses.filter(before => processes.some(after =>
+    Number(after.ProcessId) === Number(before.ProcessId) &&
+    String(after.CreationDate) === String(before.CreationDate) &&
+    String(after.Name) === String(before.Name) &&
+    String(after.ExecutablePath ?? '') === String(before.ExecutablePath ?? '')
+  ));
+  return { closed: false, waitMs: Date.now() - startedAt, open: lastOpen, listeners, survivingOwned };
+}
+
+async function cleanupLaunch(child, ports, workspace) {
+  const before = process.platform === 'win32' ? await windowsProcessInventory() : [];
+  const ownedTree = process.platform === 'win32' && child.pid !== undefined ? descendantsOf(child.pid, before) : [];
+  const killResult = await killTree(child);
+  const launcherExit = await waitForExit(child).catch(error => ({ error: error.message }));
+  const portResult = await waitForOwnedPortsClosed(ports, ownedTree);
+  if (portResult.closed && !launcherExit.error) {
+    process.stdout.write(`[canonical-launch-cleanup] launcher=${child.pid} exit=${launcherExit.code ?? launcherExit.signal ?? 'unknown'} taskkill=${killResult.code ?? 'not-run'} descendants=${ownedTree.length} closedAfterMs=${portResult.waitMs}\n`);
+    await fs.rm(workspace, { recursive: true, force: true });
+    return;
+  }
+  const diagnostics = {
+    launcherPid: child.pid ?? null,
+    launcherExit,
+    killResult: { error: killResult.error ?? null, code: killResult.code ?? null, stderr: killResult.stderr?.trim() ?? '' },
+    testOwnedProcessTree: ownedTree.map(item => ({ pid: item.ProcessId, parentPid: item.ParentProcessId, name: item.Name, started: item.CreationDate, path: item.ExecutablePath })),
+    portResult,
+    preservedWorkspace: workspace
+  };
+  throw new Error(`canonical launch cleanup did not verify; evidence=${JSON.stringify(diagnostics)}`);
 }
 
 function launch(workspace, ports, frontend = 'typed') {
@@ -114,10 +212,7 @@ test('real canonical start launches typed UI and facade while preserving SPA ass
     assert.match(stdout, /frontend=typed/);
     assert.equal(stderr, '');
   } finally {
-    await killTree(child);
-    await waitForExit(child).catch(() => {});
-    for (const port of Object.values(ports)) assert.equal(await portClosed(port), true, `test-owned port ${port} remained open`);
-    await fs.rm(workspace, { recursive: true, force: true });
+    await cleanupLaunch(child, ports, workspace);
   }
 });
 
@@ -142,10 +237,7 @@ test('real development launch serves the same typed Vite frontend through the fa
     assert.match(stdout, /frontend=vite/);
     assert.equal(stderr, '');
   } finally {
-    await killTree(child);
-    await waitForExit(child).catch(() => {});
-    for (const port of Object.values(ports)) assert.equal(await portClosed(port), true, `test-owned port ${port} remained open`);
-    await fs.rm(workspace, { recursive: true, force: true });
+    await cleanupLaunch(child, ports, workspace);
   }
 });
 
@@ -166,6 +258,7 @@ test('canonical start exits nonzero and cleans up when a required backend cannot
     assert.equal(await portClosed(ports.legacy), true);
   } finally {
     await killTree(child);
+    await waitForExit(child).catch(() => {});
     await new Promise(resolve => blocker.close(resolve));
     await fs.rm(workspace, { recursive: true, force: true });
   }
