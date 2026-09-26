@@ -1,8 +1,8 @@
 # Covert V1 Release Matrix Addendum 001
 
-**Date:** 2026-09-25  
-**Frozen baseline:** `3e42aad8a8741beae81f40906988b361929942ab`  
-**Scope:** Mapping only. No subsystem implementation and no installed-application inspection or modification.
+- **Date:** 2026-09-25
+- **Frozen baseline:** `3e42aad8a8741beae81f40906988b361929942ab`
+- **Scope:** Mapping only. No subsystem implementation and no installed-application inspection or modification.
 
 ## Freeze rule
 
@@ -20,9 +20,9 @@ They do not explicitly require the full sequence `Resident → mission creation 
 
 **Closure evidence required:** typed DAG and transition contract; bound mission/attempt/role/predecessor/candidate identities and policy receipts; deterministic tests for each transition, parallel barriers, stale review, bounded repair/reverification, interruption/reassignment, Authority denial, Resource Admission denial, human approval, and false completion. Resident reports canonical accepted state only.
 
-**Owner:** CORE / WORKFLOW-ORCHESTRATOR.  
-**Dependency:** `C1-11`, `C1-12`, `C1-14`, `C3-15`, `C3-16`, `C5-23`, `C7-30`, `RELS-03`, `RELS-04`.  
-**Not part of Wave 0A implementation.**
+- **Owner:** CORE / WORKFLOW-ORCHESTRATOR.
+- **Dependencies:** `C1-11`, `C1-12`, `C1-14`, `C3-15`, `C3-16`, `C5-23`, `C7-30`, `RELS-03`, `RELS-04`.
+- **Wave 0A:** Not part of this implementation.
 
 ## ADD-002 — B. Existing installed legacy Covert application
 
@@ -32,10 +32,10 @@ Existing rows `C6-07`, `C6-08`, `C6-11`, and `C6-12` cover platform installers, 
 
 Before any action against that installation, closure requires a read-only inventory of product/package identity, executable and version/build, install path, uninstall registration, shortcuts, AppData/state/databases/configuration, credential presence and owner (never credential values), ports, background processes/services, shared mutable paths, and install/upgrade behavior. Then document backup, side-by-side versus replacement, migration, rollback, uninstall, and reinstall ownership, and validate the path on a copy or isolated fixture.
 
-**Priority:** P1. There is no evidence in this mapping check that the old install shares dangerous mutable state, so this is not escalated to P0.  
-**Release gate:** blocks an operation that would replace, upgrade, uninstall, or reinstall the reported instance until the inventory and recovery plan are verified.  
-**Owner:** DISTRIBUTION / RELEASE.  
-**No installation action is authorized here.** The application was not inventoried, opened, modified, upgraded, or removed.
+- **Priority:** P1. There is no evidence in this mapping check that the old install shares dangerous mutable state, so this is not escalated to P0.
+- **Release gate:** blocks an operation that would replace, upgrade, uninstall, or reinstall the reported instance until the inventory and recovery plan are verified.
+- **Owner:** DISTRIBUTION / RELEASE.
+- **Scope:** No installation action is authorized here. The application was not inventoried, opened, modified, upgraded, or removed.
 
 ## Machine-readable rows
 
