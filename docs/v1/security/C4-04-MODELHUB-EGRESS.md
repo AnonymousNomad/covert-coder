@@ -1,6 +1,6 @@
 # C4-04 — Model Hub Token-Bearing Egress
 
-Status at this checkpoint: **IMPLEMENTED; C4-04 closure awaits the required Local-Only denial check in the C4-02 enforcement slice.**
+Status: **CLOSED** at implementation checkpoint `108d4fd599a48c488a69aee3a5741f928b40fd0e`, with Local-Only denial evidence added at `bae1e091410a00b6929bf6c7f3c26bedf65c3399`.
 
 ## Reproduction
 
@@ -36,4 +36,10 @@ Using deterministic local fixtures only:
 - `tsc -p tsconfig.node.json --noEmit`: pass.
 - `git diff --check`: pass.
 
-The complete Local-Only egress inventory and centralized enforcement remain the next C4-02 unit. This checkpoint does not claim those paths are closed.
+The broader Local-Only egress inventory is recorded in `C4-02-LOCAL-ONLY-EGRESS.md`; its remaining process-level and owner-handoff gaps do not reopen this route-specific C4-04 closure.
+
+## Closure evidence
+
+The C4-02 checkpoint proves that Local-Only blocks this token-bearing model-hub route at Authority preparation and again at transport after credential resolution. The fake provider receives zero requests on denial, the egress journal remains unchanged, malformed policy state fails closed, and the local downloads-list read remains available. A test with an unavailable credential source issues only an anonymous public metadata request; no Authorization header is attached and neither the fake credential sentinel nor credential-error detail is logged.
+
+Result: the original C4-04 defect is closed. This does **not** close the broader C4-02 Local-Only gap; see `C4-02-LOCAL-ONLY-EGRESS.md`.

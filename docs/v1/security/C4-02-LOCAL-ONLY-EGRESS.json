@@ -1,0 +1,55 @@
+{
+  "schema": "covert.v1.security.local-only-egress.v1",
+  "id": "C4-02",
+  "status": "BLOCKED",
+  "implementation_status": "PARTIAL",
+  "checkpoint": "bae1e091410a00b6929bf6c7f3c26bedf65c3399",
+  "validation_sha": "848af9c635123e8e72834f9a9d7e18a1feed9c40",
+  "base_sha": "108d4fd599a48c488a69aee3a5741f928b40fd0e",
+  "policy": {
+    "state_owner": "Provider Connections routing preference",
+    "state_path": ".aide/routing-preference.json",
+    "enforcement_owner": "ExecutionAuthority",
+    "missing_state": "local-first (existing canonical default)",
+    "local_only": "deny canonical operations with risk=external before preparation and before dispatch; direct managed transports recheck immediately before network contact",
+    "unknown_or_invalid_state": "NOT_READY; fail closed",
+    "local_execution": "capability.execute remains available when independently authorized"
+  },
+  "egress_inventory": [
+    { "surface": "chat external non-stream and stream", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "tests/arch/chat-authority-security.test.ts" },
+    { "surface": "chat local inference", "status": "EXPLICITLY_ALLOWED_BY_POLICY", "evidence": "tests/arch/chat-authority-security.test.ts; tests/arch/model-router.test.ts" },
+    { "surface": "model hub search/files/download", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "tests/arch/modelhub-routes.test.ts; tests/unit/test-m-hub.mjs" },
+    { "surface": "built-in provider connect/probe/chat", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "tests/arch/providers.test.ts; tests/arch/provider-routes.test.ts" },
+    { "surface": "BYOK probe/chat", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "tests/unit/test-h2-byok.mjs; tests/arch/byok-routes.test.ts" },
+    { "surface": "Telegram connect/poll/reply", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "tests/arch/telegram-egress.test.mjs" },
+    { "surface": "typed model endpoint probe/start", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "tests/arch/local-only-runtime-endpoint.test.ts" },
+    { "surface": "automatic embeddings", "status": "REMOTE_ENDPOINT_REJECTED; LOOPBACK_ALLOWED", "evidence": "tests/arch/embeddings-egress.test.ts" },
+    { "surface": "Authority-enrolled Git push", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "central risk=external gate; no direct shell equivalence claimed" },
+    { "surface": "provider discovery", "status": "NOT_APPLICABLE", "evidence": "local catalog/state read only" },
+    { "surface": "online MCP trust grant", "status": "BLOCKED_BY_LOCAL_ONLY", "evidence": "tests/arch/workbench-routes.test.ts" },
+    { "surface": "remote MCP transport", "status": "NOT_APPLICABLE_IN_INSPECTED_TREE", "evidence": "no client/transport found in node/src, daemon, plugins" },
+    { "surface": "Public Ops publication", "status": "OWNER_HANDOFF", "evidence": "protected separate lane; not modified or qualified" },
+    { "surface": "Desktop/browser control", "status": "OWNER_HANDOFF", "evidence": "protected separate lane; not modified or qualified" },
+    { "surface": "telemetry/update clients", "status": "NOT_APPLICABLE_IN_SCOPED_SOURCE_SEARCH", "evidence": "no outbound product client located in inspected backend/daemon/plugin source" },
+    { "surface": "arbitrary child process, PTY, hook, CLI, plugin egress", "status": "UNIMPLEMENTED_BLOCKER", "evidence": "agent-tools, task-service, terminal-sessions, notification-service, opencode-bridge, plugins/manager" },
+    { "surface": "legacy daemon model endpoint requests", "status": "UNIMPLEMENTED_BLOCKER", "evidence": "daemon/model-manager.mjs direct fetch; daemon starts with normal stack" },
+    { "surface": "unknown future egress", "status": "UNKNOWN_BLOCKER", "evidence": "no system-wide network interception boundary" }
+  ],
+  "tests": {
+    "focused_regression": "144/144 PASS",
+    "authority_route_coverage": { "routes": 236, "conflicting": 0, "unclassified": 0, "migration_waivers": 20 },
+    "typescript": "PASS",
+    "scoped_eslint": "PASS",
+    "openapi_drift": "PASS",
+    "real_provider_requests": 0
+  },
+  "blockers": [
+    "Arbitrary shell/task/PTY/hook/OpenCode/plugin processes can initiate network egress outside Authority. String heuristics and consent metadata are not complete network confinement.",
+    "Legacy daemon remains launched and has direct manifest-endpoint fetch paths outside the typed Authority Local-Only guard.",
+    "Public Ops and Desktop/browser control require owner handoff and policy integration; protected lanes were not modified.",
+    "There is no system-wide boundary covering unknown or future egress transports."
+  ],
+  "protected_lanes_modified": false,
+  "runtime_modified": false,
+  "closure_sha": null
+}

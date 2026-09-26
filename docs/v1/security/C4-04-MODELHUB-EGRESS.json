@@ -1,6 +1,6 @@
 {
   "id": "C4-04",
-  "status": "IMPLEMENTED",
+  "status": "CLOSED",
   "base_sha": "d0d4e40a92de3e1aafcd6675a748bef3f5f2537e",
   "reproduction": {
     "route": "GET /api/modelhub/files",
@@ -28,7 +28,13 @@
       "unclassified": 0
     },
     "typescript": "PASS",
-    "diff_check": "PASS"
+    "diff_check": "PASS",
+    "local_only_denial": "PASS",
+    "local_only_denied_fetches": 0,
+    "unavailable_credential": "anonymous public metadata only; Authorization absent; no credential/error detail logged",
+    "real_provider_contacted": false
   },
-  "scope_note": "C4-02 Local-Only enforcement across the broader egress surface is not claimed by this checkpoint."
+  "implementation_sha": "108d4fd599a48c488a69aee3a5741f928b40fd0e",
+  "closure_evidence_sha": "bae1e091410a00b6929bf6c7f3c26bedf65c3399",
+  "scope_note": "C4-04 is closed. C4-02 Local-Only enforcement across the broader process and publication egress surface remains blocked; see C4-02-LOCAL-ONLY-EGRESS.json."
 }
