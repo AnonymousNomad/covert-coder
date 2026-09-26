@@ -104,6 +104,21 @@ async function stop(code) {
   process.exitCode = unconfirmed.length ? 1 : code;
 }
 
+// Parent-death watchdog: the native shell owns this process. If the shell is
+// force-terminated (TerminateProcess) its exit handler never runs, so poll the
+// parent PID and shut the owned child servers down through the same exact
+// retained ChildProcess handles instead of leaking them. PID reuse can only
+// delay this safety net; it can never adopt or kill a foreign process.
+const parentWatch = setInterval(() => {
+  try {
+    process.kill(process.ppid, 0);
+  } catch {
+    clearInterval(parentWatch);
+    void stop(1);
+  }
+}, 2000);
+parentWatch.unref?.();
+
 await fs.mkdir(logsDir, { recursive: true });
 await fs.mkdir(modelDir, { recursive: true });
 supervisor = superviseAuthority(spawnChild('arch', ['--experimental-strip-types', path.join(root, 'node', 'src', 'server.ts')]));

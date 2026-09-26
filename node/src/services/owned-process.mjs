@@ -16,11 +16,13 @@ export function createOwnedProcesses({ terminationTimeoutMs = 5000 } = {}) {
       stdio: options.stdio ?? ['ignore', 'pipe', 'pipe'] });
     const handle = Object.freeze({ id: randomUUID(), pid: child.pid ?? null });
     let settle;
+    let settleExited;
     let ready;
     let rejectReady;
     const finished = new Promise(resolve => { settle = resolve; });
+    const exited = new Promise(resolve => { settleExited = resolve; });
     const spawned = new Promise((resolve, reject) => { ready = resolve; rejectReady = reject; });
-    const entry = { child, handle, finished, state: 'starting', error: null, stop: null };
+    const entry = { child, handle, finished, exited, state: 'starting', error: null, stop: null };
     owned.set(handle, entry); active.set(handle.id, entry);
     child.once('spawn', () => {
       entry.state = 'running';
@@ -32,6 +34,13 @@ export function createOwnedProcesses({ terminationTimeoutMs = 5000 } = {}) {
     child.on('error', error => {
       entry.error = String(error.message);
       if (entry.state === 'starting') rejectReady(error);
+    });
+    // 'exit' is the process-death truth: it fires when the OS process is gone,
+    // even while descendants still hold inherited stdio pipes open. Termination
+    // confirmation must never wait on 'close' for that reason.
+    child.once('exit', (code, signal) => {
+      entry.state = 'exited'; active.delete(handle.id);
+      settleExited(Object.freeze({ code, signal, error: entry.error }));
     });
     child.once('close', (code, signal) => {
       entry.state = 'exited'; active.delete(handle.id);
@@ -48,7 +57,7 @@ export function createOwnedProcesses({ terminationTimeoutMs = 5000 } = {}) {
       if (entry.state !== 'running' || !child.stdin?.writable) throw new Error('owned process stdin is unavailable');
       child.stdin.end();
     };
-    return Object.freeze({ handle, spawned, finished, writeStdin, endStdin });
+    return Object.freeze({ handle, spawned, finished, exited, writeStdin, endStdin });
   }
   async function terminate(handle) {
     const entry = handle && owned.get(handle);
@@ -62,7 +71,7 @@ export function createOwnedProcesses({ terminationTimeoutMs = 5000 } = {}) {
       if (!requested) return { status: 'failed', killed: false, error: entry.error ?? 'native process handle did not accept termination' };
       let timer;
       try {
-        const result = await Promise.race([entry.finished, new Promise(resolve => {
+        const result = await Promise.race([entry.exited, new Promise(resolve => {
           timer = setTimeout(() => resolve(null), terminationTimeoutMs);
         })]);
         return result === null ? { status: 'unconfirmed', killed: false, error: 'exit not observed before deadline' }
