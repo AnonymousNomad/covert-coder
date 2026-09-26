@@ -156,52 +156,55 @@ test('m1: happy-path download streams to final file with manifest and no .part l
 test('m1: interrupted download auto-resumes via Range request and completes', { timeout: 20000 }, async () => {
   const payload = Buffer.alloc(48 * 1024, 0xCD);
   let requests = 0;
-  const server = http.createServer((req, res) => {
+  const prefixLength = 16 * 1024;
+  const rangeHeaders = [];
+  const fetchImpl = async (_url, init) => {
     requests += 1;
+    const range = new Headers(init?.headers).get('range');
+    rangeHeaders.push(range);
     if (requests === 1) {
-      res.setHeader('content-length', String(payload.length));
-      res.write(payload.subarray(0, 16 * 1024));
-      setTimeout(() => res.destroy(), 50);
-    } else {
-      const match = /bytes=(\d+)-/.exec(req.headers.range ?? '');
-      const start = match ? Number(match[1]) : 0;
-      if (start === 0) {
-        res.statusCode = 416;
-        res.end();
-        return;
-      }
-      res.statusCode = 206;
-      res.setHeader('content-length', String(payload.length - start));
-      res.end(payload.subarray(start));
+      let prefixSent = false;
+      const body = new ReadableStream({
+        pull(controller) {
+          if (!prefixSent) {
+            prefixSent = true;
+            controller.enqueue(payload.subarray(0, prefixLength));
+            return;
+          }
+          controller.error(new Error('fixture interrupted after prefix'));
+        }
+      }, { highWaterMark: 0 });
+      return new Response(body, { status: 200, headers: { 'content-length': String(payload.length) } });
     }
-  });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const port = server.address().port;
+    const match = /bytes=(\d+)-/.exec(range ?? '');
+    const start = match ? Number(match[1]) : 0;
+    if (start !== prefixLength) return new Response(null, { status: 416 });
+    return new Response(payload.subarray(start), {
+      status: 206,
+      headers: { 'content-length': String(payload.length - start) }
+    });
+  };
   const hub = createHubService({
     workspace: ws,
     modelsDir,
     assertExternalEgressAllowed: allowExternalEgress,
-    fetchImpl: (url, options) => fetch(url, options)
+    fetchImpl
   });
-  try {
-    await hub.startDownload({
-      repo_id: 'testorg/resume',
-      filename: 'resume.bin',
-      quant_label: null,
-      urlTemplate: `http://127.0.0.1:${port}/resolve/main/{filename}`
-    });
-    const doneEvent = hub.listEvents().find(event => event.event === 'done');
-    assert.ok(doneEvent, 'expected done after resume');
-    assert.equal(doneEvent.bytes_total, payload.length);
-    const saved = await fs.readFile(path.join(modelsDir, 'resume.bin'));
-    assert.equal(saved.equals(payload), true);
-    assert.equal(requests >= 2, true, 'expected at least two HTTP requests');
-    const errorEvents = hub.listEvents().filter(event => event.event === 'error');
-    assert.equal(errorEvents.length >= 1, true, 'the interruption should surface as an error event before recovery');
-  } finally {
-    server.close();
-    server.closeAllConnections();
-  }
+  await hub.startDownload({
+    repo_id: 'testorg/resume',
+    filename: 'resume.bin',
+    quant_label: null,
+    urlTemplate: 'http://fixture.invalid/resolve/main/{filename}'
+  });
+  const doneEvent = hub.listEvents().find(event => event.event === 'done');
+  assert.ok(doneEvent, 'expected done after resume');
+  assert.equal(doneEvent.bytes_total, payload.length);
+  const saved = await fs.readFile(path.join(modelsDir, 'resume.bin'));
+  assert.equal(saved.equals(payload), true);
+  assert.deepEqual(rangeHeaders, [null, `bytes=${prefixLength}-`], 'retry resumes from the fully persisted prefix');
+  assert.equal(requests, 2);
+  const errorEvents = hub.listEvents().filter(event => event.event === 'error');
+  assert.equal(errorEvents.length >= 1, true, 'the interruption should surface as an error event before recovery');
 });
 
 test('m1: cancel aborts mid-stream, deletes .part, emits cancelled and never done', { timeout: 12000 }, async () => {
