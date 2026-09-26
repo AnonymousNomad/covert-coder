@@ -1,0 +1,67 @@
+{
+  "schema": "covert.v1-release-closure-matrix.v1",
+  "snapshot_date": "2026-09-25",
+  "audit": {
+    "branch": "audit/v1-release-closure-matrix",
+    "worktree": "E:\\aide-v1-release-closure",
+    "starting_sha": "e23aec80cd05ab0c237eba793421bb5e7c5a57e7",
+    "base_reason": "Accepted shared source-assembly branch descends from certified candidate dc0; Authority identifies e23 as selected shared base. Avoids dirty historical Resident checkout.",
+    "no_new_feature_rule": "After matrix freeze, no new V1 feature unless it closes a matrix row or repairs a reproduced defect.",
+    "evidence_policy": "Map existing immutable evidence; do not rerun prior tests. Dirty worktrees/untracked artifacts are not accepted evidence.",
+    "release_verdict": "This freezes the closure board only; it is not product release acceptance."
+  },
+  "known_release_decisions": {
+    "certified_source_candidate": "dc0d30ee226e7ff822592e3a800f064b4441b7af",
+    "source_assembly_head": "e23aec80cd05ab0c237eba793421bb5e7c5a57e7",
+    "authority_chat_contract": "e41083dab6a5a23e625a824527d11a2ba7623303",
+    "runtime_checkpoint": "e41aafa1b723d14981af8882f44a0de782170076",
+    "runtime_passport_sha256": "921af21011ac194cf84ae11751de0f32018a7646fe857555a6ca167e6bdf8b4c",
+    "resident_checkpoint": "323fdb3ae800996e19eecc6fd53b3d88bdf4a2bf",
+    "desktop_control_checkpoint": "aed7efd6f3e6794776104b5c19ba86e09bfe2fe1",
+    "model_manager_head": "d80d18445b475d2ae2f6987b16cbb047224b2c5e",
+    "operator_control_head": "a05ad8484b7d5451f8797a8d09e99a08836320ca",
+    "dogfood_head": "d0d4e40a92de3e1aafcd6675a748bef3f5f2537e"
+  },
+  "lane_snapshot": [
+    {
+      "owner": "Resident",
+      "path": "E:\\aide-sovereign-workbench-resident-resume",
+      "branch": "resident/marathon-h1-resume",
+      "head": "323fdb3ae800996e19eecc6fd53b3d88bdf4a2bf",
+      "working_tree": "CLEAN",
+      "state": "F1b APPARATUS_INVALID; waits for exact Authority integration then owner reruns once"
+    },
+    {
+      "owner": "Authority",
+      "path": "E:\\aide-authority-chat-contract-v1",
+      "branch": "fix/authority-chat-contract-v1",
+      "head": "e41083dab6a5a23e625a824527d11a2ba7623303",
+      "working_tree": "CLEAN",
+      "state": "Contract CLOSED; not integrated into source release or Resident"
+    },
+    {
+      "owner": "Runtime",
+      "path": "E:\\aide-sovereign-workbench-runtime-lab",
+      "branch": "research/local-runtime-bakeoff",
+      "head": "e41aafa1b723d14981af8882f44a0de782170076",
+      "working_tree": "CLEAN",
+      "state": "Runtime V1 CLOSED for exact Passport profile"
+    },
+    {
+      "owner": "Desktop Control",
+      "path": "E:\\aide-desktop-control-v1",
+      "branch": "feat/covert-desktop-control-v1",
+      "head": "aed7efd6f3e6794776104b5c19ba86e09bfe2fe1",
+      "working_tree": "CLEAN",
+      "state": "Broad GUI mission blocked; source candidate treats Desktop Control as post-candidate"
+    },
+    {
+      "owner": "Model Manager",
+      "path": "E:\\aide-model-manager",
+      "branch": "feat/model-manager",
+      "head": "d80d18445b475d2ae2f6987b16cbb047224b2c5e",
+      "working_tree": "CLEAN",
+      "state": "MM9 focused acceptance passes; broad architecture acceptance pending"
+    },
+    {
+ 
