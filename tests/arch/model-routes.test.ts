@@ -37,7 +37,9 @@ after(async () => {
   server.events.close();
   await new Promise<void>(resolve => httpServer.close(() => resolve()));
   await server.logger.flush();
-  await fs.rm(dir, { recursive: true, force: true });
+  await new Promise<void>(resolve => setImmediate(resolve));
+  await server.logger.flush();
+  await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 test('GET /api/models/status lists the bundled models through the envelope', async t => {
