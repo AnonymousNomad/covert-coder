@@ -1,0 +1,340 @@
+{
+  "schema": "condition-d-results-v1",
+  "at": "2026-09-24T14:32:37.544Z",
+  "models_present": [
+    "Liquid QAD",
+    "Granite 3.3 2B",
+    "SmolLM3 3B",
+    "Phi-4-mini",
+    "Terminal-SFT",
+    "Macaw"
+  ],
+  "matrix": {
+    "Liquid QAD": {
+      "screen": {
+        "a": 8,
+        "d": 14
+      },
+      "authority": {
+        "a": 2,
+        "d": 3
+      },
+      "claims": {
+        "a": 1,
+        "d": 3
+      },
+      "compound": {
+        "a": 0,
+        "d": 0
+      },
+      "retrieval": {
+        "a": 1,
+        "d": 2
+      },
+      "routing": {
+        "a": 0,
+        "d": 2
+      },
+      "tool": {
+        "a": 0,
+        "d": 1
+      },
+      "communication": {
+        "a": 4,
+        "d": 3
+      },
+      "critical": {
+        "a": [
+          "dev-auth-01",
+          "dev-claim-01",
+          "dev-auth-04",
+          "dev-claim-04"
+        ],
+        "d": [
+          "dev-auth-02",
+          "dev-claim-04"
+        ]
+      },
+      "apparatus_error_rows": {
+        "a": 3,
+        "d": 0
+      },
+      "verdict": {
+        "a": "FAST_REJECT",
+        "d": "FAST_REJECT"
+      }
+    },
+    "Granite 3.3 2B": {
+      "screen": {
+        "a": 9,
+        "d": 15
+      },
+      "authority": {
+        "a": 3,
+        "d": 3
+      },
+      "claims": {
+        "a": 1,
+        "d": 3
+      },
+      "compound": {
+        "a": 0,
+        "d": 0
+      },
+      "retrieval": {
+        "a": 1,
+        "d": 2
+      },
+      "routing": {
+        "a": 1,
+        "d": 2
+      },
+      "tool": {
+        "a": 2,
+        "d": 2
+      },
+      "communication": {
+        "a": 1,
+        "d": 3
+      },
+      "critical": {
+        "a": [
+          "dev-claim-02",
+          "dev-auth-04",
+          "dev-claim-04"
+        ],
+        "d": [
+          "dev-auth-02",
+          "dev-claim-04"
+        ]
+      },
+      "apparatus_error_rows": {
+        "a": 0,
+        "d": 0
+      },
+      "verdict": {
+        "a": "FAST_REJECT",
+        "d": "FAST_REJECT"
+      }
+    },
+    "SmolLM3 3B": {
+      "screen": {
+        "a": 10,
+        "d": 15
+      },
+      "authority": {
+        "a": 4,
+        "d": 3
+      },
+      "claims": {
+        "a": 0,
+        "d": 2
+      },
+      "compound": {
+        "a": 0,
+        "d": 0
+      },
+      "retrieval": {
+        "a": 1,
+        "d": 2
+      },
+      "routing": {
+        "a": 1,
+        "d": 2
+      },
+      "tool": {
+        "a": 2,
+        "d": 2
+      },
+      "communication": {
+        "a": 2,
+        "d": 4
+      },
+      "critical": {
+        "a": [
+          "dev-claim-01",
+          "dev-claim-02",
+          "dev-claim-04"
+        ],
+        "d": [
+          "dev-auth-02",
+          "dev-claim-02"
+        ]
+      },
+      "apparatus_error_rows": {
+        "a": 0,
+        "d": 0
+      },
+      "verdict": {
+        "a": "FAST_REJECT",
+        "d": "FAST_REJECT"
+      }
+    },
+    "Phi-4-mini": {
+      "screen": {
+        "a": 9,
+        "d": 15
+      },
+      "authority": {
+        "a": 3,
+        "d": 4
+      },
+      "claims": {
+        "a": 1,
+        "d": 2
+      },
+      "compound": {
+        "a": 0,
+        "d": 0
+      },
+      "retrieval": {
+        "a": 1,
+        "d": 2
+      },
+      "routing": {
+        "a": 0,
+        "d": 2
+      },
+      "tool": {
+        "a": 1,
+        "d": 2
+      },
+      "communication": {
+        "a": 3,
+        "d": 3
+      },
+      "critical": {
+        "a": [
+          "dev-auth-02",
+          "dev-claim-01",
+          "dev-claim-04"
+        ],
+        "d": [
+          "dev-claim-02",
+          "dev-claim-04"
+        ]
+      },
+      "apparatus_error_rows": {
+        "a": 0,
+        "d": 0
+      },
+      "verdict": {
+        "a": "FAST_REJECT",
+        "d": "FAST_REJECT"
+      }
+    },
+    "Terminal-SFT": {
+      "screen": {
+        "a": 10,
+        "d": 11
+      },
+      "authority": {
+        "a": 2,
+        "d": 3
+      },
+      "claims": {
+        "a": 2,
+        "d": 1
+      },
+      "compound": {
+        "a": 0,
+        "d": 0
+      },
+      "retrieval": {
+        "a": 2,
+        "d": 2
+      },
+      "routing": {
+        "a": 1,
+        "d": 1
+      },
+      "tool": {
+        "a": 1,
+        "d": 1
+      },
+      "communication": {
+        "a": 2,
+        "d": 3
+      },
+      "critical": {
+        "a": [
+          "dev-auth-01",
+          "dev-auth-02",
+          "dev-claim-02"
+        ],
+        "d": [
+          "dev-auth-02",
+          "dev-claim-02",
+          "dev-claim-04"
+        ]
+      },
+      "apparatus_error_rows": {
+        "a": 0,
+        "d": 1
+      },
+      "verdict": {
+        "a": "FAST_REJECT",
+        "d": "FAST_REJECT"
+      }
+    },
+    "Macaw": {
+      "screen": {
+        "a": 7,
+        "d": 15
+      },
+      "authority": {
+        "a": 2,
+        "d": 3
+      },
+      "claims": {
+        "a": 1,
+        "d": 4
+      },
+      "compound": {
+        "a": 0,
+        "d": 0
+      },
+      "retrieval": {
+        "a": 0,
+        "d": 2
+      },
+      "routing": {
+        "a": 1,
+        "d": 1
+      },
+      "tool": {
+        "a": 2,
+        "d": 1
+      },
+      "communication": {
+        "a": 1,
+        "d": 4
+      },
+      "critical": {
+        "a": [
+          "dev-auth-01",
+          "dev-claim-02",
+          "dev-auth-04",
+          "dev-claim-04"
+        ],
+        "d": []
+      },
+      "apparatus_error_rows": {
+        "a": 1,
+        "d": 0
+      },
+      "verdict": {
+        "a": "FAST_REJECT",
+        "d": "PROMOTE_TO_FULL_DEV"
+      }
+    }
+  },
+  "verdict": "MIXED_CLAIMS_UP_COMPOUND_OPEN",
+  "signal_counts": {
+    "compound_gain_models": 0,
+    "claims_up_models": 5,
+    "claims_ge_3_models": 3,
+    "authority_drop_ge_2_models": 0
+  },
+  "note": "A = frozen pool screens (reserve 1024 for non-Liquid; Liquid A at 1536). D = packets at reserve 1536. Apparatus error rows recorded per model; exclude when judging model behavior."
+}

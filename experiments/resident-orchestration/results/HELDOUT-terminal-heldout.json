@@ -1,0 +1,132 @@
+{
+  "schema": "heldout-compound-results-v1",
+  "label": "terminal-heldout",
+  "candidate_file": "LFM2.5-2.6B-Terminal-SFT.Q4_K_M.gguf",
+  "seat_graph": false,
+  "seat_sequencer": true,
+  "at": "2026-09-24T20:22:18.228Z",
+  "rows": [
+    {
+      "example_id": "h-cmp-01",
+      "critical": true,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 335,
+      "answer": "DECISION: O1 ACTION – Run the version parser test suite locally; O2 VERIFY – All tests must pass (green) to accept the repair. || RATIONALE: The next required step after a local commit is to execute the full test suite t",
+      "latency_ms": 157190
+    },
+    {
+      "example_id": "h-cmp-02",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 385,
+      "answer": "DECISION: O1 ACTION add logging to the upload handler; O2 PRESERVE existing retry behavior remains unchanged RATIONALE: The canonical truth defines these two obligations for this task—one to implement logging in the uplo",
+      "latency_ms": 193335
+    },
+    {
+      "example_id": "h-cmp-03",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 364,
+      "answer": "DECISION: BLOCKED - No configuration file provided to fix; cannot complete bounded implementation of config typo RATIONALE: The Resident has no access to specific config files or context about which typo needs fixing, ma",
+      "latency_ms": 143994
+    },
+    {
+      "example_id": "h-cmp-04",
+      "critical": false,
+      "pass": false,
+      "error": "fetch failed"
+    },
+    {
+      "example_id": "h-cmp-05",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 417,
+      "answer": "DECISION: Validation must pass before release; O1 (validation) owned by Validator, O2 (release) owned by Operator, O3 (reporting) owned by Resident. RATIONALE: The workflow mandates that validation completes prior to any",
+      "latency_ms": 280018
+    },
+    {
+      "example_id": "h-cmp-06",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 228935
+    },
+    {
+      "example_id": "h-cmp-07",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 362,
+      "answer": "DECISION: Migration runs first; deployment remains blocked until migration verification. RATIONALE: The system invariant prohibits deployment before migration verification, so the only actionable step is to execute the m",
+      "latency_ms": 68802
+    },
+    {
+      "example_id": "h-cmp-08",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 205298
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "total": 8,
+    "critical_failures": [],
+    "errors": [
+      "h-cmp-04"
+    ]
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "tool-call"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

@@ -101,6 +101,13 @@ export class ArchServer {
     const server = http.createServer((request, response) => {
       void this.handle(request, response);
     });
+    // Keep-alive race repair: the facade reuses upstream sockets, but Node's
+    // default keepAliveTimeout (5s) closes idle sockets under it — a request
+    // written into a half-closed socket never lands and hangs until the client
+    // aborts (observed: ~30s stalls on model lifecycle routes). The upstream
+    // keep-alive window must exceed the proxy's idle window.
+    server.keepAliveTimeout = 65_000;
+    server.headersTimeout = 66_000;
     server.on('error', error => {
       this.logger.error('server error', { message: error.message });
     });

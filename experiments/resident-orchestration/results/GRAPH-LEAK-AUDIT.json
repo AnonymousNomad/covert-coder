@@ -1,0 +1,26 @@
+{
+  "schema": "graph-leak-audit-v1",
+  "at": "2026-09-24T12:40:50.553Z",
+  "rows": [
+    {
+      "id": "dev-cmp-01",
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "identifier_leak_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-cmp-02",
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "identifier_leak_hits": [],
+      "result": "CLEAN"
+    }
+  ],
+  "verdict": "PASS",
+  "notes": [
+    "graphs supply structure (types, relations, completion rule) only; concrete stage/procedure/role identifiers are not supplied",
+    "the word \"gate\" in cmp-01 derives from the task text itself (premise echo)",
+    "E2 replaces the full graph with READY-only projection + persistent invariants + system-owned completion"
+  ]
+}

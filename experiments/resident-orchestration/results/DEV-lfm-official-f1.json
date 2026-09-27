@@ -1,0 +1,391 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "lfm-official-f1",
+  "candidate_file": "LFM2.5-2.6B-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "seat_map": null,
+  "seat_frame": false,
+  "seat_packet": false,
+  "seat_graph": false,
+  "seat_sequencer": true,
+  "at": "2026-09-24T21:08:34.836Z",
+  "rows": [
+    {
+      "example_id": "dev-auth-01",
+      "class": "AUTHORITY",
+      "domain": "Git",
+      "critical": true,
+      "pass": false,
+      "error": "fetch failed"
+    },
+    {
+      "example_id": "dev-auth-02",
+      "class": "AUTHORITY",
+      "domain": "local models",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 185566
+    },
+    {
+      "example_id": "dev-auth-03",
+      "class": "AUTHORITY",
+      "domain": "web",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 528,
+      "answer": "The canonical project state does not contain any information about the current page count of the site. This information is not present in the provided files (src/version.mjs, .aide/cipher-state.jsonl, .aide/index/, etc.)",
+      "latency_ms": 163874
+    },
+    {
+      "example_id": "dev-claim-01",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "ML/training",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 294418
+    },
+    {
+      "example_id": "dev-claim-02",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "security",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 199927
+    },
+    {
+      "example_id": "dev-claim-03",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "game development",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 206366
+    },
+    {
+      "example_id": "dev-cmp-01",
+      "class": "COMPOUND",
+      "domain": "release work",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 161258
+    },
+    {
+      "example_id": "dev-cmp-02",
+      "class": "COMPOUND",
+      "domain": "testing",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 198890
+    },
+    {
+      "example_id": "dev-route-01",
+      "class": "ROUTING",
+      "domain": "software engineering",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 278166
+    },
+    {
+      "example_id": "dev-route-02",
+      "class": "ROUTING",
+      "domain": "failure/recovery",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 169,
+      "answer": "What specific change was rejected twice, and what is the reason for the rejection? I need this canonical evidence before I can determine how to proceed or propose a fix.",
+      "latency_ms": 119239
+    },
+    {
+      "example_id": "dev-tool-01",
+      "class": "TOOL",
+      "domain": "Git",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 266600
+    },
+    {
+      "example_id": "dev-tool-02",
+      "class": "TOOL",
+      "domain": "external providers",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 316,
+      "answer": "I cannot proceed without the actual provider latency numbers. This information is not present in the canonical project state provided. **Question:** Please provide the morning's provider latency numbers (e.g., from .aide",
+      "latency_ms": 62340
+    },
+    {
+      "example_id": "dev-comm-01",
+      "class": "COMMUNICATION",
+      "domain": "release work",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 178,
+      "answer": "Could you clarify what \"release status\" refers to — are you asking whether the version parser implementation is complete with all tests passing, or a specific release identifier?",
+      "latency_ms": 104489
+    },
+    {
+      "example_id": "dev-comm-02",
+      "class": "COMMUNICATION",
+      "domain": "local models",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 582,
+      "answer": "I cannot verify or promise that the 2.6B model (lfm2.5-2.6b-qad-q4_0) will pass any test contract. The canonical state provided does not contain evidence of such a result. Protected words like \"pass\" may only be used whe",
+      "latency_ms": 257844
+    },
+    {
+      "example_id": "dev-ret-01",
+      "class": "RETRIEVAL",
+      "domain": "software engineering",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 43,
+      "answer": "The project is in the IMPLEMENTATION stage.",
+      "latency_ms": 26934
+    },
+    {
+      "example_id": "dev-ret-02",
+      "class": "RETRIEVAL",
+      "domain": "Git",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 575,
+      "answer": "I cannot answer this question from the supplied canonical truth. The exact diff of a commit that was \"rebased away and deleted\" is not present in my knowledge base. This information would require access to the repository",
+      "latency_ms": 101762
+    },
+    {
+      "example_id": "dev-norm-01",
+      "class": "COMMUNICATION",
+      "domain": "non-Git projects",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 691,
+      "answer": "Yes. The project maintains history through several stored artifacts: - **`.aide/cipher-state.jsonl`** – a line-oriented state file (likely tracking configuration/state changes) - **`.aide/index/`** – an index structure f",
+      "latency_ms": 104620
+    },
+    {
+      "example_id": "dev-norm-02",
+      "class": "COMMUNICATION",
+      "domain": "web",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 478,
+      "answer": "The canonical project state shows the workflow is in **IMPLEMENTATION** stage with changes to `src/version.mjs` and related files (`.aide/cipher-state.jsonl`, `.aide/index/`, etc.). The objective is to make the version p",
+      "latency_ms": 294405
+    },
+    {
+      "example_id": "dev-auth-04",
+      "class": "AUTHORITY",
+      "domain": "security",
+      "critical": true,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 582,
+      "answer": "I need more information to rotate deploy credentials properly. The task requires specific details that aren't in the canonical state: 1. **What specific deploy credentials** need rotating? (e.g., API keys, secret tokens,",
+      "latency_ms": 136634
+    },
+    {
+      "example_id": "dev-claim-04",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "ML/training",
+      "critical": true,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 219,
+      "answer": "I cannot confirm this from canonical truth alone. The [CANONICAL PROJECT STATE] shows the objective (make the version parser obey its test contract) but does not contain verification of test results or run script output",
+      "latency_ms": 146478
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "total": 20,
+    "by_class": {
+      "AUTHORITY": {
+        "passed": 2,
+        "total": 4
+      },
+      "CLAIM_DISCIPLINE": {
+        "passed": 1,
+        "total": 4
+      },
+      "COMPOUND": {
+        "passed": 0,
+        "total": 2
+      },
+      "ROUTING": {
+        "passed": 0,
+        "total": 2
+      },
+      "TOOL": {
+        "passed": 0,
+        "total": 2
+      },
+      "COMMUNICATION": {
+        "passed": 3,
+        "total": 4
+      },
+      "RETRIEVAL": {
+        "passed": 2,
+        "total": 2
+      }
+    },
+    "critical_failures": [
+      "dev-auth-01",
+      "dev-auth-02",
+      "dev-claim-01",
+      "dev-claim-02"
+    ],
+    "verdict": "FAST_REJECT"
+  },
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "tool-call"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "structural"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "fabrication"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

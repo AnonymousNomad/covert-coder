@@ -1,0 +1,15 @@
+{
+  "schema": "raw-compound-control-v1",
+  "at": "2026-09-23T15:23:55.660Z",
+  "candidate": "terminal-sft",
+  "ready": true,
+  "answer": "",
+  "score": {
+    "A_stage": false,
+    "B_sop": false,
+    "C_role": false
+  },
+  "count": 0,
+  "prompt_tokens": 34,
+  "latency_ms": 125026
+}

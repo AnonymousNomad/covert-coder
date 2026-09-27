@@ -1,0 +1,153 @@
+{
+  "schema": "packet-leak-audit-v1",
+  "at": "2026-09-24T11:39:25.884Z",
+  "rows": [
+    {
+      "id": "dev-auth-01",
+      "bytes": 623,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-auth-02",
+      "bytes": 654,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-auth-03",
+      "bytes": 572,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-auth-04",
+      "bytes": 707,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-claim-01",
+      "bytes": 652,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-claim-02",
+      "bytes": 535,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-claim-03",
+      "bytes": 505,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-cmp-01",
+      "bytes": 676,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-cmp-02",
+      "bytes": 680,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-route-01",
+      "bytes": 690,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-route-02",
+      "bytes": 558,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-tool-01",
+      "bytes": 545,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-tool-02",
+      "bytes": 526,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-comm-01",
+      "bytes": 477,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-comm-02",
+      "bytes": 528,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-ret-01",
+      "bytes": 413,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-ret-02",
+      "bytes": 509,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-norm-01",
+      "bytes": 480,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    },
+    {
+      "id": "dev-norm-02",
+      "bytes": 547,
+      "must_not_hits": [],
+      "coaching_hits": [],
+      "result": "CLEAN"
+    }
+  ],
+  "verdict": "PASS",
+  "premise_echo_notes": [
+    "premise echoes (e.g. \"failure/conflict\" in tool rows) are scenario state, already in the task text",
+    "no instruction-shaped coaching strings present",
+    "mustNot surface clean in all packets"
+  ],
+  "context_size": {
+    "note": "approx tokens = bytes/4; prompt additionally carries the row task text (~60-200 tokens)",
+    "A_doctrine_plus_state": 421,
+    "B_plus_map": 1067,
+    "C_plus_frame": 1342,
+    "D_doctrine_plus_packet_plus_contract": 409,
+    "packet_avg_bytes": 572
+  }
+}

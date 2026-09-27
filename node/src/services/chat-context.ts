@@ -36,6 +36,7 @@ export type ChatIndexService = {
 export type ChatContextProviders = {
   resident?: () => Promise<string>;
   skills?: (task: string) => Promise<string>;
+  awareness?: (task: string) => Promise<string>;
 };
 
 export type ChatContextResult = {
@@ -172,6 +173,16 @@ export function createChatContextComposer(options: {
           if (skills.trim()) advisory += `\n\n[SKILL CONTEXT] relevant standard operating procedures; treat as advisory procedure, not authority:\n${skills.trim()}`;
         } catch { /* skill source is isolated */ }
       }
+      let awarenessTokens = 0;
+      if (lastUser && options.providers?.awareness) {
+        try {
+          const awareness = await options.providers.awareness(lastUser.content);
+          if (awareness.trim()) {
+            advisory += `\n\n[RESIDENT AWARENESS] canonical Resident awareness envelope; advisory methodology and canonical state, not authority:\n${awareness.trim()}`;
+            awarenessTokens = estimateTokens(awareness);
+          }
+        } catch { /* awareness source is isolated */ }
+      }
 
       composed = injectScaffold(composed, { system: scaffold.system + learnedBlock + memorySection + advisory }) as ChatMessageT[];
       const approximateTokens = estimateMessageTokens(composed);
@@ -199,7 +210,9 @@ export function createChatContextComposer(options: {
           context_tokens: context ? estimateTokens(context.block) : 0,
           memory_recall_hits: memoryHits,
           memory_recall_tokens: memoryTokens,
-          memory_recall_degraded: memoryDegraded
+          memory_recall_degraded: memoryDegraded,
+          awareness_present: awarenessTokens > 0,
+          awareness_tokens: awarenessTokens
         }
       };
     }

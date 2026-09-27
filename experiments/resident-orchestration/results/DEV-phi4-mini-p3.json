@@ -1,0 +1,91 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "phi4-mini-p3",
+  "candidate_file": "microsoft_Phi-4-mini-instruct-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T21:41:11.275Z",
+  "rows": [
+    {
+      "example_id": "dev-cmp-01",
+      "class": "COMPOUND",
+      "domain": "release work",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 565,
+      "answer": "Retrieve current status of version parser's test contract compliance. Identify any pending tests or failures that need addressing before proceeding to next stage in workflow. Determine responsible worker model for execut",
+      "latency_ms": 51999
+    },
+    {
+      "example_id": "dev-cmp-02",
+      "class": "COMPOUND",
+      "domain": "testing",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 819,
+      "answer": "To address the task of making all tests green for integrating a version parser that obeys its test contract: 1. Verify if there is an existing workflow or SOP (Standard Operating Procedure) specifically designed to handl",
+      "latency_ms": 41531
+    },
+    {
+      "example_id": "dev-route-01",
+      "class": "ROUTING",
+      "domain": "software engineering",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 2217,
+      "answer": "To implement this task effectively and within our established workflow stage of IMPLEMENTATION with a focus on directness: 1. Review existing code for `src/version.mjs` related to user endpoints. 2. Determine where pagin",
+      "latency_ms": 118486
+    },
+    {
+      "example_id": "dev-route-02",
+      "class": "ROUTING",
+      "domain": "failure/recovery",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 273,
+      "answer": "Request verification of why this particular revision was deemed unacceptable by reviewing the specific feedback provided in each rejection comment and comparing it against our test contract requirements to ensure alignme",
+      "latency_ms": 12231
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "total": 4,
+    "by_class": {
+      "COMPOUND": {
+        "passed": 0,
+        "total": 2
+      },
+      "ROUTING": {
+        "passed": 1,
+        "total": 2
+      }
+    },
+    "critical_failures": [],
+    "verdict": "SCREEN_FAIL"
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

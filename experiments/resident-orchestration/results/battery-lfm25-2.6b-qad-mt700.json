@@ -1,0 +1,52 @@
+{
+  "label": "lfm25-2.6b-qad-mt700",
+  "candidate_file": "LFM2.5-2.6B-QAD-Q4_0.gguf",
+  "battery": {
+    "tasks_sha256": "9e14689cea80dfb60099a243e7d823152118d6e6ddd7a9fb96fb5be6c891ae8e",
+    "scoring_sha256": "bb94e59cb6ea27ceda2f642adf44aaa4c0fef476159234478b6491dde4e0d0ba",
+    "frozen": true
+  },
+  "started_at": "2026-09-22T17:25:19.965Z",
+  "tasks": [
+    {
+      "task": "status-branch-stage",
+      "class": "DISCOVERY RECALL",
+      "passed": true,
+      "checks": [
+        {
+          "name": "has:main",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "has:IMPLEMENTATION",
+          "passed": true,
+          "detail": ""
+        }
+      ],
+      "answer": "Based on the [CANONICAL PROJECT STATE] section provided: - **Current git branch**: `main` - **Workflow stage**: `IMPLEMENTATION` The project is on the `main` branch and the workflow stage is `IMPLEMENTATION`.",
+      "raw": "Based on the [CANONICAL PROJECT STATE] section provided: - **Current git branch**: `main` - **Workflow stage**: `IMPLEMENTATION` The project is on the `main` branch and the workflow stage is `IMPLEMENTATION`.",
+      "timing_ms": 59556,
+      "sop_candidates": [
+        "resident.resume-project",
+        "resident.report-status",
+        "resident.create-project"
+      ],
+      "containment": []
+    }
+  ],
+  "economics": [
+    {
+      "task": "status-branch-stage",
+      "canonical_context_tokens": 383,
+      "sop_candidates_tokens": 11,
+      "task_tokens": 19,
+      "total_sent_tokens": 415,
+      "envelope_note": "live awareness envelope bounded ≤1500 (measured 342-932 historically)",
+      "output_tokens": 53,
+      "model_calls": 1
+    }
+  ],
+  "summary": {},
+  "error": "resident chat 504: {\"ok\":false,\"error\":{\"code\":\"CHILD_FAILED\",\"message\":\"The operation was aborted due to timeout\"}}"
+}

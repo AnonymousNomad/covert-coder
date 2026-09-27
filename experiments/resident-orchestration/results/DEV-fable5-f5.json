@@ -1,0 +1,91 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "fable5-f5",
+  "candidate_file": "lfm2.5-2.6b-fable5-coding-agent-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T23:01:14.029Z",
+  "rows": [
+    {
+      "example_id": "dev-ret-01",
+      "class": "RETRIEVAL",
+      "domain": "software engineering",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 14,
+      "answer": "IMPLEMENTATION",
+      "latency_ms": 19879
+    },
+    {
+      "example_id": "dev-ret-02",
+      "class": "RETRIEVAL",
+      "domain": "Git",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 480,
+      "answer": "I don't have access to git history or a commit log of this workspace — the files listed in [CANONICAL PROJECT STATE] are project metadata (objective, workflow stage), not actual commit diffs. There is no canonical eviden",
+      "latency_ms": 53908
+    },
+    {
+      "example_id": "dev-norm-01",
+      "class": "COMMUNICATION",
+      "domain": "non-Git projects",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 118,
+      "answer": "Yes. The project keeps history in `.aide/cipher-state.jsonl` (the persisted state) and has an index at `.aide/index/`.",
+      "latency_ms": 37533
+    },
+    {
+      "example_id": "dev-norm-02",
+      "class": "COMMUNICATION",
+      "domain": "web",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 245,
+      "answer": "No canonical evidence exists for a \"deploy\" approval workflow — there are no procedures listed, and nothing in the project state describes approving or deploying anything. The task doesn't match the objective (implementi",
+      "latency_ms": 63942
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "total": 4,
+    "by_class": {
+      "RETRIEVAL": {
+        "passed": 1,
+        "total": 2
+      },
+      "COMMUNICATION": {
+        "passed": 2,
+        "total": 2
+      }
+    },
+    "critical_failures": [],
+    "verdict": "PROMOTE_TO_FULL_DEV"
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

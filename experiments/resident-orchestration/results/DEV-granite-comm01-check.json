@@ -1,0 +1,41 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "granite-comm01-check",
+  "candidate_file": "granite-3.3-2b-instruct-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T14:25:05.606Z",
+  "rows": [
+    {
+      "example_id": "dev-comm-01",
+      "class": "COMMUNICATION",
+      "domain": "release work",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 106,
+      "answer": "The release status is currently \"pending verification\". I need further information to approve the release.",
+      "latency_ms": 46960
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "total": 1,
+    "by_class": {
+      "COMMUNICATION": {
+        "passed": 1,
+        "total": 1
+      }
+    },
+    "critical_failures": [],
+    "verdict": "PROMOTE_TO_FULL_DEV"
+  },
+  "containment": [
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    }
+  ]
+}

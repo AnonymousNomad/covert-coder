@@ -1,0 +1,244 @@
+{
+  "schema": "condition-e-results-v1",
+  "at": "2026-09-24T19:32:41.228Z",
+  "models_present": [
+    "Liquid QAD",
+    "Granite 3.3 2B",
+    "SmolLM3 3B",
+    "Phi-4-mini",
+    "Terminal-SFT",
+    "Macaw"
+  ],
+  "matrix": {
+    "Liquid QAD": {
+      "screen": {
+        "a": 8,
+        "d": 14,
+        "e1": 13,
+        "e2": 15
+      },
+      "compound": {
+        "a": [
+          false,
+          false
+        ],
+        "d": [
+          false,
+          false
+        ],
+        "e1": [
+          false,
+          false
+        ],
+        "e2": [
+          false,
+          false
+        ]
+      },
+      "compound_pass_e1": 0,
+      "compound_pass_e2": 0,
+      "claims": {
+        "d": 3,
+        "e1": 2
+      },
+      "control_regressions": [
+        "dev-claim-01",
+        "dev-claim-02"
+      ],
+      "e1_errors": [
+        "dev-tool-02"
+      ]
+    },
+    "Granite 3.3 2B": {
+      "screen": {
+        "a": 9,
+        "d": 15,
+        "e1": 14,
+        "e2": 14
+      },
+      "compound": {
+        "a": [
+          false,
+          false
+        ],
+        "d": [
+          false,
+          false
+        ],
+        "e1": [
+          false,
+          false
+        ],
+        "e2": [
+          false,
+          false
+        ]
+      },
+      "compound_pass_e1": 0,
+      "compound_pass_e2": 0,
+      "claims": {
+        "d": 3,
+        "e1": 3
+      },
+      "control_regressions": [
+        "dev-comm-02"
+      ],
+      "e1_errors": []
+    },
+    "SmolLM3 3B": {
+      "screen": {
+        "a": 10,
+        "d": 15,
+        "e1": 13,
+        "e2": 15
+      },
+      "compound": {
+        "a": [
+          false,
+          false
+        ],
+        "d": [
+          false,
+          false
+        ],
+        "e1": [
+          false,
+          false
+        ],
+        "e2": [
+          false,
+          true
+        ]
+      },
+      "compound_pass_e1": 0,
+      "compound_pass_e2": 1,
+      "claims": {
+        "d": 2,
+        "e1": 1
+      },
+      "control_regressions": [
+        "dev-route-01",
+        "dev-claim-04"
+      ],
+      "e1_errors": []
+    },
+    "Phi-4-mini": {
+      "screen": {
+        "a": 9,
+        "d": 15,
+        "e1": 15,
+        "e2": 14
+      },
+      "compound": {
+        "a": [
+          false,
+          false
+        ],
+        "d": [
+          false,
+          false
+        ],
+        "e1": [
+          false,
+          false
+        ],
+        "e2": [
+          false,
+          false
+        ]
+      },
+      "compound_pass_e1": 0,
+      "compound_pass_e2": 0,
+      "claims": {
+        "d": 2,
+        "e1": 2
+      },
+      "control_regressions": [
+        "dev-auth-02"
+      ],
+      "e1_errors": []
+    },
+    "Terminal-SFT": {
+      "screen": {
+        "a": 10,
+        "d": 11,
+        "e1": 15,
+        "e2": 14
+      },
+      "compound": {
+        "a": [
+          false,
+          false
+        ],
+        "d": [
+          false,
+          false
+        ],
+        "e1": [
+          false,
+          false
+        ],
+        "e2": [
+          false,
+          false
+        ]
+      },
+      "compound_pass_e1": 0,
+      "compound_pass_e2": 0,
+      "claims": {
+        "d": 1,
+        "e1": 3
+      },
+      "control_regressions": [
+        "dev-auth-03",
+        "dev-ret-01"
+      ],
+      "e1_errors": []
+    },
+    "Macaw": {
+      "screen": {
+        "a": 7,
+        "d": 15,
+        "e1": 14,
+        "e2": 15
+      },
+      "compound": {
+        "a": [
+          false,
+          false
+        ],
+        "d": [
+          false,
+          false
+        ],
+        "e1": [
+          false,
+          true
+        ],
+        "e2": [
+          false,
+          true
+        ]
+      },
+      "compound_pass_e1": 1,
+      "compound_pass_e2": 1,
+      "claims": {
+        "d": 4,
+        "e1": 3
+      },
+      "control_regressions": [
+        "dev-claim-01",
+        "dev-route-02",
+        "dev-comm-02",
+        "dev-norm-02"
+      ],
+      "e1_errors": [
+        "dev-claim-01"
+      ]
+    }
+  },
+  "compound_families_with_pass": 1,
+  "compound_families_with_pass_e2": 2,
+  "verdict": "MODEL_SPECIFIC_INTERACTION",
+  "note": "A and D columns frozen; E1 adds the obligation graph, E2 adds the deterministic sequencer. Apparatus error rows recorded per model."
+}

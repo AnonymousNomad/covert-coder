@@ -26,6 +26,9 @@ import {
 import { GitService } from '../../../node/src/services/git-service.mjs';
 
 function mapGitError(error: unknown): RouteError {
+  // Route-thrown typed errors are already truthful; message heuristics must
+  // never re-map them (an unborn push is a 409 state, not a blame failure).
+  if (error instanceof RouteError) return error;
   const message = String((error as Error)?.message ?? error);
   if ((error as Error)?.name === 'PATH_ESCAPE') return new RouteError('BAD_REQUEST', message);
   if ((error as Error)?.name === 'EMPTY_MESSAGE') return new RouteError('BAD_REQUEST', 'commit message must not be empty');
@@ -97,6 +100,11 @@ export function routesForGit(workspaceRoot: string): Route[] {
       }) },
     { method: 'POST', path: '/api/git/push', body: GitPushRequest, response: GitPushResponse, handler: wrap(async ({ body }) => {
         const remote = (body as { remote?: string }).remote ?? 'origin';
+        // A brand-new project is a normal state, not an internal failure: an
+        // unborn repository (no commits) has nothing to push and is reported
+        // as a first-class state instead of a generic 500.
+        const state = await git.status();
+        if (state.oid === '(initial)') throw new RouteError('CONFLICT', 'repository has no commits yet — nothing to push', { reason: 'UNBORN_REPOSITORY' });
         const current = await git.currentBranch();
         const branch = (body as { branch?: string }).branch ?? current;
         if (!branch) throw new RouteError('BAD_REQUEST', 'no branch to push');

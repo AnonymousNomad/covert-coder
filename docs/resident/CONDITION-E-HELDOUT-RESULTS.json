@@ -1,0 +1,53 @@
+{
+  "schema": "heldout-summary-v1",
+  "at": "2026-09-24T19:32:41.254Z",
+  "treatment": "e2",
+  "models": {
+    "liq": {
+      "passed": 1,
+      "total": 8,
+      "critical_failures": [
+        "h-cmp-01"
+      ],
+      "errors": []
+    },
+    "granite": {
+      "passed": 4,
+      "total": 8,
+      "critical_failures": [],
+      "errors": []
+    },
+    "smollm3": {
+      "passed": 4,
+      "total": 8,
+      "critical_failures": [
+        "h-cmp-01"
+      ],
+      "errors": []
+    },
+    "phi4": {
+      "passed": 7,
+      "total": 8,
+      "critical_failures": [
+        "h-cmp-01"
+      ],
+      "errors": []
+    },
+    "terminal": {
+      "passed": 5,
+      "total": 8,
+      "critical_failures": [],
+      "errors": [
+        "h-cmp-04"
+      ]
+    },
+    "macaw": {
+      "passed": 4,
+      "total": 8,
+      "critical_failures": [],
+      "errors": [
+        "h-cmp-03"
+      ]
+    }
+  }
+}

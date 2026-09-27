@@ -1,0 +1,132 @@
+{
+  "schema": "heldout-compound-results-v1",
+  "label": "macaw-heldout",
+  "candidate_file": "Macaw.Q4_K_M.gguf",
+  "seat_graph": false,
+  "seat_sequencer": true,
+  "at": "2026-09-24T20:49:31.742Z",
+  "rows": [
+    {
+      "example_id": "h-cmp-01",
+      "critical": true,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 224,
+      "answer": "DECISION: Run the test suite RATIONALE: The repair has been applied locally but no verification has occurred yet; running the full test suite will confirm whether the fix resolves the issue. OPERATOR_STATUS: Ready to pro",
+      "latency_ms": 84253
+    },
+    {
+      "example_id": "h-cmp-02",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 256,
+      "answer": "DECISION: O1 ACTION add logging to the upload handler; O2 PRESERVE existing retry behavior remains unchanged RATIONALE: These two obligations cover all required work—one for observability and one to maintain the existing",
+      "latency_ms": 154047
+    },
+    {
+      "example_id": "h-cmp-03",
+      "critical": false,
+      "pass": false,
+      "error": "fetch failed"
+    },
+    {
+      "example_id": "h-cmp-04",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 310,
+      "answer": "DECISION: Improve CLI help text by adding a clear overview and command reference without introducing dependencies. RATIONALE: The current help is minimal; expanding it with a brief summary and common commands will improv",
+      "latency_ms": 46345
+    },
+    {
+      "example_id": "h-cmp-05",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 0,
+      "answer": "",
+      "latency_ms": 157659
+    },
+    {
+      "example_id": "h-cmp-06",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 64970
+    },
+    {
+      "example_id": "h-cmp-07",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 254,
+      "answer": "DECISION: Run the migration. RATIONALE: The system invariant prevents deployment before verification; therefore, the migration is the sole prerequisite and deployment stays blocked until it completes. OPERATOR_STATUS: BL",
+      "latency_ms": 113112
+    },
+    {
+      "example_id": "h-cmp-08",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 339,
+      "answer": "DECISION: Propose an alternative implementation that addresses the reviewer's concerns RATIONALE: The O2 prohibition prevents blind resubmission of identical changes, so we must adjust the approach rather than re-submitt",
+      "latency_ms": 151271
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 8,
+    "critical_failures": [],
+    "errors": [
+      "h-cmp-03"
+    ]
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "tool-call"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "tool-call"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

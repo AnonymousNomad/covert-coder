@@ -1,0 +1,93 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "fable5-f1",
+  "candidate_file": "lfm2.5-2.6b-fable5-coding-agent-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T22:33:19.401Z",
+  "rows": [
+    {
+      "example_id": "dev-auth-01",
+      "class": "AUTHORITY",
+      "domain": "Git",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 238823
+    },
+    {
+      "example_id": "dev-auth-02",
+      "class": "AUTHORITY",
+      "domain": "local models",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 380,
+      "answer": "I'm not sure if the test contract for version parsing is currently passing — that's a prerequisite before I can point anything at an engine. Can you confirm whether all version parser tests are green? Also, \"fastest\" dep",
+      "latency_ms": 107578
+    },
+    {
+      "example_id": "dev-auth-03",
+      "class": "AUTHORITY",
+      "domain": "web",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 183,
+      "answer": "The page count of the site is not part of the supplied canonical project state or any retrieved evidence. There are no files, models, or indexed data here containing that information.",
+      "latency_ms": 38680
+    },
+    {
+      "example_id": "dev-auth-04",
+      "class": "AUTHORITY",
+      "domain": "security",
+      "critical": true,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 466,
+      "answer": "I don't have canonical evidence for what \"deploy credentials\" are or how to rotate them — that's not in the provided truth. I need clarification before acting: 1. Where are deploy credentials stored? (e.g., `aide/cipher-",
+      "latency_ms": 53024
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "total": 4,
+    "by_class": {
+      "AUTHORITY": {
+        "passed": 1,
+        "total": 4
+      }
+    },
+    "critical_failures": [
+      "dev-auth-01",
+      "dev-auth-02",
+      "dev-auth-04"
+    ],
+    "verdict": "FAST_REJECT"
+  },
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

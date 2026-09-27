@@ -1,0 +1,114 @@
+{
+  "frozen_at": "2026-09-22T11:18:54.164Z",
+  "files": [
+    {
+      "file": "results/overnight-soak.json",
+      "bytes": 38886,
+      "sha256": "8f2fb6d6454dd5aaf5dbd0bec4f2554edd17b895633445bc9eb3a7df898e430e",
+      "readable": true
+    },
+    {
+      "file": "results/overnight-soak-journal.jsonl",
+      "bytes": 4997,
+      "sha256": "b70fec7598e11c4053c6ba5acf1d781eae9f08548902a4ae2e287ba962d7f1ee",
+      "readable": true
+    },
+    {
+      "file": "results/overnight-stream-soak.json",
+      "bytes": 11654,
+      "sha256": "12ac8d88bde63222949ca58f706b26062cf4b14c281d6e1237f7f645a9e2a5fd",
+      "readable": true
+    },
+    {
+      "file": "results/post-soak-restart-continuation.json",
+      "bytes": 2289,
+      "sha256": "a58f68cf40fe64078e2d74bd2f5878dc8dc6bf1aa77fb79f3267f4a6164dc93c",
+      "readable": true
+    },
+    {
+      "file": "results/lifecycle-probe.json",
+      "bytes": 537,
+      "sha256": "921d71786804204db1d191b76d09c8304f06bbff7dd06854ea7507392633b1f4",
+      "readable": true
+    },
+    {
+      "file": "results/M6-streamed-acceptance.json",
+      "bytes": 5843,
+      "sha256": "866c4a8a67eece51801f4fc5e5ec80be138821feb21bb60f9c51726f6abc7b59",
+      "readable": true
+    },
+    {
+      "file": "results/M1-plan-coder-review.json",
+      "bytes": 10548,
+      "sha256": "9a1509b9b6f73f35a4895fa6dc43deb783a5c9ee53f2ce2fc019256c894c412e",
+      "readable": true
+    },
+    {
+      "file": "results/M2M3-restart-continuity-failure-recovery.json",
+      "bytes": 10785,
+      "sha256": "5a6a098773d64fa37232970a00ce40394d8bd0d18553e46c58509bd7e559713c",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/MISSION.json",
+      "bytes": 3521,
+      "sha256": "15d3023a32f230c7d5a7105446f5725c92d4e31a8053c5dedda0d11d30579e23",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/replay.mjs",
+      "bytes": 4074,
+      "sha256": "0a63b42b5693070fb74cbbaeaeab010b369fae31f491b434f30f5ed33fa63b91",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/REPLAY.md",
+      "bytes": 3789,
+      "sha256": "ffc7858d4e4f3b80787dedd46e06dce4a3d391cebf4bae859b7cdcc212fecd43",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/PROJECT-SNAPSHOT/package.json",
+      "bytes": 150,
+      "sha256": "9923213004ed63851568f2b2ab9b15f5acc5dc46874e1c00a2acccffbb11036f",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/PROJECT-SNAPSHOT/PROJECT.md",
+      "bytes": 184,
+      "sha256": "365d3752a617f2c4e0424606dc5b235f4aef25bd2bd58df1fb4bd696217a9777",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/PROJECT-SNAPSHOT/src/version.mjs",
+      "bytes": 117,
+      "sha256": "8be574abb6b2a4fd4332367381bb38ecf5752f591b6e7150c9526ddfcf571793",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/PROJECT-SNAPSHOT/test/version.test.mjs",
+      "bytes": 566,
+      "sha256": "7e65b816d397567da6179a47530cb3e242b99ddccca57f976ed5d0ce16e22741",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/PROJECT-SNAPSHOT/.aide/workflow/state.json",
+      "bytes": 394,
+      "sha256": "7b49cd4e7834a497172575e54a34d6844cff36d81ce42160f959ec82aec17e5b",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/PROJECT-SNAPSHOT/.aide/orch/PROJECT_STATE.md",
+      "bytes": 260,
+      "sha256": "36dac93fe5ae4ec1437793c206226a94ee36350e6ad42d84c957515617664410",
+      "readable": true
+    },
+    {
+      "file": "frozen/provider-switch-control/PROJECT-SNAPSHOT/.aide/orch/continuity.jsonl",
+      "bytes": 2402,
+      "sha256": "d3fcb0019e5b1fdff65b98b0e62864f17cc1520a796fd1c49287d11ff2fce650",
+      "readable": true
+    }
+  ],
+  "refreshed_at": "2026-09-22T11:19:42.415Z"
+}

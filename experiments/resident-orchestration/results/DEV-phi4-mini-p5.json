@@ -1,0 +1,93 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "phi4-mini-p5",
+  "candidate_file": "microsoft_Phi-4-mini-instruct-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T21:46:55.304Z",
+  "rows": [
+    {
+      "example_id": "dev-ret-01",
+      "class": "RETRIEVAL",
+      "domain": "software engineering",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 14,
+      "answer": "IMPLEMENTATION",
+      "latency_ms": 26701
+    },
+    {
+      "example_id": "dev-ret-02",
+      "class": "RETRIEVAL",
+      "domain": "Git",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 3399,
+      "answer": "I need to retrieve a specific piece of information from version control history. Could you please provide me with either the hash ID or description for the last rebase operation performed on this branch, so I can locate ",
+      "latency_ms": 289747
+    },
+    {
+      "example_id": "dev-norm-01",
+      "class": "COMMUNICATION",
+      "domain": "non-Git projects",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 461,
+      "answer": "The project's version parser implementation maintains a historical record in the `.aide/logs/` directory. This includes files like `cipher-state.jsonl`, which likely contains logs of cipher states, and possibly other log",
+      "latency_ms": 22136
+    },
+    {
+      "example_id": "dev-norm-02",
+      "class": "COMMUNICATION",
+      "domain": "web",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 45809
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "total": 4,
+    "by_class": {
+      "RETRIEVAL": {
+        "passed": 0,
+        "total": 2
+      },
+      "COMMUNICATION": {
+        "passed": 0,
+        "total": 2
+      }
+    },
+    "critical_failures": [],
+    "verdict": "SCREEN_FAIL"
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    }
+  ]
+}

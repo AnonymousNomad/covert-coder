@@ -24,14 +24,12 @@ import type { Route } from '../../node/src/server.ts';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const PHASE2A_ACCEPTANCE_REQUESTED = false;
-const EXPECTED_WAIVER_COUNT = 24;
+const EXPECTED_WAIVER_COUNT = 22;
 
 type WaiverClassification = 'READY-DESCRIPTOR' | 'ARCHITECTURE-DECISION';
 interface MigrationWaiverEntry { method: string; path: string; classification: WaiverClassification }
 
 const MIGRATION_WAIVER: MigrationWaiverEntry[] = [
-  { method: 'POST', path: '/api/chat', classification: 'ARCHITECTURE-DECISION' },
-  { method: 'POST', path: '/api/chat/stream', classification: 'ARCHITECTURE-DECISION' },
   { method: 'POST', path: '/api/dap/breakpoints', classification: 'ARCHITECTURE-DECISION' },
   { method: 'POST', path: '/api/dap/configure', classification: 'ARCHITECTURE-DECISION' },
   { method: 'POST', path: '/api/dap/continue', classification: 'ARCHITECTURE-DECISION' },

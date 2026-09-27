@@ -55,8 +55,14 @@ test.afterEach(async () => {
 
 test('boots and shows daemon status', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#title')).toContainText('AIDE \u2014');
-  await expect(page.locator('#status-dot')).toHaveClass(/ok/);
+  // Product identity moved from the retired #title to the topbar banner
+  // (COVERT / CODER); daemon reachability is the topbar daemon chip state.
+  await expect(page).toHaveTitle(/covert/i);
+  const banner = page.getByRole('banner');
+  await expect(banner).toContainText('COVERT');
+  await expect(banner).toContainText('CODER');
+  await expect(page.locator('[data-chip="daemon"]')).toHaveAttribute('data-state', 'ok');
+  await expect(page.locator('[data-chip-label="daemon"]')).toContainText('DAEMON:');
   await expect(page.locator('#status-bar')).toContainText(/daemon|ready/);
 });
 

@@ -1,0 +1,40 @@
+{
+  "schema": "resident-runtime-profiles-v1",
+  "at": "2026-09-23T01:41:03.384Z",
+  "profiles": [
+    {
+      "model_id": "lfm2.5-2.6b-qad-q4_0",
+      "version": 1,
+      "context_size": 4096,
+      "generation_reserve": 2048,
+      "temperature": 0.1,
+      "top_k": 50,
+      "top_p": null,
+      "min_p": null,
+      "repeat_penalty": 1.1,
+      "jinja": true,
+      "reasoning": "native reasoning_content (thinking block)",
+      "tool_parser": "content-JSON proposals (no native tool_calls observed)",
+      "timeout_ms": 600000,
+      "threads": 4,
+      "ngl": 0,
+      "notes": "closure-wave profile; rejected baseline"
+    },
+    {
+      "model_id": "lfm2.5-1.2b-instruct-q8_0",
+      "version": 1,
+      "context_size": 4096,
+      "generation_reserve": 1024,
+      "temperature": 0.1,
+      "top_k": 50,
+      "repeat_penalty": 1.1,
+      "jinja": true,
+      "reasoning": "none observed",
+      "tool_parser": "content-JSON",
+      "timeout_ms": 600000,
+      "threads": 4,
+      "ngl": 0,
+      "notes": "control only"
+    }
+  ]
+}
