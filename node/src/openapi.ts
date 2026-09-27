@@ -126,6 +126,9 @@ import { WorkspaceService } from './services/workspace.ts';
 import { LspManager } from './services/lsp.ts';
 import { DapManager, type DapAdapterConfig } from './services/dap.ts';
 import { ModelRuntime } from './services/model-runtime.ts';
+import { BrokerModelRuntime, UNSLOTH_V1_QUALIFICATION } from './services/broker-model-runtime.ts';
+import { RuntimeBroker } from './services/runtime-adapter.ts';
+import { UnslothRuntimeAdapter } from './services/unsloth-runtime-adapter.ts';
 import { createHealthSupervisor } from './services/health-supervisor.ts';
 import { createReadinessService } from './services/readiness.ts';
 import { routesForReadiness } from './routes/readiness.ts';
@@ -232,7 +235,7 @@ export async function createDapManager(repoRoot: string, workspace: string, opti
 }
 
 export async function createModelRuntime(repoRoot: string, workspace: string, options: BuildRoutesOptions): Promise<ModelRuntime> {
-  const runtime = new ModelRuntime({
+  const runtime = new BrokerModelRuntime({
     workspace,
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
     ingestedPath: path.join(workspace, '.aide', 'ingested-models.json'),
@@ -242,7 +245,7 @@ export async function createModelRuntime(repoRoot: string, workspace: string, op
       const eventStatus = status === 'running' ? 'ready' : status === 'starting' ? 'loading' : status === 'stopped' ? 'stopped' : 'error';
       options.events?.publish('model', { id, status: eventStatus });
     }
-  });
+  }, new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), null, workspace), UNSLOTH_V1_QUALIFICATION);
   await runtime.load();
   return runtime;
 }

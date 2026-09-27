@@ -103,7 +103,9 @@ interface PythonCandidate {
   args: string[];
 }
 
-const ALLOWED_ARCHITECTURES = ['llama', 'qwen2'];
+// GGUF import is availability only. The qualified Liquid artifact reports lfm2;
+// admission/qualification remain separate from recognizing its file format.
+const ALLOWED_ARCHITECTURES = ['llama', 'qwen2', 'lfm2'];
 
 // Pure registration-filename validation shared by the HTTP descriptor (before
 // approval) and register() (at execution) so the approved target is the target
@@ -150,12 +152,10 @@ export class ModelRuntime {
     this.onStatusChange = options.onStatusChange ?? (() => {});
   }
 
-  async load(): Promise<void> {
-    // Wave 10A: reap stale OWNED engines before projecting inventory. Engines
-    // are spawned detached and can outlive a hard Covert shutdown (Windows
-    // TerminateProcess never runs shutdown hooks). Ownership proof is exact:
-    // PID + command line containing the registered model artifact path.
-    await this.sweepStaleEngines();
+  async load(options: { sweepLegacyEngines?: boolean } = {}): Promise<void> {
+    // Only the legacy engine owner may sweep its old processes. Canonical
+    // Unsloth inventory loading must not mutate legacy ownership records.
+    if (options.sweepLegacyEngines !== false) await this.sweepStaleEngines();
     const manifest = JSON.parse(await fs.readFile(this.manifestPath, 'utf8')) as { models?: Array<Record<string, unknown>> };
     for (const raw of manifest.models ?? []) {
       const entry = this.entryFromManifest(raw);
