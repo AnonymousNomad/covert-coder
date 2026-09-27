@@ -124,7 +124,9 @@ export class BrokerModelRuntime extends ModelRuntime {
           runtime_available: runtime,
           artifact_available: artifactAvailable,
           setup_required: !runtime || !profileCandidate,
-          setup_message: !runtime ? `Unsloth unavailable (${status.health}); install or repair the qualified runtime` :
+          setup_message: !runtime ? status.health === 'NOT_INSTALLED' ?
+            'Unsloth CLI not discovered; set AIDE_UNSLOTH_CLI to its absolute path and restart Covert, or install the qualified runtime' :
+            `Unsloth unavailable (${status.health}); install or repair the qualified runtime` :
             !artifactAvailable ? 'local model artifact unavailable' :
               !profileCandidate ? 'artifact or backend version is outside the qualified Unsloth V1 profile' : undefined,
           qualification: running ? 'accepted_hash_verified' : 'requires_start_preflight',

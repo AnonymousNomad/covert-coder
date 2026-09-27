@@ -105,3 +105,41 @@ test('product inventory starts, chats, streams and stops only through canonical 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('unavailable Unsloth CLI gives scoped setup guidance in model status', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-broker-setup-'));
+  const modelDir = path.join(dir, 'models');
+  const artifact = path.join(modelDir, 'fixture.gguf');
+  await mkdir(modelDir);
+  await writeFile(artifact, 'model fixture');
+  const manifestPath = path.join(modelDir, 'manifest.json');
+  await writeFile(manifestPath, JSON.stringify({ models: [{
+    id: 'fixture', name: 'Fixture', status: 'ready', roles: ['chat'], file: artifact,
+    endpoint: 'http://127.0.0.1:18888/v1', model: 'fixture.gguf',
+    artifact_uri: 'local://fixture.gguf', context_tokens: 2048
+  }] }));
+  const unavailable: RuntimeStatusResponseT = {
+    contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: null, engine: null,
+    endpoint: 'http://127.0.0.1:18888', port: 18888, pid: null, started_at: null,
+    health: 'NOT_INSTALLED', ownership: 'UNKNOWN', loaded_model: null,
+    capabilities: unknownCapabilities(), metrics: unknownMetrics(),
+    last_error: null, fallback_event_id: null, updated_at: new Date().toISOString()
+  };
+  const adapter = { backendId: 'UNSLOTH', status: async () => unavailable } as unknown as RuntimeAdapter;
+  const runtime = new BrokerModelRuntime({
+    workspace: dir, modelDir, manifestPath,
+    ingestedPath: path.join(dir, '.aide', 'ingested-models.json')
+  }, new RuntimeBroker(adapter, null, dir), {
+    artifactName: 'fixture.gguf', artifactBytes: 'model fixture'.length,
+    artifactSha256: createHash('sha256').update('model fixture').digest('hex'), backendVersion: '2026.9.11'
+  });
+  try {
+    await runtime.load();
+    const state = await runtime.status();
+    assert.equal(state.runtime, false);
+    assert.equal(state.models[0]?.setup_required, true);
+    assert.match(String(state.models[0]?.setup_message), /AIDE_UNSLOTH_CLI/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
