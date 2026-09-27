@@ -1,4 +1,4 @@
-﻿import { promises as fs, existsSync, createReadStream, readFileSync } from 'node:fs';
+import { promises as fs, existsSync, createReadStream, readFileSync } from 'node:fs';
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import net from 'node:net';
 import path from 'node:path';
@@ -467,7 +467,7 @@ export class ModelRuntime {
         // Chat-template parity repair (Resident root-cause investigation,
         // 2026-09-22): GGUFs whose chat template uses Jinja macros (e.g. the
         // LFM2.5/QAD Resident candidate) degrade under the legacy template
-        // renderer â€” the model reasons longer and its final content is
+        // renderer — the model reasons longer and its final content is
         // truncated to empty at the same generation budget. `--jinja` renders
         // the embedded template exactly. A/B evidence: same task, reserve 1024,
         // without --jinja finish=length content=0; with --jinja finish=stop
@@ -495,7 +495,7 @@ export class ModelRuntime {
         binaryArgs[5] = String(port);
       }
       // Doctrine (aide-engine-lifecycle-doctrine): re-check memory right
-      // before spawn â€” the gate above ran before endpoint verification and a
+      // before spawn — the gate above ran before endpoint verification and a
       // concurrent engine load can have consumed RAM since. A killed engine
       // releases commit asynchronously; spawning a multi-GB mmap load into
       // that transient hole causes commit exhaustion and machine-wide thrash
@@ -526,7 +526,7 @@ export class ModelRuntime {
         });
         if (early === null) break; // survived the danger window
         if (attempt === 2) {
-          throw new ModelRuntimeError('CHILD_FAILED', `${model.name} engine exited immediately (code ${early.code}${early.signal ? `, signal ${early.signal}` : ''}). stderr tail: ${stderrTail.slice(-400) || '(empty â€” likely killed externally; audit the machine for /IM kill logic; see .aide/logs/engine-' + id + '.err.log)'}`);
+          throw new ModelRuntimeError('CHILD_FAILED', `${model.name} engine exited immediately (code ${early.code}${early.signal ? `, signal ${early.signal}` : ''}). stderr tail: ${stderrTail.slice(-400) || '(empty — likely killed externally; audit the machine for /IM kill logic; see .aide/logs/engine-' + id + '.err.log)'}`);
         }
         this.logger?.warn('engine died early; draining memory and retrying once', { id, code: early.code, signal: early.signal });
         await this.waitForMemoryDrain();
@@ -706,7 +706,7 @@ export class ModelRuntime {
       const nCtx = Number(props?.default_generation_settings?.n_ctx);
       if (Number.isFinite(nCtx) && nCtx > 0) this.servedCtx.set(id, nCtx);
     } catch {
-      /* endpoint not up yet â€” keep previous value */
+      /* endpoint not up yet — keep previous value */
     }
   }
 
@@ -768,7 +768,7 @@ export class ModelRuntime {
     const started = Date.now();
     // Generation-budget repair (Resident root-cause closure, 2026-09-22): the
     // previous hard cap `Math.min(options.maxTokens ?? 512, 512)` silently
-    // truncated thinking-class models â€” the LFM2.5/QAD Resident candidate needs
+    // truncated thinking-class models — the LFM2.5/QAD Resident candidate needs
     // ~850-1100 tokens of reasoning before its final content, so every Covert
     // request (450/1000/1536) was capped at 512 and returned empty content with
     // finish_reason=length. The ceiling now derives from the model's served
@@ -891,7 +891,7 @@ export class ModelRuntime {
     if (response.status === 400) {
       // Overflow rescue (same semantics as chat()): refit to the effective
       // window and retry once. Streaming requests overflowed the audit's
-      // 3072 window hardest â€” scaffold + long prompt + 512 reserve.
+      // 3072 window hardest — scaffold + long prompt + 512 reserve.
       const reserve = Math.max(256, Math.floor(Math.min(options.maxTokens ?? 512, streamCeiling) / 2));
       const refit = this.refitForOverflow(id, messages, reserve);
       if (refit !== null && refit.length < messages.length) {
@@ -1001,7 +1001,7 @@ export class ModelRuntime {
 
   // Readiness poll parity with the legacy /api/model/ready: verify the
   // endpoint, warm it, report running/warming/conflict/not-ready. Never
-  // spawns â€” the cockpit polls this until ready, then calls start() which
+  // spawns — the cockpit polls this until ready, then calls start() which
   // adopts the verified server. Adoption bridge shares warmed/changed state.
   async isReady(id: string, timeoutMs = 5000): Promise<{ id: string; ready: boolean; status: 'running' | 'warming' | 'conflict' | 'not-ready'; endpoint: string; error?: string }> {
     const model = this.models.get(id);
@@ -1028,7 +1028,7 @@ export class ModelRuntime {
 
   // Register parity with the legacy /api/models/register: a downloaded GGUF in
   // the models directory becomes a ready engine. Persists to the TS dynamic
-  // store (ingested-models.json), NOT the checked-in manifest.json â€” the
+  // store (ingested-models.json), NOT the checked-in manifest.json — the
   // manifest stays pristine (git clean); the ingested store survives restarts.
   async register(options: { filename: string; repo_id?: string; quant_label?: string; context_tokens?: number }): Promise<{ id: string; status: string; endpoint: string }> {
     const rel = validateRegistrationFilename(this.modelDir, options.filename);
@@ -1163,7 +1163,7 @@ function nextFreePort(models: ReadonlyMap<string, ModelEntry>): number {
     try {
       used.add(Number(new URL(model.endpoint).port));
     } catch {
-      // malformed endpoint â€” ignore
+      // malformed endpoint — ignore
     }
   }
   let port = 8090;

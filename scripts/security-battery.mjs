@@ -104,7 +104,9 @@ async function testFacadeTestsStillPass() {
     });
     let stdout = '';
     child.stdout.on('data', d => stdout += d);
-    child.on('close', code => resolve(code === 0 && /pass \d+/.test(stdout) && !/fail [1-9]/.test(stdout)));
+    // The facade battery now pins 19 explicit cases, including envelope/error/health coverage.
+    // Keep exact test/pass/skip counts so deleting tests cannot pass as a healthy arbitrary N.
+    child.on('close', code => resolve(code === 0 && stdout.includes('tests 19') && stdout.includes('pass 19') && stdout.includes('fail 0') && stdout.includes('skipped 0')));
   });
 }
 

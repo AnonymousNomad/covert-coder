@@ -276,6 +276,66 @@ test('stream parity — governed stream releases only approved text (stubbed tra
   }
 });
 
+test('disabled containment refuses ungoverned non-stream chat', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-disabled-chat-'));
+  const previous = process.env[CONTAINMENT_ENV_FLAG];
+  const dirty = 'The install succeeded and the change is live.';
+  let generations = 0;
+  process.env[CONTAINMENT_ENV_FLAG] = '0';
+  try {
+    const router = {
+      async chat() { generations += 1; return { text: dirty, modelId: 'stub', timingMs: 1 }; },
+      async chatStream() { generations += 1; throw new Error('unexpected stream call'); }
+    };
+    const runtime = { refreshServedContext: async () => ({}), getEffectiveContext: () => 4096 };
+    const route = routeForChat(router as never, runtime as never, root, { governance: { getProjection: async () => ({ descriptors: [] }) } });
+    await assert.rejects(
+      async () => route.handler({ body: { modelId: 'stub', messages: [{ role: 'user', content: 'Install it.' }] } } as never),
+      (error: unknown) => error instanceof Error && /containment is disabled/i.test(error.message)
+    );
+    assert.equal(generations, 0, 'disabled containment must reject before model generation');
+  } finally {
+    if (previous === undefined) delete process.env[CONTAINMENT_ENV_FLAG];
+    else process.env[CONTAINMENT_ENV_FLAG] = previous;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('disabled containment refuses ungoverned streaming chat', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-disabled-stream-'));
+  const previous = process.env[CONTAINMENT_ENV_FLAG];
+  const dirty = 'The install succeeded and the change is live.';
+  const writes: string[] = [];
+  let generations = 0;
+  process.env[CONTAINMENT_ENV_FLAG] = '0';
+  const res = {
+    writeHead: () => undefined,
+    write: (chunk: string) => { writes.push(chunk); },
+    end: () => undefined,
+    on: () => undefined
+  };
+  try {
+    const router = {
+      async chat() { generations += 1; return { text: dirty, modelId: 'stub', timingMs: 1 }; },
+      async chatStream(_modelId: unknown, _messages: unknown, onDelta: (delta: string) => void) {
+        generations += 1;
+        onDelta(dirty);
+        return { modelId: 'stub', usedApprox: 0, dropped: 0, truncatedSystem: false };
+      }
+    };
+    const runtime = { refreshServedContext: async () => ({}), getEffectiveContext: () => 4096 };
+    const route = routeForChatStream(router as never, runtime as never, root);
+    await route.stream!({ body: { modelId: 'stub', messages: [{ role: 'user', content: 'Install it.' }] } } as never, res as never);
+    const events = writes.join('');
+    assert.ok(!events.includes(dirty), 'disabled containment must never release raw output');
+    assert.ok(events.includes('containment is disabled'), 'the stream must report why output was refused');
+    assert.equal(generations, 0, 'disabled containment must reject before model generation');
+  } finally {
+    if (previous === undefined) delete process.env[CONTAINMENT_ENV_FLAG];
+    else process.env[CONTAINMENT_ENV_FLAG] = previous;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
 test('logContainment — evidence journal preserves raw and normalized views', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-containment-'));
   try {

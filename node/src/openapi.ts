@@ -77,6 +77,7 @@ import { routesForAgent } from './routes/agent.ts';
 import { createAuditTrail } from './services/audit-trail.mjs';
 import { createWorkflowService } from './services/workflow-service.ts';
 import { createSkillsLoader } from './services/skills-loader.mjs';
+import { createResidentAwarenessProvider } from './services/resident-awareness-provider.mjs';
 import { routesForAudit } from './routes/audit.ts';
 import { routesForWorkflow } from './routes/workflow.ts';
 import { routesForAuthority } from './routes/authority.ts';
@@ -542,10 +543,18 @@ export async function buildRoutes(workspace: string, version: string, options: B
       if (!byokService.getConsent()) return null;
       return secretStore.getKey('huggingface') ?? null;
     });
+  // Resident Awareness owns the canonical projection used by output containment.
+  const awarenessProvider = createResidentAwarenessProvider({
+    workspace,
+    repoRoot,
+    continuity: async () => renderResidentContext(await residentService.context())
+  });
   const chatContextProviders = {
-    resident: async () => renderResidentContext(await residentService.context()),
-    skills: (task: string) => skillProvider(task)
+    ...(awarenessProvider.enabled ? {} : { resident: async () => renderResidentContext(await residentService.context()) }),
+    skills: (task: string) => skillProvider(task),
+    ...(awarenessProvider.enabled ? { awareness: awarenessProvider.provider } : {})
   };
+  const chatRoute = routeForChat(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders, governance: { getProjection: awarenessProvider.getProjection } });
   const core: Route[] = [
     ...routesForAuthority(),
     makeHealthRoute(workspace, version),
@@ -570,8 +579,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForRoutes(modelRouter),
     routeForRoute(modelRouter),
     routeForFit(),
-    routeForChat(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders }),
-    routeForChatStream(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders }),
+    chatRoute,
+    routeForChatStream(modelRouter, modelRuntime, workspace, { indexService, providers: chatContextProviders, governance: { getProjection: awarenessProvider.getProjection } }),
     routeForChatHistory(chatStore),
     routeForChatHistorySave(chatStore, workspace),
     routeForProvidersList(providerService),

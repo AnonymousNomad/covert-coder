@@ -119,7 +119,7 @@ test('end-to-end provider — authority directive loads the request-approval bod
 
 test('catalog revision — calibrated authority trigger coverage', async () => {
   const catalog = await loadResidentCatalog({ root: REPO });
-  assert.equal((catalog as { catalog_revision?: string }).catalog_revision, '5');
+  assert.equal((catalog as { catalog_revision?: string }).catalog_revision, '6');
   const approval = catalog.sops.find(sop => sop.id === 'resident.request-approval');
   assert.ok(approval);
   for (const trigger of ['install it', 'publish it', 'execute migration', 'destructive cleanup']) {

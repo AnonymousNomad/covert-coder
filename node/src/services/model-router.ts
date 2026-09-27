@@ -1,4 +1,4 @@
-﻿import type { ModelRuntime } from './model-runtime.ts';
+import type { ModelRuntime } from './model-runtime.ts';
 import type { ProviderService } from './providers.ts';
 import { BUILTIN_PROVIDERS } from './providers.ts';
 import { fitHistory } from './history-fit.ts';
@@ -95,7 +95,7 @@ export class ModelRouter {
       for (const model of provider.models) {
         routes.push({
           id: `cloud:${provider.id}:${model}`,
-          displayName: `${provider.name} Â· ${model}`,
+          displayName: `${provider.name} · ${model}`,
           providerType: 'cloud',
           baseUrl: provider.baseUrl,
           modelString: model,
@@ -224,7 +224,7 @@ export class ModelRouter {
   private async resolve(routeId: string): Promise<{ route: ModelRoute; selection: RouteSelection }> {
     const routes = await this.routes();
     // Accept bare manifest ids ('smollm2-360m-q8') as well as fully-qualified
-    // 'local:<id>' route ids â€” callers use both forms interchangeably.
+    // 'local:<id>' route ids — callers use both forms interchangeably.
     const direct = routes.find(entry => entry.id === routeId)
       ?? routes.find(entry => entry.id === `local:${routeId}`);
     if (direct === undefined) throw new RouterError('down', `unknown route ${routeId}`);
@@ -247,7 +247,7 @@ export class ModelRouter {
   private fitForRoute(route: ModelRoute, messages: ChatMessageT[], maxTokens: number | undefined): { fit: ReturnType<typeof fitHistory>; overflowTrimmed: boolean } {
     const modelId = route.providerType === 'local' ? route.id.slice('local:'.length) : null;
     // Prompt-truncation repair (closure wave, 2026-09-22): this used to pass
-    // `getEffectiveBudget(id, reserve)` â€” which is ALREADY context-minus-reserve â€”
+    // `getEffectiveBudget(id, reserve)` — which is ALREADY context-minus-reserve —
     // into fitHistory, which subtracts the reserve again, and then subtracted the
     // reserve a third time for a tail-trim check. With reserve >= context/2 the
     // check budget collapsed to 1 token and the NEWEST USER MESSAGE was silently

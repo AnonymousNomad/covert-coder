@@ -39,6 +39,20 @@ class FakeRuntime {
   }
 
   servedWindow: number | null = null;
+  recoverOnStart = new Set<string>();
+  startCalls = new Map<string, number>();
+  lastChatMessages: Array<{ role: string; content: string }> | null = null;
+  rejectOversized = false;
+
+  async start(id: string): Promise<void> {
+    this.startCalls.set(id, (this.startCalls.get(id) ?? 0) + 1);
+    if (!this.recoverOnStart.has(id)) throw new Error('fake runtime restart unavailable');
+    this.ready.add(id);
+  }
+
+  getEffectiveContext(id: string): number | null {
+    return this.ready.has(id) ? this.servedWindow : null;
+  }
 
   // Mirrors ModelRuntime.getEffectiveBudget: null until a served window has
   // been probed, otherwise effective window minus the completion reserve.
@@ -51,6 +65,11 @@ class FakeRuntime {
   }
 
   async chat(id: string, messages: Array<{ role: string; content: string }>): Promise<{ text: string; modelId: string; timingMs: number }> {
+    this.lastChatMessages = messages;
+    const entry = this.entries.find(candidate => candidate.id === id);
+    const context = this.servedWindow ?? entry?.context_tokens ?? 2048;
+    const promptTokens = messages.reduce((sum, message) => sum + Math.ceil(message.content.length / 4), 0);
+    if (this.rejectOversized && promptTokens + 512 > context) throw new Error('prompt exceeds served context');
     return { text: `local:${id}:${messages.length}`, modelId: id, timingMs: 1 };
   }
 
@@ -106,6 +125,15 @@ test('unstarted local models are unverified, not down', async () => {
   assert.equal(local.status, 'unverified', 'declared ready but not running');
 });
 
+test('routeForRole restarts an unresponsive local engine once before falling back', async () => {
+  const runtime = new FakeRuntime();
+  runtime.entries = [entry('a', 'ready', ['chat'])];
+  runtime.recoverOnStart.add('a');
+  const router = makeRouter(runtime, new FakeProviders());
+  const selection = await router.routeForRole('chat');
+  assert.equal(selection.modelId, 'local:a');
+  assert.equal(runtime.startCalls.get('a'), 1);
+});
 test('routeForRole returns the first ready model and reports a fallback when the first is down', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat']), entry('b', 'ready', ['chat'])];
@@ -203,17 +231,19 @@ test('chat fits history against the effective served window, not the declared co
   assert.ok(result.usedApprox <= (1024 - 512) + 8, 'history fit inside the effective window budget');
 });
 
-test('overflowTrimmed is set when the newest turn alone exceeds the budget', async () => {
+test('oversized newest turn stays intact for runtime admission to reject', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat'], 8192)];
   runtime.ready.add('a');
   runtime.servedWindow = 1024;
+  runtime.rejectOversized = true;
   const router = makeRouter(runtime, new FakeProviders());
-  const result = await router.chat('local:a', [
-    { role: 'user', content: 'z'.repeat(12000) }
-  ]);
-  assert.equal(result.overflowTrimmed, true, 'oversized newest turn is head-trimmed, not hard-failed');
-  assert.ok(result.usedApprox <= 512 + 8);
+  const oversized = 'z'.repeat(12000);
+  await assert.rejects(
+    () => router.chat('local:a', [{ role: 'user', content: oversized }]),
+    /prompt exceeds served context/
+  );
+  assert.equal(runtime.lastChatMessages?.at(-1)?.content, oversized, 'the router must preserve the newest user turn for runtime admission');
 });
 
 test('declared context is used when no served window has been probed', async () => {
