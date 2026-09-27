@@ -1,7 +1,7 @@
-# Covert Coder Operations — Model Engine
+# AIDE Operations — Model Engine
 
 Quick reference for bringing up, verifying, and tearing down the
-Covert Coder in-house model engine (llama-server.exe) on a development
+AIDE in-house model engine (llama-server.exe) on a development
 machine. For the production installer path, see
 `docs/INSTALL.md` (forthcoming).
 

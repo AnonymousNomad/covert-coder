@@ -1,6 +1,6 @@
-# Covert Coder Release Roadmap
+# AIDE Release Roadmap
 
-This roadmap converts external feedback into measurable release work. Covert Coder is
+This roadmap converts external feedback into measurable release work. AIDE is
 not presented as a finished IDE until the gates below pass on a clean install.
 
 ## Gate 1: Daily-Driver Workbench

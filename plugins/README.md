@@ -1,4 +1,4 @@
-# Covert Coder Plugins
+# AIDE Plugins
 
 Plugins are local, opt-in extensions. Discovery and manifest validation never
 execute plugin code. A plugin must declare its API version, commands, views,

@@ -1,4 +1,4 @@
-# Covert Coder Workbench Rebuild
+# AIDE Workbench Rebuild
 
 This document is the release gate for turning AIDE from a visual prototype into
 a dependable offline IDE. A rendered panel is not a feature until its complete
