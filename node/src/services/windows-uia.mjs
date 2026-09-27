@@ -623,7 +623,7 @@ const UIA_SCRIPT = [
   '        $dialogHandle = [IntPtr]::new([long]$payload.window_handle)',
   '        if ([CovertUiaNative]::WindowClass($dialogHandle) -cne \'#32770\' -or [CovertUiaNative]::GetOwnerPid($dialogHandle) -ne [uint32]$expected.pid) { throw \'UIA_FILE_PICKER_DIALOG_INVALID\' }',
   '        $rootInput = [string]$payload.selection_root; $fileInput = [string]$payload.file_path',
-  '        if ($rootInput -match \'(^|[\\/])\.\.([\\/]|$)\' -or $fileInput -match \'(^|[\\/])\.\.([\\/]|$)\') { throw \'UIA_FILE_OUTSIDE_ROOT\' }',
+  '        if ($rootInput -match \'(^|[\\/])\\.\\.([\\/]|$)\' -or $fileInput -match \'(^|[\\/])\\.\\.([\\/]|$)\') { throw \'UIA_FILE_OUTSIDE_ROOT\' }',
   '        $root = [IO.Path]::GetFullPath($rootInput).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)',
   '        $file = [IO.Path]::GetFullPath($fileInput)',
   '        if (-not [string]::Equals($root, $rootInput.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar), [StringComparison]::OrdinalIgnoreCase) -or -not [string]::Equals($file, $fileInput, [StringComparison]::OrdinalIgnoreCase)) { throw \'UIA_FILE_OUTSIDE_ROOT\' }',

@@ -118,7 +118,7 @@ test('UIA helper binds process identity, sends only bounded payload on stdin, an
     const script = buildWindowsUiaCommand(request, identity);
     assert.match(script, /Assert-TargetIdentity/);
     assert.match(script, /Assert-TargetWindow/);
-    assert.match(script, /if \(\$foreground -ne \[long\]\$payload\.window_handle\) \{ throw \'UIA_FOCUS_LOST\' \}/);
+    assert.match(script, /if \(\$foreground -ne \[long\]\$payload\.window_handle\) \{ throw 'UIA_FOCUS_LOST' \}/);
     assert.match(script, /TogglePattern/);
     assert.match(script, /Assert-LeasedWindow/);
     assert.match(script, /\$envelope\.identity/);
