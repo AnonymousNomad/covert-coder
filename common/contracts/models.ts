@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const ModelState = z.enum(['ready', 'running', 'starting', 'stopped', 'pending', 'experimental', 'error']);
+export const ModelQualification = z.enum(['accepted_hash_verified', 'requires_start_preflight']);
 
 export const ModelStatusEntry = z
   .object({
@@ -13,6 +14,7 @@ export const ModelStatusEntry = z
     artifact_available: z.boolean(),
     setup_required: z.boolean(),
     setup_message: z.string().optional(),
+    qualification: ModelQualification.optional(),
     ingested: z.boolean().optional()
   })
   .strict();

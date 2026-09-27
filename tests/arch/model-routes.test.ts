@@ -61,6 +61,16 @@ test('GET /api/models/status lists the bundled models through the envelope', asy
   assert.ok(qwen.endpoint.startsWith('http://127.0.0.1:'));
 });
 
+test('GET /api/models/status exposes bounded Unsloth qualification through its response contract', async () => {
+  const response = await owner.request('/api/models/status');
+  assert.equal(response.status, 200);
+  const envelope = Envelope.safeParse(await response.json());
+  assert.equal(envelope.success, true);
+  if (!envelope.success || !envelope.data.ok) return;
+  const payload = envelope.data.data as { models: { qualification?: string }[] };
+  assert.ok(payload.models.some(model => model.qualification === 'requires_start_preflight'));
+});
+
 test('POST /api/models/start rejects an unknown model with CHILD_FAILED for approved callers', async () => {
   const body = { id: 'does-not-exist' };
   const anonymous = await fetch(`${base}/api/models/start`, {

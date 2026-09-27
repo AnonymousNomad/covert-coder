@@ -14303,6 +14303,13 @@
                           "setup_message": {
                             "type": "string"
                           },
+                          "qualification": {
+                            "type": "string",
+                            "enum": [
+                              "accepted_hash_verified",
+                              "requires_start_preflight"
+                            ]
+                          },
                           "ingested": {
                             "type": "boolean"
                           }
