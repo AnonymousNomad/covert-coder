@@ -28,6 +28,7 @@ test('product inventory starts, chats, streams and stops only through canonical 
   let loaded: RuntimeModelIdentityT | null = null;
   let health: RuntimeStatusResponseT['health'] = 'STOPPED';
   let ownership: RuntimeStatusResponseT['ownership'] = 'UNKNOWN';
+  let statusReads = 0;
   const status = (): RuntimeStatusResponseT => ({
     contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: '2026.9.11', engine: 'vulkan',
     endpoint: 'http://127.0.0.1:18888', port: 18888, pid: health === 'HEALTHY' ? 12 : null,
@@ -37,7 +38,7 @@ test('product inventory starts, chats, streams and stops only through canonical 
   });
   const adapter = {
     backendId: 'UNSLOTH', discover: async () => {}, health: async () => health,
-    status: async () => status(), capabilities: unknownCapabilities,
+    status: async () => { statusReads += 1; return status(); }, capabilities: unknownCapabilities,
     models: async () => loaded === null ? [] : [loaded],
     load: async (request: { modelId: string; modelPath: string; contextTokens: number }) => {
       calls.push(`load:${request.modelId}:${request.contextTokens}`);
@@ -71,6 +72,10 @@ test('product inventory starts, chats, streams and stops only through canonical 
   });
   try {
     await runtime.load();
+    const readsBeforeProbe = statusReads;
+    await runtime.verifyEndpointModel('fixture');
+    await runtime.verifyEndpointModel('fixture');
+    assert.equal(statusReads - readsBeforeProbe, 1, 'read-only model probes share one brief runtime snapshot');
     assert.equal(runtime.get('fixture')?.endpoint, 'http://127.0.0.1:18888/v1', 'authority target must bind the canonical Unsloth endpoint');
     assert.equal(await readFile(legacyLedger, 'utf8'), legacyEngine, 'Unsloth inventory load must not sweep legacy engine ownership');
     assert.equal((await runtime.status()).models[0]?.status, 'ready');

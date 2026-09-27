@@ -24,6 +24,7 @@ export const UNSLOTH_V1_QUALIFICATION: LocalRuntimeQualification = {
 export class BrokerModelRuntime extends ModelRuntime {
   private readonly broker: RuntimeBroker;
   private readonly qualification: LocalRuntimeQualification;
+  private observedStatusCache: { status: RuntimeStatusResponseT; at: number } | null = null;
 
   constructor(options: ModelRuntimeOptions, broker: RuntimeBroker, qualification: LocalRuntimeQualification) {
     super(options);
@@ -60,6 +61,18 @@ export class BrokerModelRuntime extends ModelRuntime {
     return this.broker.status();
   }
 
+  private async observedStatus(): Promise<RuntimeStatusResponseT> {
+    const cached = this.observedStatusCache;
+    if (cached !== null && Date.now() - cached.at < 2_000) return cached.status;
+    const status = await this.activeStatus();
+    this.observedStatusCache = { status, at: Date.now() };
+    return status;
+  }
+
+  private invalidateObservedStatus(): void {
+    this.observedStatusCache = null;
+  }
+
   private isLoaded(id: string, status: RuntimeStatusResponseT): boolean {
     return status.backend === 'UNSLOTH' && status.version === this.qualification.backendVersion &&
       status.health === 'HEALTHY' &&
@@ -92,7 +105,7 @@ export class BrokerModelRuntime extends ModelRuntime {
   }
 
   override async status(): Promise<{ runtime: boolean; models: Array<Record<string, unknown>> }> {
-    const status = await this.activeStatus();
+    const status = await this.observedStatus();
     const runtime = status.backend === 'UNSLOTH' && (status.health === 'STOPPED' || status.health === 'HEALTHY');
     return {
       runtime,
@@ -139,6 +152,7 @@ export class BrokerModelRuntime extends ModelRuntime {
     }
     await this.verifyQualifiedArtifact(model.file);
     await this.broker.load({ modelId: id, modelPath: path.resolve(model.file), displayName: model.name, contextTokens: model.context_tokens }, true);
+    this.invalidateObservedStatus();
     const status = await this.activeStatus();
     const endpoint = this.endpointFor(status);
     if (!this.isLoaded(id, status) || endpoint === null) throw new ModelRuntimeError('CHILD_FAILED', 'Unsloth did not confirm the loaded model and endpoint');
@@ -154,16 +168,18 @@ export class BrokerModelRuntime extends ModelRuntime {
     if (!this.isLoaded(id, status)) return { id, status: 'stopped' };
     await this.broker.unload(id, true);
     if (status.ownership === 'COVERT_OWNED') await this.broker.shutdown(true);
+    this.invalidateObservedStatus();
     return { id, status: 'stopped' };
   }
 
   override async stopAll(): Promise<void> {
     const status = await this.activeStatus();
     if (status.ownership === 'COVERT_OWNED') await this.broker.shutdown(true);
+    this.invalidateObservedStatus();
   }
 
   override async verifyEndpointModel(id: string): Promise<{ ready: boolean; status: string; served_models: string[]; error?: string }> {
-    const status = await this.activeStatus();
+    const status = await this.observedStatus();
     const ready = this.isLoaded(id, status);
     return { ready, status: ready ? 'running' : status.ownership === 'FOREIGN' || status.ownership === 'UNKNOWN' && status.health === 'UNKNOWN' ? 'conflict' : 'not-ready', served_models: ready ? [id] : [] };
   }
