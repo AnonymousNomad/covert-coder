@@ -7,15 +7,14 @@
 // body loading by id, and the tiny Resident Constitution. No prompt integration, no
 // authority, no new skill engine.
 //
-// Reuse: candidate ranking reuses the shared tokenization + phrase primitives and the
-// IDF weighting model from node/src/services/skills-loader.mjs (the one general skill
-// router). This module ranks only the resident.* namespace catalog; it is not a second
+// Candidate ranking shares small lexical primitives with envelope diagnostics.
+// IDF weighting is local to this resident.* namespace; this is not a second
 // general router and it never touches the shared skill registry.
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tokenize, bigrams } from './skills-loader.mjs';
+import { tokenize, bigrams } from './resident-text-primitives.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // node/src/services -> repo root is THREE levels up (services -> src -> node -> repo).

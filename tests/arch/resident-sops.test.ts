@@ -30,9 +30,17 @@ import {
   MAX_FILTER_LIMIT
 } from '../../node/src/services/resident-arsenal-query.mjs';
 import type { ResidentSopError } from '../../node/src/services/resident-sops.mjs';
+import { bigrams, tokenize } from '../../node/src/services/resident-text-primitives.mjs';
 import type { ArsenalDescriptor } from '../../node/src/services/resident-arsenal.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+test('resident text primitives — stopwords and adjacent phrases are deterministic', () => {
+  assert.deepEqual(tokenize('Where are we?'), []);
+  const tokens = tokenize('Fix the governed stream route');
+  assert.deepEqual(tokens, ['fix', 'governed', 'stream', 'route']);
+  assert.deepEqual([...bigrams(tokens)], ['fix governed', 'governed stream', 'stream route']);
+});
 
 function errorCode(error: unknown): string | undefined {
   return (error as Partial<ResidentSopError> | undefined)?.code;

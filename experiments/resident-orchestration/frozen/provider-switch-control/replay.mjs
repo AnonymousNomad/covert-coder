@@ -42,7 +42,7 @@ const response = await fetch(ENDPOINT.replace(/\/$/, '') + '/chat/completions', 
 });
 const body = await response.json();
 const text = String(body?.choices?.[0]?.message?.content ?? '');
-const fenced = /\`\`\`[a-z]*\n([\s\S]*?)\`\`\`/i.exec(text);
+const fenced = /```[a-z]*\n([\s\S]*?)```/i.exec(text);
 if (!fenced) { console.log('[replay] worker produced no fenced code block — capacity failure reproduced'); process.exit(2); }
 await fs.writeFile(path.join(WORKSPACE, 'src', 'version.mjs'), fenced[1] + '\n', 'utf8');
 let exitCode = 1; let stdout = '';

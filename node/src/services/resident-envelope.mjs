@@ -16,7 +16,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tokenize, bigrams } from './skills-loader.mjs';
+import { tokenize, bigrams } from './resident-text-primitives.mjs';
 import { DEFAULT_CANDIDATE_LIMIT, MAX_SELECTED_BODIES } from './resident-sops.mjs';
 import { filterArsenalDescriptors, DEFAULT_FILTER_LIMIT } from './resident-arsenal-query.mjs';
 
