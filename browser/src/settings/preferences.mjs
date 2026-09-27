@@ -8,6 +8,8 @@ export const PREFERENCE_STORAGE_KEY = 'covert.operator-preferences.v1';
 
 export const DEFAULT_PREFERENCES = Object.freeze({
   theme: 'covert',
+  matrixMotion: 'off',
+  matrixSignal: 'adaptive',
   textScale: 'normal',
   density: 'standard',
   reducedMotion: false,
@@ -16,12 +18,15 @@ export const DEFAULT_PREFERENCES = Object.freeze({
 });
 
 export const THEME_REGISTRY = Object.freeze([
-  { id: 'covert', label: 'DEFAULT COVERT', description: 'Existing dark engineering palette.', tokenSet: 'base' },
-  { id: 'matrix', label: 'MATRIX', description: 'Binary field, signal-green tokens, reduced visual noise.', tokenSet: 'matrix' }
+  { id: 'covert', label: 'DEFAULT COVERT', description: 'Dark tactical command-center palette.', tokenSet: 'base' },
+  { id: 'matrix', label: 'MATRIX', description: 'Code-signal environment with operator-controlled binary motion.', tokenSet: 'matrix' },
+  { id: 'developer', label: 'DEVELOPER', description: 'Low-strain graphite circuit-board workstation for long coding sessions.', tokenSet: 'developer' }
 ]);
 
 export const SETTING_DEFINITIONS = Object.freeze([
-  { id: 'appearance.theme', label: 'Theme', description: 'Choose the default Covert palette or the Matrix treatment.', category: 'Appearance', type: 'choice', default: 'covert', scopes: ['global', 'workspace'], experimental: false, requiresRestart: false },
+  { id: 'appearance.theme', label: 'Theme', description: 'Choose Default Covert, Matrix, or Developer.', category: 'Appearance', type: 'choice', default: 'covert', scopes: ['global', 'workspace'], experimental: false, requiresRestart: false },
+  { id: 'appearance.matrixMotion', label: 'Matrix signal motion', description: 'Matrix-only binary motion: off by default, adaptive to real Covert state, or explicitly paced.', category: 'Appearance', type: 'choice', default: 'off', scopes: ['global', 'workspace'], experimental: false, requiresRestart: false },
+  { id: 'appearance.matrixSignal', label: 'Matrix signal color', description: 'Matrix-only signal palette. Adaptive follows real verification/panel state; manual colors remain operator-controlled.', category: 'Appearance', type: 'choice', default: 'adaptive', scopes: ['global', 'workspace'], experimental: false, requiresRestart: false },
   { id: 'appearance.textScale', label: 'Editor and terminal text size', description: 'Adjust code and terminal text without changing project content.', category: 'Appearance', type: 'choice', default: 'normal', scopes: ['global', 'workspace'], experimental: false, requiresRestart: false },
   { id: 'appearance.effects', label: 'Ambient effects', description: 'Control decorative background effects and glow intensity.', category: 'Appearance', type: 'choice', default: 'normal', scopes: ['global', 'workspace'], experimental: false, requiresRestart: false },
   { id: 'accessibility.reducedMotion', label: 'Reduce motion', description: 'Disable decorative motion while preserving all work surfaces.', category: 'Accessibility', type: 'boolean', default: false, scopes: ['global', 'workspace'], experimental: false, requiresRestart: false },
@@ -31,6 +36,8 @@ export const SETTING_DEFINITIONS = Object.freeze([
 
 const VALIDATORS = Object.freeze({
   'appearance.theme': value => THEME_REGISTRY.some(theme => theme.id === value),
+  'appearance.matrixMotion': value => value === 'off' || value === 'adaptive' || value === 'slow' || value === 'standard',
+  'appearance.matrixSignal': value => value === 'adaptive' || value === 'green' || value === 'cyan' || value === 'amber' || value === 'magenta',
   'appearance.textScale': value => value === 'normal' || value === 'large',
   'appearance.effects': value => value === 'normal' || value === 'reduced' || value === 'off',
   'accessibility.reducedMotion': value => typeof value === 'boolean',
@@ -40,6 +47,8 @@ const VALIDATORS = Object.freeze({
 
 const PREFERENCE_FIELDS = Object.freeze({
   'appearance.theme': 'theme',
+  'appearance.matrixMotion': 'matrixMotion',
+  'appearance.matrixSignal': 'matrixSignal',
   'appearance.textScale': 'textScale',
   'appearance.effects': 'effects',
   'accessibility.reducedMotion': 'reducedMotion',
@@ -274,13 +283,15 @@ export function applyAppearance(preferences, root = document.documentElement) {
       changed = true;
     }
   };
-  const theme = preferences.theme === 'matrix' ? 'matrix' : undefined;
+  const theme = preferences.theme === 'matrix' || preferences.theme === 'developer' ? preferences.theme : undefined;
   if (theme === undefined) {
     if (root.dataset.covertTheme !== undefined) {
       delete root.dataset.covertTheme;
       changed = true;
     }
   } else setData('covertTheme', theme);
+  setData('covertMatrixMotion', preferences.matrixMotion);
+  setData('covertMatrixSignal', preferences.matrixSignal);
   setData('covertDensity', preferences.density);
   setData('covertMotion', preferences.reducedMotion ? 'reduced' : 'system');
   setData('covertEffects', preferences.effects);

@@ -55,6 +55,29 @@ export function buildTerminalEnv(env: NodeJS.ProcessEnv): { env: Record<string, 
   return { env: out, dropped };
 }
 
+const COVERT_POWERSHELL_PROMPT = [
+  '$esc=[char]27;',
+  "$Host.UI.RawUI.WindowTitle='Covert Terminal';",
+  'function global:prompt {',
+  '  $path=(Get-Location).Path;',
+  '  $user=$env:USERNAME;',
+  '  return "$esc[38;2;188;154;255m╭─[$esc[38;2;105;223;242m$user$esc[38;2;236;145;204m@$esc[38;2;116;223;170mcovert$esc[38;2;188;154;255m]─[$esc[38;2;105;223;242m$path$esc[38;2;188;154;255m]`n╰─$esc[38;2;236;145;204m❯ $esc[0m";',
+  '}'
+].join(' ');
+
+export function terminalLaunchArgs(shellId: string): string[] {
+  if (shellId === 'pwsh' || shellId === 'powershell') {
+    return ['-NoLogo', '-NoExit', '-Command', COVERT_POWERSHELL_PROMPT];
+  }
+  return [];
+}
+
+function applyShellPresentation(shellId: string, env: Record<string, string>): void {
+  if (shellId === 'cmd') {
+    env.PROMPT = '$E[38;2;188;154;255m╭─[$E[38;2;105;223;242m%USERNAME%$E[38;2;236;145;204m@$E[38;2;116;223;170mcovert$E[38;2;188;154;255m]─[$E[38;2;105;223;242m$P$E[38;2;188;154;255m]$_╰─$E[38;2;236;145;204m❯ $E[0m';
+  }
+}
+
 // --- Backpressure constants ------------------------------------------------
 const CHUNK_CHARS = 4096;          // below the 8 KiB WebSocket frame cap
 const MAX_BYTES_PER_TICK = 16_384; // ~320 KiB/s ceiling per session
@@ -157,6 +180,7 @@ export class TerminalSessionService {
     const baseCwd = input.cwd && input.cwd.trim() ? input.cwd : this.defaultCwd;
     const cwd = translateCwd(input.provider, baseCwd);
     const { env, dropped } = buildTerminalEnv(this.deps.env);
+    applyShellPresentation(resolved.shell.id, env);
     if (dropped > 0) this.logger.info('terminal env scrubbed', { dropped });
     const session: Session = {
       id: randomUUID(),
@@ -180,7 +204,7 @@ export class TerminalSessionService {
     };
     try {
       const spawn = this.spawnOverride ?? ((options: Parameters<SpawnPtyFn>[0]) => resolved.provider.spawnPty(options));
-      const pty = spawn({ file: resolved.shell.path, args: [], cwd, env, cols: input.cols, rows: input.rows });
+      const pty = spawn({ file: resolved.shell.path, args: terminalLaunchArgs(resolved.shell.id), cwd, env, cols: input.cols, rows: input.rows });
       session.pty = pty;
     } catch (error) {
       this.logger.error('terminal session failed to start', { provider: input.provider, error: error instanceof Error ? error.message : String(error) });

@@ -1,0 +1,126 @@
+{
+  "battery": "COVERT-V1-THEME-ACCEPTANCE",
+  "generated_at_utc": "2026-09-27T01:08:03.853Z",
+  "pass": 13,
+  "fail": 0,
+  "results": [
+    {
+      "id": "THEME-001",
+      "description": "Default Covert renders without an alternate theme marker",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "THEME-002",
+      "description": "Default Covert keeps alternate-theme resource dials hidden",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "THEME-003",
+      "description": "Appearance exposes exactly the three V1 themes",
+      "pass": true,
+      "detail": [
+        "DEFAULT COVERTDark tactical command-center palette.",
+        "MATRIXCode-signal environment with operator-controlled binary motion.",
+        "DEVELOPERLow-strain graphite circuit-board workstation for long coding sessions."
+      ]
+    },
+    {
+      "id": "THEME-004",
+      "description": "Matrix is visually selected and static by default",
+      "pass": true,
+      "detail": {
+        "theme": "matrix",
+        "motion": "off",
+        "animation": "none",
+        "resourceDisplay": "grid"
+      }
+    },
+    {
+      "id": "THEME-005",
+      "description": "Matrix replaces decorative header content with resource instrumentation",
+      "pass": true,
+      "detail": {
+        "theme": "matrix",
+        "motion": "off",
+        "animation": "none",
+        "resourceDisplay": "grid"
+      }
+    },
+    {
+      "id": "THEME-006",
+      "description": "Matrix controls become operator-editable when Matrix is selected",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "id": "THEME-007",
+      "description": "Matrix SLOW motion and manual signal color are real presentation states",
+      "pass": true,
+      "detail": {
+        "motion": "slow",
+        "signal": "amber",
+        "animation": "covert-code-fall",
+        "duration": "52s",
+        "signalCss": "#f2c879"
+      }
+    },
+    {
+      "id": "THEME-008",
+      "description": "Matrix adaptive mode stays static while the operator is idle",
+      "pass": true,
+      "detail": {
+        "activity": "idle",
+        "animation": "none"
+      }
+    },
+    {
+      "id": "THEME-009",
+      "description": "Matrix adaptive motion follows real working-surface state",
+      "pass": true,
+      "detail": {
+        "activity": "work",
+        "animation": "covert-code-fall",
+        "duration": "58s"
+      }
+    },
+    {
+      "id": "THEME-010",
+      "description": "Developer is a distinct static circuit-workstation theme",
+      "pass": true,
+      "detail": {
+        "theme": "developer",
+        "rain": "none",
+        "resourceDisplay": "grid"
+      }
+    },
+    {
+      "id": "THEME-011",
+      "description": "Resource header shows measured RAM/VRAM/storage and truthful CPU capability",
+      "pass": true,
+      "detail": [
+        "11.4 / 15.9 GB",
+        "1161 / 6144 MB",
+        "656.6 / 818.5 GB",
+        "12 LOGICAL"
+      ]
+    },
+    {
+      "id": "THEME-012",
+      "description": "Theme and Matrix controls are durably written to the canonical preference store",
+      "pass": true,
+      "detail": {
+        "theme": "matrix",
+        "motion": "adaptive",
+        "signal": "adaptive"
+      }
+    },
+    {
+      "id": "THEME-013",
+      "description": "Rendered theme battery has no uncaught page errors",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

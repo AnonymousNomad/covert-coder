@@ -65,8 +65,21 @@ function modelDirFor(file) {
   return path.join(ROOT, 'models', file || '');
 }
 
+async function storageSnapshot() {
+  try {
+    const stats = await fs.statfs(ROOT);
+    const total = Number(stats.bsize) * Number(stats.blocks);
+    const free = Number(stats.bsize) * Number(stats.bavail);
+    if (!Number.isFinite(total) || !Number.isFinite(free) || total <= 0 || free < 0) throw new Error('invalid statfs values');
+    return { storageTotalBytes: total, storageFreeBytes: Math.min(total, free), storageSource: 'statfs' };
+  } catch {
+    return { storageTotalBytes: 0, storageFreeBytes: 0, storageSource: 'unavailable' };
+  }
+}
+
 export async function getDeviceProfile() {
   const hw = await probeHardware();
+  const storage = await storageSnapshot();
   return {
     totalRamBytes: hw.totalRamBytes,
     freeRamBytes: hw.freeRamBytes,
@@ -74,6 +87,7 @@ export async function getDeviceProfile() {
     vramBytes: hw.vramBytes,
     freeVramBytes: hw.freeVramBytes,
     vramSource: hw.vramSource,
+    ...storage,
     tier: deriveTier(hw.totalRamBytes),
     backend: deriveBackend(hw.vramBytes),
     detectedAt: Date.now()

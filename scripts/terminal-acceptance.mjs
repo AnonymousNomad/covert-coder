@@ -232,7 +232,7 @@ try {
     const deadline = Date.now() + timeoutMs;
     let text = await page.evaluate(() => document.querySelector('.terminal-xterm')?.innerText ?? '');
     while (Date.now() < deadline) {
-      if (text.trimEnd().endsWith('>')) return text;
+      if (/[>❯]$/.test(text.trimEnd())) return text;
       await page.waitForTimeout(400);
       text = await page.evaluate(() => document.querySelector('.terminal-xterm')?.innerText ?? '');
     }

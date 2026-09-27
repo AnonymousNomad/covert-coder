@@ -52,6 +52,13 @@ test('hardware profile reports real RAM/CPU/VRAM with tier + backend', async () 
   assert.match(String(profile.tier), TIER_RE, 'valid device tier');
   assert.match(String(profile.backend), BACKEND_RE, 'valid backend');
   assert.match(String(profile.vramSource), /^(nvidia-smi|none)$/);
+  assert.match(String(profile.storageSource), /^(statfs|unavailable)$/);
+  assert.ok((profile.storageTotalBytes as number) >= 0, 'storage total is a number');
+  assert.ok((profile.storageFreeBytes as number) >= 0, 'storage free is a number');
+  if (profile.storageSource === 'statfs') {
+    assert.ok((profile.storageTotalBytes as number) > 0, 'filesystem total detected');
+    assert.ok((profile.storageFreeBytes as number) <= (profile.storageTotalBytes as number), 'filesystem free is bounded');
+  }
   assert.ok(typeof profile.detectedAt === 'number' && profile.detectedAt > 0, 'detectedAt timestamp');
 });
 
@@ -82,9 +89,10 @@ test('recommend returns exactly three roles with real pack ids and honest fit', 
 });
 
 test('profile is stable across calls (deterministic probe data)', async () => {
-  const a = (await (await owner.request('/api/hardware/profile')).json()) as { data: { tier: string; logicalCpus: number; totalRamBytes: number } };
-  const b = (await (await owner.request('/api/hardware/profile')).json()) as { data: { tier: string; logicalCpus: number; totalRamBytes: number } };
+  const a = (await (await owner.request('/api/hardware/profile')).json()) as { data: { tier: string; logicalCpus: number; totalRamBytes: number; storageTotalBytes: number } };
+  const b = (await (await owner.request('/api/hardware/profile')).json()) as { data: { tier: string; logicalCpus: number; totalRamBytes: number; storageTotalBytes: number } };
   assert.equal(a.data.tier, b.data.tier);
   assert.equal(a.data.logicalCpus, b.data.logicalCpus);
   assert.equal(a.data.totalRamBytes, b.data.totalRamBytes);
+  assert.equal(a.data.storageTotalBytes, b.data.storageTotalBytes);
 });

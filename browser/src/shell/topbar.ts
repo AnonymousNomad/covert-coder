@@ -6,6 +6,8 @@ import type {
   HarnessState
 } from '../store/state.ts';
 import { createWorldMap } from '../cockpit/CovertWorldMap.ts';
+import { api } from '../services/api.ts';
+import type { HardwareProfileResponseT } from '../../../common/contracts/hardware.ts';
 
 export interface TopbarMode {
   private: boolean | null;
@@ -40,6 +42,12 @@ export function createTopbar(parent: HTMLElement, store: Store<AppState>): Topba
         <span class="topbar-discipline">DISCIPLINE IS A FORCE MULTIPLIER</span>
       </div>
       <div class="topbar-map-wrap" aria-hidden="true"></div>
+      <section class="topbar-resources" aria-label="Device resource snapshot">
+        <div class="topbar-resource" data-resource="ram"><span class="topbar-resource-ring" aria-hidden="true"></span><span><b>RAM</b><small data-resource-value="ram">UNKNOWN</small></span></div>
+        <div class="topbar-resource" data-resource="vram"><span class="topbar-resource-ring" aria-hidden="true"></span><span><b>VRAM</b><small data-resource-value="vram">UNKNOWN</small></span></div>
+        <div class="topbar-resource" data-resource="storage"><span class="topbar-resource-ring" aria-hidden="true"></span><span><b>STORAGE</b><small data-resource-value="storage">UNKNOWN</small></span></div>
+        <div class="topbar-resource topbar-resource-cpu" data-resource="cpu"><span class="topbar-resource-ring" aria-hidden="true"></span><span><b>CPU</b><small data-resource-value="cpu">UNKNOWN</small></span></div>
+      </section>
       <nav class="topbar-modes" aria-label="system mode">
         <span class="topbar-mode" data-mode="private" title="Private: BYOK consent disabled">PRIVATE</span>
         <span class="topbar-mode" data-mode="local" title="Local: daemon reachable on 127.0.0.1">LOCAL</span>
@@ -87,6 +95,44 @@ export function createTopbar(parent: HTMLElement, store: Store<AppState>): Topba
   const mapHost = root.querySelector<HTMLElement>('.topbar-map-wrap');
   const operationalStatus = root.querySelector<HTMLElement>('[data-operational-status]');
   if (mapHost !== null) mapHost.appendChild(createWorldMap('covert-world-map covert-world-map-header'));
+
+  const fmtResource = (used: number, total: number, unit = 'GB'): string => {
+    const divisor = unit === 'GB' ? 1024 ** 3 : 1024 ** 2;
+    return `${(used / divisor).toFixed(unit === 'GB' ? 1 : 0)} / ${(total / divisor).toFixed(unit === 'GB' ? 1 : 0)} ${unit}`;
+  };
+  const paintResource = (name: 'ram' | 'vram' | 'storage' | 'cpu', value: string, pct: number | null): void => {
+    const root = parent.querySelector<HTMLElement>(`[data-resource="${name}"]`);
+    const label = parent.querySelector<HTMLElement>(`[data-resource-value="${name}"]`);
+    if (root === null || label === null) return;
+    label.textContent = value;
+    if (pct === null) {
+      root.dataset.usage = 'unknown';
+      root.style.removeProperty('--resource-pct');
+    } else {
+      root.dataset.usage = pct >= 90 ? 'warn' : 'ok';
+      root.style.setProperty('--resource-pct', `${Math.max(0, Math.min(100, pct))}%`);
+    }
+  };
+  const paintResources = (hardware: HardwareProfileResponseT): void => {
+    const ramFree = Math.max(0, Math.min(hardware.totalRamBytes, hardware.freeRamBytes));
+    const ramUsed = Math.max(0, hardware.totalRamBytes - ramFree);
+    paintResource('ram', fmtResource(ramUsed, hardware.totalRamBytes), hardware.totalRamBytes > 0 ? Math.round(ramUsed / hardware.totalRamBytes * 100) : null);
+    const vramFree = Math.max(0, Math.min(hardware.vramBytes, hardware.freeVramBytes));
+    const vramUsed = Math.max(0, hardware.vramBytes - vramFree);
+    paintResource('vram', hardware.vramSource === 'none' ? 'UNAVAILABLE' : fmtResource(vramUsed, hardware.vramBytes, 'MB'), hardware.vramSource === 'none' || hardware.vramBytes <= 0 ? null : Math.round(vramUsed / hardware.vramBytes * 100));
+    const storageFree = Math.max(0, Math.min(hardware.storageTotalBytes, hardware.storageFreeBytes));
+    const storageUsed = Math.max(0, hardware.storageTotalBytes - storageFree);
+    paintResource('storage', hardware.storageSource === 'unavailable' ? 'UNAVAILABLE' : fmtResource(storageUsed, hardware.storageTotalBytes), hardware.storageSource === 'unavailable' || hardware.storageTotalBytes <= 0 ? null : Math.round(storageUsed / hardware.storageTotalBytes * 100));
+    paintResource('cpu', `${hardware.logicalCpus} LOGICAL`, null);
+  };
+  const onHardware = (event: Event): void => {
+    const detail = (event as CustomEvent<HardwareProfileResponseT>).detail;
+    if (detail !== undefined) paintResources(detail);
+  };
+  window.addEventListener('covert:hardwareprofile', onHardware);
+  window.addEventListener('unload', () => window.removeEventListener('covert:hardwareprofile', onHardware), { once: true });
+  void api.hardwareProfile().then(paintResources).catch(() => {});
+
   const destinations = { daemon: 'security', engine: 'models', verify: 'verification', harness: 'skills', cloud: 'settings' } as const;
   for (const [name, panel] of Object.entries(destinations)) {
     const button = root.querySelector<HTMLButtonElement>(`[data-chip="${name}"]`);

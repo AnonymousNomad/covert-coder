@@ -250,7 +250,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const telemetry = createSystemTelemetry(telemetrySlot, store);
   const activity = createActivityTimeline(activitySlot, store);
   const bottom = createBottomStrip(bottomConsole, store);
-  createAmbientEffects(ambientHost);
+  const ambient = createAmbientEffects(ambientHost, store);
 
   const commandTabTargets: Record<string, Panel | null> = {
     chat: 'command-center',
@@ -372,6 +372,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     activity.dispose();
     residentFigure.dispose();
     bottom.dispose();
+    ambient.dispose();
     unbindCommandTabs();
     unbindVersion();
     unbindAppearance();

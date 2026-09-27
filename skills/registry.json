@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-25T15:19:12.000Z",
-  "count": 299,
+  "generated_at": "2026-09-27T00:55:00.000Z",
+  "count": 303,
   "categories": [
     "academy",
     "aide-core",
@@ -2130,6 +2130,13 @@
       "description": "STANDING OPERATING DIRECTIVE for the FSI-FELON / queen-bee-v5 program. MANDATORY for every corpus action. Two non-negotiable laws: (1) NO duplicate or near-duplicate training documents may ever be created or used — every new doc must be verified unique against the corpus index before staging; (2) NO document may ship unless it is the absolute highest quality manageable — verified, executable, measured, byte-exact format, zero filler. Applies to ALL models (trek, felon, Sopher, 150M web-builder), ALL phases (pretraining corpus, SFT, distill, preference, synthetic), ALL generators, ALL sources on C: and E:. This skill outranks every other skill on data quality; when any other instruction conflicts, this one wins.",
       "category": "general",
       "path": "skills/packs/zero-dup-high-quality/SKILL.md"
+    },
+    {
+      "name": "covert-theme-system",
+      "title": "covert-theme-system",
+      "description": "Covert V1 visual-system skill for Default Covert, Matrix, and Developer themes. Use whenever changing theme tokens, ambient motion, navigation color language, resource instrumentation, or appearance settings. Enforces long-session readability, truthful telemetry, accessibility, reduced-motion control, and one shared semantic token system rather than three forked UIs.",
+      "category": "aide-core",
+      "path": "skills/packs/covert-theme-system/SKILL.md"
     }
   ]
 }

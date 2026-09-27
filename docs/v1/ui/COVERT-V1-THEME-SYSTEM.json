@@ -1,0 +1,85 @@
+{
+  "schema": "covert.v1.theme-system-evidence.v1",
+  "worktree": "E:\\aide-v1-themes",
+  "branch": "feat/v1-theme-system",
+  "starting_sha": "1a7f80e7407c54616e167a513bbe6022b3cdd950",
+  "status": "IMPLEMENTED_VERIFIED_CANDIDATE",
+  "themes": [
+    "covert",
+    "matrix",
+    "developer"
+  ],
+  "matrix": {
+    "default_motion": "off",
+    "motion": [
+      "off",
+      "adaptive",
+      "slow",
+      "standard"
+    ],
+    "signal": [
+      "adaptive",
+      "green",
+      "cyan",
+      "amber",
+      "magenta"
+    ],
+    "truth_source": "canonical UI/verification state only"
+  },
+  "telemetry": {
+    "ram": "measured",
+    "vram": "measured_when_supported",
+    "storage": "fs.statfs",
+    "cpu_utilization": "UNAVAILABLE",
+    "cpu_logical_processors": "measured"
+  },
+  "terminal": {
+    "prompt_style": "two-line Parrot-inspired Covert prompt",
+    "profile_mutation": false,
+    "authority_changed": false,
+    "acceptance": {
+      "passed": 13,
+      "failed": 0
+    }
+  },
+  "rendered_theme_acceptance": {
+    "passed": 13,
+    "failed": 0
+  },
+  "focused_terminal_runtime_tests": {
+    "passed": 14,
+    "failed": 0
+  },
+  "hardware_routes": {
+    "passed": 3,
+    "failed": 0
+  },
+  "windows_uia_focused": {
+    "passed": 7,
+    "failed": 0
+  },
+  "full_check": {
+    "total": 651,
+    "passed": 643,
+    "failed": 0,
+    "skipped": 8,
+    "eslint_errors": 0,
+    "eslint_existing_warnings": 61
+  },
+  "evidence": [
+    "docs/evidence/themes/theme-acceptance.json",
+    "docs/evidence/themes/default-1440.png",
+    "docs/evidence/themes/matrix-1440.png",
+    "docs/evidence/themes/developer-1440.png",
+    "docs/evidence/themes/matrix-1100.png",
+    "docs/evidence/themes/terminal-parrot-smoke.json"
+  ],
+  "exclusions": [
+    "live CPU utilization",
+    "packaging/installer qualification",
+    "provider login completion",
+    "starter local model pack qualification",
+    "global Local-Only egress closure",
+    "mobile companion app"
+  ]
+}

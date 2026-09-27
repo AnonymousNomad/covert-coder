@@ -12,7 +12,7 @@
 
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
-import { Terminal as XTerm } from '@xterm/xterm';
+import { Terminal as XTerm, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { api } from '../services/api.ts';
@@ -78,12 +78,40 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     return Math.round(13 * (Number.isFinite(scale) ? Math.max(0.85, Math.min(1.3, scale)) : 1));
   }
 
-  function terminalTheme(): { background: string; foreground: string; cursor: string } {
+  function terminalTheme(): ITheme {
     const tokens = getComputedStyle(document.documentElement);
+    const read = (name: string, fallback: string): string => tokens.getPropertyValue(name).trim() || fallback;
+    const background = read('--ck-bg-deepest', '#04070c');
+    const foreground = read('--ck-text', '#dce6f2');
+    const cyan = read('--ck-cyan', '#69dff2');
+    const blue = read('--ck-blue', '#4474ec');
+    const purple = read('--ck-purple', '#bc9aff');
+    const pink = read('--ck-pink', '#ec91cc');
+    const green = read('--ck-green', '#74dfaa');
+    const amber = read('--ck-amber', '#efc078');
+    const danger = read('--ck-danger', '#ff8297');
     return {
-      background: tokens.getPropertyValue('--ck-bg-deepest').trim(),
-      foreground: tokens.getPropertyValue('--ck-text').trim(),
-      cursor: tokens.getPropertyValue('--ck-cyan').trim()
+      background,
+      foreground,
+      cursor: pink,
+      cursorAccent: background,
+      selectionBackground: 'rgba(105, 223, 242, 0.20)',
+      black: background,
+      red: danger,
+      green,
+      yellow: amber,
+      blue,
+      magenta: purple,
+      cyan,
+      white: foreground,
+      brightBlack: read('--ck-text-dim', '#94a3ba'),
+      brightRed: pink,
+      brightGreen: green,
+      brightYellow: amber,
+      brightBlue: cyan,
+      brightMagenta: pink,
+      brightCyan: cyan,
+      brightWhite: '#ffffff'
     };
   }
 

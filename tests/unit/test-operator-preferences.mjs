@@ -15,7 +15,7 @@ assert.deepEqual(store.getEffective(), DEFAULT_PREFERENCES);
 assert.deepEqual(store.set('appearance.theme', 'matrix', 'global'), { ok: true, persisted: true });
 assert.equal(store.getEffective().theme, 'matrix');
 assert.equal(store.getSource('appearance.theme'), 'global');
-assert.deepEqual(THEME_REGISTRY.map(theme => theme.id), ['covert', 'matrix']);
+assert.deepEqual(THEME_REGISTRY.map(theme => theme.id), ['covert', 'matrix', 'developer']);
 
 assert.deepEqual(store.set('appearance.theme', 'covert', 'workspace'), { ok: false, persisted: false, reason: 'WORKSPACE_REQUIRED' });
 assert.deepEqual(store.set('appearance.theme', 'covert', 'workspace', 'project-alpha'), { ok: true, persisted: true });
@@ -42,8 +42,12 @@ bounded.load();
 bounded.set('appearance.theme', 'matrix');
 bounded.set('layout.density', 'compact');
 bounded.set('layout.telemetryVisible', false);
-assert.deepEqual(bounded.resetSettings(['appearance.theme', 'appearance.textScale', 'appearance.effects', 'accessibility.reducedMotion']), { ok: true, persisted: true });
+bounded.set('appearance.matrixMotion', 'adaptive');
+bounded.set('appearance.matrixSignal', 'amber');
+assert.deepEqual(bounded.resetSettings(['appearance.theme', 'appearance.matrixMotion', 'appearance.matrixSignal', 'appearance.textScale', 'appearance.effects', 'accessibility.reducedMotion']), { ok: true, persisted: true });
 assert.equal(bounded.getEffective().theme, 'covert', 'appearance reset restores theme');
+assert.equal(bounded.getEffective().matrixMotion, 'off', 'appearance reset restores static Matrix motion default');
+assert.equal(bounded.getEffective().matrixSignal, 'adaptive', 'appearance reset restores adaptive Matrix signal default');
 assert.equal(bounded.getEffective().density, 'compact', 'appearance reset preserves layout density');
 assert.equal(bounded.getEffective().telemetryVisible, false, 'appearance reset preserves telemetry preference');
 
@@ -78,16 +82,22 @@ assert.equal(unavailable.load().status, 'unavailable');
 assert.equal(unavailable.set('appearance.theme', 'matrix').persisted, false);
 
 const root = { dataset: {}, style: { values: new Map(), getPropertyValue(key) { return this.values.get(key) ?? ''; }, setProperty(key, value) { this.values.set(key, value); } } };
-applyAppearance({ ...DEFAULT_PREFERENCES, theme: 'matrix', density: 'compact', reducedMotion: true, effects: 'reduced', telemetryVisible: false, textScale: 'large' }, root);
+applyAppearance({ ...DEFAULT_PREFERENCES, theme: 'matrix', matrixMotion: 'slow', matrixSignal: 'cyan', density: 'compact', reducedMotion: true, effects: 'reduced', telemetryVisible: false, textScale: 'large' }, root);
 assert.equal(root.dataset.covertTheme, 'matrix');
+assert.equal(root.dataset.covertMatrixMotion, 'slow');
+assert.equal(root.dataset.covertMatrixSignal, 'cyan');
 assert.equal(root.dataset.covertDensity, 'compact');
 assert.equal(root.dataset.covertMotion, 'reduced');
 assert.equal(root.dataset.covertEffects, 'reduced');
 assert.equal(root.dataset.covertTelemetry, 'hidden');
 assert.equal(root.style.values.get('--ck-text-scale'), '1.12');
+applyAppearance({ ...DEFAULT_PREFERENCES, theme: 'developer' }, root);
+assert.equal(root.dataset.covertTheme, 'developer', 'Developer is a first-class theme');
 applyAppearance(DEFAULT_PREFERENCES, root);
 assert.equal(Object.hasOwn(root.dataset, 'covertTheme'), false, 'default theme clears alternate-theme selection');
 assert.equal(root.dataset.covertMotion, 'system');
+assert.equal(root.dataset.covertMatrixMotion, 'off');
+assert.equal(root.dataset.covertMatrixSignal, 'adaptive');
 
 const priorWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
 const priorCustomEvent = Object.getOwnPropertyDescriptor(globalThis, 'CustomEvent');

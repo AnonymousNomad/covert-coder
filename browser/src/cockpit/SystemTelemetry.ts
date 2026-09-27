@@ -1,7 +1,7 @@
 // Phase 5 — System Telemetry.
 // Honest resource projection from /api/hardware/profile (snapshot).
-// CPU live usage and disk space have no backend endpoint today \u2014 shown as
-// UNAVAILABLE with documented reason. Never invent values.
+// RAM/VRAM/storage are canonical hardware snapshots. CPU utilization is not
+// exposed by the backend and remains UNAVAILABLE rather than fabricated.
 
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
@@ -38,6 +38,12 @@ function usableVram(h: HardwareProfileResponseT): { used: number; total: number 
   if (h.vramSource === 'none' || h.vramBytes <= 0) return null;
   const free = Math.max(0, Math.min(h.vramBytes, h.freeVramBytes));
   return { used: h.vramBytes - free, total: h.vramBytes };
+}
+
+function usableStorage(h: HardwareProfileResponseT): { used: number; total: number } | null {
+  if (h.storageSource === 'unavailable' || h.storageTotalBytes <= 0) return null;
+  const free = Math.max(0, Math.min(h.storageTotalBytes, h.storageFreeBytes));
+  return { used: h.storageTotalBytes - free, total: h.storageTotalBytes };
 }
 
 function el(tag: string, cls: string, text?: string): HTMLElement {
@@ -92,6 +98,7 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
     if (!alive) return;
     const data: TelemetryData = { hardware };
     paint(data);
+    if (hardware !== null) window.dispatchEvent(new CustomEvent('covert:hardwareprofile', { detail: hardware }));
   }
 
   function paint(data: TelemetryData): void {
@@ -119,14 +126,17 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
         vram.used / vram.total > 0.9 ? 'warn' : 'ok'));
 
     grid.appendChild(gauge('CPU',
-      'UNAVAILABLE',
+      `${h.logicalCpus} LOGICAL · USAGE UNAVAILABLE`,
       null,
       'dim'));
 
-    grid.appendChild(gauge('DISK',
-      'UNAVAILABLE',
-      null,
-      'dim'));
+    const storage = usableStorage(h);
+    grid.appendChild(storage === null
+      ? gauge('STORAGE', 'UNAVAILABLE', null, 'dim')
+      : gauge('STORAGE',
+        `${fmtGB(storage.used)} / ${fmtGB(storage.total)}`,
+        Math.round((storage.used / storage.total) * 100),
+        storage.used / storage.total > 0.9 ? 'warn' : 'ok'));
 
     const tierCard = el('div', 'cockpit-telemetry-card cockpit-telemetry-card-info');
     tierCard.appendChild(el('h3', 'cockpit-telemetry-card-title', 'DEVICE TIER'));
@@ -135,7 +145,7 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
     tierRow.appendChild(el('span', 'cockpit-telemetry-backend', h.backend.toUpperCase()));
     tierCard.appendChild(tierRow);
     tierCard.appendChild(el('div', 'cockpit-telemetry-card-value', `${h.logicalCpus} logical processors \u00b7 ${fmtGB(h.totalRamBytes)} RAM`));
-    tierCard.appendChild(el('div', 'cockpit-telemetry-card-note', `Source: ${h.vramSource} \u00b7 CPU usage and disk capacity are not exposed by the current hardware contract.`));
+    tierCard.appendChild(el('div', 'cockpit-telemetry-card-note', `VRAM source: ${h.vramSource} \u00b7 storage source: ${h.storageSource} \u00b7 CPU utilization remains unavailable.`));
     grid.appendChild(tierCard);
   }
 

@@ -8895,6 +8895,21 @@
                         "none"
                       ]
                     },
+                    "storageTotalBytes": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "storageFreeBytes": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "storageSource": {
+                      "type": "string",
+                      "enum": [
+                        "statfs",
+                        "unavailable"
+                      ]
+                    },
                     "tier": {
                       "type": "string",
                       "enum": [
@@ -8925,6 +8940,9 @@
                     "vramBytes",
                     "freeVramBytes",
                     "vramSource",
+                    "storageTotalBytes",
+                    "storageFreeBytes",
+                    "storageSource",
                     "tier",
                     "backend",
                     "detectedAt"

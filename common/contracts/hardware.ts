@@ -18,6 +18,9 @@ export const HardwareProfileResponse = z
     vramBytes: z.number().nonnegative(),
     freeVramBytes: z.number().nonnegative(),
     vramSource: z.enum(['nvidia-smi', 'none']),
+    storageTotalBytes: z.number().nonnegative(),
+    storageFreeBytes: z.number().nonnegative(),
+    storageSource: z.enum(['statfs', 'unavailable']),
     tier: DeviceTier,
     backend: HardwareBackend,
     detectedAt: z.number().positive()

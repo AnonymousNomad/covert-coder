@@ -230,6 +230,9 @@ test('approved open admits exactly one PTY and reports a running owned session',
   const spawned = ptyInstances[ptyInstances.length - 1];
   assert.ok(spawned);
   assert.equal(spawned.options.file, 'C:\\Program Files\\PowerShell\\7\\pwsh.exe');
+  assert.deepEqual(spawned.options.args.slice(0, 3), ['-NoLogo', '-NoExit', '-Command']);
+  assert.match(spawned.options.args[3] ?? '', /global:prompt/);
+  assert.match(spawned.options.args[3] ?? '', /covert/);
 });
 
 test('approved open with an unknown provider fails closed with NOT_READY', async () => {

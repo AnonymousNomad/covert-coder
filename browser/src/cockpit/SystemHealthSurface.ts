@@ -39,14 +39,19 @@ function resourceCards(hardware: HardwareProfileResponseT | null): HTMLElement[]
   const ramFree = Math.max(0, Math.min(hardware.totalRamBytes, hardware.freeRamBytes));
   const ramUsed = Math.max(0, hardware.totalRamBytes - ramFree);
   const vramFree = Math.max(0, Math.min(hardware.vramBytes, hardware.freeVramBytes));
+  const storageFree = Math.max(0, Math.min(hardware.storageTotalBytes, hardware.storageFreeBytes));
+  const storageUsed = Math.max(0, hardware.storageTotalBytes - storageFree);
   const gpuDetail = hardware.vramSource === 'none'
     ? `${hardware.backend.toUpperCase()} backend · VRAM unavailable`
     : `${hardware.backend.toUpperCase()} backend · ${(hardware.vramBytes / (1024 ** 3)).toFixed(1)} GB VRAM total · ${hardware.vramSource}`;
+  const storageState = hardware.storageSource === 'unavailable' || hardware.storageTotalBytes <= 0
+    ? card('STORAGE', 'UNAVAILABLE', 'Filesystem capacity probe is unavailable; no zero-value substitute is shown.')
+    : card('STORAGE', `${(storageUsed / gib).toFixed(1)} / ${(hardware.storageTotalBytes / gib).toFixed(1)} GB USED`, `${(storageFree / gib).toFixed(1)} GB free · source ${hardware.storageSource}`);
   return [
     card('CPU', `${hardware.logicalCpus} LOGICAL PROCESSORS`, 'Live CPU utilization is not exposed by the hardware contract.'),
     card('GPU / VRAM', hardware.vramSource === 'none' ? 'VRAM UNAVAILABLE' : `${(vramFree / (1024 ** 2)).toFixed(0)} MB FREE`, gpuDetail),
     card('RAM', `${(ramUsed / gib).toFixed(1)} / ${(hardware.totalRamBytes / gib).toFixed(1)} GB USED`, `${(ramFree / gib).toFixed(1)} GB free in the last hardware snapshot; this is not an execution-admission verdict.`),
-    card('STORAGE', 'UNAVAILABLE', 'Disk capacity is not exposed by the current hardware contract.')
+    storageState
   ];
 }
 

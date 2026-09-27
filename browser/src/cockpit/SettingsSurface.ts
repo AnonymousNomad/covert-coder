@@ -50,6 +50,8 @@ const FILTERS = [
 
 const APPEARANCE_SETTING_IDS = [
   'appearance.theme',
+  'appearance.matrixMotion',
+  'appearance.matrixSignal',
   'appearance.textScale',
   'appearance.effects',
   'accessibility.reducedMotion'
@@ -216,13 +218,15 @@ export function createSettingsSurface(parent: HTMLElement, store: Store<AppState
       }
       return group;
     }
-    if (id === 'appearance.textScale' || id === 'appearance.effects' || id === 'layout.density') {
+    if (id === 'appearance.textScale' || id === 'appearance.effects' || id === 'appearance.matrixMotion' || id === 'appearance.matrixSignal' || id === 'layout.density') {
       const select = document.createElement('select');
       select.className = 'cockpit-setting-control';
       select.dataset.settingControl = id;
       const choices: Array<[string, string]> = id === 'appearance.textScale' ? [['normal', 'STANDARD'], ['large', 'LARGE']]
         : id === 'appearance.effects' ? [['normal', 'STANDARD'], ['reduced', 'REDUCED'], ['off', 'OFF']]
-          : [['standard', 'STANDARD'], ['compact', 'COMPACT']];
+          : id === 'appearance.matrixMotion' ? [['off', 'OFF · STATIC'], ['adaptive', 'ADAPTIVE'], ['slow', 'SLOW'], ['standard', 'STANDARD']]
+            : id === 'appearance.matrixSignal' ? [['adaptive', 'ADAPTIVE'], ['green', 'GREEN'], ['cyan', 'CYAN'], ['amber', 'AMBER'], ['magenta', 'MAGENTA']]
+              : [['standard', 'STANDARD'], ['compact', 'COMPACT']];
       for (const [choice, label] of choices) {
         const option = document.createElement('option');
         option.value = choice;
@@ -288,6 +292,8 @@ export function createSettingsSurface(parent: HTMLElement, store: Store<AppState
 
     if (category.id === 'appearance') {
       body.append(prefRow('appearance.theme', 'Theme changes apply immediately. Global and current-workspace preferences remain separate.'),
+        prefRow('appearance.matrixMotion', 'Matrix-only binary motion. OFF is the default; ADAPTIVE responds to real Covert state and never invents project progress.'),
+        prefRow('appearance.matrixSignal', 'Matrix-only signal color. ADAPTIVE follows real verification and active-surface state; manual colors remain fixed.'),
         prefRow('appearance.textScale', 'Scales editor and terminal text; other interface typography retains its established sizing.'),
         prefRow('appearance.effects', 'Controls ambient texture and glow without changing operational status.'),
         prefRow('accessibility.reducedMotion', 'Also respects the operating system reduced-motion preference.'));
@@ -422,9 +428,12 @@ export function createSettingsSurface(parent: HTMLElement, store: Store<AppState
   }
 
   function updateControls(): void {
+    const activeTheme = String(prefValue('appearance.theme'));
     for (const control of root.querySelectorAll<HTMLSelectElement | HTMLInputElement>('[data-setting-control]')) {
-      control.value = String(prefValue(control.dataset.settingControl ?? ''));
-      if (control instanceof HTMLInputElement && control.type === 'checkbox') control.checked = Boolean(prefValue(control.dataset.settingControl ?? ''));
+      const settingId = control.dataset.settingControl ?? '';
+      control.value = String(prefValue(settingId));
+      if (control instanceof HTMLInputElement && control.type === 'checkbox') control.checked = Boolean(prefValue(settingId));
+      control.disabled = (settingId === 'appearance.matrixMotion' || settingId === 'appearance.matrixSignal') && activeTheme !== 'matrix';
     }
     for (const button of root.querySelectorAll<HTMLButtonElement>('.cockpit-theme-option')) {
       button.setAttribute('aria-pressed', String(button.dataset.theme === prefValue('appearance.theme')));

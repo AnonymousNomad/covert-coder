@@ -1,8 +1,10 @@
 export type PreferenceScope = 'global' | 'workspace' | 'role' | 'mission';
-export type ThemeId = 'covert' | 'matrix';
+export type ThemeId = 'covert' | 'matrix' | 'developer';
 export type PreferenceValue = string | boolean;
 export interface AppearancePreferences {
   theme: ThemeId;
+  matrixMotion: 'off' | 'adaptive' | 'slow' | 'standard';
+  matrixSignal: 'adaptive' | 'green' | 'cyan' | 'amber' | 'magenta';
   textScale: 'normal' | 'large';
   density: 'standard' | 'compact';
   reducedMotion: boolean;
