@@ -82,10 +82,27 @@ test('POST /api/models/ingest rejects a non-gguf path', async t => {
   t.skip('POST /api/models/ingest remains migration-waived (ARCHITECTURE-DECISION); re-enable the validation assertions when it enrolls');
 });
 
-test('POST /api/chat on an unstarted model returns NOT_READY', async t => {
-  t.skip('POST /api/chat remains migration-waived (ARCHITECTURE-DECISION); re-enable the not-ready assertion (and the endpoint-occupancy guard) when it enrolls');
+test('POST /api/chat with an unknown model returns NOT_READY', async () => {
+  const response = await owner.request('/api/chat', {
+    method: 'POST',
+    body: JSON.stringify({ modelId: '__resident-chat-unknown-test-model__', messages: [{ role: 'user', content: 'hi' }] })
+  });
+  assert.equal(response.status, 409);
+  const envelope = Envelope.safeParse(await response.json());
+  assert.equal(envelope.success, true);
+  if (!envelope.success || envelope.data.ok) return;
+  assert.equal(envelope.data.error.code, 'NOT_READY');
 });
 
-test('POST /api/chat/stream on an unstarted model emits a validated error event', async t => {
-  t.skip('POST /api/chat/stream remains migration-waived (ARCHITECTURE-DECISION); re-enable the SSE error-event assertion when it enrolls');
+test('POST /api/chat/stream with an unknown model emits a validated error event', async () => {
+  const response = await owner.request('/api/chat/stream', {
+    method: 'POST',
+    body: JSON.stringify({ modelId: '__resident-chat-unknown-test-model__', messages: [{ role: 'user', content: 'hello' }] })
+  });
+  assert.equal(response.status, 200);
+  assert.ok(response.headers.get('content-type')?.includes('text/event-stream'));
+  const text = await response.text();
+  assert.ok(text.startsWith('data: '), 'must be an SSE data stream');
+  const payload = JSON.parse(text.slice(6).split('\n')[0] ?? '{}') as { error?: string };
+  assert.ok(payload.error !== undefined, 'stream must report the not-ready error as an SSE event');
 });
