@@ -54,4 +54,4 @@ const llamaName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-ser
 const hasLlama = await access(path.join(resources, 'runtime', llamaName)).then(() => true).catch(() => false);
 if (!hasLlama && process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') throw new Error(`desktop preparation is missing required model runtime: ${llamaName}`);
 
-console.log(`desktop preparation verified (frontend: typed browser/dist; model runtime: ${hasLlama ? 'staged' : 'not supplied'})`);
+console.log(`desktop resources verified (frontend: typed browser/dist; optional direct llama.cpp recovery binary: ${hasLlama ? 'staged' : 'not supplied'}; canonical Unsloth runtime: external, not checked)`);

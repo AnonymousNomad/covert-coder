@@ -82,7 +82,7 @@ if (await exists(path.join(modelSource, bootstrapModel))) {
 } else if (process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') {
   throw new Error(`desktop prepare: bootstrap model missing at ${path.join(modelSource, bootstrapModel)}`);
 } else {
-  console.warn(`desktop prepare: bootstrap model not staged; release preparation must supply ${bootstrapModel}`);
+  console.warn(`desktop prepare: optional legacy bootstrap model not staged (${bootstrapModel}); canonical Unsloth runtime and qualified GGUF are external and require fresh-user validation`);
 }
 if (includeWeights) {
   for (const file of await readdir(modelSource)) {
