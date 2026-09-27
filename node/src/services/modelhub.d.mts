@@ -39,6 +39,8 @@ export declare function createHubService(options: {
   onEvent?: (event: HubEvent) => void;
   authorization?: () => Promise<string | null>;
   assertExternalEgressAllowed?: () => void;
+  metadataTimeoutMs?: number;
+  downloadIdleTimeoutMs?: number;
 }): {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<HubSearchResult>;

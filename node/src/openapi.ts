@@ -149,7 +149,7 @@ export interface BuildRoutesOptions {
   // Optional interactive terminal session service. When provided, the PTY
   // routes are registered; when absent (tests/CLI), no PTY code path exists.
   terminalSessions?: import('./services/terminal-sessions.ts').TerminalSessionService;
-  agentChatFn?: (messages: Array<{ role: string; content: string }>) => Promise<string>;
+  agentChatFn?: (messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>;
   indexEmbedFn?: (texts: string[]) => Promise<number[][]>;
   // Opt-in index freshness watcher (server boot only). buildRoutes must stay
   // side-effect-free for tests/CLI: a recursive fs.watch pins the workspace
@@ -591,9 +591,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
     provenanceLedger,
     attemptJournal,
     resourceAdmission,
-    chatFn: options.agentChatFn ?? (async messages => {
+    chatFn: options.agentChatFn ?? (async (messages, signal) => {
       const selection = await modelRouter.routeForRole('chat');
-      const result = await modelRouter.chat(selection.modelId, messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })), {});
+      const result = await modelRouter.chat(selection.modelId, messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })), signal !== undefined ? { signal } : {});
       return result.text;
     }),
     onEvent: event => options.events?.publish('agent', event),

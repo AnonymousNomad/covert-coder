@@ -293,6 +293,17 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     return { source, status, error, content };
   }
 
+  function cancellationPending(session) {
+    return session.cancelRequested === true || session.controller?.signal.aborted === true;
+  }
+
+  function assertNotCancelled(session) {
+    if (!cancellationPending(session)) return;
+    const error = new AgentSessionError('CANCELLED', 'agent session cancelled by operator');
+    error.name = 'AbortError';
+    throw error;
+  }
+
   async function runSession(session) {
     const { id } = session;
     try {
@@ -312,6 +323,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         contextFor(session, 'skills', session.skillProvider, session.task),
         contextFor(session, 'workflow', session.workflowProvider)
       ]);
+      assertNotCancelled(session);
       const failedContext = contexts.find(result => result.status === 'failed');
       if (!failedContext) {
         const advisory = buildAdvisoryContext(contexts[0].content, contexts[4].content, contexts[1].content, contexts[2].content, contexts[3].content, contexts[5].content);
@@ -369,7 +381,8 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
             message_count: messages.length
           }, 'model-router');
         }
-        const response = await (session.chatFn ?? chatFn)(messages);
+        const response = await (session.chatFn ?? chatFn)(messages, session.controller.signal);
+        assertNotCancelled(session);
         if (attemptJournal !== null && typeof session.attempt_id === 'string') {
           await attemptJournal.recordEvent(session.attempt_id, 'MODEL_RESPONSE_RECEIVED', {
             iteration: session.iterations,
@@ -380,6 +393,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       };
 
       while (session.iterations < maxIterations && session.state === 'running') {
+        assertNotCancelled(session);
         authority.assertActor(session.actor);
         session.iterations += 1;
         trimTranscript(session);
@@ -434,6 +448,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
           continue;
         }
 
+        assertNotCancelled(session);
         const completion = calls.find(call => call.name === 'attempt_completion');
         if (completion) {
           await finishDone(session, String(completion.args.result ?? ''));
@@ -449,6 +464,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         let blocked = false;
         for (const call of calls) {
           if (aborted || blocked) break;
+          assertNotCancelled(session);
           const outcome = await executeCall(session, call);
           if (outcome === 'abort') {
             await abortSession(session);
@@ -463,6 +479,10 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         await finishError(session, `reached the maximum of ${maxIterations} iterations without completing`);
       }
     } catch (error) {
+      if (cancellationPending(session)) {
+        if (session.state !== 'aborted') await abortSession(session);
+        return;
+      }
       await finishError(session, `${error?.code ? `[${error.code}] ` : ''}${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -568,8 +588,9 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         if (call.name === 'run_command') await attemptJournal.recordEvent(session.attempt_id, 'COMMAND_STARTED', { command: String(args.command ?? '') }, 'harness');
       }
       result = toolOperation
-        ? await authority.execute(session.actor, toolOperation, toolInput, (_, execution) => tool.execute(args, execution))
-        : await tool.execute(args);
+        ? await authority.execute(session.actor, toolOperation, toolInput, (_, execution) => tool.execute(args, execution, session.controller.signal))
+        : await tool.execute(args, undefined, session.controller.signal);
+      assertNotCancelled(session);
       if (result?.ok !== true) throw new Error(String(result?.output ?? 'tool returned no successful result'));
       // HARNESS vNEXT H3 — observe the effect (post-state hash where possible).
       if (attemptJournal !== null && !tool.readOnly && typeof session.attempt_id === 'string') {
@@ -602,6 +623,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         }
       }
     } catch (error) {
+      if (cancellationPending(session)) throw error;
       const code = error?.code ? `[${error.code}] ` : '';
       const message = `${code}${error instanceof Error ? error.message : String(error)}`;
       // HARNESS vNEXT H3 — a failed mutation-capable tool may have partially
@@ -650,7 +672,12 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
   }
 
   async function requestApproval(session, toolName, args, risks, input) {
+    assertNotCancelled(session);
     const operation = await authority.prepare(session.actor, input);
+    if (cancellationPending(session)) {
+      await authority.decide(session.owner, operation.operation_id, 'reject').catch(() => {});
+      assertNotCancelled(session);
+    }
     const approvalId = operation.operation_id;
     session.authorityOperation = operation;
     const approval = {
@@ -673,6 +700,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     session.deferred = null;
     session.pendingApproval = null;
     session.state = 'running';
+    if (cancellationPending(session)) assertNotCancelled(session);
     return decision;
   }
 
@@ -929,6 +957,9 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         pendingApproval: null,
         deferred: null,
         checkpointHash: null,
+        controller: new AbortController(),
+        cancelRequested: false,
+        runner: null,
         startedAt: new Date().toISOString(),
         toolLog: [],
         auditWrites: [],
@@ -1019,8 +1050,39 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         chatSource: 'agent-loop'
       });
       const runner = runSession(session);
+      session.runner = runner;
       void runner.catch(() => {});
       return { session_id: session.id };
+    },
+    async cancel(sessionId, execution) {
+      if (!authority) throw new AuthorityError('FORBIDDEN', 'agent execution authority required');
+      const input = { session_id: sessionId };
+      const context = authority.assertExecution(execution, 'agent.cancel', input);
+      const session = sessions.get(sessionId);
+      if (!session) throw new AgentSessionError('SESSION_NOT_FOUND', `no such session: ${sessionId}`);
+      if (context.actor !== session.owner) throw new AuthorityError('FORBIDDEN', 'agent cancellation owner mismatch');
+      authority.claimExecution(execution, 'agent.cancel', input);
+      if (['done', 'error', 'aborted'].includes(session.state)) return { ok: true, state: session.state };
+      session.cancelRequested = true;
+      session.controller.abort();
+      const pending = session.pendingApproval;
+      const resolve = session.deferred;
+      if (pending !== null && typeof resolve === 'function') {
+        try {
+          await authority.decide(context.actor, pending.approval_id, 'reject');
+        } catch (error) {
+          session.evidenceErrors.push(`cancel approval revoke: ${String(error?.message ?? error).slice(0, 500)}`);
+        }
+        session.deferred = null;
+        resolve('abort');
+      }
+      if (session.runner) {
+        await Promise.race([
+          session.runner.catch(() => {}),
+          new Promise(resolveWait => setTimeout(resolveWait, 5000))
+        ]);
+      }
+      return { ok: true, state: session.state };
     },
     async decide(sessionId, approvalId, decision, execution) {
       if (!authority) throw new AuthorityError('FORBIDDEN', 'agent execution authority required');

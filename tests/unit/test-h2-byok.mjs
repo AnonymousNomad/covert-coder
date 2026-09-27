@@ -23,6 +23,8 @@ function mkService(overrides = {}) {
     fetchImpl: overrides.fetchImpl ?? null,
     assertExternalEgressAllowed: overrides.assertExternalEgressAllowed ?? (() => {}),
     onEgress: entry => egress.push(entry),
+    testTimeoutMs: overrides.testTimeoutMs,
+    chatTimeoutMs: overrides.chatTimeoutMs,
   });
   return { service, egress };
 }
@@ -60,6 +62,72 @@ test('byok: resolveChatFn returns null without consent or key even when routed',
   service.setConsent(true);
   const chatFn = service.resolveChatFn('act');
   assert.ok(typeof chatFn === 'function');
+});
+
+test('byok: resolved chat forwards caller abort to the provider fetch', async () => {
+  let observedSignal = null;
+  const { service } = mkService({
+    fetchImpl: async (_url, init) => {
+      observedSignal = init?.signal ?? null;
+      return await new Promise((_resolve, reject) => {
+        const fail = () => reject(new DOMException('cancelled', 'AbortError'));
+        if (observedSignal?.aborted) fail();
+        else observedSignal?.addEventListener('abort', fail, { once: true });
+      });
+    },
+  });
+  service.setProvider(provider);
+  service.putKey('p1', 'k'.repeat(20));
+  service.setRouting({ plan: 'local', act: { provider_id: 'p1', model_id: 'm-1' }, utility: 'local' });
+  service.setConsent(true);
+  const chatFn = service.resolveChatFn('act');
+  assert.ok(typeof chatFn === 'function');
+  const controller = new AbortController();
+  const pending = chatFn([{ role: 'user', content: 'wait' }], controller.signal);
+  controller.abort();
+  await assert.rejects(pending, err => err?.name === 'AbortError');
+  assert.ok(observedSignal, 'provider fetch receives a composed abort signal');
+  assert.equal(observedSignal.aborted, true);
+});
+
+test('byok: testProvider bounds a hung provider probe', async () => {
+  const { service } = mkService({
+    testTimeoutMs: 40,
+    fetchImpl: async (_url, init) => await new Promise((_resolve, reject) => {
+      const fail = () => reject(new DOMException('timed out', 'AbortError'));
+      if (init?.signal?.aborted) fail();
+      else init?.signal?.addEventListener('abort', fail, { once: true });
+    }),
+  });
+  service.setProvider(provider);
+  service.putKey('p1', 'k'.repeat(20));
+  service.setConsent(true);
+  const started = Date.now();
+  const out = await service.testProvider('p1');
+  assert.equal(out.ok, false);
+  assert.match(out.detail, /timed out/i);
+  assert.ok(Date.now() - started < 1000, 'provider probe must settle on the configured bound');
+});
+
+test('byok: resolved chat bounds a hung provider call without operator cancellation', async () => {
+  const { service } = mkService({
+    chatTimeoutMs: 40,
+    fetchImpl: async (_url, init) => await new Promise((_resolve, reject) => {
+      const fail = () => reject(new DOMException('timed out', 'AbortError'));
+      if (init?.signal?.aborted) fail();
+      else init?.signal?.addEventListener('abort', fail, { once: true });
+    }),
+  });
+  service.setProvider(provider);
+  service.putKey('p1', 'k'.repeat(20));
+  service.setRouting({ plan: 'local', act: { provider_id: 'p1', model_id: 'm-1' }, utility: 'local' });
+  service.setConsent(true);
+  const chatFn = service.resolveChatFn('act');
+  assert.ok(typeof chatFn === 'function');
+  await assert.rejects(
+    () => chatFn([{ role: 'user', content: 'wait' }]),
+    error => error?.code === 'TIMEOUT' && /timed out/i.test(error.message)
+  );
 });
 
 test('byok: testProvider journals egress before fetch and surfaces failure honestly', async () => {

@@ -108,6 +108,19 @@ test('modelhub: missing Authority egress guard fails closed before network conta
   assert.equal(calls, 0);
 });
 
+test('m1: metadata fetches abort on the configured timeout instead of hanging', async () => {
+  const fetchImpl = async (_url, options = {}) => await new Promise((_resolve, reject) => {
+    const fail = () => reject(new DOMException('timed out', 'AbortError'));
+    if (options.signal?.aborted) fail();
+    else options.signal?.addEventListener('abort', fail, { once: true });
+  });
+  const hub = createHubService({ workspace: ws, modelsDir, assertExternalEgressAllowed: allowExternalEgress, fetchImpl, metadataTimeoutMs: 40 });
+  const started = Date.now();
+  await assert.rejects(() => hub.search('hung'), error => error?.code === 'TIMEOUT' && /timed out/i.test(error.message));
+  assert.ok(Date.now() - started < 1000, 'metadata request must settle on the configured bound');
+  await assert.rejects(() => hub.listRepoFiles('org/hung'), error => error?.code === 'TIMEOUT' && /timed out/i.test(error.message));
+});
+
 test('m1: happy-path download streams to final file with manifest and no .part left', { timeout: 15000 }, async () => {
   const payload = Buffer.alloc(64 * 1024, 0xAB);
   const server = http.createServer((_req, res) => {
@@ -205,6 +218,46 @@ test('m1: interrupted download auto-resumes via Range request and completes', { 
   assert.equal(requests, 2);
   const errorEvents = hub.listEvents().filter(event => event.event === 'error');
   assert.equal(errorEvents.length >= 1, true, 'the interruption should surface as an error event before recovery');
+});
+
+test('m1: stalled download stream hits the idle timeout, retries boundedly, and never publishes final artifact', { timeout: 5000 }, async () => {
+  let requests = 0;
+  const server = http.createServer((_req, res) => {
+    requests += 1;
+    res.setHeader('content-length', String(1024));
+    res.write(Buffer.alloc(4, 0x22));
+    // Deliberately never end: the client-side idle watchdog must abort.
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: (url, options) => fetch(url, options),
+    downloadIdleTimeoutMs: 60
+  });
+  try {
+    const started = Date.now();
+    await hub.startDownload({
+      repo_id: 'testorg/stalled',
+      filename: 'stalled.bin',
+      quant_label: null,
+      urlTemplate: `http://127.0.0.1:${port}/resolve/main/{filename}`
+    });
+    assert.ok(Date.now() - started < 2000, 'three bounded retries must settle quickly in the fixture');
+    assert.equal(requests, 3, 'transient timeout retries are capped at three attempts');
+    const job = hub.listDownloads()[0];
+    assert.equal(job.status, 'error');
+    assert.match(job.error ?? '', /timed out/i);
+    assert.equal(hub.listEvents().some(event => event.event === 'done'), false);
+    await assert.rejects(() => fs.access(path.join(modelsDir, 'stalled.bin')));
+    const part = await fs.stat(path.join(modelsDir, 'stalled.bin.part'));
+    assert.ok(part.size > 0, 'partial bytes remain resumable after a timeout');
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(() => resolve()));
+  }
 });
 
 test('m1: cancel aborts mid-stream, deletes .part, emits cancelled and never done', { timeout: 12000 }, async () => {

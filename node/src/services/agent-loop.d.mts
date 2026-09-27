@@ -12,8 +12,9 @@ export declare class AgentSessionError extends Error {
 }
 
 export interface AgentLoopService {
-  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null }): Promise<{ session_id: string }>;
+  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null; handoffContext?: string | null }): Promise<{ session_id: string }>;
   decide(sessionId: string, approvalId: string, decision: 'approve' | 'reject' | 'abort', execution?: ExecutionHandle): Promise<{ ok: boolean }>;
+  cancel(sessionId: string, execution?: ExecutionHandle): Promise<{ ok: boolean; state: AgentStatusResponseT['state'] }>;
   status(sessionId: string): AgentStatusResponseT;
   list(): AgentStatusResponseT[];
   transcriptOf(sessionId: string): Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_name: string | null; ts: string | null }>;
@@ -23,7 +24,7 @@ export interface AgentLoopService {
 export declare function createAgentLoop(options: {
   workspace: string;
   authority?: ExecutionAuthority | undefined;
-  chatFn(messages: Array<{ role: string; content: string }>): Promise<string>;
+  chatFn(messages: Array<{ role: string; content: string }>, signal?: AbortSignal): Promise<string>;
   rg?: { available(): boolean; search(options: { query: string; maxResults?: number }): Promise<{ matches: unknown[]; truncated: boolean }> } | null;
   checkpoints?: ReturnType<typeof createCheckpointService> | null;
   onEvent?(event: Record<string, unknown> & { event: string; session_id: string }): PublishResult | void;

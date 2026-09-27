@@ -9,6 +9,8 @@ export declare function createByokService(options: {
   fetchImpl?: typeof fetch | null;
   assertExternalEgressAllowed?: () => void;
   onEgress?: (entry: { kind: string; provider_id?: string; host?: string; role?: string }) => void;
+  testTimeoutMs?: number;
+  chatTimeoutMs?: number;
 }): {
   status(): { providers: Array<Record<string, unknown> & { key_stored: boolean }>; routing: Record<string, unknown>; consent_enabled: boolean };
   setProvider(provider: Record<string, unknown>): Record<string, unknown>;
@@ -20,5 +22,5 @@ export declare function createByokService(options: {
   getConsent(): boolean;
   setConsent(enabled: boolean): boolean;
   testProvider(providerId: string, fetchOverride?: typeof fetch): Promise<{ ok: boolean; detail: string }>;
-  resolveChatFn(role: 'plan' | 'act' | 'utility'): ((messages: Array<{ role: string; content: string }>) => Promise<string>) | null;
+  resolveChatFn(role: 'plan' | 'act' | 'utility'): ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
 };

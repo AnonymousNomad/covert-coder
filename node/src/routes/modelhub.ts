@@ -32,6 +32,7 @@ function mapHubError(error: unknown): RouteError {
   if (code === 'VALIDATION' || code === 'IMPORT_INVALID') return new RouteError('BAD_REQUEST', message);
   if (code === 'FORBIDDEN' || code === 'NOT_READY') return new RouteError(code, message);
   if (code === 'DOWNLOAD_CONFLICT') return new RouteError('CONFLICT', message);
+  if (code === 'TIMEOUT') return new RouteError('TIMEOUT', message);
   if (code === 'UPSTREAM') return new RouteError('BAD_RESPONSE', message);
   return new RouteError('INTERNAL', message);
 }

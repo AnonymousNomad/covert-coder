@@ -984,6 +984,15 @@
     },
     {
       "method": "POST",
+      "path": "/api/agent/cancel",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
       "path": "/api/agent/continuation",
       "match": "exact",
       "target": "ts",

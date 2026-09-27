@@ -85,11 +85,12 @@ export class ChatTargetChangedError extends Error {
 const PROBE_TTL_MS = 30_000;
 const LOCAL_PROBE_TIMEOUT_MS = 3_000;
 
-function normalizeOptions(options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined }): { maxTokens?: number; temperature?: number; timeoutMs?: number } {
-  const out: { maxTokens?: number; temperature?: number; timeoutMs?: number } = {};
+function normalizeOptions(options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined; signal?: AbortSignal | undefined }): { maxTokens?: number; temperature?: number; timeoutMs?: number; signal?: AbortSignal } {
+  const out: { maxTokens?: number; temperature?: number; timeoutMs?: number; signal?: AbortSignal } = {};
   if (options.maxTokens !== undefined) out.maxTokens = options.maxTokens;
   if (options.temperature !== undefined) out.temperature = options.temperature;
   if (options.timeoutMs !== undefined) out.timeoutMs = options.timeoutMs;
+  if (options.signal !== undefined) out.signal = options.signal;
   return out;
 }
 
@@ -460,7 +461,7 @@ export class ModelRouter {
     return { fit, overflowTrimmed };
   }
 
-  async chat(routeId: string, messages: ChatMessageT[], options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined } = {}): Promise<RouteChatResult> {
+  async chat(routeId: string, messages: ChatMessageT[], options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined; signal?: AbortSignal | undefined } = {}): Promise<RouteChatResult> {
     const { route, selection } = await this.resolve(routeId);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
     const chatOptions = normalizeOptions(options);
