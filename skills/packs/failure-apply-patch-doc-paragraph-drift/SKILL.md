@@ -1,4 +1,9 @@
-# Failure Skill: Documentation Patch Context Drift
+---
+name: failure-apply-patch-doc-paragraph-drift
+description: Recover when a documentation-only apply_patch fails context verification because the expected Markdown text differs from the current file. Use after a documentation patch rejection.
+---
+
+# Documentation patch context drift
 
 ## Trigger
 A documentation-only `apply_patch` fails its context verification because the expected sentence or paragraph differs from the current Markdown, even though the file is present.

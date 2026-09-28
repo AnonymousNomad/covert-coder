@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-15T16:06:49.804Z",
-  "count": 292,
+  "generated_at": "2026-09-27T01:57:22.434Z",
+  "count": 304,
   "categories": [
     "academy",
     "aide-core",
@@ -1250,6 +1250,41 @@
       "path": "skills/packs/corpus-curation/SKILL.md"
     },
     {
+      "name": "covert-context-control",
+      "title": "covert-context-control",
+      "description": "Construct, refresh, compress, and hand off the minimum sufficient verified context for substantial Covert engineering work. Use at phase entry, session resume, architectural changes, contradictory evidence, and domain transitions.",
+      "category": "general",
+      "path": "skills/packs/covert-context-control/SKILL.md"
+    },
+    {
+      "name": "covert-dogfood-evaluation",
+      "title": "covert-dogfood-evaluation",
+      "description": "Run a real Covert-builds-Covert coding task and fair model/harness ON/OFF evaluation from a fixed task and independent verifier. Use for first live Resident missions, provider comparisons, benchmark claims, false success, or diagnosing harness effects.",
+      "category": "general",
+      "path": "skills/packs/covert-dogfood-evaluation/SKILL.md"
+    },
+    {
+      "name": "covert-fresh-user-release-audit",
+      "title": "covert-fresh-user-release-audit",
+      "description": "Test a Covert Windows release as a clean new user from installer through onboarding, model discovery/download, Resident coding, restart and uninstall. Use before public release, when the setup wizard or packaged sidecar fails, or when source-checkout smoke tests have been mistaken for install proof.",
+      "category": "general",
+      "path": "skills/packs/covert-fresh-user-release-audit/SKILL.md"
+    },
+    {
+      "name": "covert-real-model-harness-pilot",
+      "title": "covert-real-model-harness-pilot",
+      "description": "Govern preflight, setup, controlled execution, and evidence preservation for real local-model harness pilots. Use before model-backed benchmark comparisons, especially scaffold-on versus scaffold-off runs.",
+      "category": "general",
+      "path": "skills/packs/covert-real-model-harness-pilot/SKILL.md"
+    },
+    {
+      "name": "covert-unsloth-product-wiring",
+      "title": "covert-unsloth-product-wiring",
+      "description": "Connect Covert's production model, chat, and agent paths to the frozen canonical Unsloth Runtime Broker while preserving inventory, Authority, qualification, and explicit recovery boundaries. Use when product routes still execute the legacy direct llama.cpp ModelRuntime or a local dogfood run cannot reach Unsloth.",
+      "category": "general",
+      "path": "skills/packs/covert-unsloth-product-wiring/SKILL.md"
+    },
+    {
       "name": "cross-synthesis-generation",
       "title": "cross-synthesis-generation",
       "description": "Generate training documents that teach cross-synthesis of human behavioral science (48 Laws of Power/Nature, Machiavelli, mentalism, emotions) with cybersecurity architecture and software engineering. Follows dual-mind-reasoning-traces + gold-training-docs format with explicit synthesis blocks. Use when building the cross-synthesis layer (10-20% of corpus) for the 150M web-builder model, creating guardrail-capable models that reason about human factors in technical systems, detect manipulation/social engineering, and understand power dynamics in code and organizations.",
@@ -1397,6 +1432,20 @@
       "path": "skills/packs/ex-vis-premium-aesthetic-language/SKILL.md"
     },
     {
+      "name": "failure-apply-patch-context-drift",
+      "title": "failure-apply-patch-context-drift",
+      "description": "Recover when apply_patch rejects an expected source hunk because the supplied context does not match the current file.",
+      "category": "general",
+      "path": "skills/packs/failure-apply-patch-context-drift/SKILL.md"
+    },
+    {
+      "name": "failure-apply-patch-doc-paragraph-drift",
+      "title": "failure-apply-patch-doc-paragraph-drift",
+      "description": "Recover when a documentation-only apply_patch fails context verification because the expected Markdown text differs from the current file. Use after a documentation patch rejection.",
+      "category": "general",
+      "path": "skills/packs/failure-apply-patch-doc-paragraph-drift/SKILL.md"
+    },
+    {
       "name": "failure-apply-patch-same-path-replacement",
       "title": "failure-apply-patch-same-path-replacement",
       "description": "Prevent apply_patch transaction failures when replacing an entire file. Use when a patch attempts both Delete File and Add File for the same path.",
@@ -1474,11 +1523,25 @@
       "path": "skills/packs/failure-harness-trace-contract-drift/SKILL.md"
     },
     {
+      "name": "failure-js-template-literal-doc-write",
+      "title": "failure-js-template-literal-doc-write",
+      "description": "Prevent JavaScript template-literal parsing failures when writing Markdown that contains backticks through functions.exec.",
+      "category": "general",
+      "path": "skills/packs/failure-js-template-literal-doc-write/SKILL.md"
+    },
+    {
       "name": "failure-lsp-completion-timeout",
       "title": "failure-lsp-completion-timeout",
       "description": "Diagnose a legacy-daemon LSP completion timeout without masking lifecycle or process defects. Use whenever scripts/acceptance-real.mjs or an equivalent real TypeScript-language-server probe returns LSP request timed out.",
       "category": "general",
       "path": "skills/packs/failure-lsp-completion-timeout/SKILL.md"
+    },
+    {
+      "name": "failure-markdown-hardbreak-diff-check",
+      "title": "failure-markdown-hardbreak-diff-check",
+      "description": "Resolve git diff --check failures caused by trailing spaces used as Markdown hard breaks in versioned documentation. Use when a whitespace gate flags those lines.",
+      "category": "general",
+      "path": "skills/packs/failure-markdown-hardbreak-diff-check/SKILL.md"
     },
     {
       "name": "failure-model-integrity-declaration",
@@ -1516,6 +1579,13 @@
       "path": "skills/packs/failure-pythonpath-hijack/SKILL.md"
     },
     {
+      "name": "failure-stale-python-launcher-path",
+      "title": "failure-stale-python-launcher-path",
+      "description": "Handle a Python launcher registration whose reported interpreter path is absent from disk.",
+      "category": "general",
+      "path": "skills/packs/failure-stale-python-launcher-path/SKILL.md"
+    },
+    {
       "name": "failure-typescript-mjs-declaration",
       "title": "failure-typescript-mjs-declaration",
       "description": "Fix strict TypeScript TS7016 failures for project JavaScript modules without weakening compiler settings. Use whenever a .ts file imports a local .mjs module and tsc reports an implicit-any declaration error.",
@@ -1528,6 +1598,20 @@
       "description": "Prevent false Vite launch-test failures caused by comparing relative and root-relative HTML entry URLs as raw strings. Use when a dev index serves ./src/main.ts but the test expects /src/main.ts.",
       "category": "general",
       "path": "skills/packs/failure-vite-entry-relative-url-assertion/SKILL.md"
+    },
+    {
+      "name": "failure-windows-exec-acl-bootstrap",
+      "title": "failure-windows-exec-acl-bootstrap",
+      "description": "Recover safely when the Windows command launcher fails before process start while applying deny-read ACLs.",
+      "category": "general",
+      "path": "skills/packs/failure-windows-exec-acl-bootstrap/SKILL.md"
+    },
+    {
+      "name": "failure-windows-python-store-alias",
+      "title": "failure-windows-python-store-alias",
+      "description": "Recover static Python verification when the Windows python command resolves to a Microsoft Store execution alias.",
+      "category": "general",
+      "path": "skills/packs/failure-windows-python-store-alias/SKILL.md"
     },
     {
       "name": "felon-master",

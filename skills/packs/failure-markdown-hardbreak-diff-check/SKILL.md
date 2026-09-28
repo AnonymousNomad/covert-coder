@@ -1,4 +1,9 @@
-# Failure Skill: Markdown Hard Breaks Fail Git Whitespace Check
+---
+name: failure-markdown-hardbreak-diff-check
+description: Resolve git diff --check failures caused by trailing spaces used as Markdown hard breaks in versioned documentation. Use when a whitespace gate flags those lines.
+---
+
+# Markdown hard breaks and Git whitespace checks
 
 ## Trigger
 `git diff --check` reports trailing whitespace on Markdown lines that use two spaces to request a CommonMark hard line break.
