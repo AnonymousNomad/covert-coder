@@ -793,6 +793,8 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
   }
 
   async function emitVerificationOutcome(session, outcome) {
+    let receiptReadyEligible = false;
+    let attemptFinalized = false;
     await Promise.all(session.auditWrites);
     if (attemptJournal !== null && typeof session.attempt_id === 'string') {
       await attemptJournal.verificationStarted(session.attempt_id).catch(() => {});
@@ -872,7 +874,8 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
           finished_at: new Date().toISOString()
         });
         if (attemptJournal !== null && typeof session.attempt_id === 'string') {
-          await attemptJournal.recordEvent(session.attempt_id, 'PROVENANCE_RECORDED', { run_id: session.id }, 'provenance').catch(() => {});
+          await attemptJournal.recordEvent(session.attempt_id, 'PROVENANCE_RECORDED', { run_id: session.id }, 'provenance');
+          receiptReadyEligible = true;
         }
       } catch (error) {
         session.evidenceErrors.push(`provenance ledger: ${String(error?.message ?? error)}`);
@@ -888,8 +891,21 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
           failure_class: outcome === 'error' ? (uncertain ? 'TOOL_FAILURE' : 'EXECUTION_FAILURE') : null,
           error: session.error ?? null
         });
+        attemptFinalized = true;
       } catch (error) {
         session.evidenceErrors.push(`attempt journal finalize: ${String(error?.message ?? error)}`);
+      }
+    }
+    if (receiptReadyEligible && attemptFinalized && attemptJournal !== null && typeof session.attempt_id === 'string') {
+      try {
+        await attemptJournal.recordEvent(session.attempt_id, 'MISSION_RECEIPT_READY', {
+          run_id: session.id,
+          evidence_file: verification.evidence_file ?? null,
+          trajectory_file: verification.trajectory_file ?? null,
+          verification_state: verification.state
+        }, 'provenance');
+      } catch (error) {
+        session.evidenceErrors.push(`mission receipt ready event: ${String(error?.message ?? error)}`);
       }
     }
     if (typeof onSessionEnd === 'function') {

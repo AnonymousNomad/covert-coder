@@ -150,6 +150,27 @@ test('LIVE: agent session finalize appends one run and the routes project it', a
     assert.ok(['failed', 'incomplete', 'unavailable', 'errored'].includes(receipt.data.verification));
     const single = await (await owner.request(`/api/provenance/run?id=${encodeURIComponent(sessionId)}`, { signal: AbortSignal.timeout(30000) })).json();
     assert.equal(single.data.run.task, 'provenance live run');
+    const runRecord = receipt.data.runs[0];
+    const attemptId = runRecord.attempt_id as string;
+    assert.equal(runRecord.attempt_event_stream_ref, `attempt:${attemptId}`);
+    const journal = (await fs.readFile(path.join(workspace, '.aide', 'admission', 'journal.jsonl'), 'utf8'))
+      .trim().split(String.fromCharCode(10)).map(line => JSON.parse(line));
+    const timeline = journal.filter(event => event.attempt_id === attemptId);
+    const provenanceRecorded = timeline.find(event => event.event === 'PROVENANCE_RECORDED');
+    const terminalEvent = timeline.find(event => ['ATTEMPT_ACCEPTED', 'ATTEMPT_REJECTED', 'ATTEMPT_FAILED', 'ATTEMPT_ABORTED'].includes(event.event));
+    const receiptReadyEvents = timeline.filter(event => event.event === 'MISSION_RECEIPT_READY');
+    assert.equal(receiptReadyEvents.length, 1, 'the attempt timeline must publish exactly one canonical receipt-ready event');
+    const receiptReady = receiptReadyEvents[0];
+    assert.ok(provenanceRecorded);
+    assert.ok(terminalEvent);
+    assert.ok(terminalEvent.seq < receiptReady.seq, 'receipt readiness must follow a terminal attempt event');
+    assert.equal(receiptReady.mission_id, receipt.data.mission_id);
+    assert.equal(receiptReady.attempt_id, attemptId);
+    assert.ok(provenanceRecorded.seq < receiptReady.seq, 'receipt readiness must follow provenance persistence');
+    assert.equal(receiptReady.data.run_id, sessionId);
+    assert.equal(receiptReady.data.evidence_file, runRecord.evidence_file);
+    assert.equal(receiptReady.data.trajectory_file, runRecord.trajectory_file);
+    assert.equal(receiptReady.data.verification_state, runRecord.verification_state);
   } finally {
     http.closeAllConnections?.();
     await new Promise<void>(resolve => http.close(() => resolve()));
