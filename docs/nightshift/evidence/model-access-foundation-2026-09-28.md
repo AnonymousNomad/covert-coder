@@ -63,7 +63,7 @@ The previous POSIX shutdown path signaled direct child processes and returned wi
 | `npm run check` on final local repair | Passed: architecture 795 total, 784 passed, 0 failed, 11 documented skips; TypeScript and ESLint passed with 0 errors and 62 existing warnings. The initial default-cache invocation could not write its npm log because C: was full; rerunning with `npm_config_cache=E:\pip_temp\covert-nightshift-npm-cache` completed successfully. No C: files were removed. |
 | `node --check scripts/start.mjs` and `git diff --check` | Passed. |
 | Local WSL Vite launch | Not verified: the Vite URL did not become reachable within 30 seconds in that environment. This is not counted as a pass or as reproducing the CI failure. |
-| GitHub CI for repaired source | Pending; Linux process-group behavior remains unproven until the next exact-SHA run. |
+| GitHub CI for repaired source | Passed on exact SHA `ab5f4b2e5bd14d141474ae7e8ff8099ec4d4442d` in [run 36490980680](https://github.com/AnonymousNomad/covert-coder/actions/runs/36490980680). Backend/integration, type checks/lint, architecture, Veritas, generated-file/worktree and cleanup gates all passed; Linux Vite cleanup is now proven for this source SHA. |
 | Issue #38 | Open with no comments at the post-regression check. |
 
-The separate open Dependabot alert #1 for `glib` in `desktop/Cargo.lock` remains a packaging/security-phase item; it was not involved in this CI failure. P2 must wait until the repaired P0/P1 checkpoint is pushed and its exact-SHA GitHub CI is green.
+The P0/P1 source checkpoint is now pushed and exact-SHA CI green; the phase exit is proven at `ab5f4b2e5bd14d141474ae7e8ff8099ec4d4442d`. Proceed to P2 Provider adapter lifecycle correctness. The separate open Dependabot alert #1 for `glib` in `desktop/Cargo.lock` remains a packaging/security-phase item; it was not involved in this CI failure.

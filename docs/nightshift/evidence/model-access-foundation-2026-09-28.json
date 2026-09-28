@@ -15,7 +15,7 @@
   "phase": {
     "plan_phases": ["P0", "P1"],
     "local_exit_criteria": "coherent Model Access contracts and read paths; identity/source/route/credential/adapter separation; false-readiness, secret-redaction, artifact-staleness and routing-isolation checks; required local gates green",
-    "status": "CHECKPOINT_PUSHED_CI_FAILED_REPAIR_LOCALLY_VERIFIED_AWAITING_EXACT_SHA_CI",
+    "status": "P0_P1_EXIT_PROVEN_EXACT_SHA_CI_GREEN",
     "next_phase": "P2 Provider adapter lifecycle correctness"
   },
   "implementation": [
@@ -73,7 +73,8 @@
     "authorized_branch": "nightshift/production-convergence-20260926",
     "push_authorized_by_user": true,
     "checkpoint_commit": "981c6a804c056ce21d62dbd6014e6905c670dbf4",
-    "github_ci_exact_sha": "FAILURE: run 36481897389 on 981c6a804c056ce21d62dbd6014e6905c670dbf4; repair checkpoint pending"
+    "repair_checkpoint_commit": "ab5f4b2e5bd14d141474ae7e8ff8099ec4d4442d",
+    "github_ci_exact_sha": "PASS: run 36490980680 on ab5f4b2e5bd14d141474ae7e8ff8099ec4d4442d"
   },
   "verification_follow_up": {
     "recorded_at_local": "2026-09-28 15:38 -05:00",
@@ -124,7 +125,7 @@
       "staged_stack_listeners_remaining": 0,
       "unrelated_preexisting_processes": "Observed and left untouched."
     },
-    "phase_status": "CHECKPOINT_PUSHED_CI_FAILED_REPAIR_LOCALLY_VERIFIED_AWAITING_EXACT_SHA_CI"
+    "phase_status": "P0_P1_EXIT_PROVEN_EXACT_SHA_CI_GREEN"
   },
   "ci_repair_follow_up": {
     "recorded_at_local": "2026-09-28 16:52 -05:00",
@@ -170,9 +171,24 @@
       "issue_38": "OPEN_WITH_NO_COMMENTS",
       "verified_after_regression": true
     },
+    "passing_repair_checkpoint": {
+      "sha": "ab5f4b2e5bd14d141474ae7e8ff8099ec4d4442d",
+      "run_id": 36490980680,
+      "run_url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/36490980680",
+      "conclusion": "SUCCESS",
+      "gates": [
+        "frontend build",
+        "backend and integration tests",
+        "type checks and lint",
+        "architecture tests",
+        "Veritas path-boundary, secret-scan, manifest-validation, compile, tests and git-diff",
+        "generated-file/worktree check",
+        "fixture cleanup"
+      ],
+      "issue_38_after_ci": "OPEN_WITH_NO_COMMENTS"
+    },
     "pending": [
-      "Commit and push the locally verified repair to the authorized convergence branch.",
-      "Require green GitHub CI on the exact repair SHA, especially Linux canonical-launch cleanup, before entering P2."
+      "Proceed to P2 Provider adapter lifecycle correctness from the clean green checkpoint."
     ]
   }
 }
