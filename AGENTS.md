@@ -113,3 +113,20 @@ Before claiming "done":
 - llama.cpp: `E:\llama-cpp\`
 - Project: `E:\aide-sovereign-workbench\`
 - Corpus: `E:\models\house-model\corpus\`
+
+## Covert Codex master pack
+For production convergence read this pack's README_FIRST, SOURCE_OF_TRUTH_ORDER, dated current-state handoff, MASTER_OPERATING_DIRECTIVE and PLAN. Load only the focused skill needed for the active unit.
+
+Preserve the canonical convergence lane and protected PR #31 unless current owner/repo truth supersedes. Never reset unknown dirty work. Release closure outranks feature expansion. Every claim stays at its proven evidence layer. Use GitHub checkpoints for external review. When a phase closes, continue to the next phase; when blocked, preserve evidence and continue only independent safe release-critical work.
+
+Plugins/tools are optional capabilities, not project authority or runtime dependencies. Discover availability; never invent access or bypass quotas/security.
+
+## Covert Review Bridge — Codex append
+
+When `covertReview` is available, call `get_review_inbox` before a new major integration phase, after a meaningful pushed checkpoint, after a material gate change, and before release promotion. `blocker` instructions require stop-and-inspect; `high` corrective instructions require reconciliation before unrelated work. Newer explicit owner instructions override bridge messages. Review messages are not proof: verify them. If the bridge is unavailable, continue normal engineering and GitHub checkpointing.
+
+## Covert Review Control — GitHub Issue #38
+
+Use [Issue #38](https://github.com/AnonymousNomad/covert-coder/issues/38) as the permanent external technical-review channel. Check it before a new major integration phase, after each meaningful pushed checkpoint, after a material verification or regression result changes, and before release promotion. Read Sol's comments, verify them against repository truth, apply warranted corrections, and continue autonomously without weakening tests or architecture or waiting for routine approval. Newer explicit owner instructions override review comments. Issue comments do not substitute for tests, CI, or acceptance evidence.
+
+Keep `nightshift/production-convergence-20260926` as the convergence lane and keep PR #31 frozen unless the owner explicitly authorizes otherwise. Checkpoint reports include branch and exact HEAD, clean/dirty state, bounded objective, changed areas, local verification and counts, push/CI state, blockers, and the next dependency-ordered action.

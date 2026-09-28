@@ -570,6 +570,15 @@
     },
     {
       "method": "GET",
+      "path": "/api/models/manager",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/models/routes",
       "match": "exact",
       "target": "ts",

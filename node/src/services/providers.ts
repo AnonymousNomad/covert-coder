@@ -129,12 +129,13 @@ export class ProviderService {
   }
 
   async list(): Promise<ProviderInfoT[]> {
-    const connected = new Set(await this.credentials.ids());
+    const configuredIds = new Set(await this.credentials.ids());
     return BUILTIN_PROVIDERS.map(provider => {
+      const configured = configuredIds.has(provider.id);
       let status: ProviderInfoT['status'] = 'not_connected';
-      if (connected.has(provider.id)) {
+      if (configured) {
         const cached = this.probeCache.get(provider.id);
-        status = cached !== undefined && Date.now() - cached.at < PROBE_CACHE_TTL_MS ? cached.status : 'connected';
+        status = cached !== undefined && Date.now() - cached.at < PROBE_CACHE_TTL_MS ? cached.status : 'checking';
       }
       return {
         id: provider.id,
@@ -143,7 +144,7 @@ export class ProviderService {
         baseUrl: provider.baseUrl,
         models: provider.models,
         status,
-        configured: status !== 'not_connected'
+        configured
       };
     });
   }

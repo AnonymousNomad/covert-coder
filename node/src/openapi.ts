@@ -10,7 +10,7 @@ import { HealthResponse } from '../../common/contracts/health.ts';
 import { WorkspaceListResponse, WorkspaceTreeResponse } from '../../common/contracts/workspace.ts';
 import { routeForFileRead, routeForFileWrite, routeForSearch, routeForSearchReplace, routeForPatchApply } from './routes/fs.ts';
 import { routeForSessionGet, routeForSessionPut } from './routes/session.ts';
-import { routeForModelStatus, routeForModelStart, routeForModelStop, routeForModelIngest, routeForModelReady, routeForModelRegister, routeForModelProfile } from './routes/models.ts';
+import { routeForModelStatus, routeForModelManager, routeForModelStart, routeForModelStop, routeForModelIngest, routeForModelReady, routeForModelRegister, routeForModelProfile } from './routes/models.ts';
 import { routeForRoutes, routeForRoute, routeForFit } from './routes/routing.ts';
 import { routeForChat, routeForChatStream, routeForChatHistory, routeForChatHistorySave } from './routes/chat.ts';
 import { workspaceContext } from './services/chat-context.ts';
@@ -103,7 +103,8 @@ import { routesForHandoff } from './routes/handoff.ts';
 import { createSecretStore } from '../../node/src/services/secret-store.mjs';
 import { createByokService } from '../../node/src/services/byok-service.mjs';
 import { routesForByok } from './routes/byok.ts';
-import { createProviderConnectionsService } from '../../node/src/services/provider-connections.mjs';
+import { createProviderConnectionsService, type ProviderConnectionsService } from '../../node/src/services/provider-connections.mjs';
+import { createModelManagerView } from './services/model-manager-view.ts';
 import { routesForConnections } from './routes/connections.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
@@ -682,12 +683,19 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch,
     assertExternalEgressAllowed,
     onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
-  const connectionsService = options.connectionsService ?? createProviderConnectionsService({
+  const connectionsService: ProviderConnectionsService = options.connectionsService as ProviderConnectionsService ?? createProviderConnectionsService({
     workspace,
     providerService,
     byokService,
     modelRuntime,
     secretStore
+  });
+  const modelManagerView = createModelManagerView({
+    workspace,
+    manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
+    modelRuntime,
+    connectionsService,
+    ...(modelRuntime instanceof BrokerModelRuntime ? { runtimeStatus: () => modelRuntime.runtimeStatusSnapshot() } : {})
   });
   const huggingfaceAuthorization =
     options.modelHubAuthorization ??
@@ -777,6 +785,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForSessionGet(sessionStore),
     routeForSessionPut(sessionStore),
     routeForModelStatus(modelRuntime),
+    routeForModelManager(modelManagerView),
     routeForModelStart(modelRuntime),
     routeForModelStop(modelRuntime),
     routeForModelIngest(modelRuntime),

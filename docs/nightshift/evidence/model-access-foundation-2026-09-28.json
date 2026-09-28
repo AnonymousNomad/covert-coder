@@ -1,0 +1,129 @@
+{
+  "schema": "covert.nightshift.checkpoint-evidence.v1",
+  "checkpoint": "model-access-foundation-2026-09-28",
+  "recorded_at_local": "2026-09-28 12:49 -05:00",
+  "objective": "Recover and close the interrupted Model Access work, establishing the P0/P1 identity, source, connection, and read-only Model Manager foundation.",
+  "repository": {
+    "worktree": "E:/covert-nightshift-integration",
+    "branch": "nightshift/production-convergence-20260926",
+    "base_sha": "1dca0c51703ef800a6c2733ded9a2b1045d8bda6",
+    "upstream": "origin/nightshift/production-convergence-20260926",
+    "upstream_sha_at_verification": "1dca0c51703ef800a6c2733ded9a2b1045d8bda6",
+    "verification_tree": "dirty working tree based on base_sha; checkpoint commit and remote CI pending",
+    "recovery_copy": "E:/covert-model-access-wip-20260928"
+  },
+  "phase": {
+    "plan_phases": ["P0", "P1"],
+    "local_exit_criteria": "coherent Model Access contracts and read paths; identity/source/route/credential/adapter separation; false-readiness, secret-redaction, artifact-staleness and routing-isolation checks; required local gates green",
+    "status": "LOCAL_VERIFIED_AWAITING_PUSH_AND_EXACT_SHA_CI",
+    "next_phase": "P2 Provider adapter lifecycle correctness"
+  },
+  "implementation": [
+    "Added strict Model Access contracts and a passive GET /api/models/manager projection.",
+    "Separated logical model identity, artifact/source, provider route, credential source, execution adapter, runtime state, qualification and selection policy.",
+    "Kept public connection and manager projections secret-free and non-executing; unknown provider/model support and stale or absent qualification do not produce readiness.",
+    "Added bounded local artifact discovery, qualification freshness checks, read-only selection policy and governed test-request connection ID bounds covering the maximum BYOK provider ID.",
+    "Regenerated OpenAPI, facade route ownership and C1-02 route decision artifacts; recorded focused failure skills in the registry."
+  ],
+  "validation": [
+    {
+      "command": "node --experimental-strip-types --test tests/arch/model-access.test.ts tests/arch/connections-routes.test.ts",
+      "result": "PASS",
+      "counts": {"tests": 13, "passed": 13, "failed": 0, "skipped": 0}
+    },
+    {
+      "command": "npm run contracts",
+      "result": "PASS",
+      "details": "Generated common/openapi.json with 238 documented operations."
+    },
+    {
+      "command": "node scripts/build-facade-map.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node scripts/build-c1-02-route-ownership-decisions.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run check:arch",
+      "result": "PASS",
+      "details": "Node and browser TypeScript checks, ESLint, and architecture battery all exited successfully.",
+      "counts": {"architecture_tests": 795, "passed": 784, "failed": 0, "skipped": 11},
+      "duration_ms": 559091
+    },
+    {
+      "command": "supervised paired facade GET /api/models/manager on a fresh temporary workspace",
+      "result": "PASS",
+      "details": {"http_status": 200, "valid_success_envelope": true, "public_safe": true, "canonical_runtime_id": "unsloth", "models_returned": 18}
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "skips": [
+    "11 architecture cases were explicitly skipped by existing gates, including cases requiring GGUF artifacts absent from this checkout and existing migration-waived cases."
+  ],
+  "limitations": [
+    "The supervised facade smoke proves the inventory endpoint and its safe projection only; it does not prove that a runtime or model is installed, loaded, qualified, or live.",
+    "This checkpoint does not prove provider adapter cancellation/cleanup, live OpenCode Go or DeepSeek execution, Mission Receipt acceptance, browser/first-user acceptance, CP01-CP18, packaged install, clean-machine install, or release acceptance.",
+    "GitHub CI has not yet run for the checkpoint commit; the P0/P1 push exit remains open until checks pass on the exact pushed SHA."
+  ],
+  "publication": {
+    "authorized_branch": "nightshift/production-convergence-20260926",
+    "push_authorized_by_user": true,
+    "checkpoint_commit": "pending",
+    "github_ci_exact_sha": "pending"
+  },
+  "verification_follow_up": {
+    "recorded_at_local": "2026-09-28 15:38 -05:00",
+    "staged_smoke_repair": {
+      "root_cause": "The staged smoke launched the stack without the native parent's required bootstrap arguments and requested protected model state before pairing.",
+      "correction": "Use the approved packaged origin and native bootstrap arguments, complete the actual one-time HTTP pairing exchange, assert unpaired denial and paired success, then verify TS and legacy routes through the facade.",
+      "secret_handling": "Pairing proof and session token remain in memory; test output and evidence contain neither value.",
+      "process_hygiene": "Uses OS-assigned test ports; child logs are capped and read before workspace removal; launcher tree and listeners are checked before cleanup."
+    },
+    "checks": [
+      {
+        "command": "npm run desktop:prepare",
+        "result": "PASS",
+        "details": "Staged resources rebuilt from current source. Optional legacy bootstrap GGUF was absent and not claimed."
+      },
+      {
+        "command": "node scripts/desktop-staged-smoke.mjs",
+        "result": "PASS",
+        "counts": {"checks": 10, "passed": 10, "failed": 0},
+        "details": "Paired model status returned HTTP 200 with a valid schema; unpaired model status returned 403; TS and legacy routes passed; unknown route returned 404; process and listeners were closed."
+      },
+      {
+        "command": "npm run check",
+        "result": "PASS",
+        "details": "Node and browser TypeScript, ESLint with 0 errors (62 existing warnings), and architecture suite.",
+        "counts": {"architecture_tests": 795, "passed": 784, "failed": 0, "skipped": 11}
+      },
+      {
+        "command": "npm test",
+        "result": "PASS",
+        "details": "Complete sequence passed, including REAL AIDE and P0 acceptance, Desktop battery 9/9, staged smoke 10/10, grammar 5/5 and end-to-end smoke."
+      },
+      {
+        "command": "npm run veritas -- --json --output artifacts/veritas-model-access-2026-09-28.json",
+        "result": "PASS",
+        "details": "All six checks passed: path-boundary, secret-scan, manifest-validation, compile, tests and git-diff.",
+        "veritas": {"status": "verified", "score": 1.0, "threshold": 0.9, "failed_checks": []},
+        "report_secret_scan": {"pairing_proof_pattern": false, "bearer_token_pattern": false, "github_token_pattern": false}
+      },
+      {
+        "command": "GitHub Issue #38 review check",
+        "result": "OPEN_WITH_NO_COMMENTS",
+        "url": "https://github.com/AnonymousNomad/covert-coder/issues/38"
+      }
+    ],
+    "process_hygiene": {
+      "staged_stack_processes_remaining": 0,
+      "staged_stack_listeners_remaining": 0,
+      "unrelated_preexisting_processes": "Observed and left untouched."
+    },
+    "phase_status": "LOCAL_VERIFIED_AWAITING_CHECKPOINT_PUSH_AND_EXACT_SHA_CI"
+  }
+}

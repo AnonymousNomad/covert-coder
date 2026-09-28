@@ -69,6 +69,11 @@ export class BrokerModelRuntime extends ModelRuntime {
     return status;
   }
 
+  /** Read-only product observation; does not start, stop, or select a runtime. */
+  async runtimeStatusSnapshot(): Promise<RuntimeStatusResponseT> {
+    return this.observedStatus();
+  }
+
   private invalidateObservedStatus(): void {
     this.observedStatusCache = null;
   }

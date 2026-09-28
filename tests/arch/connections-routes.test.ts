@@ -105,11 +105,11 @@ test('connections: unified view composes existing surfaces truthfully', async ()
   assert.ok(subscriptions.every(entry => entry.status === 'unavailable'), 'absent official runtimes report unavailable, never fabricated connected');
   assert.ok(subscriptions.every(entry => entry.routing_available === false), 'subscription runtimes are invoked via the official CLI, not the router');
   const localEntry = res.body.data!.connections.find(entry => entry.id === 'local-runtime');
-  assert.equal(localEntry!.status, 'not_configured');
-  assert.equal(localEntry!.routing_available, true);
+  assert.equal(localEntry!.status, 'unavailable');
+  assert.equal(localEntry!.routing_available, false);
 
-  // A configured BYOK provider + stored key surfaces as a connected api-key
-  // connection and shifts the consensus (all truthful derived state).
+  // A stored BYOK key is configuration metadata, not a provider verification
+  // or external-egress consent signal.
   secrets.set('prov1', 'sk-prov1');
   byokStatusValue = {
     providers: [{ id: 'prov1', name: 'GW', base_url: 'https://gw.example.com/v1', api_type: 'chat-completions', model_id: 'm-1', tool_calling: false, key_stored: true }],
@@ -117,9 +117,9 @@ test('connections: unified view composes existing surfaces truthfully', async ()
     consent_enabled: false
   };
   const second = await call<{ consensus: string; connections: Array<{ id: string; status: string; capabilities: string[] }> }>('GET', '/api/connections');
-  assert.equal(second.body.data!.consensus, 'api-keys');
+  assert.equal(second.body.data!.consensus, 'none');
   const apiEntry = second.body.data!.connections.find(entry => entry.id === 'api:prov1');
-  assert.equal(apiEntry!.status, 'connected');
+  assert.equal(apiEntry!.status, 'configured_not_verified');
   assert.deepEqual(apiEntry!.capabilities, ['chat', 'act', 'utility']);
   const privacy = JSON.stringify(second.body);
   assert.ok(!privacy.includes('sk-prov1'), 'the unified view never leaks stored credentials');
@@ -179,8 +179,8 @@ test('connections: HF token write is governed + digest-bound and never leaks the
   assert.equal(replay.status, 409, 'consumed token approval cannot replay');
 
   const view = await call<{ consensus: string; connections: Array<{ id: string; status: string }> }>('GET', '/api/connections');
-  assert.equal(view.body.data!.connections.find(entry => entry.id === 'hf-token')!.status, 'connected');
-  assert.ok(view.body.data!.consensus.includes('catalog'), 'catalog consensus updates truthfully');
+  assert.equal(view.body.data!.connections.find(entry => entry.id === 'hf-token')!.status, 'configured_not_verified');
+  assert.equal(view.body.data!.consensus, 'none', 'a stored catalog token is not provider verification');
 
   const auditText = await fs.readFile(path.join(workspace, '.aide', 'cipher-state.jsonl'), 'utf8');
   assert.ok(!auditText.includes(hfSecret), 'audit journal never stores the raw credential');

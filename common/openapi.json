@@ -5581,7 +5581,7 @@
                           "id": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 64
+                            "maxLength": 72
                           },
                           "provider_id": {
                             "type": "string",
@@ -5607,6 +5607,7 @@
                             "enum": [
                               "not_configured",
                               "sign_in_required",
+                              "configured_not_verified",
                               "connected",
                               "invalid_key",
                               "unreachable",
@@ -5635,6 +5636,155 @@
                           "account_label": {
                             "type": "string",
                             "maxLength": 120
+                          },
+                          "access": {
+                            "type": "object",
+                            "properties": {
+                              "authentication_mode": {
+                                "type": "string",
+                                "enum": [
+                                  "api_key",
+                                  "subscription_login",
+                                  "official_cli",
+                                  "opencode_managed",
+                                  "oauth_account",
+                                  "none",
+                                  "unknown"
+                                ]
+                              },
+                              "authentication_configured": {
+                                "type": "boolean"
+                              },
+                              "credential_source": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "api_key_vault",
+                                      "subscription_account",
+                                      "official_cli_auth",
+                                      "opencode_managed_auth",
+                                      "oauth_session",
+                                      "local_none",
+                                      "unknown"
+                                    ]
+                                  },
+                                  "configuration_state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "not_required",
+                                      "missing",
+                                      "configured",
+                                      "invalid",
+                                      "unknown"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "configuration_state"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "health": {
+                                "type": "string",
+                                "enum": [
+                                  "healthy",
+                                  "unhealthy",
+                                  "unknown",
+                                  "unavailable"
+                                ]
+                              },
+                              "execution_adapters": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "direct-http",
+                                    "opencode",
+                                    "codex-cli",
+                                    "claude-cli",
+                                    "local-runtime"
+                                  ]
+                                }
+                              },
+                              "model_refs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "model_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 240
+                                    },
+                                    "provider_model_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 240
+                                    },
+                                    "model_support_state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "verified",
+                                        "unknown",
+                                        "unsupported"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "model_id",
+                                    "provider_model_id",
+                                    "model_support_state"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "external_egress_required": {
+                                "type": "boolean"
+                              },
+                              "operator_setup_required": {
+                                "type": "boolean"
+                              },
+                              "setup_state": {
+                                "type": "string",
+                                "enum": [
+                                  "ready",
+                                  "setup_required",
+                                  "verification_required",
+                                  "consent_required",
+                                  "remediation_required",
+                                  "unavailable",
+                                  "not_applicable"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "authentication_mode",
+                              "authentication_configured",
+                              "credential_source",
+                              "health",
+                              "execution_adapters",
+                              "model_refs",
+                              "external_egress_required",
+                              "operator_setup_required",
+                              "setup_state"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -5646,7 +5796,8 @@
                           "detail",
                           "capabilities",
                           "routing_available",
-                          "account_label"
+                          "account_label",
+                          "access"
                         ],
                         "additionalProperties": false
                       }
@@ -5825,6 +5976,7 @@
                       "enum": [
                         "not_configured",
                         "sign_in_required",
+                        "configured_not_verified",
                         "connected",
                         "invalid_key",
                         "unreachable",
@@ -5909,7 +6061,7 @@
                   "connection_id": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 64
+                    "maxLength": 72
                   }
                 },
                 "required": [
@@ -13809,6 +13961,1188 @@
                   "path"
                 ],
                 "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/manager": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "generated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "public_safe": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "local_discovery": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "AVAILABLE",
+                            "PARTIAL",
+                            "FAILED"
+                          ]
+                        },
+                        "scanned_dirs": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "discovered_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "error_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "scanned_dirs",
+                        "discovered_count",
+                        "error_count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "runtime": {
+                      "type": "object",
+                      "properties": {
+                        "canonical_runtime_id": {
+                          "type": "string",
+                          "const": "unsloth"
+                        },
+                        "default_runtime_id": {
+                          "type": "string",
+                          "const": "unsloth"
+                        },
+                        "reported_backend": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "UNSLOTH",
+                                "LLAMA_CPP"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "discovered_state": {
+                          "type": "string",
+                          "enum": [
+                            "DISCOVERED",
+                            "NOT_DISCOVERED",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "configured_runtime_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "configured": {
+                          "type": "boolean"
+                        },
+                        "available": {
+                          "type": "boolean"
+                        },
+                        "health": {
+                          "type": "string",
+                          "enum": [
+                            "HEALTHY",
+                            "UNHEALTHY",
+                            "STOPPED",
+                            "NOT_INSTALLED",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "selected_model_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "canonical_runtime_id",
+                        "default_runtime_id",
+                        "reported_backend",
+                        "discovered_state",
+                        "configured_runtime_id",
+                        "configured",
+                        "available",
+                        "health",
+                        "selected_model_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "identity": {
+                            "type": "object",
+                            "properties": {
+                              "canonical_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "family": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "capabilities": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 64
+                                }
+                              },
+                              "context_window_tokens": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "qualification": {
+                                "type": "object",
+                                "properties": {
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "UNTESTED",
+                                      "TESTED",
+                                      "QUALIFIED",
+                                      "NOT_QUALIFIED",
+                                      "INVALID_EVIDENCE",
+                                      "STALE",
+                                      "REQUIRES_PREFLIGHT"
+                                    ]
+                                  },
+                                  "basis": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "source_revision": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "maxLength": 240
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "artifact_sha256": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "pattern": "^[a-f0-9]{64}$"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "runtime_id": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 240
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "runtime_version": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "maxLength": 120
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "source_revision",
+                                          "artifact_sha256",
+                                          "runtime_id",
+                                          "runtime_version"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "stale_reasons": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "maxLength": 80
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "state",
+                                  "basis",
+                                  "stale_reasons"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "canonical_id",
+                              "display_name",
+                              "family",
+                              "capabilities",
+                              "context_window_tokens",
+                              "qualification"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "artifact_ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            }
+                          },
+                          "availability": {
+                            "type": "string",
+                            "enum": [
+                              "UNAVAILABLE",
+                              "DISCOVERED",
+                              "AVAILABLE",
+                              "INSTALLED",
+                              "CONNECTED",
+                              "LOADABLE"
+                            ]
+                          },
+                          "compatibility": {
+                            "type": "string",
+                            "enum": [
+                              "COMPATIBLE",
+                              "INCOMPATIBLE",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "readiness": {
+                            "type": "string",
+                            "enum": [
+                              "READY",
+                              "NOT_READY",
+                              "SETUP_REQUIRED",
+                              "UNAVAILABLE",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "recommended_roles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 64
+                            }
+                          },
+                          "execution_selected_roles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 64
+                            }
+                          }
+                        },
+                        "required": [
+                          "identity",
+                          "artifact_ids",
+                          "availability",
+                          "compatibility",
+                          "readiness",
+                          "recommended_roles",
+                          "execution_selected_roles"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "artifacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "model_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "source_kind": {
+                            "type": "string",
+                            "enum": [
+                              "LOCAL_MANIFEST",
+                              "LOCAL_IMPORT",
+                              "LOCAL_DISCOVERY",
+                              "MODEL_CATALOG"
+                            ]
+                          },
+                          "source_ref": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "filename": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "format": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "quantization": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "expected_sha256": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "observed_sha256": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "hash_status": {
+                            "type": "string",
+                            "enum": [
+                              "VERIFIED",
+                              "EXPECTED",
+                              "NOT_COMPUTED",
+                              "MISMATCH"
+                            ]
+                          },
+                          "license": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 120
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "availability": {
+                            "type": "string",
+                            "enum": [
+                              "UNAVAILABLE",
+                              "DISCOVERED",
+                              "AVAILABLE",
+                              "INSTALLED",
+                              "CONNECTED",
+                              "LOADABLE"
+                            ]
+                          },
+                          "compatibility": {
+                            "type": "string",
+                            "enum": [
+                              "COMPATIBLE",
+                              "INCOMPATIBLE",
+                              "UNKNOWN"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "model_id",
+                          "source_kind",
+                          "source_ref",
+                          "revision",
+                          "filename",
+                          "format",
+                          "quantization",
+                          "expected_sha256",
+                          "observed_sha256",
+                          "hash_status",
+                          "license",
+                          "availability",
+                          "compatibility"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "model_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "provider_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "connection_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "provider_model_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "credential_source_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "execution_adapter_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "model_support_state": {
+                            "type": "string",
+                            "enum": [
+                              "VERIFIED",
+                              "UNKNOWN",
+                              "UNSUPPORTED"
+                            ]
+                          },
+                          "configured": {
+                            "type": "boolean"
+                          },
+                          "health": {
+                            "type": "string",
+                            "enum": [
+                              "HEALTHY",
+                              "UNHEALTHY",
+                              "UNKNOWN",
+                              "UNAVAILABLE"
+                            ]
+                          },
+                          "available": {
+                            "type": "boolean"
+                          },
+                          "external_egress_required": {
+                            "type": "boolean"
+                          },
+                          "operator_setup_required": {
+                            "type": "boolean"
+                          },
+                          "setup_state": {
+                            "type": "string",
+                            "enum": [
+                              "READY",
+                              "SETUP_REQUIRED",
+                              "VERIFICATION_REQUIRED",
+                              "CONSENT_REQUIRED",
+                              "REMEDIATION_REQUIRED",
+                              "UNAVAILABLE",
+                              "NOT_APPLICABLE"
+                            ]
+                          },
+                          "selected_roles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 64
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "model_id",
+                          "provider_id",
+                          "connection_id",
+                          "provider_model_id",
+                          "credential_source_id",
+                          "execution_adapter_id",
+                          "model_support_state",
+                          "configured",
+                          "health",
+                          "available",
+                          "external_egress_required",
+                          "operator_setup_required",
+                          "setup_state",
+                          "selected_roles"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "credential_sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "API_KEY_VAULT",
+                              "SUBSCRIPTION_ACCOUNT",
+                              "OFFICIAL_CLI_AUTH",
+                              "OPENCODE_MANAGED_AUTH",
+                              "OAUTH_SESSION",
+                              "LOCAL_NONE",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "authentication_mode": {
+                            "type": "string",
+                            "enum": [
+                              "API_KEY",
+                              "SUBSCRIPTION_LOGIN",
+                              "OFFICIAL_CLI",
+                              "OPENCODE_MANAGED",
+                              "OAUTH_ACCOUNT",
+                              "NONE",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "configuration_state": {
+                            "type": "string",
+                            "enum": [
+                              "NOT_REQUIRED",
+                              "MISSING",
+                              "CONFIGURED",
+                              "INVALID",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "setup_required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "authentication_mode",
+                          "configuration_state",
+                          "setup_required"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "execution_adapters": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "DIRECT_HTTP",
+                              "OPENCODE",
+                              "CODEX_CLI",
+                              "CLAUDE_CLI",
+                              "LOCAL_RUNTIME"
+                            ]
+                          },
+                          "implementation": {
+                            "type": "string",
+                            "enum": [
+                              "IMPLEMENTED",
+                              "CONTRACT_ONLY"
+                            ]
+                          },
+                          "discovered": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "configured": {
+                            "type": "boolean"
+                          },
+                          "available": {
+                            "type": "boolean"
+                          },
+                          "canonical_default": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "implementation",
+                          "discovered",
+                          "configured",
+                          "available",
+                          "canonical_default"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "connections": {
+                      "type": "object",
+                      "properties": {
+                        "consensus": {
+                          "type": "string",
+                          "maxLength": 160
+                        },
+                        "routed_roles": {
+                          "type": "object",
+                          "properties": {
+                            "plan": {
+                              "default": "local",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "local"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "provider_id": {
+                                      "type": "string"
+                                    },
+                                    "model_id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "provider_id",
+                                    "model_id"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "act": {
+                              "default": "local",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "local"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "provider_id": {
+                                      "type": "string"
+                                    },
+                                    "model_id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "provider_id",
+                                    "model_id"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "utility": {
+                              "default": "local",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "local"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "provider_id": {
+                                      "type": "string"
+                                    },
+                                    "model_id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "provider_id",
+                                    "model_id"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "plan",
+                            "act",
+                            "utility"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "preference": {
+                          "type": "string",
+                          "enum": [
+                            "local-first",
+                            "local-only",
+                            "api-keys-with-approval"
+                          ]
+                        },
+                        "connections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 72
+                              },
+                              "provider_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "subscription",
+                                  "api-key",
+                                  "local-runtime",
+                                  "catalog-token"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "not_configured",
+                                  "sign_in_required",
+                                  "configured_not_verified",
+                                  "connected",
+                                  "invalid_key",
+                                  "unreachable",
+                                  "unavailable"
+                                ]
+                              },
+                              "detail": {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              "capabilities": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "chat",
+                                    "act",
+                                    "utility",
+                                    "catalog"
+                                  ]
+                                }
+                              },
+                              "routing_available": {
+                                "type": "boolean"
+                              },
+                              "account_label": {
+                                "type": "string",
+                                "maxLength": 120
+                              },
+                              "access": {
+                                "type": "object",
+                                "properties": {
+                                  "authentication_mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "api_key",
+                                      "subscription_login",
+                                      "official_cli",
+                                      "opencode_managed",
+                                      "oauth_account",
+                                      "none",
+                                      "unknown"
+                                    ]
+                                  },
+                                  "authentication_configured": {
+                                    "type": "boolean"
+                                  },
+                                  "credential_source": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 120
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "api_key_vault",
+                                          "subscription_account",
+                                          "official_cli_auth",
+                                          "opencode_managed_auth",
+                                          "oauth_session",
+                                          "local_none",
+                                          "unknown"
+                                        ]
+                                      },
+                                      "configuration_state": {
+                                        "type": "string",
+                                        "enum": [
+                                          "not_required",
+                                          "missing",
+                                          "configured",
+                                          "invalid",
+                                          "unknown"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "kind",
+                                      "configuration_state"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "health": {
+                                    "type": "string",
+                                    "enum": [
+                                      "healthy",
+                                      "unhealthy",
+                                      "unknown",
+                                      "unavailable"
+                                    ]
+                                  },
+                                  "execution_adapters": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "direct-http",
+                                        "opencode",
+                                        "codex-cli",
+                                        "claude-cli",
+                                        "local-runtime"
+                                      ]
+                                    }
+                                  },
+                                  "model_refs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "model_id": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 240
+                                        },
+                                        "provider_model_id": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 240
+                                        },
+                                        "model_support_state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "verified",
+                                            "unknown",
+                                            "unsupported"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "model_id",
+                                        "provider_model_id",
+                                        "model_support_state"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "external_egress_required": {
+                                    "type": "boolean"
+                                  },
+                                  "operator_setup_required": {
+                                    "type": "boolean"
+                                  },
+                                  "setup_state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "ready",
+                                      "setup_required",
+                                      "verification_required",
+                                      "consent_required",
+                                      "remediation_required",
+                                      "unavailable",
+                                      "not_applicable"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "authentication_mode",
+                                  "authentication_configured",
+                                  "credential_source",
+                                  "health",
+                                  "execution_adapters",
+                                  "model_refs",
+                                  "external_egress_required",
+                                  "operator_setup_required",
+                                  "setup_state"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "provider_id",
+                              "name",
+                              "kind",
+                              "status",
+                              "detail",
+                              "capabilities",
+                              "routing_available",
+                              "account_label",
+                              "access"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "consensus",
+                        "routed_roles",
+                        "preference",
+                        "connections"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "selection_policy": {
+                      "type": "object",
+                      "properties": {
+                        "persistence_state": {
+                          "type": "string",
+                          "const": "NOT_PERSISTED"
+                        },
+                        "mutation_enabled": {
+                          "type": "boolean",
+                          "const": false
+                        },
+                        "execution_routing_effect": {
+                          "type": "boolean",
+                          "const": false
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "GLOBAL",
+                              "PROJECT",
+                              "ROLE"
+                            ]
+                          }
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "PLANNING",
+                              "IMPLEMENTATION",
+                              "REVIEW",
+                              "UTILITY",
+                              "BACKGROUND"
+                            ]
+                          }
+                        },
+                        "precedence": {
+                          "type": "array",
+                          "items": [
+                            {
+                              "type": "string",
+                              "const": "PROJECT_ROLE"
+                            },
+                            {
+                              "type": "string",
+                              "const": "PROJECT_DEFAULT"
+                            },
+                            {
+                              "type": "string",
+                              "const": "GLOBAL_ROLE"
+                            },
+                            {
+                              "type": "string",
+                              "const": "GLOBAL_DEFAULT"
+                            }
+                          ],
+                          "additionalItems": false,
+                          "minItems": 4,
+                          "maxItems": 4
+                        }
+                      },
+                      "required": [
+                        "persistence_state",
+                        "mutation_enabled",
+                        "execution_routing_effect",
+                        "scopes",
+                        "roles",
+                        "precedence"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "generated_at",
+                    "public_safe",
+                    "local_discovery",
+                    "runtime",
+                    "models",
+                    "artifacts",
+                    "routes",
+                    "credential_sources",
+                    "execution_adapters",
+                    "connections",
+                    "selection_policy"
+                  ],
+                  "additionalProperties": false
+                }
               }
             }
           }

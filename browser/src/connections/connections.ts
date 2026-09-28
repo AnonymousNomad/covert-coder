@@ -27,6 +27,7 @@ type Role = (typeof ROLES)[number];
 const STATUS_LABELS: Record<ConnectionStatusT, string> = {
   not_configured: 'NOT CONFIGURED',
   sign_in_required: 'SIGN IN REQUIRED',
+  configured_not_verified: 'CONFIGURED — NOT VERIFIED',
   connected: 'CONNECTED',
   invalid_key: 'INVALID CREDENTIAL',
   unreachable: 'UNREACHABLE',

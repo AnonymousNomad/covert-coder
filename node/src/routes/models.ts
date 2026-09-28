@@ -1,5 +1,6 @@
 import type { Route } from '../server.ts';
 import { RouteError } from '../server.ts';
+import { ModelManagerResponse } from '../../../common/contracts/model-access.ts';
 import type { OperationInput } from '../../../common/security/operation-policy.mjs';
 import { ModelRuntimeError, validateRegistrationFilename, type ModelRuntime } from '../services/model-runtime.ts';
 import { localRuntimeEndpointOrigin } from '../services/model-router.ts';
@@ -64,6 +65,21 @@ export function routeForModelStatus(manager: ModelRuntime): Route {
         return { runtime: status.runtime, models: status.models };
       } catch (error) {
         throw new RouteError('INTERNAL', error instanceof Error ? error.message : 'model status failed');
+      }
+    }
+  };
+}
+
+export function routeForModelManager(manager: { snapshot(): Promise<unknown> }): Route {
+  return {
+    method: 'GET',
+    path: '/api/models/manager',
+    response: ModelManagerResponse,
+    handler: async () => {
+      try {
+        return await manager.snapshot();
+      } catch {
+        throw new RouteError('INTERNAL', 'Model Manager snapshot is unavailable');
       }
     }
   };

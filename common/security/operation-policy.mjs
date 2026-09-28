@@ -84,7 +84,7 @@ const HTTP_POLICY = new Map([
   // matrix. Pure reads and side-effect-free compute only; every mutation and
   // execution remains unenrolled until an exact descriptor is authorized.
   ['GET /api/session', 'capability.read'], ['GET /api/settings', 'capability.read'],
-  ['GET /api/models/status', 'capability.read'], ['GET /api/model/ready', 'capability.read'],
+  ['GET /api/models/status', 'capability.read'], ['GET /api/models/manager', 'capability.read'], ['GET /api/model/ready', 'capability.read'],
   ['GET /api/models/routes', 'capability.read'],
   ['GET /api/chat/history', 'capability.read'],
   // Local model acquisition path (ported from the accepted local-inference

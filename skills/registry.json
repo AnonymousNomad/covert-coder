@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-27T01:57:22.434Z",
-  "count": 304,
+  "generated_at": "2026-09-28T18:36:32.579Z",
+  "count": 309,
   "categories": [
     "academy",
     "aide-core",
@@ -1481,6 +1481,13 @@
       "path": "skills/packs/failure-conventional-commit-message/SKILL.md"
     },
     {
+      "name": "failure-desktop-battery-canonical-authority-lifecycle",
+      "title": "failure-desktop-battery-canonical-authority-lifecycle",
+      "description": "Repair the Desktop Control battery when direct-service tests omit canonical Authority execution handles or use unsafe image-wide process and Office probes.",
+      "category": "general",
+      "path": "skills/packs/failure-desktop-battery-canonical-authority-lifecycle/SKILL.md"
+    },
+    {
       "name": "failure-desktop-generated-staging-authority",
       "title": "failure-desktop-generated-staging-authority",
       "description": "Diagnose desktop packaging paths where an ignored staged artifact exists locally but has no tracked source or generator. Use when desktop/resources or desktop/frontend passes locally yet cannot be reproduced from a clean checkout.",
@@ -1544,11 +1551,25 @@
       "path": "skills/packs/failure-markdown-hardbreak-diff-check/SKILL.md"
     },
     {
+      "name": "failure-model-access-projection-contract-drift",
+      "title": "failure-model-access-projection-contract-drift",
+      "description": "Diagnose Model Access and Model Manager projection failures caused by strict response shape drift, stale state assertions, or confusing connection health with per-model support. Use when focused model-access tests fail, /api/models/manager returns a response-contract error, or configured credentials are reported as verified.",
+      "category": "general",
+      "path": "skills/packs/failure-model-access-projection-contract-drift/SKILL.md"
+    },
+    {
       "name": "failure-model-integrity-declaration",
       "title": "failure-model-integrity-declaration",
       "description": "Diagnose and prevent TypeScript `TS7016` failures on project `.mjs` helpers imported by strict TS, and prevent the model-runtime integrity test from asserting a stale error message. Use whenever a new `common/*.mjs` helper is added and `node/src/services/model-runtime.ts` (or another strict TS module) imports it, or whenever the model integrity error contract changes.",
       "category": "general",
       "path": "skills/packs/failure-model-integrity-declaration/SKILL.md"
+    },
+    {
+      "name": "failure-model-manager-facade-map-omission",
+      "title": "failure-model-manager-facade-map-omission",
+      "description": "Repair route-authority and route-drift failures when a newly registered typed endpoint is present in OpenAPI but missing from the generated method-aware facade map and its ownership evidence.",
+      "category": "general",
+      "path": "skills/packs/failure-model-manager-facade-map-omission/SKILL.md"
     },
     {
       "name": "failure-npm-lru-cache",
@@ -1572,6 +1593,13 @@
       "path": "skills/packs/failure-powershell-foreach-pipeline/SKILL.md"
     },
     {
+      "name": "failure-powershell-join-path-childpath-argument",
+      "title": "failure-powershell-join-path-childpath-argument",
+      "description": "Prevent evidence and recovery commands from failing when Join-Path is called without a child path. Use when PowerShell reports a missing mandatory ChildPath during path construction, copying, or hash reporting.",
+      "category": "general",
+      "path": "skills/packs/failure-powershell-join-path-childpath-argument/SKILL.md"
+    },
+    {
       "name": "failure-pythonpath-hijack",
       "title": "failure-pythonpath-hijack",
       "description": "Fix for PYTHONPATH=E:\\python_packages hijacking venv imports. Old broken torch in global packages overrides venv. Created 2026-08-26.",
@@ -1591,6 +1619,13 @@
       "description": "Fix strict TypeScript TS7016 failures for project JavaScript modules without weakening compiler settings. Use whenever a .ts file imports a local .mjs module and tsc reports an implicit-any declaration error.",
       "category": "general",
       "path": "skills/packs/failure-typescript-mjs-declaration/SKILL.md"
+    },
+    {
+      "name": "failure-veritas-compile-timeout",
+      "title": "failure-veritas-compile-timeout",
+      "description": "Diagnose Veritas compile failures caused by its child-command timeout being shorter than a passing full repository check on the supported Windows machine.",
+      "category": "general",
+      "path": "skills/packs/failure-veritas-compile-timeout/SKILL.md"
     },
     {
       "name": "failure-vite-entry-relative-url-assertion",

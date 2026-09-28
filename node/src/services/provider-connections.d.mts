@@ -1,11 +1,8 @@
 // Type declarations for node/src/services/provider-connections.mjs (strict TS).
+import type { ConnectionsViewResponseT } from '../../../common/contracts/connections.ts';
+
 export interface ProviderConnectionsService {
-  list(): Promise<{
-    consensus: string;
-    routed_roles: { plan: unknown; act: unknown; utility: unknown };
-    preference: string;
-    connections: Array<Record<string, unknown>>;
-  }>;
+  list(): Promise<ConnectionsViewResponseT>;
   getPreference(): string;
   setPreference(preference: string): string;
   test(connectionId: string): Promise<{ ok: boolean; detail: string }>;
