@@ -5,8 +5,8 @@
 // allowlist enforcement, command reply. Exit 1 on any failure.
 //
 // Honest-gate discipline (R8): the battery MUST exit non-zero on any failing
-// assertion. It is invoked under `node --test --test-force-exit` so lingering
-// poll/socket handles never mask, and a real failure stops the release gate.
+// assertion. It runs as a standalone node:test script; governed disconnect and
+// owned-resource cleanup must let the process exit naturally after a failure too.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
@@ -14,6 +14,7 @@ import path from 'node:path';
 import os from 'node:os';
 import http from 'node:http';
 import { createRequire } from 'node:module';
+import { createExecutionAuthority } from '../node/src/services/execution-authority.mjs';
 
 const require = createRequire(import.meta.url);
 const { createTelegramBridge } = require('../node/src/services/telegram.mjs');
@@ -44,10 +45,21 @@ async function until(check, ms, step = 100) {
 
 let dir;
 let bridge;
+let authority;
+let owner;
 let server;
 let sentMessages = [];
 let queuedUpdates = [];
 const TOKEN = '123456:battERYtoken_token';
+async function approveAndExecute(kind, body, taskId, execute) {
+  const input = { workspace: dir, kind, taskId, args: { body } };
+  const operation = await authority.prepare(owner, input);
+  assert.equal(operation.state, 'pending', `${kind} must require explicit approval`);
+  await authority.decide(owner, operation.operation_id, 'approve');
+  return authority.execute(owner, operation.operation_id, input,
+    (_descriptor, execution) => execute(execution));
+}
+
 function startMockApi() {
   return new Promise(resolve => {
     server = http.createServer((req, res) => {
@@ -67,8 +79,16 @@ function startMockApi() {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, result: { id: 42, username: 'aide_test_bot' } }));
         } else if (method === 'getUpdates') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: true, result: queuedUpdates.splice(0) }));
+          const updates = queuedUpdates.splice(0);
+          const respond = () => {
+            if (res.writableEnded) return;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, result: updates }));
+          };
+          // Approximate Telegram's long-poll response for empty cycles. Without
+          // this delay the local mock spins the production poll loop at full CPU.
+          if (updates.length) respond();
+          else setTimeout(respond, 25);
         } else if (method === 'sendMessage') {
           sentMessages.push(body);
           res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -86,11 +106,18 @@ function startMockApi() {
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-tg-'));
   process.env.TELEGRAM_API_BASE = `http://127.0.0.1:${await startMockApi()}`;
-  bridge = createTelegramBridge({ workspace: dir });
+  authority = createExecutionAuthority({ workspace: dir,
+    record: async () => ({ persisted: true }) });
+  const origin = 'http://telegram-battery.fixture';
+  const proof = authority.control.createPairing(origin);
+  const paired = await authority.pair(proof, origin);
+  owner = authority.authenticate(paired.token, origin);
+  bridge = createTelegramBridge({ workspace: dir, authority });
 });
 
 test('connect verifies token and stores it DPAPI-encrypted at rest', async () => {
-  await bridge.connect({ token: TOKEN });
+  await approveAndExecute('telegram.connect', { token: TOKEN }, 'telegram-connect',
+    execution => bridge.connect({ token: TOKEN }, execution));
   const cfg = JSON.parse(await fs.readFile(path.join(dir, '.aide', 'telegram', 'config.json'), 'utf8'));
   assert.ok(cfg.token_b64, 'token persisted');
   assert.ok(!cfg.token_b64.includes(TOKEN), 'raw token never at rest');
@@ -98,8 +125,11 @@ test('connect verifies token and stores it DPAPI-encrypted at rest', async () =>
 });
 
 test('polling ingests allowlisted messages into durable spool before handling', async () => {
-  bridge.authorizeChat(111);
+  await approveAndExecute('authority.grant', { chat_id: 111 }, 'telegram-allowlist',
+    execution => bridge.authorizeChat({ chat_id: 111 }, execution));
   queuedUpdates.push({ update_id: 10, message: { chat: { id: 111 }, text: '/ping' } });
+  await approveAndExecute('telegram.start', {}, 'telegram-start',
+    execution => bridge.startPolling(execution));
   // wait until the update is durably spooled (crash-safe before handling)
   const spool = await until(async () => {
     const s = await fs.readFile(path.join(dir, '.aide', 'telegram', 'spool.jsonl'), 'utf8').catch(() => '');
@@ -145,8 +175,21 @@ test('offset acks prevent redelivery', async () => {
 });
 
 after(async () => {
-  await bridge?.disconnect().catch(() => {});
-  await new Promise(resolve => server?.close?.(resolve));
-  await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
-  console.log('\nTELEGRAM BATTERY: complete');
+  try {
+    if (bridge && authority && owner) {
+      await approveAndExecute('telegram.disconnect', {}, 'telegram-disconnect',
+        execution => bridge.disconnect(execution));
+    }
+  } finally {
+    // The test-owned mock long poll resolves within 25 ms; let the loop observe
+    // the governed stop before closing its server and deleting the workspace.
+    if (server) await new Promise(resolve => setTimeout(resolve, 50));
+    authority?.control.close();
+    if (server) {
+      server.closeAllConnections();
+      await new Promise(resolve => server.close(resolve));
+    }
+    if (dir) await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+    console.log('\nTELEGRAM BATTERY: complete');
+  }
 });
