@@ -1,0 +1,184 @@
+{
+    "sampled_at":  "2026-09-27T15:24:26.3384904+00:00",
+    "source":  "Win32 CIM counters + C:\\Windows\\system32\\nvidia-smi.exe; GPU query sampled from active System32 NVIDIA utility",
+    "free_ram_bytes":  8240222208,
+    "total_ram_bytes":  17099075584,
+    "free_commit_bytes":  7167537152,
+    "commit_used_bytes":  22874906624,
+    "commit_limit_bytes":  30042443776,
+    "gpu":  {
+                "name":  "NVIDIA GeForce GTX 1060",
+                "vram_total_bytes":  6442450944,
+                "vram_used_bytes":  1092616192,
+                "vram_free_bytes":  5232394240,
+                "utilization_percent":  29,
+                "temperature_c":  43,
+                "power_w":  8.6
+            },
+    "machine":  "NEURO-MIRROR",
+    "timezone":  "Central Standard Time",
+    "branch":  "nightshift/production-convergence-20260926",
+    "head":  "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+    "floors":  {
+                   "ram_gib":  7.25,
+                   "commit_gib":  6.25,
+                   "ram_pass":  true,
+                   "commit_pass":  true
+               },
+    "cpu_total_percent":  18,
+    "paging":  {
+                   "page_reads_per_sec":  0,
+                   "pages_per_sec":  0
+               },
+    "model_candidate":  {
+                            "id":  "lfm2.5-2.6b-q4_k_m-02a8b7e1",
+                            "quantization":  "Q4_K_M",
+                            "sha256":  "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+                            "weights_bytes":  1674455040,
+                            "requested_context_tokens":  32768
+                        },
+    "processes":  {
+                      "candidate_runtime":  [
+
+                                            ],
+                      "top_working_set":  [
+                                              {
+                                                  "name":  "msedge",
+                                                  "working_set_bytes":  586403840,
+                                                  "private_bytes":  501067776
+                                              },
+                                              {
+                                                  "name":  "MsMpEng",
+                                                  "working_set_bytes":  440344576,
+                                                  "private_bytes":  422600704
+                                              },
+                                              {
+                                                  "name":  "TextInputHost",
+                                                  "working_set_bytes":  340353024,
+                                                  "private_bytes":  748818432
+                                              },
+                                              {
+                                                  "name":  "ChatGPT",
+                                                  "working_set_bytes":  292397056,
+                                                  "private_bytes":  431857664
+                                              },
+                                              {
+                                                  "name":  "msedge",
+                                                  "working_set_bytes":  228073472,
+                                                  "private_bytes":  141295616
+                                              },
+                                              {
+                                                  "name":  "msedgewebview2",
+                                                  "working_set_bytes":  218132480,
+                                                  "private_bytes":  205352960
+                                              },
+                                              {
+                                                  "name":  "explorer",
+                                                  "working_set_bytes":  197033984,
+                                                  "private_bytes":  398225408
+                                              },
+                                              {
+                                                  "name":  "ChatGPT",
+                                                  "working_set_bytes":  192192512,
+                                                  "private_bytes":  267280384
+                                              },
+                                              {
+                                                  "name":  "msedge",
+                                                  "working_set_bytes":  166445056,
+                                                  "private_bytes":  283512832
+                                              },
+                                              {
+                                                  "name":  "svchost",
+                                                  "working_set_bytes":  161316864,
+                                                  "private_bytes":  48353280
+                                              },
+                                              {
+                                                  "name":  "ChatGPT",
+                                                  "working_set_bytes":  159232000,
+                                                  "private_bytes":  358510592
+                                              },
+                                              {
+                                                  "name":  "svchost",
+                                                  "working_set_bytes":  134725632,
+                                                  "private_bytes":  123002880
+                                              },
+                                              {
+                                                  "name":  "msedge",
+                                                  "working_set_bytes":  118534144,
+                                                  "private_bytes":  133345280
+                                              },
+                                              {
+                                                  "name":  "node",
+                                                  "working_set_bytes":  99827712,
+                                                  "private_bytes":  239214592
+                                              },
+                                              {
+                                                  "name":  "powershell",
+                                                  "working_set_bytes":  97185792,
+                                                  "private_bytes":  79040512
+                                              },
+                                              {
+                                                  "name":  "nvcontainer",
+                                                  "working_set_bytes":  92823552,
+                                                  "private_bytes":  102674432
+                                              },
+                                              {
+                                                  "name":  "MSPCManager",
+                                                  "working_set_bytes":  89522176,
+                                                  "private_bytes":  126402560
+                                              },
+                                              {
+                                                  "name":  "msedge",
+                                                  "working_set_bytes":  87900160,
+                                                  "private_bytes":  52326400
+                                              },
+                                              {
+                                                  "name":  "node",
+                                                  "working_set_bytes":  87134208,
+                                                  "private_bytes":  230330368
+                                              },
+                                              {
+                                                  "name":  "svchost",
+                                                  "working_set_bytes":  77844480,
+                                                  "private_bytes":  86908928
+                                              }
+                                          ],
+                      "protected_applications":  [
+                                                     {
+                                                         "name":  "ChatGPT",
+                                                         "count":  12,
+                                                         "working_set_bytes":  752947200
+                                                     },
+                                                     {
+                                                         "name":  "Godot_v4.7.2-stable_win64",
+                                                         "count":  3,
+                                                         "working_set_bytes":  8015872
+                                                     },
+                                                     {
+                                                         "name":  "Godot_v4.7.2-stable_win64_console",
+                                                         "count":  3,
+                                                         "working_set_bytes":  49152
+                                                     },
+                                                     {
+                                                         "name":  "msedge",
+                                                         "count":  18,
+                                                         "working_set_bytes":  1474965504
+                                                     },
+                                                     {
+                                                         "name":  "msedgewebview2",
+                                                         "count":  12,
+                                                         "working_set_bytes":  470147072
+                                                     }
+                                                 ]
+                  },
+    "relevant_listeners":  [
+
+                           ],
+    "diagnostic":  {
+                       "earlier_nvml_error":  "The failed query used the obsolete C:\\Program Files\\NVIDIA Corporation\\NVSMI utility (file version 8.17.13.8892); the active System32 nvidia-smi path is queried here.",
+                       "model_runtime_or_inference_started":  false,
+                       "processes_terminated":  [
+
+                                                ]
+                   }
+}

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "resourceSampleAt": "2026-09-27T17:31:22.1428847-05:00",
+  "repositorySampleAt": "2026-09-27T17:33:48.8032292-05:00",
+  "device": "NEURO-MIRROR",
+  "repository": {
+    "path": "E:\\covert-nightshift-integration",
+    "branch": "nightshift/production-convergence-20260926",
+    "head": "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+    "upstream": "origin/fix/v1-p0-route-drift",
+    "upstreamHead": "a9628b8861fbcfc31fb05741ffbcfd551945a054",
+    "ahead": 11, "behind": 0, "mergeBase": "a9628b8861fbcfc31fb05741ffbcfd551945a054",
+    "dirty": {"staged": 0, "unstagedTracked": 12, "untracked": 14, "total": 26},
+    "remote": "https://github.com/AnonymousNomad/covert-coder.git"
+  },
+  "activeWorktrees": [
+    {"path": "E:\\aide-sovereign-workbench", "branch": "resident/marathon-h1", "head": "b79d248", "dirty": 246},
+    {"path": "E:\\covert-nightshift-integration", "branch": "nightshift/production-convergence-20260926", "head": "c2b8a70", "dirty": 26},
+    {"path": "E:\\aide-covert-packaging-foundation", "branch": "feat/covert-packaging-foundation-v1", "head": "07d3609", "dirty": 0},
+    {"path": "E:\\aide-covert-packaging-preflight", "branch": "audit/covert-packaging-preflight", "head": "72053e3", "dirty": 0},
+    {"path": "E:\\aide-sovereign-workbench-harness", "branch": "feat/harness-vnext-h3", "head": "b4efac6", "dirty": 0}
+  ],
+  "resources": {
+    "ram": {"totalGiB": 15.92, "freeGiB": 4.23, "availableCounterMiB": 4330, "requiredFreeGiB": 7.25},
+    "commit": {"committedBytes": 26282729472, "limitBytes": 31864762368, "freeBytes": 5582328896, "freeGiB": 5.20, "requiredFreeGiB": 6.25},
+    "gpu": {"name": "NVIDIA GeForce GTX 1060", "vramTotalMiB": 6144, "vramUsedMiB": 1146, "vramFreeMiB": 4886, "temperatureC": 80, "utilizationPct": 69, "powerW": 74.38},
+    "thermal": {"acpiZoneC": 54.1},
+    "paging": {"pagesInputPerSec": 0.99, "pagesOutputPerSec": 0}
+  },
+  "pilot": {
+    "disposition": "BLOCKED_PRE_INFERENCE",
+    "plannedCompletions": 60, "observedCompletions": 0, "inferenceRequests": 0, "promptsSent": 0,
+    "candidate": {"id": "lfm2.5-2.6b-q4_k_m-02a8b7e1", "quantization": "Q4_K_M", "requestedContext": 32768, "weightsBytes": 1674455040, "weightsSha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed"},
+    "reason": "Free RAM and free commit are both below admission floors; 32K context fit is unverified."
+  },
+  "runtime": {
+    "pilotRuntimeStarted": false,
+    "existingRuntime": {"process": "llama-server.exe", "pid": 3152, "workingSetMiB": 1900.6, "parentNodePid": 18952, "servesPilotCandidate": false},
+    "edgePreserved": true, "processesStopped": [],
+    "recoveryAssessment": "Stopping the identified 1.86 GiB model server alone cannot meet the 7.25 GiB RAM floor; no safe sufficient recovery identified."
+  },
+  "firstRunSourceCheck": {
+    "status": "SOURCE_AND_FIXTURE_CHECK_PASS",
+    "test": "node --experimental-strip-types --test tests/arch/broker-model-runtime.test.ts",
+    "result": {"passed": 2, "failed": 0, "skipped": 0},
+    "uiWiring": "browser/src/panels/models.ts renders setup_message when setup_required is true",
+    "packagedFreshUserProof": "OPEN"
+  },
+  "runnerValidation": {
+    "npmRunTestHarnessBattery": "PASS: 6 grader tests and synthetic paired fixture (10 prompts, 20 fake calls)",
+    "affectedFileLint": "PASS",
+    "runnerSourceUnchangedSinceValidation": true,
+    "claimScope": "Focused scaffold-on/off runner validation only; no real-model result."
+  },
+  "fingerprintsCapturedAt": "2026-09-27T17:31:22.1428847-05:00",
+  "sourceFingerprint": [
+    {"path":"package.json","sha256":"731dc9787bb145ddfc2db317994ea1a858617ecf9d0eaf193276e31dea4c1579"},
+    {"path":"package-lock.json","sha256":"0c11388e7f114d5bceece57bf78af3c11b3ccbaa42bfffd166d6e58f267e9a8d"},
+    {"path":"scripts/run-harness-battery.mjs","sha256":"85878a4ae68b081150e968cd1e4e461525b24f16cea2b68ba1b0182e097af388"},
+    {"path":"benchmarks/context-ablation-v1.mjs","sha256":"7a86166f91a163587878ef11de938d25d3a225394f3ecbf239099fc79d0518c4"},
+    {"path":"scripts/verify-harness-battery-task-count.mjs","sha256":"d5056c9dccce5b589231634d60be765aabe39610b1edf962b10ab63788bc6309"},
+    {"path":"tests/unit/test-harness-battery-core.mjs","sha256":"9a2d699fa8fcf21ef1e811959e5b11b41ab98c3f06c7143a0f2b29a94a4f9bff"},
+    {"path":"harness/scaffold.mjs","sha256":"ccd6e8687a5823fc63ca3b138cd1c61e0158b4370d44f696fa1b40804e65607a"},
+    {"path":"common/harness/credocore.md","sha256":"3e544e2bbd3ab8658027c7edc99a04958f34d38f59a6746a2e4fc745b6c0ecd7"}
+  ],
+  "nextAction": "Keep the pilot blocked. Configure local runtime auth through the approved local store, then remeasure retained host headroom after runtime start and prove 32K context fit before any inference. Continue safe production closure; use an isolated fresh Windows profile or VM for packaged first-run acceptance."
+}

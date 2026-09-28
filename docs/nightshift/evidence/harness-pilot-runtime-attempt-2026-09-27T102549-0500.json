@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-27T10:43:28.2054367-05:00",
+  "status": "BLOCKED",
+  "scope": "Controlled scaffold-on versus scaffold-off pilot for this exact model, configuration, runner revision, and task battery.",
+  "target_completions": 60,
+  "completed_completions": 0,
+  "inference_requests": 0,
+  "source_revision": {
+    "branch": "nightshift/production-convergence-20260926",
+    "head": "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+    "dirty": true,
+    "source_fingerprints": {
+      "package.json": "731dc9787bb145ddfc2db317994ea1a858617ecf9d0eaf193276e31dea4c1579",
+      "package-lock.json": "0c11388e7f114d5bceece57bf78af3c11b3ccbaa42bfffd166d6e58f267e9a8d",
+      "scripts/run-harness-battery.mjs": "85878a4ae68b081150e968cd1e4e461525b24f16cea2b68ba1b0182e097af388",
+      "benchmarks/context-ablation-v1.mjs": "7a86166f91a163587878ef11de938d25d3a225394f3ecbf239099fc79d0518c4",
+      "scripts/verify-harness-battery-task-count.mjs": "d5056c9dccce5b589231634d60be765aabe39610b1edf962b10ab63788bc6309",
+      "tests/unit/test-harness-battery-core.mjs": "9a2d699fa8fcf21ef1e811959e5b11b41ab98c3f06c7143a0f2b29a94a4f9bff",
+      "harness/scaffold.mjs": "ccd6e8687a5823fc63ca3b138cd1c61e0158b4370d44f696fa1b40804e65607a",
+      "common/harness/credocore.md": "3e544e2bbd3ab8658027c7edc99a04958f34d38f59a6746a2e4fc745b6c0ecd7"
+    }
+  },
+  "model": {
+    "id": "lfm2.5-2.6b-q4_k_m-02a8b7e1",
+    "weights_sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "quantization": "Q4_K_M",
+    "weights_bytes": 1674455040,
+    "requested_context_tokens": 32768
+  },
+  "runner": {
+    "path": "scripts/run-harness-battery.mjs",
+    "sha256": "85878a4ae68b081150e968cd1e4e461525b24f16cea2b68ba1b0182e097af388"
+  },
+  "runtime": {
+    "name": "Unsloth Studio",
+    "version": "2026.9.11",
+    "engine": "Vulkan",
+    "cli_path": "E:\\Unsloth-Studio-runtime-lab-RT27\\bin\\unsloth.cmd",
+    "cli_sha256": "E48655A614F32F2F2799D79A8FD85F35B59F0CA11F92CECCCB36579EAB1B3B07",
+    "endpoint": "http://127.0.0.1:18888/v1"
+  },
+  "credential": {
+    "credential_id": "unsloth-local-runtime",
+    "present": false,
+    "value_logged": false
+  },
+  "initial_preflight": {
+    "sampled_at": "2026-09-27T10:24:26-05:00",
+    "free_ram_gib": 7.674,
+    "free_commit_gib": 6.675,
+    "gpu_free_mib": 4990,
+    "snapshot_sha256": "e1ac445b525173136bea7a9519ba7a489bae70317e0a3e624368452346648b81"
+  },
+  "resource_samples": [
+    {
+      "sampled_at": "2026-09-27T10:33:58.4580676-05:00",
+      "phase": "runtime start/load request",
+      "free_ram_gib": 7.382,
+      "free_commit_gib": 5.968,
+      "gpu_free_mib": 4996,
+      "gpu_utilization_percent": 23,
+      "gpu_temperature_c": 46,
+      "gpu_power_w": 8.59
+    },
+    {
+      "sampled_at": "2026-09-27T10:41:42.2714838-05:00",
+      "phase": "runtime active, no model loaded",
+      "free_ram_gib": 6.9,
+      "free_commit_gib": 5.381,
+      "gpu_free_mib": 5003,
+      "gpu_utilization_percent": 24,
+      "gpu_temperature_c": 43,
+      "gpu_power_w": 8.59
+    },
+    {
+      "sampled_at": "2026-09-27T10:43:28.2054367-05:00",
+      "phase": "after owned runtime cleanup",
+      "free_ram_gib": 7.366,
+      "free_commit_gib": 6.176,
+      "gpu_free_mib": 5009,
+      "gpu_utilization_percent": 16,
+      "gpu_temperature_c": 43,
+      "gpu_power_w": 7.93
+    }
+  ],
+  "load_result": {
+    "http_status": 401,
+    "error_code": "AUTH_REQUIRED",
+    "message": "Unsloth load requires a valid local API key",
+    "model_loaded": false,
+    "prompt_sent": false
+  },
+  "shutdown_result": {
+    "http_status": 401,
+    "error_code": "UNSLOTH_SHUTDOWN_REJECTED",
+    "cleanup_method": "taskkill /PID 4212 /T /F after adapter ownership and full process ancestry verification",
+    "tree_pids": [
+      4212,
+      9336,
+      17064,
+      15608
+    ],
+    "runtime_processes_after": 0,
+    "port_18888_listeners_after": 0
+  },
+  "resource_gates": {
+    "minimum_free_ram_gib": 7.25,
+    "minimum_free_commit_gib": 6.25,
+    "post_cleanup_free_ram_gib": 7.366,
+    "post_cleanup_free_commit_gib": 6.176,
+    "ram_pass": true,
+    "commit_pass": false,
+    "context_vram_fit": "unverified"
+  },
+  "interpretation": "No model weights loaded and no task prompt or completion occurred. This is a blocked runtime admission attempt, not a scored pilot or a comparative result.",
+  "preflight_snapshot_after_cleanup": "harness-pilot-resource-preflight-2026-09-27T104328-0500.json"
+}

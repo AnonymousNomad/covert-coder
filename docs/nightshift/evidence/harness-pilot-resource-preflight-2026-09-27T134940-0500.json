@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "sampled_at": "2026-09-27T13:49:40.3055573-05:00",
+  "source": "Win32_PerfFormattedData_PerfOS_Memory and nvidia-smi via Desktop Commander",
+  "repo": {
+    "worktree": "E:\\covert-nightshift-integration",
+    "branch": "nightshift/production-convergence-20260926",
+    "head": "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+    "upstream_ahead": 11,
+    "upstream_behind": 0,
+    "dirty_entries": 26,
+    "active_worktrees": 42
+  },
+  "model": {
+    "id": "lfm2.5-2.6b-q4_k_m-02a8b7e1",
+    "weights_sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "bytes": 1674455040,
+    "quantization": "Q4_K_M",
+    "requested_context_tokens": 32768
+  },
+  "credential": {
+    "id": "unsloth-local-runtime",
+    "present": false,
+    "value_logged": false,
+    "checked_via": "CredentialStore.has"
+  },
+  "free_ram_bytes": 8213323776,
+  "total_ram_bytes": 17099075584,
+  "free_commit_bytes": 7649378304,
+  "commit_used_bytes": 22392758272,
+  "commit_limit_bytes": 30042136576,
+  "gpu": {
+    "name": "NVIDIA GeForce GTX 1060",
+    "vram_total_bytes": 6442450944,
+    "vram_used_bytes": 1054867456,
+    "vram_free_bytes": 5270142976,
+    "utilization_percent": 1,
+    "temperature_c": 38,
+    "power_w": 23.42
+  },
+  "model_runtime_processes": [],
+  "pilot_port_listeners": [],
+  "top_memory_processes": [
+    {
+      "name": "MsMpEng",
+      "working_set_bytes": 579112960
+    },
+    {
+      "name": "ChatGPT",
+      "working_set_bytes": 433512448
+    },
+    {
+      "name": "msedge",
+      "working_set_bytes": 347357184
+    },
+    {
+      "name": "TextInputHost",
+      "working_set_bytes": 344551424
+    },
+    {
+      "name": "msedge",
+      "working_set_bytes": 250753024
+    },
+    {
+      "name": "explorer",
+      "working_set_bytes": 230612992
+    },
+    {
+      "name": "svchost",
+      "working_set_bytes": 214331392
+    },
+    {
+      "name": "ChatGPT",
+      "working_set_bytes": 212561920
+    },
+    {
+      "name": "msedge",
+      "working_set_bytes": 205877248
+    },
+    {
+      "name": "ChatGPT",
+      "working_set_bytes": 198656000
+    }
+  ],
+  "source_fingerprints": {
+    "package.json": "731dc9787bb145ddfc2db317994ea1a858617ecf9d0eaf193276e31dea4c1579",
+    "package-lock.json": "0c11388e7f114d5bceece57bf78af3c11b3ccbaa42bfffd166d6e58f267e9a8d",
+    "scripts/run-harness-battery.mjs": "85878a4ae68b081150e968cd1d4e461525b24f16cea2b68ba1b0182e097af388",
+    "benchmarks/context-ablation-v1.mjs": "7a86166f91a163587878ef11de938d25d3a225394f3ecbf239099fc79d0518c4",
+    "scripts/verify-harness-battery-task-count.mjs": "d5056c9dccce5b589231634d60be765aabe39610b1edf962b10ab63788bc6309",
+    "tests/unit/test-harness-battery-core.mjs": "9a2d699fa8fcf21ef1e811959e5b11b41ab98c3f06c7143a0f2b29a94a4f9bff",
+    "harness/scaffold.mjs": "ccd6e8687a5823fc63ca3b138cd1c61e0158b4370d44f696fa1b40804e65607a",
+    "common/harness/credocore.md": "3e544e2bbd3ab8658027c7edc99a04958f34d38f59a6746a2e4fc745b6c0ecd7"
+  },
+  "decision": {
+    "status": "BLOCKED",
+    "reasons": [
+      "CredentialStore.has reports credential absent; pilot skill requires blocking before runtime start.",
+      "RAM and commit pass the idle preflight floors at this sample; no runtime-start/context-fit observation is authorized until credential is configured."
+    ],
+    "inference_started": false,
+    "completions": 0
+  }
+}

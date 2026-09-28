@@ -1,0 +1,44 @@
+{
+  "sampled_at": "2026-09-27T11:19:31.7291132-05:00",
+  "source": "Win32 CIM counters + C:\\Windows\\System32\\nvidia-smi.exe",
+  "machine": "NEURO-MIRROR",
+  "timezone": "America/Chicago (CDT)",
+  "branch": "nightshift/production-convergence-20260926",
+  "head": "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+  "free_ram_bytes": 8003514368,
+  "total_ram_bytes": 17099075584,
+  "free_commit_bytes": 6825922560,
+  "commit_used_bytes": 23216521216,
+  "commit_limit_bytes": 30042443776,
+  "gpu": {
+    "name": "NVIDIA GeForce GTX 1060",
+    "vram_total_mib": 6144,
+    "vram_free_mib": 5016,
+    "vram_used_mib": 1128,
+    "utilization_percent": 34,
+    "temperature_c": 43,
+    "power_w": 8.45
+  },
+  "floors": {
+    "ram_gib": 7.25,
+    "commit_gib": 6.25,
+    "ram_free_gib": 7.454,
+    "commit_free_gib": 6.357,
+    "ram_pass_now": true,
+    "commit_pass_now": true
+  },
+  "runtime_processes": 0,
+  "port_18888_listeners": 0,
+  "credential_present": false,
+  "projected_after_observed_net_start_interval": {
+    "ram_free_gib": 7.162,
+    "commit_free_gib": 5.650,
+    "note": "Projection uses one observed system interval and is conservative, not a deterministic runtime cost."
+  },
+  "pilot_admission": "BLOCKED",
+  "context_vram_fit": "unverified",
+  "notes": [
+    "Baseline floors pass only narrowly at this sample; retain the floors after runtime startup before model load and throughout the 60-completion run.",
+    "No model load was confirmed and no inference request was sent."
+  ]
+}

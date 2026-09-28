@@ -1,0 +1,198 @@
+{
+    "timestampLocal":  "2026-09-27T10:11:35.8656173-05:00",
+    "timezone":  "Central Standard Time",
+    "machine":  "NEURO-MIRROR",
+    "repository":  "E:\\covert-nightshift-integration",
+    "branch":  "nightshift/production-convergence-20260926",
+    "head":  "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+    "resources":  {
+                      "physical":  {
+                                       "totalBytes":  17099075584,
+                                       "freeBytes":  8296611840,
+                                       "freeGiB":  7.727,
+                                       "usedPercent":  51.5,
+                                       "floorBytes":  7784628224,
+                                       "floorGiB":  7.25,
+                                       "passesStaticFloor":  true
+                                   },
+                      "commit":  {
+                                     "limitBytes":  30042443776,
+                                     "committedBytes":  22723973120,
+                                     "freeBytes":  7318470656,
+                                     "freeGiB":  6.816,
+                                     "usedPercent":  75,
+                                     "floorBytes":  6710886400,
+                                     "floorGiB":  6.25,
+                                     "passesStaticFloor":  true,
+                                     "pageReadsPerSec":  0,
+                                     "pagesPerSec":  0
+                                 },
+                      "cpu":  {
+                                  "totalPercent":  19
+                              },
+                      "gpu":  {
+                                  "query":  "NVIDIA GeForce GTX 1060, 6144, 1035, 4997, 17, 42, 8.61",
+                                  "temperatureSensor":  "nvidia-smi",
+                                  "cpuTemperatureC":  null
+                              }
+                  },
+    "modelCandidate":  {
+                           "id":  "lfm2.5-2.6b-q4_k_m-02a8b7e1",
+                           "quantization":  "Q4_K_M",
+                           "sha256":  "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+                           "weightsBytes":  1674455040,
+                           "contextTokens":  32768,
+                           "runtime":  "Unsloth Studio 2026.9.11 / Vulkan"
+                       },
+    "priorStackStartObservation":  {
+                                       "commitFreeBeforeGiB":  5.1,
+                                       "commitFreeAfterGiB":  4.34,
+                                       "ramFreeBeforeGiB":  6.77,
+                                       "ramFreeAfterGiB":  6.54
+                                   },
+    "processes":  {
+                      "candidateRuntime":  {
+
+                                           },
+                      "topWorkingSet":  [
+                                            {
+                                                "name":  "msedge",
+                                                "workingSetBytes":  490385408,
+                                                "privateBytes":  407785472
+                                            },
+                                            {
+                                                "name":  "MsMpEng",
+                                                "workingSetBytes":  443219968,
+                                                "privateBytes":  428228608
+                                            },
+                                            {
+                                                "name":  "TextInputHost",
+                                                "workingSetBytes":  340480000,
+                                                "privateBytes":  748990464
+                                            },
+                                            {
+                                                "name":  "ChatGPT",
+                                                "workingSetBytes":  290947072,
+                                                "privateBytes":  430702592
+                                            },
+                                            {
+                                                "name":  "msedge",
+                                                "workingSetBytes":  224260096,
+                                                "privateBytes":  141156352
+                                            },
+                                            {
+                                                "name":  "msedgewebview2",
+                                                "workingSetBytes":  213884928,
+                                                "privateBytes":  205496320
+                                            },
+                                            {
+                                                "name":  "explorer",
+                                                "workingSetBytes":  197468160,
+                                                "privateBytes":  398897152
+                                            },
+                                            {
+                                                "name":  "ChatGPT",
+                                                "workingSetBytes":  191004672,
+                                                "privateBytes":  265961472
+                                            },
+                                            {
+                                                "name":  "msedge",
+                                                "workingSetBytes":  165036032,
+                                                "privateBytes":  274616320
+                                            },
+                                            {
+                                                "name":  "svchost",
+                                                "workingSetBytes":  161648640,
+                                                "privateBytes":  48787456
+                                            },
+                                            {
+                                                "name":  "ChatGPT",
+                                                "workingSetBytes":  158162944,
+                                                "privateBytes":  357519360
+                                            },
+                                            {
+                                                "name":  "svchost",
+                                                "workingSetBytes":  133865472,
+                                                "privateBytes":  122109952
+                                            },
+                                            {
+                                                "name":  "msedge",
+                                                "workingSetBytes":  118484992,
+                                                "privateBytes":  133345280
+                                            },
+                                            {
+                                                "name":  "node",
+                                                "workingSetBytes":  99848192,
+                                                "privateBytes":  240107520
+                                            },
+                                            {
+                                                "name":  "powershell",
+                                                "workingSetBytes":  96792576,
+                                                "privateBytes":  79028224
+                                            },
+                                            {
+                                                "name":  "nvcontainer",
+                                                "workingSetBytes":  92737536,
+                                                "privateBytes":  102674432
+                                            },
+                                            {
+                                                "name":  "MSPCManager",
+                                                "workingSetBytes":  89464832,
+                                                "privateBytes":  126394368
+                                            },
+                                            {
+                                                "name":  "node",
+                                                "workingSetBytes":  86683648,
+                                                "privateBytes":  230576128
+                                            },
+                                            {
+                                                "name":  "msedge",
+                                                "workingSetBytes":  73691136,
+                                                "privateBytes":  37924864
+                                            },
+                                            {
+                                                "name":  "svchost",
+                                                "workingSetBytes":  70127616,
+                                                "privateBytes":  86085632
+                                            }
+                                        ],
+                      "protectedApplications":  [
+                                                    {
+                                                        "name":  "ChatGPT",
+                                                        "count":  12,
+                                                        "workingSetBytes":  748875776
+                                                    },
+                                                    {
+                                                        "name":  "Godot_v4.7.2-stable_win64",
+                                                        "count":  3,
+                                                        "workingSetBytes":  8015872
+                                                    },
+                                                    {
+                                                        "name":  "Godot_v4.7.2-stable_win64_console",
+                                                        "count":  3,
+                                                        "workingSetBytes":  49152
+                                                    },
+                                                    {
+                                                        "name":  "msedge",
+                                                        "count":  18,
+                                                        "workingSetBytes":  1356668928
+                                                    },
+                                                    {
+                                                        "name":  "msedgewebview2",
+                                                        "count":  12,
+                                                        "workingSetBytes":  463450112
+                                                    }
+                                                ]
+                  },
+    "relevantListeners":  {
+
+                          },
+    "admission":  {
+                      "run60CompletionPilot":  false,
+                      "reason":  "Static floors are close to threshold and runtime/context VRAM fit remains unverified; prior supervised stack startup consumed 0.76 GiB commit and 0.23 GiB free RAM. Current margin may not cover stack plus runtime for a full 60-completion run.",
+                      "inferenceStarted":  false,
+                      "processesTerminated":  [
+
+                                              ]
+                  }
+}

@@ -1,0 +1,40 @@
+{
+  "sampled_at": "2026-09-27T10:43:28.2054367-05:00",
+  "source": "Win32 CIM counters + C:\\Windows\\System32\\nvidia-smi.exe",
+  "machine": "NEURO-MIRROR",
+  "timezone": "America/Chicago (CDT)",
+  "branch": "nightshift/production-convergence-20260926",
+  "head": "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+  "free_ram_bytes": 7909240832,
+  "total_ram_bytes": 17099075584,
+  "free_commit_bytes": 6631616512,
+  "commit_used_bytes": 23410827264,
+  "commit_limit_bytes": 30042443776,
+  "gpu": {
+    "name": "NVIDIA GeForce GTX 1060",
+    "vram_total_mib": 6144,
+    "vram_free_mib": 5009,
+    "utilization_percent": 16,
+    "temperature_c": 43,
+    "power_w": 7.93
+  },
+  "floors": {
+    "ram_gib": 7.25,
+    "commit_gib": 6.25,
+    "ram_free_gib": 7.366,
+    "commit_free_gib": 6.176,
+    "ram_pass": true,
+    "commit_pass": false
+  },
+  "processes": {
+    "candidate_runtime_count": 0,
+    "port_18888_listeners": 0,
+    "owned_runtime_cleanup_verified": true
+  },
+  "decision": "BLOCKED",
+  "notes": [
+    "Commit remains below the required floor by approximately 0.074 GiB.",
+    "The earlier runtime startup interval showed a 0.707 GiB net free-commit decrease; treat this as an observed system interval and remeasure rather than a deterministic runtime cost.",
+    "No model was loaded and no inference request was sent."
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-27T11:29:36.7555536-05:00",
+  "claim": "Fresh focused cancellation corroboration on the production-convergence integration checkout; not full release acceptance.",
+  "repository": {
+    "path": "E:\\covert-nightshift-integration",
+    "branch": "nightshift/production-convergence-20260926",
+    "head": "c2b8a70ac4e7a69a9865aae97a66a74e05e5f8a3",
+    "dirty_status_entries": 26,
+    "worktrees": 42
+  },
+  "runtime": {
+    "node": "v26.4.0",
+    "model_runtime_started": false
+  },
+  "command": "node --experimental-strip-types --test --test-concurrency=1 --test-name-pattern=\"cancel|cancellation\" tests/arch/agent-routes.test.ts tests/arch/providers.test.ts tests/unit/test-h2-byok.mjs tests/unit/test-modelhub-containment.mjs",
+  "result": {
+    "exit_code": 0,
+    "tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "duration_ms": 18205.2052
+  },
+  "passed_tests": [
+    "agent cancellation aborts an in-flight model call and reaches a terminal aborted state",
+    "agent cancellation revokes a pending approval before any protected write executes",
+    "agent cancellation kills an already-running command tree with no orphaned child",
+    "chat propagates caller cancellation instead of misreporting a provider timeout",
+    "byok: resolved chat bounds a hung provider call without operator cancellation",
+    "cancellation keeps containment: contained cleanup, sentinel preserved, failed-job cancel no-op"
+  ],
+  "source_sha256": {
+    "node/src/services/agent-loop.mjs": "aeda990d88df9072dd2e935fa1cc88935c64bba73100e2d5728e9dd34c8ef8c5",
+    "node/src/services/agent-tools.mjs": "e2dd957b01553c593d2bae08fabb0f8e60b29706d71de219b339e3de6b027bac",
+    "tests/arch/agent-routes.test.ts": "8dcce056250ac0cfc704da6edc6a4841fd88480c64ee41c9ceac1c9d59494100",
+    "tests/arch/providers.test.ts": "bb50bbef9e7e977721f2c37189b788fa75c836226ca9fdd233a9960d7060036d",
+    "tests/unit/test-h2-byok.mjs": "34695c4aaf05436ee97df9fa664024615a47bd4aafdebf849c849b3c21b23e13",
+    "tests/unit/test-modelhub-containment.mjs": "3431c9cf65dc9fb44eb73849a5dd9b96a8813367cc82a7a7ee1a9b0787cf0c94"
+  },
+  "limitations": [
+    "This was a name-filtered subset, not the documented 23-test cancellation/provider battery.",
+    "The 39-test architecture/Authority battery, OpenAPI drift gate, full npm run check, and packaged/live release path were not run in this receipt.",
+    "The earlier reliability record was created on E:\\aide-v1-mission-cancellation / fix/v1-mission-cancellation; this receipt corroborates selected behavior at the current integration HEAD only.",
+    "No real-model harness result is produced by this test run."
+  ]
+}

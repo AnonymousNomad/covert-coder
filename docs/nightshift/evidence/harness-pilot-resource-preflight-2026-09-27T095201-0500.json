@@ -1,0 +1,30 @@
+{
+    "sampled_at":  "2026-09-27T09:52:01.5773164-05:00",
+    "source":  "PowerShell Win32_OperatingSystem + Get-Counter + nvidia-smi",
+    "free_ram_bytes":  8430161920,
+    "total_ram_bytes":  17099075584,
+    "free_commit_bytes":  6974599168,
+    "commit_used_bytes":  23067844608,
+    "commit_limit_bytes":  30042443776,
+    "gpu":  {
+                "name":  "NVIDIA GeForce GTX 1060",
+                "vram_total_bytes":  6442450944,
+                "vram_used_bytes":  1082130432,
+                "vram_free_bytes":  5242880000,
+                "utilization_percent":  24,
+                "temperature_c":  44,
+                "power_w":  8.14
+            },
+    "candidate_model":  {
+                            "id":  "lfm2.5-2.6b-q4_k_m-02a8b7e1",
+                            "weights_sha256":  "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+                            "file_bytes":  1674455040,
+                            "imported_context_tokens":  32768,
+                            "configured_runtime":  "Unsloth Studio 2026.9.11 / Vulkan",
+                            "canonical_endpoint":  "http://127.0.0.1:18888/v1"
+                        },
+    "admission_thresholds":  {
+                                 "free_ram_gib_min":  7.25,
+                                 "free_commit_gib_min":  6.25
+                             }
+}
