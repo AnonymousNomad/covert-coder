@@ -94,12 +94,16 @@ export function createProvenanceLedger(options: ProvenanceLedgerOptions) {
     }
     const states = [...new Set(missionRuns.map(run => run.verification_state))];
     const verification = missionRuns.length === 0 ? 'not_recorded' : states.length === 1 ? (states[0] ?? 'not_recorded') : states.join(',');
+    const allRunsVerified = missionRuns.length > 0 && missionRuns.every(run => run.result === 'done' && run.verification_state === 'verified');
     const limitations: string[] = [];
     if (missionRuns.length === 0) limitations.push('no provenance runs recorded for this mission');
-    if (missionRuns.length > 0 && !states.includes('verified')) limitations.push('no run reached verified state; committed process exit is not test evidence');
+    if (missionRuns.length > 0 && !allRunsVerified) {
+      limitations.push(states.includes('verified')
+        ? 'not every recorded run completed with verified evidence; review individual run outcomes'
+        : 'no run reached verified state; committed process exit is not test evidence');
+    }
     if (handoffs.length === 0) limitations.push('no canonical worker handoffs recorded for this mission');
     const evidenceRefs = [...new Set(missionRuns.flatMap(run => [run.evidence_file, run.trajectory_file, run.attempt_event_stream_ref ?? null].filter((ref): ref is string => ref !== null && ref.length > 0)))];
-    const verified = states.includes('verified');
     return {
       mission_id: missionId,
       workspace: options.workspace,
@@ -107,7 +111,7 @@ export function createProvenanceLedger(options: ProvenanceLedgerOptions) {
       runs: missionRuns.slice(-200),
       handoffs: handoffs.slice(0, 50),
       verification,
-      supported_conclusion: verified ? `mission completed with verified evidence across ${missionRuns.length} run(s)` : null,
+      supported_conclusion: allRunsVerified ? `mission completed with verified evidence across ${missionRuns.length} run(s)` : null,
       limitations,
       evidence_refs: evidenceRefs.slice(0, 50)
     };

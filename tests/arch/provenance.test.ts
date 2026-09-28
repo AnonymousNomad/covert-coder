@@ -3,8 +3,8 @@
 // - strict observation: unknown fields (chain-of-thought/transcript attempts)
 //   are REJECTED — nothing hidden ever enters the ledger.
 // - corrupt ledger lines never break reads (counted, not trusted).
-// - the receipt never fabricates: absent truth = 'not_recorded' + limitation;
-//   a verified run yields the supported conclusion.
+// - the receipt never overclaims: every recorded run must complete with
+//   verified evidence before the receipt supports a mission-level conclusion.
 // - LIVE wiring: a real agent session finalize appends one run through the loop
 //   hook, and the reads project it.
 import { test } from 'node:test';
@@ -177,4 +177,14 @@ test('LIVE: agent session finalize appends one run and the routes project it', a
     server.events.close();
     await server.logger.flush();
   }
+});
+
+test('receipt with mixed run outcomes does not claim mission-wide verified completion', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'prov-mixed-'));
+  const ledger = createProvenanceLedger({ workspace });
+  await ledger.record(run({ run_id: 'mixed-ok', task_id: 'mixed-mission', verification_state: 'verified' }));
+  await ledger.record(run({ run_id: 'mixed-failed', task_id: 'mixed-mission', result: 'error', error: 'worker failed', verification_state: 'failed' }));
+  const receipt = await ledger.receipt('mixed-mission');
+  assert.equal(receipt.supported_conclusion, null);
+  assert.ok(receipt.limitations.some(limitation => /not every recorded run completed with verified evidence/.test(limitation)));
 });
