@@ -108,15 +108,62 @@ async function waitForHttp(label, url, child, timeoutMs) {
   throw new Error(`${label} did not become ready at ${url}: ${last}`);
 }
 
-function terminateTree(child) {
-  if (child.exitCode !== null || child.pid === undefined) return Promise.resolve();
-  if (process.platform !== 'win32') {
-    child.kill('SIGTERM');
-    return Promise.resolve();
+function processGroupExists(groupId) {
+  try {
+    process.kill(-groupId, 0);
+    return true;
+  } catch (error) {
+    return error?.code !== 'ESRCH';
   }
-  return new Promise(resolve => {
-    execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => resolve());
-  });
+}
+
+async function waitForOwnedTree(child, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const childExited = child.exitCode !== null || child.signalCode !== null;
+    const groupExists = process.platform !== 'win32' && child.pid !== undefined && processGroupExists(child.pid);
+    if (childExited && !groupExists) return true;
+    await wait(100);
+  }
+  const childExited = child.exitCode !== null || child.signalCode !== null;
+  if (process.platform === 'win32') return childExited;
+  return childExited && (child.pid === undefined || !processGroupExists(child.pid));
+}
+
+async function terminateTree(child) {
+  const childExited = child.exitCode !== null || child.signalCode !== null;
+  if (child.pid === undefined) return childExited ? null : 'child pid unavailable';
+  if (childExited && (process.platform === 'win32' || !processGroupExists(child.pid))) return null;
+
+  if (process.platform === 'win32') {
+    const result = await new Promise(resolve => {
+      execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, (error, _stdout, stderr) => {
+        resolve({ error: error?.message ?? null, stderr: String(stderr ?? '').trim() });
+      });
+    });
+    if (await waitForOwnedTree(child)) return null;
+    return `owned process tree ${child.pid} did not exit after taskkill (${result.error ?? result.stderr ?? 'no error detail'})`;
+  }
+
+  let signalError = null;
+  try { process.kill(-child.pid, 'SIGTERM'); }
+  catch (error) {
+    if (error?.code !== 'ESRCH') signalError = error instanceof Error ? error.message : String(error);
+    try { child.kill('SIGTERM'); } catch (fallbackError) {
+      if (fallbackError?.code !== 'ESRCH') signalError ??= fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+    }
+  }
+  if (await waitForOwnedTree(child)) return null;
+
+  try { process.kill(-child.pid, 'SIGKILL'); }
+  catch (error) {
+    if (error?.code !== 'ESRCH') signalError ??= error instanceof Error ? error.message : String(error);
+    try { child.kill('SIGKILL'); } catch (fallbackError) {
+      if (fallbackError?.code !== 'ESRCH') signalError ??= fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+    }
+  }
+  if (await waitForOwnedTree(child)) return null;
+  return `owned process group ${child.pid} did not exit after SIGTERM and SIGKILL${signalError ? ` (${signalError})` : ''}`;
 }
 
 // Windows only: discover the owning ancestor (terminal/IDE/cmd wrapper) by walking
@@ -218,15 +265,29 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
   const stop = async code => {
     if (stopping) return;
     stopping = true;
+    const cleanupFailures = [];
     pairingConsole?.close();
     authoritySupervisor?.close();
     if (parentWatch) { clearInterval(parentWatch.timer); parentWatch = null; }
     if (buildChild && buildChild.exitCode === null && buildChild.pid !== undefined) {
-      await terminateTree(buildChild);
+      const failure = await terminateTree(buildChild);
+      if (failure) cleanupFailures.push(`frontend build pid=${buildChild.pid}: ${failure}`);
       buildChild = null;
     }
     if (frontendServer) await frontendServer.close();
-    await Promise.all([...children.values()].map(terminateTree));
+    const ownedChildren = [...children.entries()];
+    const childResults = await Promise.all(ownedChildren.map(async ([label, child]) => ({
+      label,
+      pid: child.pid,
+      failure: await terminateTree(child)
+    })));
+    for (const result of childResults) {
+      if (result.failure) cleanupFailures.push(`${result.label} pid=${result.pid ?? 'unknown'}: ${result.failure}`);
+    }
+    if (cleanupFailures.length > 0) {
+      code = 1;
+      appendFileSync(path.join(logsDir, 'start-err.log'), `[start.mjs] owned child cleanup failed: ${cleanupFailures.join('; ')}\n`);
+    }
     process.exitCode = code;
     settle();
   };
@@ -240,6 +301,7 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
       cwd: root,
       env: { ...process.env, AIDE_WORKSPACE: workspace, ...extraEnv },
       stdio: ['ignore', out, err, 'ipc'],
+      detached: process.platform !== 'win32',
       windowsHide: true
     });
     closeSync(out);
@@ -250,7 +312,6 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
       if (!stopping) void stop(1);
     });
     child.once('exit', code => {
-      children.delete(label);
       if (!stopping) {
         appendFileSync(errPath, `[start.mjs] ${label} exited code=${code ?? 'null'} at ${new Date().toISOString()}\n`);
         void stop(code === 0 ? 1 : (code ?? 1));
@@ -269,6 +330,7 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
         cwd: root,
         env: process.env,
         stdio: 'inherit',
+        detached: process.platform !== 'win32',
         windowsHide: true
       });
       const buildCode = await new Promise(resolve => buildChild.once('exit', code => resolve(code)));

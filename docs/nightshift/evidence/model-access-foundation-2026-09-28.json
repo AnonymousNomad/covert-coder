@@ -15,7 +15,7 @@
   "phase": {
     "plan_phases": ["P0", "P1"],
     "local_exit_criteria": "coherent Model Access contracts and read paths; identity/source/route/credential/adapter separation; false-readiness, secret-redaction, artifact-staleness and routing-isolation checks; required local gates green",
-    "status": "LOCAL_VERIFIED_AWAITING_PUSH_AND_EXACT_SHA_CI",
+    "status": "CHECKPOINT_PUSHED_CI_FAILED_REPAIR_LOCALLY_VERIFIED_AWAITING_EXACT_SHA_CI",
     "next_phase": "P2 Provider adapter lifecycle correctness"
   },
   "implementation": [
@@ -72,8 +72,8 @@
   "publication": {
     "authorized_branch": "nightshift/production-convergence-20260926",
     "push_authorized_by_user": true,
-    "checkpoint_commit": "pending",
-    "github_ci_exact_sha": "pending"
+    "checkpoint_commit": "981c6a804c056ce21d62dbd6014e6905c670dbf4",
+    "github_ci_exact_sha": "FAILURE: run 36481897389 on 981c6a804c056ce21d62dbd6014e6905c670dbf4; repair checkpoint pending"
   },
   "verification_follow_up": {
     "recorded_at_local": "2026-09-28 15:38 -05:00",
@@ -124,6 +124,55 @@
       "staged_stack_listeners_remaining": 0,
       "unrelated_preexisting_processes": "Observed and left untouched."
     },
-    "phase_status": "LOCAL_VERIFIED_AWAITING_CHECKPOINT_PUSH_AND_EXACT_SHA_CI"
+    "phase_status": "CHECKPOINT_PUSHED_CI_FAILED_REPAIR_LOCALLY_VERIFIED_AWAITING_EXACT_SHA_CI"
+  },
+  "ci_repair_follow_up": {
+    "recorded_at_local": "2026-09-28 16:52 -05:00",
+    "failed_checkpoint": {
+      "sha": "981c6a804c056ce21d62dbd6014e6905c670dbf4",
+      "run_id": 36481897389,
+      "run_url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/36481897389",
+      "result": "FAILURE",
+      "failed_gate": "backend and integration tests",
+      "details": "52/53 commands passed. The Vite canonical-launch integration case failed after 31.5 seconds because the launcher did not exit; its ports were already closed. The test command then hit the CI runner's 20-minute timeout. Linux process inventory was unavailable in this Windows-oriented test diagnostic and was not treated as cleanup proof."
+    },
+    "repair": {
+      "file": "scripts/start.mjs",
+      "details": "Owned POSIX subprocesses now start in dedicated process groups, and child handles remain tracked after leader exit so shutdown can inspect descendants. Shutdown signals the exact owned group, waits for both leader and group exit, escalates to SIGKILL after five seconds, verifies again and reports incomplete cleanup as nonzero. Unknown group-probe errors fail closed. Windows taskkill /T /F behavior is retained.",
+      "scope": "CI-triggered cleanup repair; does not change provider/model readiness, Authority, Local-Only policy or runtime architecture."
+    },
+    "validation": [
+      {
+        "command": "node --test tests/integration/test-canonical-launch.mjs",
+        "result": "PASS",
+        "counts": {"tests": 3, "passed": 3, "failed": 0, "skipped": 0},
+        "details": "Final local source; typed launch, Vite development launch and required-backend-failure cleanup passed."
+      },
+      {
+        "command": "npm run check",
+        "result": "PASS",
+        "details": "Final local source; TypeScript and ESLint passed, architecture battery completed. The default-cache invocation could not write its npm log because C: was full; rerunning with npm_config_cache on E: completed. No C: files were removed.",
+        "counts": {"architecture_tests": 795, "passed": 784, "failed": 0, "skipped": 11},
+        "duration_ms": 701253
+      },
+      {
+        "command": "npm test",
+        "result": "PASS",
+        "details": "Full local sequence passed after the initial shutdown repair and before the final fail-closed POSIX probe/timeout refinements."
+      },
+      {
+        "command": "WSL Vite launch probe",
+        "result": "UNVERIFIED",
+        "details": "Vite URL did not become reachable within 30 seconds in that environment; cleanup completed. Not counted as a pass or as a reproduction of the CI failure."
+      }
+    ],
+    "review": {
+      "issue_38": "OPEN_WITH_NO_COMMENTS",
+      "verified_after_regression": true
+    },
+    "pending": [
+      "Commit and push the locally verified repair to the authorized convergence branch.",
+      "Require green GitHub CI on the exact repair SHA, especially Linux canonical-launch cleanup, before entering P2."
+    ]
   }
 }
