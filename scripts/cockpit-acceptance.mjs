@@ -46,7 +46,21 @@ const task = {
 };
 
 const fixtures = {
-  '/api/health': { version: 'fixture', uptimeMs: 1000, workspace: workspace.workspace, freeMemoryMB: 4096 },
+  '/api/health': {
+    version: 'fixture',
+    uptimeMs: 1000,
+    workspace: workspace.workspace,
+    freeMemoryMB: 4096,
+    state: 'HEALTHY',
+    components: [{
+      component: 'backend',
+      state: 'HEALTHY',
+      detail: 'fixture backend response',
+      evidence: { source: 'fixture' },
+      checked_at: '2026-09-29T00:00:00.000Z'
+    }],
+    checked_at: '2026-09-29T00:00:00.000Z'
+  },
   '/api/session': { version: 1, tabs: [] },
   '/api/workspace': workspace,
   '/api/lsp/status': { servers: [{ languageId: 'typescript', name: 'fixture-lsp', status: 'available' }] },
@@ -284,7 +298,19 @@ try {
   await page.locator('.cockpit-operator-hide').uncheck();
   assert.equal(await page.locator('.cockpit-intel-slot').count(), 3, 'intelligence rail is incomplete');
   assert.equal(await page.locator('.cockpit-strip-tab').count(), 6, 'lower console must expose six approved tabs');
-  await page.waitForFunction(() => document.querySelector('[data-chip-label="engine"]')?.textContent?.includes('1 OF 2 MODELS READY') === true);
+  const engineChip = page.locator('[data-chip-label="engine"]');
+  try {
+    await page.waitForFunction(() => document.querySelector('[data-chip-label="engine"]')?.textContent?.includes('1 OF 2 MODELS STARTABLE') === true);
+  } catch (error) {
+    const diagnostics = {
+      observed: await engineChip.textContent(),
+      pageErrors,
+      consoleErrors,
+      requestFailed: bootEvents.requestFailed,
+      pendingRequests: [...pendingRequests.values()]
+    };
+    throw new Error(`engine chip did not reach STARTABLE; ${JSON.stringify(diagnostics).slice(0, 2000)}`, { cause: error });
+  }
   assert.match(await page.locator('[data-chip-label="daemon"]').textContent() ?? '', /DAEMON: ONLINE/, 'daemon reachability chip is not independently live');
   assert.doesNotMatch(await page.locator('[data-chip-label="engine"]').textContent() ?? '', /DAEMON|fixture/i, 'daemon health leaked into model readiness chip');
   await page.waitForFunction(() => document.querySelectorAll('.cockpit-telemetry-card').length >= 5);

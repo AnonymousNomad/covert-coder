@@ -1,0 +1,9 @@
+# Cockpit fixture-backed acceptance follow-up — 2026-09-29
+
+- **Branch / base SHA:** `nightshift/production-convergence-20260926` / `a2e14d828af1bf19455f0cce59cdb05db97da0b6`.
+- **Bounded change:** Updated `scripts/cockpit-acceptance.mjs` to provide the current strict `/api/health` response contract (`state`, `components`, and `checked_at`) and to expect `STARTABLE` for the model-status fixture. The failure path now reports the observed chip and browser/request diagnostics.
+- **Root cause:** The old health fixture omitted fields required by `HealthResponse`. The frontend handled that contract rejection as a health failure and returned before requesting model status, leaving the initial `NO MODEL READY` label. The model-status contract classifies a `ready` model as `STARTABLE`.
+- **Local verification:** `node scripts/cockpit-acceptance.mjs` exited 0. Vite built the browser bundle and the fixture-backed Edge run passed shell, registry navigation, truth surfaces, toast isolation, editor/search, wide and narrow geometry, and browser error checks. The script's owned temporary Edge profile was removed after process exit. `git diff --check` passed.
+- **Evidence boundary:** The script fulfills `/api/**` with fixed fixtures and uses a fixture WebSocket. This verifies the browser fixture path only; it does not exercise the facade, Authority, Resident execution, a provider/model request, accessibility audits with axe/NVDA, packaging, or release acceptance. It does not change the live OpenCode Go / DeepSeek status, which remains UNKNOWN pending owner-managed auth path and spend ceiling.
+- **Exact-SHA CI:** Pending the source/evidence checkpoint commit.
+- **Next:** Commit and push this bounded fixture repair, observe exact-SHA CI, record its result, check Issue #38, then continue the dependency-ordered release spine. PR #31 remains frozen.
