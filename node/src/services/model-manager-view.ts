@@ -248,6 +248,24 @@ export function createModelManagerView(options: ModelManagerViewOptions): { snap
       if (!id) continue;
       records.set(id, { ...(records.get(id) ?? {}), ...candidate });
     }
+    for (const entry of runtimeEntries) {
+      if (entry.ingested !== true) continue;
+      const id = safeText(entry.id, '');
+      const fileValue = typeof entry.file === 'string' ? entry.file : String(entry.model ?? '');
+      const filename = path.posix.basename(fileValue.replaceAll(String.fromCharCode(92), '/'));
+      if (!id || !filename.toLowerCase().endsWith('.gguf')) continue;
+      records.set(id, {
+        id,
+        name: safeText(filename, 'Imported local model'),
+        file: filename,
+        model: filename,
+        artifact_uri: 'local://' + filename,
+        format: 'GGUF',
+        context_tokens: entry.context_tokens,
+        quant_label: entry.quant_label,
+        ingested: true
+      });
+    }
     const knownNames = new Set([...records.values()].map(candidate => safeText(candidate.file, '').toLowerCase()).filter(Boolean));
     const discovery = await discoverLocalArtifacts(options.workspace, ignoredPaths, knownNames);
     const localDiscovery = {
@@ -276,8 +294,8 @@ export function createModelManagerView(options: ModelManagerViewOptions): { snap
       const observedHash = loadedHash;
       const hashMismatch = Boolean(expectedHash && observedHash && expectedHash !== observedHash);
       const installed = statusRow.artifact_available === true || (raw.discovered === true);
-      const artifactAvailability = installed ? 'INSTALLED' as const : source.source ? 'AVAILABLE' as const : 'UNAVAILABLE' as const;
-      const sourceKind = raw.discovered === true ? 'LOCAL_DISCOVERY' as const : installed ? 'LOCAL_MANIFEST' as const : 'MODEL_CATALOG' as const;
+      const artifactAvailability = installed ? 'INSTALLED' as const : raw.ingested === true ? 'UNAVAILABLE' as const : source.source ? 'AVAILABLE' as const : 'UNAVAILABLE' as const;
+      const sourceKind = raw.ingested === true ? 'LOCAL_IMPORT' as const : raw.discovered === true ? 'LOCAL_DISCOVERY' as const : installed ? 'LOCAL_MANIFEST' as const : 'MODEL_CATALOG' as const;
       const hashStatus = hashMismatch ? 'MISMATCH' as const : observedHash ? 'VERIFIED' as const : expectedHash ? 'EXPECTED' as const : 'NOT_COMPUTED' as const;
       const artifact: ModelArtifactSourceT = {
         id: 'artifact:' + id,

@@ -464,3 +464,53 @@ test('local artifact discovery is bounded and never means model readiness', asyn
   assert.equal(found.identity.qualification.state, 'UNTESTED');
   assert.equal('entries' in (snapshot.local_discovery as any), false);
 });
+
+test('registered local GGUF imports appear in Model Access without implying qualification or readiness', async t => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'model-access-imported-'));
+  t.after(() => fs.rm(workspace, { recursive: true, force: true }));
+  const id = 'lfm2.5-2.6b-q4_k_m-fixture';
+  const filename = 'LFM2.5-2.6B-Q4_K_M.gguf';
+  const missingId = 'lfm-missing-fixture';
+  const registered = [
+    { id, name: 'registered-display-id', model: filename, file: path.join(workspace, 'private-model-directory', filename), artifact_uri: 'local://' + filename, context_tokens: 32768, ingested: true },
+    { id: missingId, name: 'missing-display-id', model: 'missing.gguf', file: path.join(workspace, 'private-model-directory', 'missing.gguf'), artifact_uri: 'local://missing.gguf', ingested: true }
+  ];
+  const view = createModelManagerView({
+    workspace,
+    manifestPath: path.join(workspace, 'manifest.json'),
+    modelRuntime: {
+      list: () => registered,
+      status: async () => ({ runtime: true, models: [
+        { id, status: 'ready', artifact_available: true, runtime_available: true, qualification: 'requires_start_preflight' },
+        { id: missingId, status: 'pending', artifact_available: false, runtime_available: true, qualification: 'requires_start_preflight' }
+      ] })
+    } as any,
+    connectionsService: {
+      list: async () => ({ consensus: 'none', routed_roles: { plan: 'local', act: 'local', utility: 'local' }, preference: 'local-first', connections: [] })
+    } as any,
+    runtimeStatus: async () => ({ backend: 'LLAMA_CPP', health: 'UNKNOWN' }) as any
+  });
+  const snapshot = await view.snapshot();
+  const model = snapshot.models.find(item => item.identity.canonical_id === id);
+  const artifact = snapshot.artifacts.find(item => item.model_id === id);
+  assert.ok(model);
+  assert.ok(artifact);
+  assert.equal(model.identity.display_name, filename);
+  assert.equal(model.availability, 'INSTALLED');
+  assert.equal(model.readiness, 'SETUP_REQUIRED');
+  assert.equal(model.identity.qualification.state, 'REQUIRES_PREFLIGHT');
+  assert.equal(artifact.source_kind, 'LOCAL_IMPORT');
+  assert.equal(artifact.filename, filename);
+  assert.equal(artifact.format, 'GGUF');
+  assert.equal(artifact.availability, 'INSTALLED');
+  assert.equal(artifact.hash_status, 'NOT_COMPUTED');
+  assert.equal(artifact.observed_sha256, null);
+  const missing = snapshot.models.find(item => item.identity.canonical_id === missingId);
+  const missingArtifact = snapshot.artifacts.find(item => item.model_id === missingId);
+  assert.ok(missing);
+  assert.ok(missingArtifact);
+  assert.equal(missing.availability, 'UNAVAILABLE');
+  assert.equal(missingArtifact.availability, 'UNAVAILABLE');
+  assert.equal(missing.identity.qualification.state, 'REQUIRES_PREFLIGHT');
+  assert.equal(JSON.stringify(snapshot).includes(workspace), false, 'private local artifact paths must not be projected');
+});
