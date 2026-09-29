@@ -2,6 +2,16 @@
 
 **State:** `INTEGRATION_VERIFIED` for the deterministic local fixture path. This is not live-provider, runtime, release-candidate, or release-accepted evidence.
 
+## Latest follow-up — 2026-09-29 07:31
+
+This follow-up supersedes the older source-review and “Next” statements below that said the exact Model Manager → Authority → streamed OpenCode path was not wired. Those statements describe the older source commit listed in the historical identity section.
+
+- **Baseline:** branch `nightshift/production-convergence-20260926`, source `f261e3f879d8a798ea1767c9925fbbc96546f126`. Its exact-SHA AIDE CI run `36565577181` completed successfully. The candidate timeout-test additions described here are local WIP on top of that SHA; their push and hosted CI are pending.
+- **Bounded addition:** the production-route lifecycle fixture now exercises OpenCode operation timeout through the exact verified Model Manager target and Authority approval, across the simulated service restart. The real bridge implementation is injected and bounded at its supported 5-second minimum. The request consumer receives a 20-second deadline so its own timer does not race the bridge timeout. The test requires a partial delta followed by the timeout error, no successful `done` frame, a failed operation receipt bound to the exact target, and a durable failed Authority event with the same digest. The fixture also checks timeout abort/session deletion counts.
+- **Root cause of the initial test failure:** the fixture’s default HTTP read deadline was also 5 seconds. It collided with the bridge’s 5-second minimum and aborted the SSE consumer before the server’s timeout outcome could be observed. Giving only this request a longer deadline resolved the harness race; no product timeout or acceptance assertion was weakened.
+- **Local verification on the current working tree:** `tests/arch/provider-route-lifecycle.test.ts` **2/2**; focused OpenCode Model Access route **1/1**; Node TypeScript passed; ESLint on the two changed test files passed; fixture `node --check` and `git diff --check` passed. No production source changed. The full Windows `npm run check` result remains **812 passed, 4 request timeouts, 11 skipped of 827** from the earlier run; it is not reported green. Exact-SHA CI for the candidate addition has not run yet.
+- **Evidence limits:** this proves deterministic local fixture behavior through the production route composition. It does not prove authenticated/live OpenCode Go or DeepSeek execution, provider spend behavior, packaged acceptance, or release readiness. No credential was inspected and no live provider request or spend occurred. PR #31 remains frozen.
+
 ## Identity
 
 - Repository: `E:\covert-nightshift-integration`

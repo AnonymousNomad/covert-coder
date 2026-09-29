@@ -431,7 +431,13 @@ test('production OpenCode Model Access route is governed and requires exact re-v
   try {
     await fs.mkdir(path.join(workspace, '.aide'), { recursive: true });
     openCodeFixture = await fixtureBridge(workspace, 'terminal-lifecycle');
-    stack = await startStack(workspace, transportStates, openCodeFixture.bridge);
+    const fixtureBridgeInstance = openCodeFixture.bridge;
+    const boundedTimeoutBridge = {
+      ...fixtureBridgeInstance,
+      runTaskStream: (options: Parameters<typeof fixtureBridgeInstance.runTaskStream>[0]) =>
+        fixtureBridgeInstance.runTaskStream({ ...options, timeoutMs: 5000 })
+    };
+    stack = await startStack(workspace, transportStates, boundedTimeoutBridge);
 
     const routingHeaders = await stack.owner.approve('PUT', '/api/byok/routing', routingBody, 'opencode-lifecycle-routing');
     const routingResponse = await stack.owner.request('/api/byok/routing', {
@@ -488,7 +494,7 @@ test('production OpenCode Model Access route is governed and requires exact re-v
 
     await stack.close();
     stack = undefined;
-    stack = await startStack(workspace, transportStates, openCodeFixture!.bridge);
+    stack = await startStack(workspace, transportStates, boundedTimeoutBridge);
 
     const oldOperationResponse = await stack.owner.request(`/api/authority/operation?id=${encodeURIComponent(firstMission.operationId)}`);
     assert.equal(oldOperationResponse.status, 404, 'transient approval/operation state is not restored into a new Authority instance');
@@ -536,6 +542,25 @@ test('production OpenCode Model Access route is governed and requires exact re-v
     const recoveredAfter = await operationReceipt(stack.owner, recoveredMission.operationId);
     assert.equal(recoveredAfter.state, 'succeeded');
     assertExactOpenCodeTarget(receiptTarget(recoveredAfter));
+
+    const timeoutBody = { modelId: OPENCODE_CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'timeout this route' }] };
+    const timedOut = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', timeoutBody, 'opencode-lifecycle-timeout');
+    assertExactOpenCodeTarget(receiptTarget(timedOut.before));
+    const timeoutResponse = await stack.owner.request('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'X-AIDE-Operation': timedOut.operationId, 'X-AIDE-Task': 'opencode-lifecycle-timeout' },
+      body: JSON.stringify(timeoutBody),
+      signal: AbortSignal.timeout(20000)
+    });
+    assert.equal(timeoutResponse.status, 200);
+    const timeoutText = await timeoutResponse.text();
+    assert.match(timeoutText, /"delta":"first"/);
+    assert.match(timeoutText, /OpenCode task timed out/);
+    assert.doesNotMatch(timeoutText, /"done":true/, 'OpenCode timeout cannot become a successful stream');
+    const timeoutAfter = await operationReceipt(stack.owner, timedOut.operationId);
+    assert.equal(timeoutAfter.state, 'failed');
+    assertExactOpenCodeTarget(receiptTarget(timeoutAfter));
+
     const cancelBody = { modelId: OPENCODE_CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'cancel this route' }] };
     const cancelled = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', cancelBody, 'opencode-lifecycle-cancel');
     assertExactOpenCodeTarget(receiptTarget(cancelled.before));
@@ -600,6 +625,9 @@ test('production OpenCode Model Access route is governed and requires exact re-v
     const durableCancellation = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === cancelled.operationId && event.decision === 'execution-failed');
     assert.ok(durableCancellation, 'caller cancellation has a durable failed Authority outcome');
     assert.equal(durableCancellation.digest, (cancelledAfter as { digest: unknown }).digest);
+    const durableTimeout = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === timedOut.operationId && event.decision === 'execution-failed');
+    assert.ok(durableTimeout, 'OpenCode timeout has a durable failed Authority outcome');
+    assert.equal(durableTimeout.digest, (timeoutAfter as { digest: unknown }).digest);
     const durableProviderError = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === failed.operationId && event.decision === 'execution-failed');
     assert.ok(durableProviderError, 'provider error has a durable failed Authority outcome');
     assert.equal(durableProviderError.digest, (failedAfter as { digest: unknown }).digest);
@@ -608,10 +636,10 @@ test('production OpenCode Model Access route is governed and requires exact re-v
     assert.equal(durableCleanupFailure.digest, (cleanupAfter as { digest: unknown }).digest);
     const opencodeEvents = await readLog(openCodeFixture!.log);
     const lifecyclePrompts = opencodeEvents.filter(event => event.event === 'prompt');
-    assert.equal(lifecyclePrompts.length, 7, 'verification, governed runs, restart re-verification, and all three terminal-path cases dispatch once each');
+    assert.equal(lifecyclePrompts.length, 8, 'verification, governed runs, restart re-verification, timeout, and other terminal-path cases dispatch once each');
     assert.ok(lifecyclePrompts.every(event => JSON.stringify(event.body?.model) === JSON.stringify({ providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' })));
-    assert.equal(opencodeEvents.filter(event => event.event === 'abort').length, 3, 'caller cancellation, provider error, and cleanup failure each abort the session');
-    assert.equal(opencodeEvents.filter(event => event.event === 'delete').length, 8, 'every created session is deleted, including both cleanup-failure attempts');
+    assert.equal(opencodeEvents.filter(event => event.event === 'abort').length, 4, 'timeout, caller cancellation, provider error, and cleanup failure each abort the session');
+    assert.equal(opencodeEvents.filter(event => event.event === 'delete').length, 9, 'every created session is deleted, including both cleanup-failure attempts');
     assert.equal(transportStates.length, 0, 'OpenCode route never falls through to the direct HTTP provider service');
   } finally {
     if (stack !== undefined) await stack.close();

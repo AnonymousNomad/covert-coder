@@ -64,7 +64,9 @@ const server = http.createServer((request, response) => {
             ? 'provider-error'
             : promptText.includes('cleanup failure path')
               ? 'cleanup-fail'
-              : 'success'
+              : promptText.includes('timeout this route')
+                ? 'timeout'
+                : 'success'
         : mode;
       response.writeHead(204);
       response.end();
