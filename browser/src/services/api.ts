@@ -54,6 +54,10 @@ import {
   type ModelStatusResponseT
 } from '../../../common/contracts/models.ts';
 import {
+  ModelManagerResponse,
+  type ModelManagerResponseT
+} from '../../../common/contracts/model-access.ts';
+import {
   ClosedLoopStatusResponse,
   type ClosedLoopStatusT
 } from '../../../common/contracts/closed-loop.ts';
@@ -329,6 +333,9 @@ export const api = {
   },
   modelsStatus(): Promise<ModelStatusResponseT> {
     return call('/api/models/status', { schema: ModelStatusResponse });
+  },
+  modelManager(): Promise<ModelManagerResponseT> {
+    return call('/api/models/manager', { schema: ModelManagerResponse });
   },
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });

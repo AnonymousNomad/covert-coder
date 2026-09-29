@@ -1,13 +1,11 @@
-// Slice 3 — MODELS panel
-// Consumes existing /api/models/status and /api/models/routes.
-// Read-only. No execution authority.
+// Model Access panel. The daemon's public-safe Model Manager projection is the
+// source for identity, qualification, connection, and exact route evidence.
+// This view makes no selection or execution mutation.
 
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
-import type { ModelStatusResponseT } from '../../../common/contracts/models.ts';
-import type { RoutesResponseT } from '../../../common/contracts/routing.ts';
-import { modelDisplayState, modelIsActive } from '../../../common/model-state.ts';
+import type { ModelManagerResponseT } from '../../../common/contracts/model-access.ts';
 
 export interface PanelHandles {
   dispose(): void;
@@ -20,117 +18,201 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
   return node;
 }
 
-function statusClass(state: string): string {
-  if (state === 'READY' || state === 'RUNNING') return 'ok';
-  if (state === 'FAILED') return 'err';
-  if (state === 'STARTABLE' || state === 'STARTING' || state === 'DEGRADED') return 'warn';
+function stateClass(state: string): 'ok' | 'warn' | 'err' | 'dim' {
+  const upper = state.toUpperCase();
+  if (['READY', 'QUALIFIED', 'VERIFIED', 'HEALTHY', 'AVAILABLE', 'ELIGIBLE'].includes(upper)) return 'ok';
+  if (['UNAVAILABLE', 'UNHEALTHY', 'UNSUPPORTED', 'INVALID_EVIDENCE', 'MISMATCH'].includes(upper)) return 'err';
+  if (['UNKNOWN', 'UNTESTED', 'STALE', 'REQUIRES_PREFLIGHT', 'SETUP_REQUIRED', 'CONSENT_REQUIRED', 'VERIFICATION_REQUIRED', 'NOT_READY', 'BLOCKED', 'UNVERIFIED'].includes(upper)) return 'warn';
   return 'dim';
 }
 
+function metadata(...parts: string[]): HTMLElement {
+  const row = el('div', 'model-card-meta');
+  for (const part of parts) row.appendChild(el('span', 'model-card-meta-item', part));
+  return row;
+}
+
+function roleTarget(target: ModelManagerResponseT['connections']['routed_roles']['plan']): string {
+  return target === 'local' ? 'local runtime' : target.provider_id + ' · ' + target.model_id;
+}
+
+function routeState(route: ModelManagerResponseT['routes'][number]): string {
+  if (route.available) return 'AVAILABLE';
+  if (route.model_support_state !== 'VERIFIED') return route.model_support_state;
+  if (route.setup_state !== 'READY') return route.setup_state;
+  if (route.health !== 'HEALTHY') return route.health;
+  return 'BLOCKED';
+}
+
 export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>): PanelHandles {
-  parent.innerHTML = '';
+  parent.textContent = '';
   const root = el('div', 'panel-content models-panel');
   const header = el('header', 'panel-header');
-  header.appendChild(el('h2', 'panel-title', 'MODELS'));
-  header.appendChild(el('span', 'panel-maturity', 'AVAILABLE'));
+  header.appendChild(el('h2', 'panel-title', 'MODEL ACCESS'));
+  header.appendChild(el('span', 'panel-maturity', 'EVIDENCE'));
   root.appendChild(header);
-  const intro = el('div', 'panel-intro', 'Installed models, runtime availability, and role routing. Read-only projection of /api/models/status and /api/models/routes.');
-  root.appendChild(intro);
+  root.appendChild(el('p', 'panel-intro', 'Models, local artifacts, provider connections, and exact route eligibility in one view. Current role targets are shown below; change routing in Settings.'));
   const body = el('div', 'models-body');
   root.appendChild(body);
   parent.appendChild(root);
 
   let alive = true;
+  let pending = false;
+
+  function render(view: ModelManagerResponseT): void {
+    body.textContent = '';
+    const availableRoutes = view.routes.filter(route => route.available).length;
+    const counts = el('div', 'models-counts');
+    counts.appendChild(el('span', 'models-counts-value', view.models.length + ' KNOWN MODELS · ' + availableRoutes + ' / ' + view.routes.length + ' AVAILABLE ROUTES'));
+    body.appendChild(counts);
+    body.appendChild(el('p', 'panel-intro', 'Route availability is one input to execution. Authority and Resource Admission still govern each task.'));
+
+    body.appendChild(el('div', 'models-section-header', 'CURRENT ROLE TARGETS'));
+    const roles = el('div', 'models-list');
+    for (const role of ['plan', 'act', 'utility'] as const) {
+      const row = el('div', 'route-row');
+      row.appendChild(el('span', 'route-id', role.toUpperCase()));
+      row.appendChild(el('span', 'route-name', roleTarget(view.connections.routed_roles[role])));
+      roles.appendChild(row);
+    }
+    body.appendChild(roles);
+
+    body.appendChild(el('div', 'models-section-header', 'LOCAL RUNTIME AND DISCOVERY'));
+    const runtime = el('div', 'model-card ' + stateClass(view.runtime.health));
+    runtime.appendChild(metadata(
+      'runtime: ' + view.runtime.canonical_runtime_id,
+      'health: ' + view.runtime.health,
+      'backend: ' + (view.runtime.reported_backend ?? 'UNKNOWN'),
+      'loaded model: ' + (view.runtime.selected_model_id ?? 'none')
+    ));
+    runtime.appendChild(metadata(
+      'discovery: ' + view.local_discovery.status,
+      'directories scanned: ' + view.local_discovery.scanned_dirs,
+      'artifacts found: ' + view.local_discovery.discovered_count,
+      'errors: ' + view.local_discovery.error_count
+    ));
+    body.appendChild(runtime);
+
+    body.appendChild(el('div', 'models-section-header', 'PROVIDER CONNECTIONS'));
+    const connections = el('div', 'models-list');
+    for (const connection of view.connections.connections) {
+      const card = el('div', 'model-card ' + stateClass(connection.status));
+      const head = el('div', 'model-card-head');
+      head.appendChild(el('span', 'model-card-name', connection.name));
+      head.appendChild(el('span', 'model-card-status ' + stateClass(connection.status), connection.status.replace(/_/g, ' ').toUpperCase()));
+      card.appendChild(head);
+      card.appendChild(metadata(
+        'source: ' + connection.provider_id,
+        'account: ' + connection.account_label,
+        'connection routing gate: ' + (connection.routing_available ? 'OPEN' : 'CLOSED'),
+        'model references: ' + connection.access.model_refs.length
+      ));
+      card.appendChild(el('div', 'model-card-meta', connection.detail));
+      connections.appendChild(card);
+    }
+    if (view.connections.connections.length === 0) connections.appendChild(el('div', 'models-empty', 'No provider connections are currently reported.'));
+    body.appendChild(connections);
+
+    body.appendChild(el('div', 'models-section-header', 'KNOWN MODELS'));
+    const artifactById = new Map(view.artifacts.map(artifact => [artifact.id, artifact]));
+    const modelList = el('div', 'models-list');
+    for (const model of view.models) {
+      const hasLocalArtifact = model.artifact_ids.length > 0;
+      const exactRoutes = view.routes.filter(route => route.model_id === model.identity.canonical_id);
+      const modelState = hasLocalArtifact ? model.readiness : exactRoutes.some(route => route.available) ? 'AVAILABLE' : 'UNVERIFIED';
+      const card = el('div', 'model-card ' + stateClass(modelState));
+      const head = el('div', 'model-card-head');
+      head.appendChild(el('span', 'model-card-name', model.identity.display_name));
+      head.appendChild(el('span', 'model-card-status ' + stateClass(modelState), modelState));
+      card.appendChild(head);
+      card.appendChild(metadata('id: ' + model.identity.canonical_id, 'availability: ' + model.availability));
+      if (hasLocalArtifact) {
+        card.appendChild(metadata(
+          'local readiness: ' + model.readiness,
+          'qualification: ' + model.identity.qualification.state,
+          'artifact compatibility: ' + model.compatibility
+        ));
+      } else {
+        card.appendChild(metadata('source: managed provider', 'exact routes: ' + exactRoutes.length));
+      }
+      if (model.identity.qualification.stale_reasons.length > 0) {
+        card.appendChild(metadata('stale evidence: ' + model.identity.qualification.stale_reasons.join(', ')));
+      }
+      const basis = model.identity.qualification.basis;
+      if (basis !== null) {
+        card.appendChild(metadata(
+          'qualification runtime: ' + (basis.runtime_id ?? 'UNKNOWN'),
+          'runtime version: ' + (basis.runtime_version ?? 'UNKNOWN'),
+          'source revision: ' + (basis.source_revision ?? 'UNKNOWN')
+        ));
+      }
+      for (const artifactId of model.artifact_ids) {
+        const artifact = artifactById.get(artifactId);
+        if (artifact === undefined) continue;
+        card.appendChild(metadata(
+          'artifact: ' + (artifact.filename ?? artifact.id),
+          'format: ' + (artifact.format ?? 'UNKNOWN'),
+          'quantization: ' + (artifact.quantization ?? 'UNKNOWN'),
+          'hash: ' + artifact.hash_status
+        ));
+        if (artifact.observed_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Observed SHA-256: ' + artifact.observed_sha256));
+        else if (artifact.expected_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Expected SHA-256: ' + artifact.expected_sha256));
+      }
+      modelList.appendChild(card);
+    }
+    if (view.models.length === 0) modelList.appendChild(el('div', 'models-empty', 'No model identities are currently reported.'));
+    body.appendChild(modelList);
+
+    body.appendChild(el('div', 'models-section-header', 'EXACT PROVIDER / MODEL ROUTES'));
+    const routeList = el('div', 'route-list');
+    for (const route of view.routes) {
+      const state = routeState(route);
+      const card = el('div', 'route-row ' + stateClass(state));
+      const head = el('div', 'model-card-head');
+      head.appendChild(el('span', 'model-card-name', route.provider_id + ' · ' + route.provider_model_id));
+      head.appendChild(el('span', 'route-status ' + stateClass(state), state));
+      card.appendChild(head);
+      card.appendChild(metadata(
+        'connection: ' + route.connection_id,
+        'adapter: ' + route.execution_adapter_id,
+        'exact model support: ' + route.model_support_state,
+        'health: ' + route.health
+      ));
+      card.appendChild(metadata(
+        'setup: ' + route.setup_state,
+        'external egress: ' + (route.external_egress_required ? 'required' : 'no'),
+        'role target match: ' + (route.selected_roles.join(', ') || 'none')
+      ));
+      routeList.appendChild(card);
+    }
+    if (view.routes.length === 0) routeList.appendChild(el('div', 'models-empty', 'No exact provider/model routes are currently reported.'));
+    body.appendChild(routeList);
+  }
 
   async function refresh(): Promise<void> {
-    if (!alive) return;
-    body.innerHTML = '<div class="panel-loading">Loading model status and routes\u2026</div>';
-    let status: ModelStatusResponseT;
-    let routes: RoutesResponseT;
+    if (!alive || pending) return;
+    pending = true;
+    body.textContent = 'Loading Model Access evidence…';
     try {
-      const results = await Promise.all([api.modelsStatus(), api.routes()]);
-      status = results[0];
-      routes = results[1];
-    } catch (e) {
-      body.innerHTML = '';
-      const err = el('div', 'panel-error', `Failed to load: ${e instanceof Error ? e.message : String(e)}`);
-      body.appendChild(err);
-      return;
-    }
-    body.innerHTML = '';
-
-    const runtimeRow = el('div', 'models-runtime');
-    runtimeRow.appendChild(el('span', 'models-runtime-label', 'Runtime available'));
-    const runtimeDot = el('span', `models-runtime-dot ${status.runtime ? 'ok' : 'err'}`);
-    runtimeRow.appendChild(runtimeDot);
-    runtimeRow.appendChild(el('span', 'models-runtime-value', status.runtime ? 'yes' : 'no'));
-    body.appendChild(runtimeRow);
-
-    if (status.models.length === 0) {
-      body.appendChild(el('div', 'models-empty', 'No models installed.'));
-      return;
-    }
-
-    const routeById = new Map(routes.routes.map(route => [route.id, route]));
-    const states = status.models.map(model => modelDisplayState(model, routeById.get(`local:${model.id}`)?.status));
-    const activeCount = states.filter(modelIsActive).length;
-    const startableCount = states.filter(state => state === 'STARTABLE').length;
-    const totalCount = status.models.length;
-    const counts = el('div', 'models-counts');
-    counts.appendChild(el('span', 'models-counts-value', `${activeCount} ACTIVE · ${startableCount} STARTABLE · ${totalCount} INSTALLED`));
-    body.appendChild(counts);
-
-    const listHeader = el('div', 'models-section-header', 'INSTALLED MODELS');
-    body.appendChild(listHeader);
-    const list = el('div', 'models-list');
-    for (const m of status.models) {
-      const route = routeById.get(`local:${m.id}`);
-      const state = modelDisplayState(m, route?.status);
-      const card = el('div', `model-card ${statusClass(state)}`);
-      const head = el('div', 'model-card-head');
-      head.appendChild(el('span', 'model-card-name', m.name));
-      const statusBadge = el('span', `model-card-status ${statusClass(state)}`, state);
-      head.appendChild(statusBadge);
-      card.appendChild(head);
-      const meta = el('div', 'model-card-meta');
-      meta.appendChild(el('span', 'model-card-meta-item', `id: ${m.id}`));
-      meta.appendChild(el('span', 'model-card-meta-item', `runtime: ${m.runtime_available ? 'available' : 'unavailable'}`));
-      meta.appendChild(el('span', 'model-card-meta-item', `artifact: ${m.artifact_available ? 'available' : 'unavailable'}`));
-      if (m.setup_required && m.setup_message !== undefined) {
-        meta.appendChild(el('span', 'model-card-meta-item model-card-meta-warn', `setup: ${m.setup_message}`));
+      const view = await api.modelManager();
+      if (alive) render(view);
+    } catch (error) {
+      if (alive) {
+        body.textContent = '';
+        body.appendChild(el('div', 'panel-error', 'Model Access evidence is unavailable: ' + (error instanceof Error ? error.message : String(error))));
       }
-      card.appendChild(meta);
-      if (m.endpoint.length > 0) {
-        card.appendChild(el('div', 'model-card-endpoint', m.endpoint));
-      }
-      list.appendChild(card);
-    }
-    body.appendChild(list);
-
-    if (routes.routes.length > 0) {
-      body.appendChild(el('div', 'models-section-header', 'MODEL ROUTES'));
-      const routeTable = el('div', 'route-list');
-      for (const r of routes.routes) {
-        const row = el('div', `route-row ${statusClass(r.status)}`);
-        row.appendChild(el('span', 'route-id', r.id));
-        row.appendChild(el('span', 'route-name', r.displayName));
-        row.appendChild(el('span', 'route-provider-type', r.providerType));
-        row.appendChild(el('span', 'route-roles', `roles: ${r.roles.join(', ') || '\u2014'}`));
-        row.appendChild(el('span', `route-status ${statusClass(r.status)}`, r.status.toUpperCase()));
-        routeTable.appendChild(row);
-      }
-      body.appendChild(routeTable);
+    } finally {
+      pending = false;
     }
   }
 
   void refresh();
-  const interval = window.setInterval(() => { void refresh(); }, 10000);
-
+  const interval = window.setInterval(() => { void refresh(); }, 30000);
   return {
     dispose() {
       alive = false;
       window.clearInterval(interval);
-      parent.innerHTML = '';
+      parent.textContent = '';
     }
   };
 }

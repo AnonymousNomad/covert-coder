@@ -27,6 +27,95 @@ const routes = {
   ]
 };
 
+const modelManager = {
+  generated_at: '2026-09-29T00:00:00.000Z',
+  public_safe: true,
+  local_discovery: { status: 'AVAILABLE', scanned_dirs: 1, discovered_count: 1, error_count: 0 },
+  runtime: {
+    canonical_runtime_id: 'unsloth', default_runtime_id: 'unsloth', reported_backend: 'UNSLOTH',
+    discovered_state: 'DISCOVERED', configured_runtime_id: 'unsloth', configured: true,
+    available: false, health: 'STOPPED', selected_model_id: null
+  },
+  models: [
+    {
+      identity: {
+        canonical_id: 'model-a', display_name: 'Local Planner', family: null,
+        capabilities: ['chat'], context_window_tokens: 4096,
+        qualification: { state: 'REQUIRES_PREFLIGHT', basis: null, stale_reasons: [] }
+      },
+      artifact_ids: ['artifact:model-a'], availability: 'INSTALLED', compatibility: 'UNKNOWN',
+      readiness: 'SETUP_REQUIRED', recommended_roles: ['PLANNING'], execution_selected_roles: []
+    },
+    {
+      identity: {
+        canonical_id: 'provider:opencode:opencode-go/deepseek-v4.1-flash',
+        display_name: 'OpenCode Go · deepseek-v4.1-flash', family: null,
+        capabilities: [], context_window_tokens: null,
+        qualification: { state: 'UNTESTED', basis: null, stale_reasons: [] }
+      },
+      artifact_ids: [], availability: 'DISCOVERED', compatibility: 'UNKNOWN',
+      readiness: 'NOT_READY', recommended_roles: [], execution_selected_roles: ['plan']
+    }
+  ],
+  artifacts: [{
+    id: 'artifact:model-a', model_id: 'model-a', source_kind: 'LOCAL_DISCOVERY',
+    source_ref: null, revision: null, filename: 'local-planner-Q4_K_M.gguf',
+    format: 'GGUF', quantization: 'Q4_K_M', expected_sha256: null, observed_sha256: null,
+    hash_status: 'NOT_COMPUTED', license: null, availability: 'INSTALLED', compatibility: 'UNKNOWN'
+  }],
+  routes: [{
+    id: 'route:opencode-managed:opencode-go/deepseek-v4.1-flash:opencode',
+    model_id: 'provider:opencode:opencode-go/deepseek-v4.1-flash',
+    provider_id: 'opencode', connection_id: 'opencode-managed',
+    provider_model_id: 'opencode-go/deepseek-v4.1-flash',
+    credential_source_id: 'credential-source:opencode-managed',
+    execution_adapter_id: 'opencode', model_support_state: 'UNKNOWN',
+    configured: false, health: 'UNKNOWN', available: false, external_egress_required: true,
+    operator_setup_required: true, setup_state: 'VERIFICATION_REQUIRED', selected_roles: ['plan']
+  }],
+  credential_sources: [{
+    id: 'credential-source:opencode-managed', kind: 'OPENCODE_MANAGED_AUTH',
+    authentication_mode: 'OPENCODE_MANAGED', configuration_state: 'UNKNOWN', setup_required: true
+  }],
+  execution_adapters: [{
+    id: 'opencode', kind: 'OPENCODE', implementation: 'IMPLEMENTED',
+    discovered: null, configured: true, available: false, canonical_default: false
+  }],
+  connections: {
+    consensus: 'none',
+    routed_roles: {
+      plan: { provider_id: 'opencode', model_id: 'opencode-go/deepseek-v4.1-flash' },
+      act: 'local', utility: 'local'
+    },
+    preference: 'local-first',
+    connections: [{
+      id: 'opencode-managed', provider_id: 'opencode', name: 'OpenCode Go managed auth',
+      kind: 'subscription', status: 'configured_not_verified',
+      detail: 'exact model support and managed authentication are unverified',
+      capabilities: ['chat'], routing_available: false, account_label: 'OpenCode managed auth',
+      access: {
+        authentication_mode: 'opencode_managed', authentication_configured: false,
+        credential_source: {
+          id: 'credential-source:opencode-managed', kind: 'opencode_managed_auth',
+          configuration_state: 'unknown'
+        },
+        health: 'unknown', execution_adapters: ['opencode'],
+        model_refs: [{
+          model_id: 'provider:opencode:opencode-go/deepseek-v4.1-flash',
+          provider_model_id: 'opencode-go/deepseek-v4.1-flash', model_support_state: 'unknown'
+        }],
+        external_egress_required: true, operator_setup_required: true,
+        setup_state: 'verification_required'
+      }
+    }]
+  },
+  selection_policy: {
+    persistence_state: 'NOT_PERSISTED', mutation_enabled: false, execution_routing_effect: false,
+    scopes: ['GLOBAL', 'PROJECT', 'ROLE'],
+    roles: ['PLANNING', 'IMPLEMENTATION', 'REVIEW', 'UTILITY', 'BACKGROUND'],
+    precedence: ['PROJECT_ROLE', 'PROJECT_DEFAULT', 'GLOBAL_ROLE', 'GLOBAL_DEFAULT']
+  }
+};
 const workspace = {
   workspace: 'E:\\aide-sovereign-workbench',
   entries: [
@@ -66,6 +155,7 @@ const fixtures = {
   '/api/lsp/status': { servers: [{ languageId: 'typescript', name: 'fixture-lsp', status: 'available' }] },
   '/api/models/status': modelStatus,
   '/api/models/routes': routes,
+  '/api/models/manager': modelManager,
   '/api/hardware/profile': { totalRamBytes: 16 * 1024 ** 3, freeRamBytes: 8 * 1024 ** 3, logicalCpus: 12, vramBytes: 0, freeVramBytes: 0, vramSource: 'none', tier: 'M', backend: 'cpu', detectedAt: 1 },
   '/api/tasks': { fileFound: true, filePath: 'package.json', detectedFrom: null, tasks: [task] },
   '/api/tasks/status': { jobs: [{ job_id: 'fixture-failed-job', label: 'fixture failure', command: 'npm', args: ['test'], status: 'failed', exitCode: 1, startedAt: 1, endedAt: 2 }] },
@@ -361,6 +451,15 @@ try {
     const surface = destinationSurfaces[id];
     assert.equal(await page.locator(surface).count(), 1, `${id} did not mount its registered surface`);
     assert.equal(await page.locator(surface).isVisible(), true, `${id} surface is not visible after navigation`);
+    if (id === 'models') {
+      await page.waitForSelector('.models-panel .route-list .route-row');
+      assert.equal(await page.locator('.models-panel .panel-error').count(), 0, 'Model Access contract did not render');
+      assert.match(await page.locator('.models-panel').innerText(), /OpenCode Go managed auth/, 'provider connection is missing');
+      assert.match(await page.locator('.models-panel').innerText(), /local-planner-Q4_K_M.gguf/, 'local artifact evidence is missing');
+      const openCodeRoute = page.locator('.models-panel .route-list .route-row').filter({ hasText: 'opencode-go/deepseek-v4.1-flash' });
+      assert.equal(await openCodeRoute.locator('.route-status').innerText(), 'UNKNOWN', 'unverified exact route was overstated');
+      assert.equal(await openCodeRoute.locator('.route-status.ok').count(), 0, 'unverified exact route appeared available');
+    }
   }
   assert.equal(await page.locator('.models-panel').count(), 1, 'MODELS did not mount the existing model surface');
   assert.equal(await page.locator('.terminal-panel').count(), 1, 'TERMINAL did not mount the existing terminal surface');

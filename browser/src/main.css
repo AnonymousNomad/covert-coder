@@ -1834,6 +1834,11 @@ body {
   border-left: 3px solid var(--covert-danger);
 }
 
+.model-card.warn,
+.route-row.warn {
+  border-left: 3px solid var(--covert-amber);
+}
+
 .model-card.dim,
 .terminal-job.dim,
 .route-row.dim {
@@ -1874,6 +1879,12 @@ body {
 .route-status.err {
   color: var(--covert-danger);
   background: rgba(255, 109, 130, 0.08);
+}
+
+.model-card-status.warn,
+.route-status.warn {
+  color: var(--covert-amber);
+  background: rgba(255, 185, 100, 0.08);
 }
 
 .model-card-status.dim,
