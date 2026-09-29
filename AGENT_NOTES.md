@@ -5,9 +5,19 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
-Current state (2026-09-29 07:31): `nightshift/production-convergence-20260926` is at pushed HEAD `f261e3f879d8a798ea1767c9925fbbc96546f126`, matching origin; exact-SHA AIDE CI run `36565577181` passed. Local WIP is the fixture-backed OpenCode Authority timeout case in `tests/arch/provider-route-lifecycle.test.ts` and `tests/arch/opencode-fixture-server.mjs`, this journal entry, and the P2 evidence follow-up; no product source changed. The complete provider lifecycle file passes 2/2, including the OpenCode restart route and new timeout case. Node TypeScript, scoped ESLint, fixture syntax, and `git diff --check` pass. `npm run check` remains not green locally: the latest full serial architecture battery reports 812 passed, 4 request timeouts, and 11 skipped of 827; those four cases passed in isolated runs, so this remains an unresolved local cumulative-suite discrepancy, not a full-suite pass. No live provider request or credential inspection occurred; live OpenCode Go / DeepSeek remains UNKNOWN pending owner-managed auth and spend limits.
+Current state (2026-09-29 07:50): `nightshift/production-convergence-20260926` is at pushed HEAD `e8dfd1accbc5cca50ed3bc40ce76875d5f1c485b`, matching origin; exact-SHA AIDE CI run `36568947676` passed all 22 workflow steps. Current local WIP is the evidence-file and journal update recording that result; no product source is dirty. The provider lifecycle file passed 2/2, including the OpenCode restart route and Authority-bound timeout. Node TypeScript, scoped ESLint, fixture syntax, diff check, and the versioned root pre-push gate passed. `npm run check` remains not green locally: the latest full serial architecture battery reports 812 passed, 4 request timeouts, and 11 skipped of 827; those four cases passed in isolated runs, so this remains an unresolved local cumulative-suite discrepancy, not a full-suite pass. No live provider request or credential inspection occurred; live OpenCode Go / DeepSeek remains UNKNOWN pending an owner-managed auth path and existing spend ceiling.
 
 The 06:57 entry below is historical; its startup-cancellation/timeout code checkpoint was subsequently pushed as `f261e3f` and exact-SHA CI passed in run `36565577181`.
+
+### [2026-09-29 07:50] Actor: codex
+- Type: checkpoint
+- Status: test checkpoint pushed; exact-SHA hosted CI green; evidence refresh pending push
+- Summary: Published and verified the Authority-bound OpenCode timeout terminal-path test.
+- Details: Commit `e8dfd1accbc5cca50ed3bc40ce76875d5f1c485b` is pushed on the authorized convergence branch with local/origin parity. Exact-SHA AIDE CI run `36568947676` completed successfully in 10m51s; all 22 steps passed, including backend/integration, type/lint, bounded architecture, Veritas path-boundary/secret-scan/manifest/compile/tests/git-diff, generated-file/worktree, fixture cleanup, and required summary. The provider lifecycle file passed 2/2 locally. Issue #38 comment `5890586066` records the CI result; a fresh review check found no new Sol correction.
+- Verification limits: The last full local Windows `npm run check` remains 812 passed, 4 request timeouts, and 11 skipped of 827; it is not green. OpenCode execution was deterministic fixture-only. No provider credential was inspected and no live task or spend occurred. The live OpenCode Go / DeepSeek route remains UNKNOWN.
+- Files: `tests/arch/provider-route-lifecycle.test.ts`; `tests/arch/opencode-fixture-server.mjs`; `docs/nightshift/evidence/provider-adapter-lifecycle-local-2026-09-28.md`; `AGENT_NOTES.md`.
+- Next owner gate: supply the owner-managed authentication filesystem path and the existing spend ceiling. Then run the bounded real governed route and same-identity restart/recovery; until those inputs exist, do not initiate inference or infer live support from fixture/CI evidence.
+---
 
 ### [2026-09-29 07:31] Actor: codex
 - Type: verification
