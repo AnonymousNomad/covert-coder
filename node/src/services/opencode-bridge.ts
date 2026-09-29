@@ -43,6 +43,11 @@ export type OpenCodeTaskResult = {
   version: string | null;
 };
 
+export type OpenCodeGoCatalog = {
+  connected: boolean;
+  model_ids: string[];
+};
+
 export interface OpenCodeBridgeOptions {
   findExecutable?: (name: 'opencode') => Promise<string | null>;
   executableOverride?: { bin: string; prefix: string[]; version: string | null } | undefined;
@@ -329,6 +334,36 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     }
   }
 
+  // Explicit operator action. This reads only the managed local server catalog;
+  // it never creates a session or dispatches a provider prompt. Reuse an active
+  // server even if its task workspace differs, so discovery cannot stop a task.
+  async function discoverGoModels(workspace: string): Promise<OpenCodeGoCatalog> {
+    const running = server !== null && server.child.exitCode === null && server.child.signalCode === null
+      ? server
+      : await ensureServer(workspace);
+    const response = await fetchJson(`${running.url}/provider`, { method: 'GET' }, 15000);
+    if (response.status !== 200 || response.body === null || typeof response.body !== 'object') {
+      throw Object.assign(new Error('OpenCode provider catalog unavailable'), { code: 'NOT_READY' });
+    }
+    const catalog = response.body as { all?: unknown; connected?: unknown };
+    if (!Array.isArray(catalog.all) || !Array.isArray(catalog.connected)) {
+      throw Object.assign(new Error('OpenCode provider catalog malformed'), { code: 'NOT_READY' });
+    }
+    const provider = catalog.all.find((entry: unknown) =>
+      entry !== null && typeof entry === 'object' && (entry as { id?: unknown }).id === 'opencode-go'
+    ) as { models?: unknown } | undefined;
+    const models = provider?.models;
+    if (models === null || typeof models !== 'object' || Array.isArray(models)) {
+      return { connected: catalog.connected.includes('opencode-go'), model_ids: [] };
+    }
+    const modelIds = Object.keys(models)
+      .filter(id => /^[A-Za-z0-9._:-]{1,200}$/.test(id) &&
+        !/^(?:sk-[A-Za-z0-9_-]{12,}|hf_[A-Za-z0-9]{12,})$/i.test(id))
+      .slice(0, 256)
+      .sort();
+    return { connected: catalog.connected.includes('opencode-go'), model_ids: modelIds };
+  }
+
   async function runTaskStream(runOptions: {
     workspace: string;
     prompt: string;
@@ -603,5 +638,5 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     });
   }
 
-  return Object.freeze({ detect: resolveExecutable, status, runTask, runTaskStream, stop, ensureServer });
+  return Object.freeze({ detect: resolveExecutable, status, discoverGoModels, runTask, runTaskStream, stop, ensureServer });
 }

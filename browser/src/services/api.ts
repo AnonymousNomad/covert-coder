@@ -117,6 +117,8 @@ import {
   ConnectionsPreferencePutRequest,
   ConnectionsTestRequest,
   ConnectionsTestResponse,
+  ConnectionsDiscoverRequest,
+  ConnectionsDiscoverResponse,
   HfTokenPutRequest,
   HfTokenPutResponse,
   HfTokenDeleteRequest,
@@ -452,6 +454,10 @@ export const api = {
     const body = ConnectionsTestRequest.safeParse({ connection_id: connectionId });
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid connection id');
     return call('/api/connections/test', { method: 'POST', body: body.data, schema: ConnectionsTestResponse });
+  },
+  connectionsDiscoverOpenCode(): Promise<z.infer<typeof ConnectionsDiscoverResponse>> {
+    const body = ConnectionsDiscoverRequest.parse({ connection_id: 'opencode-managed' });
+    return call('/api/connections/discover', { method: 'POST', body, schema: ConnectionsDiscoverResponse });
   },
   async connectionsHfSet(apiKey: string): Promise<void> {
     const body = HfTokenPutRequest.safeParse({ api_key: apiKey });

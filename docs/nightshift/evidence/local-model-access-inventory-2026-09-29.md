@@ -34,3 +34,5 @@ At `2026-09-29T11:54:38-05:00`, a read-only Windows sample reported 3.347 GiB fr
 ## Exact-SHA CI
 
 The earlier imported-model visibility checkpoint `5f3fc845ebbb8381f09b0c4b48658e94735704b0` passed AIDE CI `36596351172`, all 22 workflow steps. The digest persistence source checkpoint `30377fb6c1b0004cb56ed8819a8ab5543f221bdf` passed exact-SHA AIDE CI `36598309737`, all 22 workflow steps. Neither result proves a live model load or inference.
+
+The subsequent evidence checkpoint `ae9f73d451a8ebacdd2a725f7a6278e7960f928a` passed exact-SHA AIDE CI `36601309894`, all 22 workflow steps. It records the read-only admission sample above and does not change local model qualification.

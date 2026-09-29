@@ -247,6 +247,7 @@ test('connections: HF token delete is governed; approved exact delete removes th
 test('connections: test and subscription-auth are governed external/execute capabilities', async () => {
   for (const [method, pathName, body] of [
     ['POST', '/api/connections/test', { connection_id: 'api:ghost' }],
+    ['POST', '/api/connections/discover', { connection_id: 'opencode-managed' }],
     ['POST', '/api/connections/subscription/auth', { subscription_id: 'codex' }]
   ] as Array<[string, string, Record<string, unknown>]>) {
     const unapproved = await call<unknown>(method, pathName, body);
@@ -262,6 +263,15 @@ test('connections: test and subscription-auth are governed external/execute capa
   assert.match(testedBody.data!.detail, /not configured/);
   const testReplay = await owner.request('/api/connections/test', { method: 'POST', headers: testHeaders, body: JSON.stringify({ connection_id: 'api:ghost' }) });
   assert.equal(testReplay.status, 409, 'consumed test approval cannot replay');
+
+  const discoverBody = { connection_id: 'opencode-managed' };
+  const discoverHeaders = await owner.approve('POST', '/api/connections/discover', discoverBody, 'task:conn-discover');
+  const discovered = await owner.request('/api/connections/discover', { method: 'POST', headers: discoverHeaders, body: JSON.stringify(discoverBody) });
+  assert.equal(discovered.status, 200);
+  assert.deepEqual((await discovered.json() as Envelope<{ ok: boolean; model_count: number }>).data,
+    { ok: false, detail: 'OpenCode managed model discovery is unavailable', model_count: 0 });
+  const discoverReplay = await owner.request('/api/connections/discover', { method: 'POST', headers: discoverHeaders, body: JSON.stringify(discoverBody) });
+  assert.equal(discoverReplay.status, 409, 'consumed catalog approval cannot replay');
 
   const authHeaders = await owner.approve('POST', '/api/connections/subscription/auth', { subscription_id: 'claude' }, 'task:conn-auth');
   const authed = await owner.request('/api/connections/subscription/auth', { method: 'POST', headers: authHeaders, body: JSON.stringify({ subscription_id: 'claude' }) });

@@ -5,6 +5,21 @@ import os from 'node:os';
 import path from 'node:path';
 import { fixtureBridge, readLog } from './opencode-bridge-fixture.ts';
 
+test('OpenCode Go discovery reads a sanitized local catalog without dispatching a task', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-catalog-'));
+  const { bridge, log } = await fixtureBridge(dir, 'catalog-multiple');
+  try {
+    const catalog = await bridge.discoverGoModels(dir);
+    assert.deepEqual(catalog, { connected: true, model_ids: ['deepseek-v4.1-flash', 'minimax-m2.5'] });
+    const events = await readLog(log);
+    assert.ok(events.some(item => item.event === 'catalog'));
+    assert.equal(events.some(item => item.event === 'create' || item.event === 'prompt'), false);
+  } finally {
+    await bridge.stop();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('wrapped OpenCode events stream the requested model identity and delete its session', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-stream-'));
   const { bridge, log } = await fixtureBridge(dir, 'wrapped');

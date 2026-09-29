@@ -394,6 +394,61 @@ test('OpenCode exact target remains UNKNOWN until its Authority-authorized provi
   assert.equal(gatedRoute?.available, false);
 });
 
+test('one OpenCode Go catalog exposes multiple models without granting exact route support', async t => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'model-access-opencode-catalog-'));
+  t.after(() => fs.rm(workspace, { recursive: true, force: true }));
+  let discoveries = 0;
+  let prompts = 0;
+  const service = createProviderConnectionsService({
+    workspace,
+    providerService: { list: async () => [] },
+    byokService: {
+      status: () => ({ providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: true }),
+      testProvider: async () => ({ ok: false, detail: 'not configured' })
+    },
+    opencodeBridge: {
+      discoverGoModels: async () => {
+        discoveries++;
+        return { connected: true, model_ids: ['deepseek-v4.1-flash', 'minimax-m2.5', '../unsafe', 'sk-1234567890123456'] };
+      },
+      runTaskStream: async () => { prompts++; throw new Error('discovery must not prompt'); }
+    },
+    modelRuntimeStatus: async () => ({ runtime: false, models: [] }),
+    secretStore: { setKey: () => undefined, getKey: () => null, deleteKey: () => true, listProviderIds: () => [] },
+    findExecutable: async () => null
+  });
+  const initial = ConnectionsViewResponse.parse(await service.list());
+  assert.equal(initial.connections.find(item => item.id === 'opencode-managed')?.access.model_refs.length, 0);
+  assert.equal(discoveries, 0, 'passive reads do not start the local OpenCode server');
+
+  const discovered = await service.discoverOpenCodeModels();
+  assert.deepEqual(discovered, {
+    ok: true,
+    detail: 'OpenCode Go catalog observed; exact model verification is still required',
+    model_count: 2
+  });
+  const connection = ConnectionsViewResponse.parse(await service.list()).connections.find(item => item.id === 'opencode-managed');
+  assert.ok(connection);
+  assert.equal(connection.status, 'connected', 'OpenCode reports the managed account connected');
+  assert.equal(connection.routing_available, false, 'catalog authentication is not exact model support');
+  assert.deepEqual(connection.access.model_refs.map(item => item.provider_model_id).sort(), [
+    'opencode-go/deepseek-v4.1-flash', 'opencode-go/minimax-m2.5'
+  ]);
+  assert.ok(connection.access.model_refs.every(item => item.model_support_state === 'unknown'));
+  const manager = createModelManagerView({
+    workspace,
+    manifestPath: path.join(workspace, 'manifest.json'),
+    modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
+    connectionsService: service as any,
+    runtimeStatus: async () => ({ backend: null, health: 'NOT_INSTALLED' }) as any
+  });
+  const routes = (await manager.snapshot()).routes.filter(route => route.connection_id === 'opencode-managed');
+  assert.equal(routes.length, 2);
+  assert.ok(routes.every(route => route.model_support_state === 'UNKNOWN' && route.available === false));
+  assert.equal(discoveries, 1);
+  assert.equal(prompts, 0);
+});
+
 test('Model Manager GET is passive and selection policy cannot change execution routing', async () => {
   const workspace = path.join(os.tmpdir(), 'model-manager-read-only-missing-workspace');
   let preferenceWrites = 0;

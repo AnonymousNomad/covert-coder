@@ -32,7 +32,9 @@ const server = http.createServer((request, response) => {
     record('catalog');
     const models = mode === 'catalog-missing'
       ? { 'deepseek-v4-flash': { name: 'DeepSeek V4 Flash' } }
-      : { 'deepseek-v4.1-flash': { name: 'DeepSeek V4.1 Flash' } };
+      : mode === 'catalog-multiple'
+        ? { 'deepseek-v4.1-flash': {}, 'minimax-m2.5': {}, '../unsafe': {}, 'sk-1234567890123456': {} }
+        : { 'deepseek-v4.1-flash': { name: 'DeepSeek V4.1 Flash' } };
     return send(response, 200, { all: [{ id: 'opencode-go', models }], connected: ['opencode-go'] });
   }
   if (url.pathname === '/global/health') return send(response, 200, { healthy: true, version: '1.18.20-fixture' });

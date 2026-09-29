@@ -129,7 +129,28 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
     const actions = document.createElement('div');
     actions.className = 'conn-actions';
 
-    if (conn.kind === 'subscription') {
+    if (conn.id === 'opencode-managed') {
+      const discover = document.createElement('button');
+      discover.type = 'button';
+      discover.className = 'provider-action';
+      discover.textContent = 'Discover Go models';
+      discover.addEventListener('click', () => {
+        discover.disabled = true;
+        api.connectionsDiscoverOpenCode()
+          .then(result => {
+            meta.textContent = result.detail;
+            toast(result.ok ? 'OK' : 'NOT_READY', `${result.detail} (${result.model_count} models)`);
+            void refresh();
+          })
+          .catch((error: unknown) => {
+            const message = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'discovery failed';
+            meta.textContent = message;
+            toast('INTERNAL', message);
+          })
+          .finally(() => { discover.disabled = false; });
+      });
+      actions.appendChild(discover);
+    } else if (conn.kind === 'subscription') {
       const signIn = document.createElement('button');
       signIn.type = 'button';
       signIn.className = 'provider-action';

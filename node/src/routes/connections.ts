@@ -6,6 +6,8 @@ import {
   ConnectionsPreferencePutRequest,
   ConnectionsTestRequest,
   ConnectionsTestResponse,
+  ConnectionsDiscoverRequest,
+  ConnectionsDiscoverResponse,
   HfTokenPutRequest,
   HfTokenPutResponse,
   HfTokenDeleteRequest,
@@ -27,6 +29,7 @@ interface ConnectionsService {
   getPreference(): string;
   setPreference(preference: string): string;
   test(connectionId: string, providerModelId?: string): Promise<{ ok: boolean; detail: string }>;
+  discoverOpenCodeModels(): Promise<{ ok: boolean; detail: string; model_count: number }>;
   subscriptionAuth(subscriptionId: string): Promise<{ ok: boolean; command: string; status: string; detail: string }>;
   getHfTokenStored(): { stored: boolean };
   setHfToken(apiKey: string): { stored: true };
@@ -77,6 +80,10 @@ export function routesForConnections(service: ConnectionsService, workspace: str
       const request = body as { connection_id: string; provider_model_id?: string };
       return await service.test(request.connection_id, request.provider_model_id);
     }) },
+    { method: 'POST', path: '/api/connections/discover', body: ConnectionsDiscoverRequest, response: ConnectionsDiscoverResponse, describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
+      const request = body as { connection_id: 'opencode-managed' };
+      return { workspace, taskId, kind: 'capability.execute', args: { body: { connection_id: request.connection_id } } };
+    }, handler: wrap(async () => service.discoverOpenCodeModels()) },
     { method: 'PUT', path: '/api/connections/hf-token', body: HfTokenPutRequest, response: HfTokenPutResponse, describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
       const request = body as { api_key: string };
       return { workspace, taskId, kind: 'capability.write', args: { body: { keyDigest: secretDigest(request.api_key), keyLength: request.api_key.length } } };

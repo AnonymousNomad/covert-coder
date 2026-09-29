@@ -6,6 +6,7 @@ export interface ProviderConnectionsService {
   getPreference(): string;
   setPreference(preference: string): string;
   test(connectionId: string, providerModelId?: string): Promise<{ ok: boolean; detail: string }>;
+  discoverOpenCodeModels(): Promise<{ ok: boolean; detail: string; model_count: number }>;
   subscriptionAuth(subscriptionId: string): Promise<{ ok: boolean; command: string; status: string; detail: string }>;
   getHfTokenStored(): { stored: boolean };
   setHfToken(apiKey: string): { stored: true };
@@ -23,6 +24,7 @@ export interface ProviderConnectionsServiceOptions {
     testProvider(providerId: string): Promise<{ ok: boolean; detail: string }>;
   };
   opencodeBridge?: {
+    discoverGoModels?(workspace: string): Promise<{ connected: boolean; model_ids: string[] }>;
     runTaskStream(options: {
       workspace: string;
       prompt: string;

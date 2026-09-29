@@ -18,9 +18,9 @@
   },
   "counts": {
     "openApiOperationsBefore": 235,
-    "openApiOperationsAfter": 238,
+    "openApiOperationsAfter": 239,
     "openApiPathsBefore": 223,
-    "openApiPathsAfter": 226,
+    "openApiPathsAfter": 227,
     "typedRegistrationsBefore": 236,
     "typedRegistrationsAfter": 238,
     "typedPrefixRegistrationsAfter": 0,
@@ -9341,7 +9341,7 @@
         },
         {
           "file": "browser/src/services/api.ts",
-          "line": 272,
+          "line": 274,
           "methodEvidence": "POST",
           "source": "return call('/api/file', { query: query.data, schema: FileReadResponse });"
         }
@@ -9452,7 +9452,7 @@
       "otherFrontendMethodReferences": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 283,
+          "line": 285,
           "methodEvidence": "POST",
           "source": "return call('/api/search', { query: query.data, schema: SearchResponse });"
         }

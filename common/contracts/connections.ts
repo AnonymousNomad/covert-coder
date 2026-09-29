@@ -77,6 +77,13 @@ export const ConnectionsTestRequest = z.strictObject({
 });
 export const ConnectionsTestResponse = z.strictObject({ ok: z.boolean(), detail: z.string().max(300) });
 
+export const ConnectionsDiscoverRequest = z.strictObject({ connection_id: z.literal('opencode-managed') });
+export const ConnectionsDiscoverResponse = z.strictObject({
+  ok: z.boolean(),
+  detail: z.string().max(300),
+  model_count: z.number().int().nonnegative().max(256)
+});
+
 export const HfTokenPutRequest = z.strictObject({ api_key: z.string().min(1).max(4096) });
 export const HfTokenPutResponse = z.strictObject({ stored: z.literal(true) });
 

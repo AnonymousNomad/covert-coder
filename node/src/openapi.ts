@@ -165,7 +165,7 @@ export interface BuildRoutesOptions {
   connectionsService?: unknown;
   // Optional managed OpenCode bridge dependency for deterministic integration tests.
   // Production creates one bridge and shares it across Model Access and Agent routes.
-  openCodeBridge?: Pick<ReturnType<typeof createOpenCodeBridge>, 'status' | 'runTaskStream'>;
+  openCodeBridge?: Pick<ReturnType<typeof createOpenCodeBridge>, 'status' | 'runTaskStream'> & Partial<Pick<ReturnType<typeof createOpenCodeBridge>, 'discoverGoModels'>>;
   // Optional resource probes for deterministic integration tests; production
   // uses the canonical host probes by default.
   resourceAdmission?: ReturnType<typeof createResourceAdmission>;

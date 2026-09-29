@@ -40,6 +40,7 @@ export function createProviderConnectionsService(options) {
   const findExecutable = options.findExecutable ?? defaultFindExecutable;
   const preferencePath = options.preferencePath ?? path.join(workspace, PREFERENCE_FILE);
   const opencodeModelSupport = new Map();
+  let opencodeCatalog = null;
 
   function exactOpenCodeRef(value) {
     if (typeof value !== 'string') return null;
@@ -268,23 +269,35 @@ export function createProviderConnectionsService(options) {
       if (!exactOpenCodeRef(providerModelId)) continue;
       opencodeReferences.set(providerModelId, safeModelReference('opencode', providerModelId));
     }
+    if (opencodeCatalog !== null) {
+      for (const modelId of opencodeCatalog.modelIds) {
+        const providerModelId = `opencode-go/${modelId}`;
+        opencodeReferences.set(providerModelId, safeModelReference('opencode', providerModelId));
+      }
+    }
     const modelRefs = [...opencodeReferences.entries()]
       .filter((entry) => entry[1] !== null)
       .map(([providerModelId, reference]) => ({
         ...reference,
         model_support_state: openCodeSupportState(providerModelId)
       }));
-    if (modelRefs.length > 0) {
+    if (opencodeBridge !== null || modelRefs.length > 0) {
       const verified = modelRefs.some(reference => reference.model_support_state === 'verified');
+      const catalogFresh = opencodeCatalog !== null && Date.now() - opencodeCatalog.at < OPENCODE_SUPPORT_TTL_MS;
+      const catalogConnected = catalogFresh && opencodeCatalog.connected;
       const routingAvailable = verified && consentEnabled && getPreference() !== 'local-only';
-      const credentialConfigured = verified;
+      const credentialConfigured = verified || catalogConnected;
+      const detail = verified ? 'an exact OpenCode Go model identity probe passed recently'
+        : catalogConnected ? 'OpenCode Go reports managed auth connected; discovered models still require exact verification'
+          : opencodeCatalog !== null ? 'OpenCode Go model catalog was observed; managed auth and exact model support are unverified'
+            : 'discover OpenCode Go models to inspect the managed catalog; exact support is unverified';
       result.push({
         id: OPENCODE_CONNECTION_ID,
         provider_id: 'opencode',
         name: 'OpenCode Go managed auth',
         kind: 'subscription',
         status: credentialConfigured ? 'connected' : 'configured_not_verified',
-        detail: credentialConfigured ? 'an exact OpenCode Go model identity probe passed recently' : 'an exact OpenCode Go model reference is selected; managed authentication and exact model support are unverified',
+        detail,
         capabilities: ['chat'],
         routing_available: routingAvailable,
         account_label: 'OpenCode managed auth',
@@ -294,7 +307,7 @@ export function createProviderConnectionsService(options) {
           credentialId: 'credential-source:opencode-managed',
           credentialKind: 'opencode_managed_auth',
           credentialState: credentialConfigured ? 'configured' : 'unknown',
-          health: credentialConfigured ? 'healthy' : 'unknown',
+          health: verified ? 'healthy' : 'unknown',
           executionAdapters: ['opencode'],
           modelRefs,
           externalEgressRequired: true,
@@ -434,6 +447,31 @@ export function createProviderConnectionsService(options) {
     return preference;
   }
 
+  async function discoverOpenCodeModels() {
+    opencodeCatalog = null;
+    opencodeModelSupport.clear();
+    if (opencodeBridge === null || typeof opencodeBridge.discoverGoModels !== 'function') {
+      return { ok: false, detail: 'OpenCode managed model discovery is unavailable', model_count: 0 };
+    }
+    try {
+      const observed = await opencodeBridge.discoverGoModels(workspace);
+      const modelIds = [...new Set((Array.isArray(observed.model_ids) ? observed.model_ids : [])
+        .filter(modelId => typeof modelId === 'string' &&
+          exactOpenCodeRef(`opencode-go/${modelId}`) !== null &&
+          safeModelReference('opencode', `opencode-go/${modelId}`) !== null))].slice(0, 256);
+      opencodeCatalog = { connected: observed.connected === true, modelIds, at: Date.now() };
+      return {
+        ok: true,
+        detail: opencodeCatalog.connected
+          ? 'OpenCode Go catalog observed; exact model verification is still required'
+          : 'OpenCode Go catalog observed; managed auth is not connected',
+        model_count: modelIds.length
+      };
+    } catch {
+      return { ok: false, detail: 'OpenCode managed model catalog unavailable', model_count: 0 };
+    }
+  }
+
   async function test(connectionId, providerModelId) {
     if (connectionId === OPENCODE_CONNECTION_ID) {
       if (typeof providerModelId !== 'string' || !exactOpenCodeRef(providerModelId)) {
@@ -555,6 +593,7 @@ export function createProviderConnectionsService(options) {
     list,
     getPreference,
     setPreference,
+    discoverOpenCodeModels,
     test,
     subscriptionAuth,
     getHfTokenStored,
