@@ -18,8 +18,8 @@
 - `npx tsc -p tsconfig.node.json --noEmit` — exit 0.
 - `npx eslint node/src/server.ts node/src/routes/chat.ts tests/arch/provider-route-lifecycle.test.ts` — exit 0.
 - `git diff --check` — passed.
-- **Repair SHA CI:** Pending this verified source/evidence checkpoint.
+- **Repair SHA CI:** AIDE CI [36585898303](https://github.com/AnonymousNomad/covert-coder/actions/runs/36585898303) completed successfully on exact source SHA `a3a1c6417f57e2ed2623c7aa8a1abd0ec32d8fc7` in 10m34s. Frontend build, backend/integration, type/lint, bounded architecture, all Veritas gates, generated-file/worktree, fixture cleanup, and required summary passed.
 
 ## Evidence boundary and next action
 
-These checks exercise the production route composition with deterministic provider/OpenCode fixtures. They do not prove live OpenCode Go / DeepSeek execution, credentials, spend behavior, or release acceptance. Live execution remains UNKNOWN pending the owner-managed auth path and spend ceiling. Push the bounded repair, observe exact-SHA CI, update this record and Issue #38, then continue the release spine. PR #31 remains frozen.
+These checks exercise the production route composition with deterministic provider/OpenCode fixtures. They do not prove live OpenCode Go / DeepSeek execution, credentials, spend behavior, or release acceptance. Live execution remains UNKNOWN pending the owner-managed auth path and spend ceiling. The bounded repair is pushed and exact-SHA CI is green; Issue #38 records the source checkpoint and CI result at https://github.com/AnonymousNomad/covert-coder/issues/38#issuecomment-5892968800. Continue the release spine. PR #31 remains frozen.
