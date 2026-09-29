@@ -1128,6 +1128,15 @@
     },
     {
       "method": "POST",
+      "path": "/api/connections/discover",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
       "path": "/api/connections/subscription/auth",
       "match": "exact",
       "target": "ts",

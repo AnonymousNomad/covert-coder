@@ -17,7 +17,7 @@
 | --- | ---: | ---: |
 | OpenAPI operations | 235 | 239 |
 | OpenAPI paths | 223 | 227 |
-| Typed registrations | 236 | 238 |
+| Typed registrations | 236 | 239 |
 | Typed prefix registrations | — | 0 |
 | Typed registrations selected to legacy | 35 | 0 |
 | Documented operations without selected-backend handler | 31 | 0 |
