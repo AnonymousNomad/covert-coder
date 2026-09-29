@@ -10,16 +10,16 @@ Local-first AI development workbench for governed agent workflows, model choice,
 [![AIDE CI](https://github.com/AnonymousNomad/covert-coder/actions/workflows/ci.yml/badge.svg?branch=covert-production)](https://github.com/AnonymousNomad/covert-coder/actions/workflows/ci.yml?query=branch%3Acovert-production)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-2ea44f.svg)](LICENSE)
 ![Node.js 26.4.0](https://img.shields.io/badge/Node.js-26.4.0-339933?logo=node.js&logoColor=white)
-![Status: pre-production](https://img.shields.io/badge/status-pre--production-6f42c1)
+![Status: Engineering Preview](https://img.shields.io/badge/status-Engineering%20Preview-6f42c1)
 ![Local-first](https://img.shields.io/badge/local--first-default-0b8f55)
 [![Security policy](https://img.shields.io/badge/security-private%20reporting-24292f)](SECURITY.md)
 
-[Quick start](#quick-start) · [Architecture](#architecture) · [Project status](#project-status) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Quick start](#quick-start) · [Architecture](#architecture) · [Project status](#project-status) · [Engineering Preview status](docs/ENGINEERING_PREVIEW.md) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 </div>
 
 > [!IMPORTANT]
-> **Covert Coder is a pre-production engineering release.** The default `covert-production` branch is the public baseline for cloning and evaluation. Features marked experimental, partial, or preview are not release-certified. Source presence, a route, a screenshot, or a successful mock does not by itself prove production readiness.
+> **Covert Coder is an Engineering Preview / pre-release project.** The default `covert-production` branch is the public baseline for cloning and evaluation. Features marked experimental, partial, or preview are not release-certified. Source presence, a route, a screenshot, or a successful mock does not by itself prove production readiness.
 
 ## What is Covert Coder?
 
@@ -141,6 +141,8 @@ http://127.0.0.1:4173/
 > Current testing is source-based. A clean-machine installer is part of the release roadmap and is not yet advertised as finished.
 
 ## Engineering preview
+
+The current public status snapshot is tracked in [docs/ENGINEERING_PREVIEW.md](docs/ENGINEERING_PREVIEW.md).
 
 The active convergence work happens on:
 
@@ -301,6 +303,8 @@ Start with [docs/README.md](docs/README.md).
 - [Veritas and Harness](docs/VERITAS_HARNESS.md)
 - [Release roadmap](docs/RELEASE_ROADMAP.md)
 - [Research log](docs/RESEARCH_LOG.md)
+- [Engineering Preview status](docs/ENGINEERING_PREVIEW.md)
+- [Public site brief](docs/PUBLIC_SITE_BRIEF.md)
 - [Support](SUPPORT.md)
 
 Historical documents may use the AIDE name or contain time-bound paths/status. Verify historical records against the current source and canonical documentation before treating them as product truth.
