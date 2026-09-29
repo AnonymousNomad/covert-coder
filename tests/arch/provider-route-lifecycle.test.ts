@@ -10,6 +10,7 @@ import { CredentialStore, type CryptService } from '../../node/src/services/cred
 import { ProviderService } from '../../node/src/services/providers.ts';
 import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 import { pairFixture } from './authority-fixture.ts';
+import { fixtureBridge, readLog } from './opencode-bridge-fixture.ts';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PROVIDER_KEY = 'fixture-provider-key-never-used-on-the-network';
@@ -136,6 +137,14 @@ async function waitFor(predicate: () => boolean, description: string, timeoutMs 
   assert.fail(`timed out waiting for ${description}`);
 }
 
+async function waitForAsync(predicate: () => Promise<boolean>, description: string, timeoutMs = 3000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await predicate()) return;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.fail('timed out waiting for ' + description);
+}
 async function removeFixtureWorkspace(workspace: string): Promise<void> {
   for (let attempt = 0; attempt < 10; attempt++) {
     try {
@@ -404,38 +413,8 @@ test('production provider route is governed end to end and recovers only after e
 test('production OpenCode Model Access route is governed and requires exact re-verification after restart', async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-model-access-lifecycle-'));
   const transportStates: TransportState[] = [];
-  const calls: Array<{ providerID: string; modelID: string; prompt: string }> = [];
   let stack: Awaited<ReturnType<typeof startStack>> | undefined;
-  const openCodeBridge: NonNullable<BuildRoutesOptions['openCodeBridge']> = {
-    status: async () => ({
-      provider: 'opencode',
-      connection_mode: 'subscription_client',
-      kind: 'bridge',
-      status: 'READY',
-      binary_path: null,
-      version: 'fixture-only',
-      connected_providers: ['opencode-go'],
-      auth_methods: { 'opencode-go': ['fixture-only'] },
-      detail: 'deterministic integration fixture; no provider call'
-    }),
-    runTaskStream: async options => {
-      calls.push({ providerID: options.providerID, modelID: options.modelID, prompt: options.prompt });
-      const text = options.prompt === 'Reply with exactly: OK'
-        ? 'OK'
-        : `opencode-fixture:${options.prompt.includes('after restart') ? 'recovered' : 'first'}`;
-      options.onDelta(text);
-      return {
-        provider: 'opencode',
-        text,
-        session_id: `fixture-session-${calls.length}`,
-        delegated_provider: options.providerID,
-        delegated_model: options.modelID,
-        server_url: 'http://127.0.0.1:0',
-        duration_ms: 1,
-        version: 'fixture-only'
-      };
-    }
-  };
+  let openCodeFixture: Awaited<ReturnType<typeof fixtureBridge>> | undefined;
 
   const routeId = `route:opencode-managed:${OPENCODE_PROVIDER_MODEL}:opencode`;
   const routingBody = {
@@ -451,7 +430,8 @@ test('production OpenCode Model Access route is governed and requires exact re-v
 
   try {
     await fs.mkdir(path.join(workspace, '.aide'), { recursive: true });
-    stack = await startStack(workspace, transportStates, openCodeBridge);
+    openCodeFixture = await fixtureBridge(workspace, 'terminal-lifecycle');
+    stack = await startStack(workspace, transportStates, openCodeFixture.bridge);
 
     const routingHeaders = await stack.owner.approve('PUT', '/api/byok/routing', routingBody, 'opencode-lifecycle-routing');
     const routingResponse = await stack.owner.request('/api/byok/routing', {
@@ -478,9 +458,11 @@ test('production OpenCode Model Access route is governed and requires exact re-v
     assert.equal(verifyResponse.status, 200);
     const verifyEnvelope = await verifyResponse.json() as { data: { ok: boolean } };
     assert.equal(verifyEnvelope.data.ok, true);
-    assert.deepEqual(calls[0], {
-      providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash', prompt: 'Reply with exactly: OK'
-    });
+    const verificationEvents = await readLog(openCodeFixture!.log);
+    const verificationPrompt = verificationEvents.find(event => event.event === 'prompt');
+    assert.ok(verificationPrompt?.body);
+    assert.deepEqual(verificationPrompt.body.model, { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' });
+    assert.equal(verificationEvents.filter(event => event.event === 'prompt').length, 1);
 
     const readyManagerResponse = await stack.owner.request('/api/models/manager');
     const readyManager = await readyManagerResponse.json() as { data: { routes: ModelProviderRouteT[] } };
@@ -496,15 +478,17 @@ test('production OpenCode Model Access route is governed and requires exact re-v
       body: JSON.stringify(streamBody)
     });
     assert.equal(firstResponse.status, 200);
-    assert.match(await firstResponse.text(), /opencode-fixture:first/);
+    const firstStreamText = await firstResponse.text();
+    assert.match(firstStreamText, /"delta":"streamed "/);
+    assert.match(firstStreamText, /"delta":"answer"/);
     const firstAfter = await operationReceipt(stack.owner, firstMission.operationId);
     assert.equal(firstAfter.state, 'succeeded');
     assertExactOpenCodeTarget(receiptTarget(firstAfter));
-    assert.equal(calls.length, 2, 'the governed mission dispatches through the OpenCode adapter exactly once after verification');
+    assert.equal((await readLog(openCodeFixture!.log)).filter(event => event.event === 'prompt').length, 2, 'the governed mission dispatches through the OpenCode adapter exactly once after verification');
 
     await stack.close();
     stack = undefined;
-    stack = await startStack(workspace, transportStates, openCodeBridge);
+    stack = await startStack(workspace, transportStates, openCodeFixture!.bridge);
 
     const oldOperationResponse = await stack.owner.request(`/api/authority/operation?id=${encodeURIComponent(firstMission.operationId)}`);
     assert.equal(oldOperationResponse.status, 404, 'transient approval/operation state is not restored into a new Authority instance');
@@ -521,13 +505,13 @@ test('production OpenCode Model Access route is governed and requires exact re-v
     assert.equal(restartedRoute.model_support_state, 'UNKNOWN');
     assert.equal(restartedRoute.available, false, 'managed connection presence does not restore stale exact-model verification');
 
-    const beforeBlockedPrepare = calls.length;
+    const beforeBlockedPrepare = (await readLog(openCodeFixture!.log)).filter(event => event.event === 'prompt').length;
     const blockedPrepare = await stack.owner.request('/api/authority/prepare', {
       method: 'POST',
       body: JSON.stringify({ method: 'POST', path: '/api/chat/stream', body: streamBody, task_id: 'opencode-lifecycle-stale-restart-route' })
     });
     assert.equal(blockedPrepare.status, 403, 'external chat stays blocked until the exact model is re-verified');
-    assert.equal(calls.length, beforeBlockedPrepare, 'stale route rejection performs no managed-adapter task');
+    assert.equal((await readLog(openCodeFixture!.log)).filter(event => event.event === 'prompt').length, beforeBlockedPrepare, 'stale route rejection performs no managed-adapter task');
 
     const reverifyHeaders = await stack.owner.approve('POST', '/api/connections/test', verificationBody, 'opencode-lifecycle-reverify-after-restart');
     const reverifyResponse = await stack.owner.request('/api/connections/test', {
@@ -546,15 +530,92 @@ test('production OpenCode Model Access route is governed and requires exact re-v
       body: JSON.stringify(recoveredBody)
     });
     assert.equal(recoveredResponse.status, 200);
-    assert.match(await recoveredResponse.text(), /opencode-fixture:recovered/);
+    const recoveredStreamText = await recoveredResponse.text();
+    assert.match(recoveredStreamText, /"delta":"streamed "/);
+    assert.match(recoveredStreamText, /"delta":"answer"/);
     const recoveredAfter = await operationReceipt(stack.owner, recoveredMission.operationId);
     assert.equal(recoveredAfter.state, 'succeeded');
     assertExactOpenCodeTarget(receiptTarget(recoveredAfter));
-    assert.equal(calls.length, 4, 'restart path performs one exact re-verification and one recovered mission');
-    assert.ok(calls.every(call => call.providerID === 'opencode-go' && call.modelID === 'deepseek-v4.1-flash'));
+    const cancelBody = { modelId: OPENCODE_CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'cancel this route' }] };
+    const cancelled = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', cancelBody, 'opencode-lifecycle-cancel');
+    assertExactOpenCodeTarget(receiptTarget(cancelled.before));
+    const clientAbort = new AbortController();
+    const pendingResponse = stack.owner.request('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'X-AIDE-Operation': cancelled.operationId, 'X-AIDE-Task': 'opencode-lifecycle-cancel' },
+      body: JSON.stringify(cancelBody),
+      signal: clientAbort.signal
+    });
+    const cancelResponse = await pendingResponse;
+    assert.equal(cancelResponse.status, 200);
+    const cancelReader = cancelResponse.body?.getReader();
+    assert.ok(cancelReader);
+    const firstDelta = await cancelReader.read();
+    assert.equal(firstDelta.done, false);
+    assert.match(new TextDecoder().decode(firstDelta.value), /first/);
+    clientAbort.abort();
+    void cancelReader.cancel().catch(() => {});
+    await waitForAsync(async () => {
+      const events = await readLog(openCodeFixture!.log);
+      return events.some(event => event.event === 'abort') && events.filter(event => event.event === 'delete').length >= 5;
+    }, 'OpenCode caller cancellation to abort and delete the exact-target session');
+    await waitForAsync(async () => (await operationReceipt(stack!.owner, cancelled.operationId)).state === 'failed', 'Authority to record OpenCode caller cancellation');
+    const cancelledAfter = await operationReceipt(stack.owner, cancelled.operationId);
+    assert.equal(cancelledAfter.state, 'failed', 'caller cancellation is never reported as success');
+    assertExactOpenCodeTarget(receiptTarget(cancelledAfter));
+
+    const errorBody = { modelId: OPENCODE_CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'provider-error path' }] };
+    const failed = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', errorBody, 'opencode-lifecycle-provider-error');
+    assertExactOpenCodeTarget(receiptTarget(failed.before));
+    const failedResponse = await stack.owner.request('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'X-AIDE-Operation': failed.operationId, 'X-AIDE-Task': 'opencode-lifecycle-provider-error' },
+      body: JSON.stringify(errorBody)
+    });
+    assert.equal(failedResponse.status, 200);
+    const failureText = await failedResponse.text();
+    assert.doesNotMatch(failureText, /credential sentinel must not escape/);
+    assert.match(failureText, /opencode delegated provider task failed/);
+    const failedAfter = await operationReceipt(stack.owner, failed.operationId);
+    assert.equal(failedAfter.state, 'failed');
+    assertExactOpenCodeTarget(receiptTarget(failedAfter));
+
+    const cleanupBody = { modelId: OPENCODE_CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'cleanup failure path' }] };
+    const cleanupMission = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', cleanupBody, 'opencode-lifecycle-cleanup-failure');
+    assertExactOpenCodeTarget(receiptTarget(cleanupMission.before));
+    const cleanupResponse = await stack.owner.request('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'X-AIDE-Operation': cleanupMission.operationId, 'X-AIDE-Task': 'opencode-lifecycle-cleanup-failure' },
+      body: JSON.stringify(cleanupBody)
+    });
+    assert.equal(cleanupResponse.status, 200);
+    const cleanupText = await cleanupResponse.text();
+    assert.match(cleanupText, /cleanup could not be confirmed/);
+    assert.doesNotMatch(cleanupText, /"done":true/, 'cleanup failure cannot be converted into a successful stream');
+    const cleanupAfter = await operationReceipt(stack.owner, cleanupMission.operationId);
+    assert.equal(cleanupAfter.state, 'failed');
+    assertExactOpenCodeTarget(receiptTarget(cleanupAfter));
+
+    const terminalAuditEvents = (await fs.readFile(auditFile, 'utf8')).trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+    const durableCancellation = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === cancelled.operationId && event.decision === 'execution-failed');
+    assert.ok(durableCancellation, 'caller cancellation has a durable failed Authority outcome');
+    assert.equal(durableCancellation.digest, (cancelledAfter as { digest: unknown }).digest);
+    const durableProviderError = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === failed.operationId && event.decision === 'execution-failed');
+    assert.ok(durableProviderError, 'provider error has a durable failed Authority outcome');
+    assert.equal(durableProviderError.digest, (failedAfter as { digest: unknown }).digest);
+    const durableCleanupFailure = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === cleanupMission.operationId && event.decision === 'execution-failed');
+    assert.ok(durableCleanupFailure, 'cleanup failure has a durable failed Authority outcome');
+    assert.equal(durableCleanupFailure.digest, (cleanupAfter as { digest: unknown }).digest);
+    const opencodeEvents = await readLog(openCodeFixture!.log);
+    const lifecyclePrompts = opencodeEvents.filter(event => event.event === 'prompt');
+    assert.equal(lifecyclePrompts.length, 7, 'verification, governed runs, restart re-verification, and all three terminal-path cases dispatch once each');
+    assert.ok(lifecyclePrompts.every(event => JSON.stringify(event.body?.model) === JSON.stringify({ providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' })));
+    assert.equal(opencodeEvents.filter(event => event.event === 'abort').length, 3, 'caller cancellation, provider error, and cleanup failure each abort the session');
+    assert.equal(opencodeEvents.filter(event => event.event === 'delete').length, 8, 'every created session is deleted, including both cleanup-failure attempts');
     assert.equal(transportStates.length, 0, 'OpenCode route never falls through to the direct HTTP provider service');
   } finally {
     if (stack !== undefined) await stack.close();
+    if (openCodeFixture !== undefined) await openCodeFixture.bridge.stop();
     await removeFixtureWorkspace(workspace);
   }
 });

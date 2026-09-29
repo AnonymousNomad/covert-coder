@@ -3,110 +3,7 @@ import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createOpenCodeBridge } from '../../node/src/services/opencode-bridge.ts';
-
-const fixture = `#!/usr/bin/env node
-import http from 'node:http';
-import { appendFileSync } from 'node:fs';
-const mode = process.env.FIXTURE_MODE ?? 'success';
-const log = process.env.FIXTURE_LOG;
-const clients = new Set();
-const record = (event, extra = {}) => appendFileSync(log, JSON.stringify({ event, ...extra }) + '\\n');
-const send = (response, status, body) => {
-  response.writeHead(status, { 'content-type': 'application/json' });
-  response.end(JSON.stringify(body));
-};
-const event = (type, properties = {}) => ({ id: 'evt_fixture', type, properties });
-const emit = (type, properties = {}) => {
-  const item = event(type, properties);
-  for (const response of clients) response.write('data: ' + JSON.stringify(mode === 'wrapped' ? { payload: item } : item) + '\\n\\n');
-};
-const server = http.createServer((request, response) => {
-  const url = new URL(request.url ?? '/', 'http://127.0.0.1');
-  if (url.pathname === '/provider' && request.method === 'GET') {
-    const models = mode === 'catalog-missing' ? { 'deepseek-v4-flash': { name: 'DeepSeek V4 Flash' } } : { 'deepseek-v4.1-flash': { name: 'DeepSeek V4.1 Flash' } };
-    return send(response, 200, { all: [{ id: 'opencode-go', models }], connected: ['opencode-go'] });
-  }
-  if (url.pathname === '/global/health') return send(response, 200, { healthy: true, version: '1.18.20-fixture' });
-  if (url.pathname === '/session' && request.method === 'POST') return send(response, 200, { id: 'ses_fixture' });
-  if (url.pathname === '/event' && request.method === 'GET') {
-    response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
-    clients.add(response);
-    response.write('data: ' + JSON.stringify(event('server.connected')) + '\\n\\n');
-    response.on('close', () => clients.delete(response));
-    return;
-  }
-  if (url.pathname === '/session/ses_fixture/prompt_async' && request.method === 'POST') {
-    let body = '';
-    request.on('data', chunk => { body += String(chunk); });
-    request.on('end', () => {
-      record('prompt', { body: JSON.parse(body) });
-      response.writeHead(204);
-      response.end();
-      setTimeout(() => {
-        emit('session.status', { sessionID: 'ses_fixture', status: { type: 'busy' } });
-        if (mode === 'provider-error') {
-          emit('session.error', { sessionID: 'ses_fixture', error: { data: { message: 'credential sentinel must not escape' } } });
-          return;
-        }
-        emit('message.updated', { info: {
-          id: 'msg_fixture', sessionID: 'ses_fixture', role: 'assistant',
-          providerID: mode === 'mismatch' ? 'other-provider' : 'opencode-go', modelID: 'deepseek-v4.1-flash'
-        } });
-        emit('message.part.updated', { part: { id: 'prt_fixture', sessionID: 'ses_fixture', messageID: 'msg_fixture', type: 'text' } });
-        emit('message.part.delta', { sessionID: 'ses_fixture', messageID: 'msg_fixture', partID: 'prt_fixture', field: 'text', delta: mode === 'cancel' ? 'first' : 'streamed ' });
-        if (mode !== 'cancel') {
-          emit('message.part.delta', { sessionID: 'ses_fixture', messageID: 'msg_fixture', partID: 'prt_fixture', field: 'text', delta: 'answer' });
-          emit('session.idle', { sessionID: 'ses_fixture' });
-        }
-      }, 5);
-    });
-    return;
-  }
-  if (url.pathname === '/session/ses_fixture/message' && request.method === 'GET') {
-    const text = mode === 'cancel' ? 'first' : 'streamed answer';
-    return send(response, 200, [{
-      info: { id: 'msg_fixture', sessionID: 'ses_fixture', role: 'assistant', providerID: mode === 'mismatch' ? 'other-provider' : 'opencode-go', modelID: 'deepseek-v4.1-flash' },
-      parts: [{ id: 'prt_fixture', messageID: 'msg_fixture', type: 'text', text }]
-    }]);
-  }
-  if (url.pathname === '/session/ses_fixture/abort' && request.method === 'POST') {
-    record('abort');
-    return send(response, 200, true);
-  }
-  if (url.pathname === '/session/ses_fixture' && request.method === 'DELETE') {
-    record('delete');
-    if (mode === 'cleanup-fail') return send(response, 500, { error: 'not cleaned' });
-    return send(response, 200, true);
-  }
-  return send(response, 404, { error: 'not found' });
-});
-server.listen(0, '127.0.0.1', () => {
-  const address = server.address();
-  console.log('opencode server listening on http://127.0.0.1:' + address.port);
-});
-`;
-
-async function fixtureBridge(dir: string, mode: string) {
-  const bin = path.join(dir, 'opencode-fixture.mjs');
-  const log = path.join(dir, 'events.jsonl');
-  await fs.writeFile(bin, fixture, 'utf8');
-  await fs.writeFile(log, '', 'utf8');
-  const { spawn } = await import('node:child_process');
-  const bridge = createOpenCodeBridge({
-    executableOverride: { bin: process.execPath, prefix: [bin], version: '1.18.20-fixture' },
-    spawnFn: ((command: string, args: string[], options: Record<string, unknown>) => spawn(command, args, {
-      ...options,
-      env: { ...(options.env as Record<string, string>), FIXTURE_MODE: mode, FIXTURE_LOG: log }
-    })) as unknown as typeof spawn
-  });
-  return { bridge, log };
-}
-
-async function readLog(log: string): Promise<Array<{ event: string; body?: Record<string, unknown> }>> {
-  const text = await fs.readFile(log, 'utf8');
-  return text.trim().length === 0 ? [] : text.trim().split(/\r?\n/).map(line => JSON.parse(line) as { event: string; body?: Record<string, unknown> });
-}
+import { fixtureBridge, readLog } from './opencode-bridge-fixture.ts';
 
 test('wrapped OpenCode events stream the requested model identity and delete its session', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-stream-'));
@@ -163,6 +60,29 @@ test('streamed OpenCode task cancellation aborts and deletes its session', async
   }
 });
 
+test('OpenCode task timeout aborts and deletes its session', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-timeout-'));
+  const { bridge, log } = await fixtureBridge(dir, 'timeout');
+  try {
+    await assert.rejects(
+      () => bridge.runTaskStream({
+        workspace: dir,
+        prompt: 'bounded fixture task',
+        providerID: 'opencode-go',
+        modelID: 'deepseek-v4.1-flash',
+        timeoutMs: 5000,
+        onDelta: () => undefined
+      }),
+      (error: unknown) => (error as { code?: string })?.code === 'TIMEOUT'
+    );
+    const events = await readLog(log);
+    assert.ok(events.some(item => item.event === 'abort'), 'timeout aborts the active OpenCode session');
+    assert.equal(events.filter(item => item.event === 'delete').length, 1, 'timeout cleanup deletes the session');
+  } finally {
+    await bridge.stop();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
 test('wrapped OpenCode events work and provider errors do not expose returned credentials or skip cleanup', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-error-'));
   const { bridge, log } = await fixtureBridge(dir, 'provider-error');
