@@ -205,7 +205,6 @@ Relevant locations include:
 - `tests/` — unit, integration, architecture, and acceptance coverage
 - `harness/` — model-independent verification and operating gates
 - `docs/evidence/` — public evidence records where appropriate
-- `docs/nightshift/evidence/` — dated engineering convergence evidence
 - `capsules/` — portable evidence/runtime metadata
 - `benchmarks/` — benchmark definitions and published results when available
 
