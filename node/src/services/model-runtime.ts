@@ -82,6 +82,7 @@ export interface ModelEntry {
   ingested?: boolean;
   file: string;
   fileSize?: number;
+  sha256?: string;
   repo_id?: string;
   quant_label?: string;
 }
@@ -201,6 +202,7 @@ export class ModelRuntime {
     if (typeof raw.file_size === 'number') entry.fileSize = raw.file_size;
     if (typeof raw.repo_id === 'string') entry.repo_id = raw.repo_id;
     if (typeof raw.quant_label === 'string') entry.quant_label = raw.quant_label;
+    if (typeof raw.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(raw.sha256)) entry.sha256 = raw.sha256.toLowerCase();
     return entry;
   }
 
@@ -906,6 +908,15 @@ export class ModelRuntime {
     const id = `${base}-${digestHex.slice(0, 8)}`.toLowerCase();
     if (this.models.has(id)) {
       const existing = this.models.get(id)!;
+      if (existing.sha256 !== undefined && existing.sha256.toLowerCase() !== digestHex) {
+        throw new ModelRuntimeError('CONFLICT', 'full model digest differs for an existing imported identity');
+      }
+      if (existing.sha256 === undefined && path.resolve(existing.file).toLowerCase() !== absolute.toLowerCase()) {
+        throw new ModelRuntimeError('CONFLICT', 'cannot bind a digest to an existing imported identity from a different file path');
+      }
+      existing.sha256 = digestHex;
+      existing.fileSize = statAfter.size;
+      await this.persistIngested();
       return {
         id,
         name: existing.name,
@@ -929,7 +940,8 @@ export class ModelRuntime {
       context_tokens: fit.contextLength,
       ingested: true,
       file: absolute,
-      fileSize: statAfter.size
+      fileSize: statAfter.size,
+      sha256: digestHex
     };
     this.models.set(id, entry);
     await this.persistIngested();
@@ -1080,6 +1092,7 @@ export class ModelRuntime {
         context_tokens: model.context_tokens,
         file: model.file,
         file_size: model.fileSize,
+        sha256: model.sha256,
         repo_id: model.repo_id,
         quant_label: model.quant_label,
         ingested: true

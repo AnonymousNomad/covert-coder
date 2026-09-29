@@ -189,3 +189,60 @@ test('start serves the ingested model for real and stop tears it down', async t 
   const after = (await runtime.status()).models.find(entry => entry.id === ingested.id);
   assert.notEqual(after?.status, 'running');
 });
+
+function syntheticGgufWithChatTemplate(): Buffer {
+  const values = [
+    { key: 'general.architecture', value: 'llama' },
+    { key: 'tokenizer.chat_template', value: 'messages' }
+  ];
+  const chunks: Buffer[] = [];
+  const header = Buffer.alloc(24);
+  header.write('GGUF', 0, 'utf8');
+  header.writeUInt32LE(3, 4);
+  header.writeBigUInt64LE(0n, 8);
+  header.writeBigUInt64LE(BigInt(values.length), 16);
+  chunks.push(header);
+  for (const { key, value } of values) {
+    const keyBytes = Buffer.from(key, 'utf8');
+    const valueBytes = Buffer.from(value, 'utf8');
+    const item = Buffer.alloc(8 + keyBytes.length + 4 + 8 + valueBytes.length);
+    let offset = 0;
+    item.writeBigUInt64LE(BigInt(keyBytes.length), offset); offset += 8;
+    keyBytes.copy(item, offset); offset += keyBytes.length;
+    item.writeUInt32LE(8, offset); offset += 4;
+    item.writeBigUInt64LE(BigInt(valueBytes.length), offset); offset += 8;
+    valueBytes.copy(item, offset);
+    chunks.push(item);
+  }
+  return Buffer.concat(chunks);
+}
+
+test('synthetic GGUF import persists its full SHA-256 across runtime reload', async t => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-mrt-digest-'));
+  const ingestedPath = path.join(workspace, '.aide', 'ingested-models.json');
+  const artifactPath = path.join(workspace, 'digest-fixture.gguf');
+  t.after(async () => {
+    const cleanupRuntime = new ModelRuntime({ workspace, manifestPath: MANIFEST, ingestedPath, modelDir: workspace });
+    await cleanupRuntime.stopAll();
+    await fs.rm(workspace, { recursive: true, force: true });
+  });
+  await fs.writeFile(artifactPath, syntheticGgufWithChatTemplate());
+  const firstRuntime = new ModelRuntime({ workspace, manifestPath: MANIFEST, ingestedPath, modelDir: workspace });
+  await firstRuntime.load({ sweepLegacyEngines: false });
+  const imported = await firstRuntime.ingest(artifactPath);
+  assert.match(imported.sha256, /^[a-f0-9]{64}$/);
+  const duplicate = await firstRuntime.ingest(artifactPath);
+  assert.equal(duplicate.sha256, imported.sha256);
+  const existing = firstRuntime.get(imported.id);
+  assert.ok(existing);
+  existing.sha256 = 'f'.repeat(64);
+  await assert.rejects(() => firstRuntime.ingest(artifactPath), /full model digest differs for an existing imported identity/);
+  delete existing.sha256;
+  existing.file = path.join(workspace, 'different-location.gguf');
+  await assert.rejects(() => firstRuntime.ingest(artifactPath), /cannot bind a digest to an existing imported identity from a different file path/);
+  const persisted = JSON.parse(await fs.readFile(ingestedPath, 'utf8')) as Array<{ id: string; sha256?: string }>;
+  assert.equal(persisted.find(entry => entry.id === imported.id)?.sha256, imported.sha256);
+  const secondRuntime = new ModelRuntime({ workspace, manifestPath: MANIFEST, ingestedPath, modelDir: workspace });
+  await secondRuntime.load({ sweepLegacyEngines: false });
+  assert.equal(secondRuntime.get(imported.id)?.sha256, imported.sha256);
+});

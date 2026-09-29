@@ -263,6 +263,7 @@ export function createModelManagerView(options: ModelManagerViewOptions): { snap
         format: 'GGUF',
         context_tokens: entry.context_tokens,
         quant_label: entry.quant_label,
+        sha256: entry.sha256,
         ingested: true
       });
     }
