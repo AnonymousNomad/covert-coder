@@ -8,8 +8,9 @@
 - Branch: `nightshift/production-convergence-20260926`
 - Tested source commit: `9bf4abb1a135b9f0429c0fda965c2e300f639b85`
 - Parent: `fbd2784f9f82f68486615a5006a459c1962f2fb2`
+- Pushed checkpoint commit: `1f34c51e2386f045bd98cb7a2f0a689b880c12f6`
 - Environment: Windows, Node `v26.4.0`; free physical memory was 3.12 GB before the focused regression run.
-- GitHub push and exact-SHA CI: pending.
+- GitHub CI run `36511326993` on exact pushed checkpoint SHA `1f34c51e2386f045bd98cb7a2f0a689b880c12f6`: **success**, [run details](https://github.com/AnonymousNomad/covert-coder/actions/runs/36511326993). CI environment: `ubuntu-latest`, Node `26.4.0`, Python `3.12`; duration 9m6s.
 
 ## Implemented behavior covered
 
@@ -26,6 +27,7 @@
 - `tests/arch/provider-route-lifecycle.test.ts` — **1 passed, 0 failed** (36.17 s). This drives production `buildRoutes`, `ProviderService`, Model Manager, Authority, receipt persistence, and restart using an injected deterministic fake fetch and fixture-only credential encryption.
 - `tests/arch/model-lifecycle-authority.test.ts` — **1 passed, 0 failed** (16.39 s) with a deterministic hardware probe injected only in the fake-child test.
 - Cached and working diff whitespace checks passed. The checked-in lightweight pre-push script passed with `AIDE_FULL_BATTERY` unset.
+- Exact-SHA GitHub CI passed all 18 workflow steps. `node scripts/ci-run-all.mjs` reported **53/53 commands passed**; `npx tsc -p tsconfig.node.json && npx tsc -p browser/tsconfig.browser.json && npx eslint .` passed; `timeout -k 30 900 node scripts/run-arch.mjs` reported **809 total, 793 passed, 0 failed, 16 skipped**; `npm run veritas -- --json` reported `passed=true` across path-boundary, secret-scan, manifest-validation, compile, tests, and git-diff; `node scripts/ci-worktree-check.mjs` and `node scripts/ci-cleanup.mjs` passed. The architecture skips remain explicitly counted; this is the bounded Ubuntu CI gate, not the earlier Windows local full-battery run.
 
 Commands on source commit `9bf4abb1a135b9f0429c0fda965c2e300f639b85`:
 
@@ -43,11 +45,12 @@ The new lifecycle test verifies successful one-shot and streaming calls, exact r
 ## Open gates and limits
 
 - The earlier full architecture run on the dirty worktree was **807 total: 786 passed, 9 failed, 12 skipped**. Provider fixture and C1-02 drift issues were corrected, and model lifecycle now passes alone after RAM recovered; the full battery was not repeated. The remaining prior full-run failures were not all re-proven green in this checkpoint. Do not report the full architecture gate as green.
-- ESLint for the new lifecycle file is unverified. The earlier full ESLint result preceded that file; a targeted invocation later spun without output and was stopped under the project failure procedure.
+- The exact-SHA Ubuntu CI run subsequently passed TypeScript, browser TypeScript, and `npx eslint .`, as well as its bounded architecture suite. This does not erase the distinct earlier Windows local full-battery result; keep the two environments/results separate.
 - This does not prove live provider/vendor execution. OpenCode `1.18.20` is installed, but the current OpenCode Go → DeepSeek V4.1 Flash task was not run. The inspected repository evidence contains no current spend limit or owner-supplied credential path. A credential-presence record from 2026-09-22 is historical and was not used. No credential contents were read or recorded.
-- P2 remains open pending live OpenCode/model execution, Mission Receipt and Veritas evidence on the candidate SHA, broader release gates, and exact-SHA GitHub CI.
+- Source review found the current OpenCode bridge remains a separate plan/act BYOK route: it waits for a complete JSON response from `POST /session/:id/message`, accepts no caller `AbortSignal`, and deletes the OpenCode session only after a successful nonempty response. The ModelRouter Model Manager path currently accepts only `direct-http` routes. Therefore the required exact Model Manager → Authority → streamed OpenCode execution and failure/cancel cleanup are not yet wired or proven. Current upstream docs expose an SSE `/event` endpoint, asynchronous prompt, and session abort; verify the pinned local OpenCode `1.18.20` `/doc` contract before implementing against those endpoints: [OpenCode server API](https://dev.opencode.ai/docs/server/).
+- P2 remains open pending that adapter integration, live OpenCode/model execution, Mission Receipt evidence on the candidate SHA, and remaining release gates. A current owner-supplied managed-auth path and existing spend cap are required before a live provider task; the request for those values is pending. No credential contents were read or recorded.
 - Capability expansion remains deferred until the release spine reaches its dependency point.
 
 ## Next
 
-Push this focused checkpoint and inspect CI on the exact source SHA. Continue Model Access/OpenCode in dependency order; obtain the owner-approved credential path and existing spend limit before any real external model task. Reconcile the capability package only after the active release blockers close.
+Continue Model Access/OpenCode in dependency order: verify the pinned OpenCode server contract, wire exact Model Manager route identity through Authority to real stream/cancel/error cleanup, then run the bounded live task after the owner provides the managed-auth path and spend cap. Reconcile the capability package only after the active release blockers close.
