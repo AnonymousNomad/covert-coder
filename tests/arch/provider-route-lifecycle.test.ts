@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { ArchServer } from '../../node/src/server.ts';
-import { buildRoutes, createModelRuntime } from '../../node/src/openapi.ts';
+import { buildRoutes, createModelRuntime, type BuildRoutesOptions } from '../../node/src/openapi.ts';
 import { CredentialStore, type CryptService } from '../../node/src/services/credentials.ts';
 import { ProviderService } from '../../node/src/services/providers.ts';
 import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
@@ -15,6 +15,8 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const PROVIDER_KEY = 'fixture-provider-key-never-used-on-the-network';
 const PROVIDER_MODEL = 'gpt-4o-mini';
 const CHAT_MODEL_ID = `cloud:openai:${PROVIDER_MODEL}`;
+const OPENCODE_PROVIDER_MODEL = 'opencode-go/deepseek-v4.1-flash';
+const OPENCODE_CHAT_MODEL_ID = `cloud:opencode:${OPENCODE_PROVIDER_MODEL}`;
 const encoder = new TextEncoder();
 
 class FixtureCrypt implements CryptService {
@@ -61,6 +63,19 @@ function assertExactTarget(target: Record<string, unknown>): void {
   assert.equal(target.egress_host, 'api.openai.com');
   assert.ok(typeof target.target_revision === 'string' && target.target_revision.length > 0);
   assert.ok(!JSON.stringify(target).includes(PROVIDER_KEY));
+}
+
+function assertExactOpenCodeTarget(target: Record<string, unknown>): void {
+  assert.equal(target.execution_class, 'EXTERNAL');
+  assert.equal(target.provider_id, 'opencode');
+  assert.equal(target.provider_model, OPENCODE_PROVIDER_MODEL);
+  assert.equal(target.model_access_route_id, `route:opencode-managed:${OPENCODE_PROVIDER_MODEL}:opencode`);
+  assert.equal(target.canonical_model_id, 'provider:opencode:opencode-go/deepseek-v4.1-flash');
+  assert.equal(target.connection_id, 'opencode-managed');
+  assert.equal(target.credential_source_id, 'credential-source:opencode-managed');
+  assert.equal(target.execution_adapter_id, 'opencode');
+  assert.equal(target.egress_host, 'opencode.ai');
+  assert.ok(typeof target.target_revision === 'string' && target.target_revision.length > 0);
 }
 
 function fixtureFetch(states: TransportState[]): typeof fetch {
@@ -134,7 +149,11 @@ async function removeFixtureWorkspace(workspace: string): Promise<void> {
   }
 }
 
-async function startStack(workspace: string, states: TransportState[]) {
+async function startStack(
+  workspace: string,
+  states: TransportState[],
+  openCodeBridge?: BuildRoutesOptions['openCodeBridge']
+) {
   const arch = new ArchServer(workspace, path.join(workspace, '.aide', `provider-lifecycle-${Date.now()}.log`));
   const modelRuntime = await createModelRuntime(REPO_ROOT, workspace, { events: arch.events, logger: arch.logger });
   const providerService = new ProviderService(workspace, {
@@ -149,7 +168,8 @@ async function startStack(workspace: string, states: TransportState[]) {
     events: arch.events,
     logger: arch.logger,
     modelRuntime,
-    providerService
+    providerService,
+    ...(openCodeBridge === undefined ? {} : { openCodeBridge })
   });
   for (const route of routes) arch.route(route);
   const httpServer = await arch.listen(0);
@@ -375,6 +395,164 @@ test('production provider route is governed end to end and recovers only after e
     assert.equal(recoveredAfter.state, 'succeeded');
     assertExactTarget(receiptTarget(recoveredAfter));
     assert.ok(transportStates.some(state => state.prompt === 'recovered after restart' && state.model === PROVIDER_MODEL));
+  } finally {
+    if (stack !== undefined) await stack.close();
+    await removeFixtureWorkspace(workspace);
+  }
+});
+
+test('production OpenCode Model Access route is governed and requires exact re-verification after restart', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-model-access-lifecycle-'));
+  const transportStates: TransportState[] = [];
+  const calls: Array<{ providerID: string; modelID: string; prompt: string }> = [];
+  let stack: Awaited<ReturnType<typeof startStack>> | undefined;
+  const openCodeBridge: NonNullable<BuildRoutesOptions['openCodeBridge']> = {
+    status: async () => ({
+      provider: 'opencode',
+      connection_mode: 'subscription_client',
+      kind: 'bridge',
+      status: 'READY',
+      binary_path: null,
+      version: 'fixture-only',
+      connected_providers: ['opencode-go'],
+      auth_methods: { 'opencode-go': ['fixture-only'] },
+      detail: 'deterministic integration fixture; no provider call'
+    }),
+    runTaskStream: async options => {
+      calls.push({ providerID: options.providerID, modelID: options.modelID, prompt: options.prompt });
+      const text = options.prompt === 'Reply with exactly: OK'
+        ? 'OK'
+        : `opencode-fixture:${options.prompt.includes('after restart') ? 'recovered' : 'first'}`;
+      options.onDelta(text);
+      return {
+        provider: 'opencode',
+        text,
+        session_id: `fixture-session-${calls.length}`,
+        delegated_provider: options.providerID,
+        delegated_model: options.modelID,
+        server_url: 'http://127.0.0.1:0',
+        duration_ms: 1,
+        version: 'fixture-only'
+      };
+    }
+  };
+
+  const routeId = `route:opencode-managed:${OPENCODE_PROVIDER_MODEL}:opencode`;
+  const routingBody = {
+    routing: {
+      plan: 'local',
+      act: { provider_id: 'opencode', model_id: OPENCODE_PROVIDER_MODEL },
+      utility: 'local'
+    }
+  };
+  const consentBody = { enabled: true };
+  const verificationBody = { connection_id: 'opencode-managed', provider_model_id: OPENCODE_PROVIDER_MODEL };
+  const streamBody = { modelId: OPENCODE_CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'bounded governed task' }] };
+
+  try {
+    await fs.mkdir(path.join(workspace, '.aide'), { recursive: true });
+    stack = await startStack(workspace, transportStates, openCodeBridge);
+
+    const routingHeaders = await stack.owner.approve('PUT', '/api/byok/routing', routingBody, 'opencode-lifecycle-routing');
+    const routingResponse = await stack.owner.request('/api/byok/routing', {
+      method: 'PUT', headers: routingHeaders, body: JSON.stringify(routingBody)
+    });
+    assert.equal(routingResponse.status, 200);
+    const consentHeaders = await stack.owner.approve('PUT', '/api/byok/consent', consentBody, 'opencode-lifecycle-consent');
+    const consentResponse = await stack.owner.request('/api/byok/consent', {
+      method: 'PUT', headers: consentHeaders, body: JSON.stringify(consentBody)
+    });
+    assert.equal(consentResponse.status, 200);
+
+    const initialManagerResponse = await stack.owner.request('/api/models/manager');
+    const initialManager = await initialManagerResponse.json() as { data: { routes: ModelProviderRouteT[] } };
+    const initialRoute = initialManager.data.routes.find(route => route.id === routeId);
+    assert.ok(initialRoute);
+    assert.equal(initialRoute.model_support_state, 'UNKNOWN');
+    assert.equal(initialRoute.available, false, 'connected bridge metadata alone cannot authorize the exact model');
+
+    const verifyHeaders = await stack.owner.approve('POST', '/api/connections/test', verificationBody, 'opencode-lifecycle-verify');
+    const verifyResponse = await stack.owner.request('/api/connections/test', {
+      method: 'POST', headers: verifyHeaders, body: JSON.stringify(verificationBody)
+    });
+    assert.equal(verifyResponse.status, 200);
+    const verifyEnvelope = await verifyResponse.json() as { data: { ok: boolean } };
+    assert.equal(verifyEnvelope.data.ok, true);
+    assert.deepEqual(calls[0], {
+      providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash', prompt: 'Reply with exactly: OK'
+    });
+
+    const readyManagerResponse = await stack.owner.request('/api/models/manager');
+    const readyManager = await readyManagerResponse.json() as { data: { routes: ModelProviderRouteT[] } };
+    const readyRoute = readyManager.data.routes.find(route => route.id === routeId);
+    assert.equal(readyRoute?.model_support_state, 'VERIFIED');
+    assert.equal(readyRoute?.available, true);
+
+    const firstMission = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', streamBody, 'opencode-lifecycle-first-mission');
+    assertExactOpenCodeTarget(receiptTarget(firstMission.before));
+    const firstResponse = await stack.owner.request('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'X-AIDE-Operation': firstMission.operationId, 'X-AIDE-Task': 'opencode-lifecycle-first-mission' },
+      body: JSON.stringify(streamBody)
+    });
+    assert.equal(firstResponse.status, 200);
+    assert.match(await firstResponse.text(), /opencode-fixture:first/);
+    const firstAfter = await operationReceipt(stack.owner, firstMission.operationId);
+    assert.equal(firstAfter.state, 'succeeded');
+    assertExactOpenCodeTarget(receiptTarget(firstAfter));
+    assert.equal(calls.length, 2, 'the governed mission dispatches through the OpenCode adapter exactly once after verification');
+
+    await stack.close();
+    stack = undefined;
+    stack = await startStack(workspace, transportStates, openCodeBridge);
+
+    const oldOperationResponse = await stack.owner.request(`/api/authority/operation?id=${encodeURIComponent(firstMission.operationId)}`);
+    assert.equal(oldOperationResponse.status, 404, 'transient approval/operation state is not restored into a new Authority instance');
+    const auditFile = path.join(workspace, '.aide', 'cipher-state.jsonl');
+    const auditEvents = (await fs.readFile(auditFile, 'utf8')).trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+    const durableFirstSuccess = auditEvents.find(event => event.type === 'authority' && event.operation_id === firstMission.operationId && event.decision === 'execution-succeeded');
+    assert.ok(durableFirstSuccess, 'the terminal Authority outcome remains durable after restart');
+    assert.equal(durableFirstSuccess.digest, (firstAfter as { digest: unknown }).digest, 'durable outcome remains bound to the pre-restart exact-target digest');
+
+    const restartedManagerResponse = await stack.owner.request('/api/models/manager');
+    const restartedManager = await restartedManagerResponse.json() as { data: { routes: ModelProviderRouteT[] } };
+    const restartedRoute = restartedManager.data.routes.find(route => route.id === routeId);
+    assert.ok(restartedRoute);
+    assert.equal(restartedRoute.model_support_state, 'UNKNOWN');
+    assert.equal(restartedRoute.available, false, 'managed connection presence does not restore stale exact-model verification');
+
+    const beforeBlockedPrepare = calls.length;
+    const blockedPrepare = await stack.owner.request('/api/authority/prepare', {
+      method: 'POST',
+      body: JSON.stringify({ method: 'POST', path: '/api/chat/stream', body: streamBody, task_id: 'opencode-lifecycle-stale-restart-route' })
+    });
+    assert.equal(blockedPrepare.status, 403, 'external chat stays blocked until the exact model is re-verified');
+    assert.equal(calls.length, beforeBlockedPrepare, 'stale route rejection performs no managed-adapter task');
+
+    const reverifyHeaders = await stack.owner.approve('POST', '/api/connections/test', verificationBody, 'opencode-lifecycle-reverify-after-restart');
+    const reverifyResponse = await stack.owner.request('/api/connections/test', {
+      method: 'POST', headers: reverifyHeaders, body: JSON.stringify(verificationBody)
+    });
+    assert.equal(reverifyResponse.status, 200);
+    const reverifyEnvelope = await reverifyResponse.json() as { data: { ok: boolean } };
+    assert.equal(reverifyEnvelope.data.ok, true);
+
+    const recoveredBody = { modelId: OPENCODE_CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'bounded governed task after restart' }] };
+    const recoveredMission = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', recoveredBody, 'opencode-lifecycle-recovered-mission');
+    assertExactOpenCodeTarget(receiptTarget(recoveredMission.before));
+    const recoveredResponse = await stack.owner.request('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'X-AIDE-Operation': recoveredMission.operationId, 'X-AIDE-Task': 'opencode-lifecycle-recovered-mission' },
+      body: JSON.stringify(recoveredBody)
+    });
+    assert.equal(recoveredResponse.status, 200);
+    assert.match(await recoveredResponse.text(), /opencode-fixture:recovered/);
+    const recoveredAfter = await operationReceipt(stack.owner, recoveredMission.operationId);
+    assert.equal(recoveredAfter.state, 'succeeded');
+    assertExactOpenCodeTarget(receiptTarget(recoveredAfter));
+    assert.equal(calls.length, 4, 'restart path performs one exact re-verification and one recovered mission');
+    assert.ok(calls.every(call => call.providerID === 'opencode-go' && call.modelID === 'deepseek-v4.1-flash'));
+    assert.equal(transportStates.length, 0, 'OpenCode route never falls through to the direct HTTP provider service');
   } finally {
     if (stack !== undefined) await stack.close();
     await removeFixtureWorkspace(workspace);

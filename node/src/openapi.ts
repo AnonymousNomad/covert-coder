@@ -163,6 +163,9 @@ export interface BuildRoutesOptions {
   byokSecretStore?: { setKey(id: string, key: string): void; getKey(id: string): string | null; deleteKey(id: string): boolean; listProviderIds(): string[] };
   // Unified provider connections service override (tests inject hermetic stubs).
   connectionsService?: unknown;
+  // Optional managed OpenCode bridge dependency for deterministic integration tests.
+  // Production creates one bridge and shares it across Model Access and Agent routes.
+  openCodeBridge?: Pick<ReturnType<typeof createOpenCodeBridge>, 'status' | 'runTaskStream'>;
   // Optional resource probes for deterministic integration tests; production
   // uses the canonical host probes by default.
   resourceAdmission?: ReturnType<typeof createResourceAdmission>;
@@ -406,7 +409,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   let modelProviderRouteSnapshot: () => Promise<readonly ModelProviderRouteT[]> = async () => [];
   // Create once and share the managed adapter between Authority-bound chat,
   // exact Model Access routes, and the legacy Agent BYOK compatibility path.
-  const opencodeBridge = createOpenCodeBridge();
+  const opencodeBridge = options.openCodeBridge ?? createOpenCodeBridge();
   const modelRouter = new ModelRouter(modelRuntime, providerService, undefined, () => modelProviderRouteSnapshot(), {
     workspace,
     assertExternalEgressAllowed,

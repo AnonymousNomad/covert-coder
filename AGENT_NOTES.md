@@ -5,8 +5,64 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
-Current state (2026-09-29 02:07): Covert Coder branch `nightshift/production-convergence-20260926` is pushed at evidence checkpoint `941be7c462f4f33d0df3a0b763378a54edcdfce6`; its exact-SHA GitHub run `36533637621` is green, 22/22 steps, and branch/worktree were aligned and clean. The corrected route evidence records the fully isolated version comparison: OpenCode `1.18.20` returned 26 OpenCode Go models without `deepseek-v4.1-flash`; official `1.18.33`, selected through the Covert bridge's PATH resolver, returned 42 including it. Both local health/provider APIs returned 200 using `OPENCODE_TEST_HOME` and temporary APPDATA/LOCALAPPDATA/XDG paths; no auth fields were inspected and no inference request was sent. An earlier probe omitted `OPENCODE_TEST_HOME`, so home `.opencode` configuration access cannot be ruled out; its provider-ID output contained no token values and it is excluded from isolation evidence. Source review confirms ModelRouter requires exact verified model support, availability/configuration/health, consent/egress/setup and adapter identity before dispatch; provider verification also requires the exact delegated provider/model pair. These are source/CI facts, not live acceptance. Issue #38 still has two comments and the latest owner directive is unchanged. Live route status remains UNKNOWN pending the owner-approved managed-auth path, spend ceiling, and observed governed execution. The journal update is ready to checkpoint.
+Current state (2026-09-29 02:57): Source head remains the pushed `c7d9ed2a0d5c245e7e2192d8be8241831f32ef5f` with exact-SHA CI `36534884185` green 22/22. Local uncommitted P2 lifecycle work passes the focused provider lifecycle file (2/2), Node typecheck, focused ESLint, and native Windows `git diff --check`; final diff review is complete and this coherent checkpoint is ready for commit/push. The OpenCode case is deterministic fixture integration evidence only, not live-provider acceptance. Live route remains UNKNOWN pending owner-approved managed auth and spend ceiling.
 
+### [2026-09-29 02:57] Actor: codex
+- Type: verification
+- Status: locally verified; checkpoint pending
+- Summary: Completed the bounded OpenCode lifecycle test and focused static gates, and reviewed the final three-file diff.
+- Details: The provider lifecycle file passed 2 tests, 0 failures, 0 skips (58.8 seconds), including the existing direct-HTTP restart test and the new deterministic OpenCode exact-model verify → governed stream → restart denial → exact re-verification → recovered stream case. Node TypeScript no-emit check and ESLint for `node/src/openapi.ts` plus `tests/arch/provider-route-lifecycle.test.ts` exited successfully. Native Windows `git diff --check` passed. The earlier Git Bash invocation could not resolve this Windows linked-worktree `.git` pointer; native Git is the verified path. Review confirms the only product-code seam is optional bridge injection in `buildRoutes`, with the production default unchanged; no auth profile or provider request was used.
+- Files: `node/src/openapi.ts`; `tests/arch/provider-route-lifecycle.test.ts`; `AGENT_NOTES.md`.
+- Next: Stage and commit this coherent bounded change, use the repository's versioned pre-push hook on `nightshift/production-convergence-20260926`, then check Issue #38 and exact-SHA CI.
+---
+### [2026-09-29 02:50] Actor: codex
+- Type: verification
+- Status: passed; broader local gates pending
+- Summary: The focused provider lifecycle suite passes with an integrated deterministic OpenCode restart and re-verification case.
+- Details: Ran `node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/provider-route-lifecycle.test.ts`: **2 tests, 2 passed, 0 failed, 0 skipped**, 58.8 seconds. The existing direct-HTTP restart test remained green. The new OpenCode case uses `buildRoutes` with a fixture bridge, governed routing/consent writes, Model Manager exact-model verification, Authority-approved stream, exact delegated route identity in the operation view, durable `execution-succeeded` journal digest, process restart, expected loss of transient operation inspection, stale route denial before adapter dispatch, re-verification and recovered stream with the same target. No provider request or auth-profile access occurred. This is deterministic integration evidence, not live acceptance.
+- Files: `node/src/openapi.ts`; `tests/arch/provider-route-lifecycle.test.ts`; `AGENT_NOTES.md`.
+- Next: Run Node typecheck, focused ESLint and whitespace validation; then review the final diff and checkpoint only if the bounded unit remains green.
+---
+### [2026-09-29 02:48] Actor: codex
+- Type: update
+- Status: corrected; focused rerun pending
+- Summary: Adjusted the OpenCode restart fixture to distinguish transient Authority operation inspection from its durable terminal outcome record.
+- Details: Following source review, removed the incorrect expectation that an old `/api/authority/operation` view survives Authority recreation. The test now expects 404 for that ephemeral operation map and reads `.aide/cipher-state.jsonl` after restart to require the matching `execution-succeeded` Authority row and the same digest as the pre-restart exact-target view. This protects both design properties: consumed approval state is not restored, and the completed outcome remains durable/bound. The deterministic fake bridge remains isolated; no provider call or credential read occurred.
+- Files: `tests/arch/provider-route-lifecycle.test.ts`; `AGENT_NOTES.md`.
+- Next: Rerun the focused lifecycle tests; only then run ordered type/lint and broader verification.
+---
+### [2026-09-29 02:47] Actor: codex
+- Type: audit
+- Status: root cause found; fixture correction pending
+- Summary: Determined the post-restart Authority operation 404 is expected because approval state is process-local, while the durable terminal outcome uses a separate append-only journal.
+- Details: The second focused lifecycle run passed the existing OpenAI restart test and the OpenCode test advanced through exact verification and an approved governed stream, then failed when the new test tried to inspect the old operation after restart. `createExecutionAuthority` holds `operations` in a Map; `control.close()` clears it, so `GET /api/authority/operation` correctly returns 404 in the new process. Successful/failed terminal outcomes are separately appended to `.aide/cipher-state.jsonl`; the product Mission Receipt is a separate ProvenanceLedger projection from `.aide/provenance/ledger.jsonl`. The test currently covers the Authority chat stream, not an agent Mission Receipt. This is a test expectation error, not evidence of lost durable Authority state. The corrected assertions will require the old transient operation lookup to be absent and the prior durable `execution-succeeded` row to remain with the exact pre-restart operation digest. No credentials or provider calls were involved.
+- Files: `AGENT_NOTES.md`.
+- Next: Amend the restart fixture to inspect the durable journal instead of expecting ephemeral operation state, then rerun the focused lifecycle tests.
+---
+### [2026-09-29 02:43] Actor: codex
+- Type: bug
+- Status: corrected; focused rerun pending
+- Summary: Corrected the OpenCode lifecycle fixture's canonical model ID expectation after the first focused run exposed an assertion-only mismatch.
+- Details: Command `node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/provider-route-lifecycle.test.ts` returned 1 pass and 1 fail: the existing OpenAI restart lifecycle passed, and the new OpenCode case failed because its test expected `provider:opencode:opencode-go:deepseek-v4.1-flash` instead of the actual source-defined `provider:opencode:opencode-go/deepseek-v4.1-flash`. Inspection of `safeModelReference()` confirmed it concatenates the safe provider prefix with the provider model reference verbatim. Corrected only the fixture expectation and added the rule to `aide-debugging-discipline/SKILL.md`. This was not a runtime or production-route failure; no provider call or credential inspection occurred.
+- Files: `node/src/openapi.ts` (injectable bridge seam remains default-compatible); `tests/arch/provider-route-lifecycle.test.ts` (fixture assertion); `C:/Users/Grey_/.agents/skills/aide-debugging-discipline/SKILL.md` (trap); `AGENT_NOTES.md`.
+- Next: Rerun the focused lifecycle file; if green, run the ordered type/lint gates and inspect all changed files before deciding whether a meaningful checkpoint is ready.
+---
+### [2026-09-29 02:31] Actor: codex
+- Type: audit
+- Status: test gap identified; no product changes
+- Summary: Compared the OpenCode Model Access lifecycle with the existing full restart fixture and found restart coverage is split across separate fixture layers.
+- Details: `tests/arch/provider-route-lifecycle.test.ts` exercises a deterministic OpenAI `direct-http` route through Authority, stream success/error/cancellation/timeout cleanup, durable receipt, restart denial, exact re-verification, and recovered stream. OpenCode's `opencode-bridge.test.ts` separately covers catalog preflight, exact delegated identity, cancellation/abort/delete, provider error cleanup, and cleanup failure. `model-router.test.ts` separately covers OpenCode Model Access eligibility, exact target dispatch, egress denial, and caller signal; `chat-authority-security.test.ts` separately checks the OpenCode Authority target and success receipt. `createProviderConnectionsService` keeps `opencodeModelSupport` in a process-local Map with a 60-second TTL, so a recreated service reports UNKNOWN until verified again. No test currently joins those OpenCode gates with process restart/re-verification. This is a bounded deterministic test-coverage gap; source/fixture evidence still does not establish live provider execution. A read-only inspection initially used the obsolete `.mjs` bridge filename; the actual maintained file is `node/src/services/opencode-bridge.ts`. `git diff --check` passed after the journal repair; AGENT_NOTES is the sole local modification.
+- Files: `AGENT_NOTES.md`.
+- Next: Add a credential-free integration fixture for the OpenCode Model Access lifecycle and exact-route restart denial/re-verification; retain UNKNOWN for live acceptance until the owner-approved managed-auth path and spend cap are supplied.
+---
+### [2026-09-29 02:25] Actor: codex
+- Type: bug
+- Status: corrected; no product files changed
+- Summary: Repaired a malformed local journal update after detecting PowerShell string escaping and a stale insertion offset.
+- Details: The previous edit used a double-quoted PowerShell string containing Markdown backticks and calculated the running-log insertion offset before changing the current-status line. This escaped text and inserted the entry into an existing paragraph. Confirmed `AGENT_NOTES.md` was the only modified path, rebuilt from the exact pushed `c7d9ed2a0d5c245e7e2192d8be8241831f32ef5f` baseline, replaced the status line, recalculated the anchor, and inserted this correction entry. Preserved prior journal history; no product/runtime files, credentials, or provider paths were touched. The exact-SHA CI run `36534884185` is green with 22/22 listed steps, and Issue #38 still has two comments through `2026-09-28T23:40:35Z`. Live route remains UNKNOWN pending the owner-approved managed-auth path and spend ceiling.
+- Files: `AGENT_NOTES.md`.
+- Next: Continue safe release-spine inspection without provider calls; run the bounded governed route and same-route restart/recovery only after the required owner inputs arrive.
+---
 ### [2026-09-29 02:07] Actor: codex
 - Type: checkpoint
 - Status: pushed; exact-SHA CI verified
