@@ -5397,7 +5397,7 @@
         },
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 140
+          "line": 150
         }
       ],
       "requestShape": {
@@ -5639,7 +5639,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 151
+          "line": 161
         }
       ],
       "requestShape": {
@@ -5876,7 +5876,11 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 148
+          "line": 158
+        },
+        {
+          "file": "tests/arch/provenance.test.ts",
+          "line": 233
         }
       ],
       "requestShape": {
@@ -6352,6 +6356,10 @@
         {
           "file": "tests/arch/harness-attempt.test.ts",
           "line": 400
+        },
+        {
+          "file": "tests/arch/provenance.test.ts",
+          "line": 195
         }
       ],
       "requestShape": {
@@ -7117,6 +7125,10 @@
         {
           "file": "tests/arch/harness-attempt.test.ts",
           "line": 420
+        },
+        {
+          "file": "tests/arch/provenance.test.ts",
+          "line": 196
         }
       ],
       "requestShape": {
