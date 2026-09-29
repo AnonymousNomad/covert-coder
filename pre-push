@@ -41,6 +41,10 @@ fi
 if [ "$AIDE_FULL_BATTERY" = "1" ]; then
   echo "pre-push: AIDE_FULL_BATTERY=1 - running full arch battery (this takes minutes)..."
   cd "$GIT_ROOT" || exit 1
+  # Git exports repository-local variables to hooks. Clear them so the
+  # architecture suite's scratch Git repositories stay isolated from this
+  # worktree and cannot move its refs or index.
+  unset $(git rev-parse --local-env-vars)
   case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
       # Windows: --test-force-exit triggers a native UV_HANDLE_CLOSING abort
