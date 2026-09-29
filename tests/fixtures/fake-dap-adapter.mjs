@@ -151,6 +151,13 @@ async function handle(request) {
       return;
     case 'disconnect':
       respond(request, {});
+      if (process.argv.includes('--delayed-terminated-exit')) {
+        setTimeout(() => {
+          event('terminated', {});
+          setTimeout(() => process.exit(0), 5);
+        }, 35);
+        return;
+      }
       event('terminated', {});
       setTimeout(() => process.exit(0), 20);
       return;

@@ -223,6 +223,24 @@ async function runFullDebugSessionOnce(): Promise<void> {
   }
 }
 
+test('disconnect stays stopped when the adapter exits before the delayed terminated poll', async () => {
+  const { dir, cleanup } = await tempWorkspace();
+  const adapter = fakeAdapter('fake-dap-adapter.mjs');
+  adapter.args.push('--delayed-terminated-exit');
+  const { manager, events, logs } = buildManager(dir, [adapter]);
+  try {
+    await manager.start('fake');
+    const watermark = events.length;
+    await manager.disconnect('fake');
+    await waitFor(events, watermark, entry => entry.event === 'terminated', 'terminated-after-disconnect', logs);
+    assert.equal(manager.adapterStatus('fake')?.status, 'stopped');
+    assert.equal(manager.state('fake').active, false);
+  } finally {
+    await manager.stopAll();
+    await cleanup();
+  }
+});
+
 test('dap unverified breakpoint lines are reported as such', async () => {
   const { dir, cleanup } = await tempWorkspace();
   const { manager } = buildManager(dir, [fakeAdapter('fake-dap-adapter.mjs')]);

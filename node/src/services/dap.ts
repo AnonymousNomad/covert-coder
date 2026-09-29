@@ -46,6 +46,7 @@ export class DapManager {
   private readonly decoders = new Map<string, JsonRpcDecoder>();
   private readonly lastEvents = new Map<string, string>();
   private readonly pending = new Map<string, PendingRequest>();
+  private readonly disconnecting = new Set<string>();
   private readonly nextId: () => number;
   private readonly adapters: DapAdapterConfig[];
 
@@ -121,7 +122,9 @@ export class DapManager {
         }
         this.pending.delete(key);
       }
-      if (this.states.get(id) !== 'stopped') this.states.set(id, 'error');
+      if (this.states.get(id) !== 'stopped') {
+        this.states.set(id, this.disconnecting.has(id) ? 'stopped' : 'error');
+      }
     });
     child.once('error', error => {
       this.logger?.warn('dap adapter spawn error', { id, message: error.message });
@@ -235,23 +238,28 @@ export class DapManager {
   async disconnect(id: string): Promise<void> {
     const child = this.children.get(id);
     if (!child) return;
+    this.disconnecting.add(id);
     try {
-      await this.request(id, 'disconnect', { terminateDebuggee: true });
-    } catch {
-      // adapter may already be gone; kill below
+      try {
+        await this.request(id, 'disconnect', { terminateDebuggee: true });
+      } catch {
+        // adapter may already be gone; kill below
+      }
+      // DAP lifecycle: a conforming adapter emits 'terminated' right after the
+      // disconnect response, then exits. Wait briefly for that event (or exit)
+      // so consumers receive it before teardown; killing immediately races it away.
+      const deadline = Date.now() + 1500;
+      while (
+        Date.now() < deadline &&
+        child.exitCode === null &&
+        this.lastEvents.get(id) !== 'terminated'
+      ) {
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
+      await this.stop(id);
+    } finally {
+      this.disconnecting.delete(id);
     }
-    // DAP lifecycle: a conforming adapter emits 'terminated' right after the
-    // disconnect response, then exits. Wait briefly for that event (or exit)
-    // so consumers receive it before teardown; killing immediately races it away.
-    const deadline = Date.now() + 1500;
-    while (
-      Date.now() < deadline &&
-      child.exitCode === null &&
-      this.lastEvents.get(id) !== 'terminated'
-    ) {
-      await new Promise(resolve => setTimeout(resolve, 25));
-    }
-    await this.stop(id);
   }
 
   async stop(id: string): Promise<void> {
