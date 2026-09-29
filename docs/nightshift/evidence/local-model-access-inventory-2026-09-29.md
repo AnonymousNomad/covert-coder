@@ -27,4 +27,10 @@ The Covert import path now persists the SHA-256 it already computes, reloads onl
 - A real-registry Model Access projection check passed for exact identity, expected digest, non-observed status, `REQUIRES_PREFLIGHT`, `SETUP_REQUIRED`, and path redaction.
 - No runtime was started and no inference request was made in this verification.
 
-The earlier imported-model visibility checkpoint `5f3fc845ebbb8381f09b0c4b48658e94735704b0` passed exact-SHA AIDE CI `36596351172`; all 22 workflow steps succeeded. The source/evidence checkpoint for digest persistence documented here is a separate SHA and still needs its own exact-SHA CI result.
+## Fresh local qualification admission check
+
+At `2026-09-29T11:54:38-05:00`, a read-only Windows sample reported 3.347 GiB free physical RAM and 3.818 GiB free commit (`CommitLimit - CommittedBytes`). The `scripts/qualification/unsloth-runtime-v1-closeout.mjs` start gate requires at least 6.5 GiB free physical RAM, 5.0 GiB free commit, and no existing runtime process, among other conditions. An existing `llama-server.exe` process (PID 3152) was also present. This bounded sample fails both memory floors; it is not a full runtime preflight or model qualification. No process was stopped, no runtime was started, and no inference was attempted.
+
+## Exact-SHA CI
+
+The earlier imported-model visibility checkpoint `5f3fc845ebbb8381f09b0c4b48658e94735704b0` passed AIDE CI `36596351172`, all 22 workflow steps. The digest persistence source checkpoint `30377fb6c1b0004cb56ed8819a8ab5543f221bdf` passed exact-SHA AIDE CI `36598309737`, all 22 workflow steps. Neither result proves a live model load or inference.
