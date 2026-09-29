@@ -1,117 +1,97 @@
----
-license: apache-2.0
-tags:
-- offline
-- ide
-- local-ai
-- coding
-- llama.cpp
-- software-engineering
-pipeline_tag: text-generation
----
-
-![Covert Coder emblem](docs/assets/branding/covert-coder-emblem.png)
+<div align="center">
+  <img src="docs/assets/branding/covert-coder-emblem.png" width="180" alt="Covert Coder emblem" />
 
 # Covert Coder
 
-Vibe at the surface. Engineering underneath.
-
-A sovereign AI development workbench that owns the agent lifecycle — model,
-context, memory, execution, verification, replay, and improvement — on
-hardware the operator controls.
-
-Your models. Your machine. Your workflow.
-Local by default. Connected by choice.
-
-Covert Coder is the public product identity for this repository. AIDE Sovereign
-Workbench is historical lineage, not the product name.
-
-> **Status:** pre-production engineering release. Capability labels below describe tracked source and documented routes; uncommitted work is not release evidence.
-
-[![CI](https://github.com/AnonymousNomad/covert-coder/actions/workflows/ci.yml/badge.svg?branch=covert-production)](https://github.com/AnonymousNomad/covert-coder/actions/workflows/ci.yml?query=branch%3Acovert-production)
-[![License Apache-2.0](https://img.shields.io/github/license/AnonymousNomad/covert-coder)](LICENSE)
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/anonymousnomad?style=flat&logo=github)](https://github.com/sponsors/anonymousnomad)
-
-## What it is
-
-Covert Coder provides a governed development loop around the project and its
-evidence. Resident proposes context and actions; the operator reviews plans
-and diffs; typed services expose workspace, model, Git, terminal, language,
-debugging, and verification capabilities. Local execution is the default.
-Connected providers and model downloads are explicit network choices, not
-implied by installation.
-
 **Vibe at the surface. Engineering underneath.**
 
-## Who it is for
+Local-first AI development workbench for governed agent workflows, model choice, tool execution, verification, and evidence.
 
-- Developers who want local model assistance around a real codebase.
-- Privacy-conscious teams that need an explicit boundary for network access.
-- Offline or air-gapped environments using locally imported models and tools.
-- Researchers evaluating governed, human-reviewed coding workflows.
+[![AIDE CI](https://github.com/AnonymousNomad/covert-coder/actions/workflows/ci.yml/badge.svg?branch=covert-production)](https://github.com/AnonymousNomad/covert-coder/actions/workflows/ci.yml?query=branch%3Acovert-production)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-2ea44f.svg)](LICENSE)
+![Node.js 26.4.0](https://img.shields.io/badge/Node.js-26.4.0-339933?logo=node.js&logoColor=white)
+![Status: pre-production](https://img.shields.io/badge/status-pre--production-6f42c1)
+![Local-first](https://img.shields.io/badge/local--first-default-0b8f55)
+[![Security policy](https://img.shields.io/badge/security-private%20reporting-24292f)](SECURITY.md)
 
-## Current capability matrix
+[Quick start](#quick-start) · [Architecture](#architecture) · [Project status](#project-status) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
-| Capability | Status | Evidence / boundary |
+</div>
+
+> [!IMPORTANT]
+> **Covert Coder is a pre-production engineering release.** The default `covert-production` branch is the public baseline for cloning and evaluation. Features marked experimental, partial, or preview are not release-certified. Source presence, a route, a screenshot, or a successful mock does not by itself prove production readiness.
+
+## What is Covert Coder?
+
+Covert Coder is a sovereign AI development workbench built around one idea:
+
+> **Models should not receive raw control of your machine, repository, context, or credentials simply because they can generate code.**
+
+Covert places a governed control plane between the operator and the models/tools doing the work. The product is being built to coordinate context, workflows, model/provider selection, execution authority, verification, provenance, replay, and recovery around a real software project.
+
+**Your models. Your machine. Your workflow.**  
+Local by default. Connected by choice.
+
+Covert Coder is the current public product identity. **AIDE Sovereign Workbench** is the project's engineering lineage and still appears in historical files, package metadata, and evidence records.
+
+## Why Covert?
+
+Modern AI development tools are increasingly capable, but model quality is only one part of the system. Covert focuses on the surrounding engineering discipline:
+
+- **Local-first operation** — local models and tools remain first-class; cloud/provider use is explicit.
+- **Governed execution** — privileged actions pass through typed routes and execution authority instead of raw model access.
+- **Bounded context** — context, memory, workflows, and skills are selected deliberately rather than dumped into every request.
+- **Model/provider choice** — local runtimes, BYOK routes, and provider integrations are treated as replaceable execution paths.
+- **Evidence over claims** — tests, Veritas checks, CI, receipts, and provenance records are kept separate from model-generated prose.
+- **Operator control** — generated changes remain proposals until the applicable approval and execution boundaries are satisfied.
+
+## Project status
+
+Covert is usable as a development checkout, but it is **not yet a finished consumer release or certified desktop installer**.
+
+| Surface | Current status | Boundary |
 | --- | --- | --- |
-| Browser workbench, editor, workspace, search, chat | Implemented | `browser/src`, typed services under `node/src/routes/` |
-| Git, terminal, tasks, TypeScript LSP, Python DAP | Implemented | `git`, `terminal`, `tasks`, `lsp`, and `dap` route families |
-| Resident context and decisions | Experimental | `/api/resident`; state is advisory and does not grant execution authority |
-| Local models and provider routing | Available / hardware-dependent | `/api/models`, `/api/providers`; credentials remain daemon-side |
-| BYOK and official provider runtime | Partial / opt-in | `/api/byok`; provider write authority remains phase-gated |
-| Hugging Face model integration | Partial / opt-in | Search/import paths exist; downloads remain explicit network operations |
-| Memory / Helix | Experimental | `/api/memory`; current public claims are limited to the verified subset |
-| Veritas and evidence gates | Implemented as tooling | `harness/`, `docs/VERITAS_HARNESS.md`; verification is not an execution permission |
-| Plugins and workbench bundles | Experimental | `/api/plugins`, `/api/workbenches`; trust and capability boundaries remain explicit |
-| Desktop packaging and bounded desktop control | Experimental | Historical AIDE installers exist under [releases](https://github.com/AnonymousNomad/covert-coder/releases); they do not establish acceptance of the current Covert cockpit |
-| Dedicated Skills, Security, and hardware telemetry surfaces | Not yet exposed | Do not infer capability from route names or repository files |
-| Covert cockpit composition | Experimental | Source in `browser/src/cockpit`; validated by `scripts/cockpit-acceptance.mjs` on the current tree; not advertised as shipped until its release gate |
+| Browser workbench, Monaco editor, workspace, search, chat | **Implemented** | Current typed browser/workbench source |
+| Git, governed terminal, tasks, TypeScript LSP, Python DAP | **Implemented** | Typed route/service families |
+| Resident Assistant | **Experimental** | Advisory/coordination surface; not an authority bypass |
+| Context Control | **Partial** | Canonical chat composition is bounded; alternate surfaces remain phase-gated |
+| Workflow Engine + Skill Intelligence | **Experimental** | Workflow and skill metadata exist; promotion remains governed |
+| Orchestrator | **Available** | Coordinates task/model/tool paths through typed services |
+| Execution Authority | **Available** | Mediates privileged execution and writes |
+| Local model/runtime support | **Available / hardware-dependent** | Requires compatible runtime/model artifacts |
+| BYOK and provider routing | **Partial / opt-in** | Network/provider use remains explicit and phase-gated |
+| Model Hub / Hugging Face integration | **Partial / opt-in** | Search/import paths exist; downloads are explicit network operations |
+| Veritas / evidence gates | **Implemented as tooling** | Verification does not itself grant execution permission |
+| Ghost Code / provenance / replay | **Partial** | Claims are limited to recorded evidence |
+| Memory / Helix | **Experimental** | Scoped persistence exists; product promotion is still gated |
+| Plugins / workbenches | **Experimental** | Capability and trust boundaries remain explicit |
+| Desktop packaging / bounded desktop control | **Experimental** | Historical builds do not certify the current Covert cockpit |
+| Clean-machine installer / upgrade / uninstall acceptance | **Not release-certified** | Still part of the release spine |
 
-Status labels are deliberately conservative. A route, model file, or visual placeholder is not by itself proof of readiness, authority, ownership, or successful runtime behavior.
+The status language above is intentionally conservative.
 
-H2 process/tool ownership remains architecture-gated and is not production-promoted. Historical release assets and tags retain their AIDE identity; this documentation does not certify them against the current development branch.
+## Architecture
 
-## Governed product loop
-
-The intended production topology is:
+The intended governed product loop is:
 
 ```text
 USER
   → RESIDENT ASSISTANT
-  → CONTEXT CONTROL ENGINE
+  → CONTEXT CONTROL
   → WORKFLOW ENGINE + SKILL INTELLIGENCE
   → ORCHESTRATOR
   → EXECUTION AUTHORITY
+  → RESOURCE ADMISSION
   → HARNESS
   → WORKER MODELS / TOOLS
   → VERITAS
-  → GHOST CODE + MEMORY SPINE
+  → GHOST CODE / PROVENANCE
+  → MISSION RECEIPT + MEMORY
   → RESIDENT
   → USER
 ```
 
-The current implementation exposes these surfaces at different maturity
-levels:
-
-| Surface | Status | Boundary |
-| --- | --- | --- |
-| Resident assistant | Experimental | Advisory context and decisions; it does not grant execution authority |
-| Context Control | Partial | Canonical chat composition selects bounded context and memory; alternate surfaces remain phase-gated |
-| Workflow engine + Skill Intelligence | Experimental | Workflows and skill metadata are present; capability promotion remains governed |
-| Orchestrator | Available | Routes tasks and coordinates model/tool work through typed services |
-| Execution Authority | Available | Approval and authority routes mediate writes, terminal work, and other privileged actions |
-| Harness + Veritas | Available as tooling | Verification and evidence gates do not become execution permission |
-| Ghost Code + provenance | Partial | Replay/evidence surfaces exist; provenance claims remain bounded by their recorded evidence |
-| Memory Spine / Helix | Experimental | Scoped persistence and retrieval are present; retention and product promotion remain phase-gated |
-| Projects + Monaco editor | Available | Browser workbench, project/workspace services, and Monaco-backed editing are in the current tree |
-| Governed terminal | Available | Commands pass through typed routes and authority checks |
-
-No worker model receives raw authority, raw memory, or raw context. Everything
-is mediated through the governed context and execution boundaries above.
-
-## Architecture
-
-The current development topology is a browser frontend, a single product façade, a canonical TypeScript backend, and a legacy backend retained as migration inventory. New user-facing behavior is expected to travel through the façade.
+The current development topology uses a browser frontend, a single product façade, a canonical TypeScript backend, and a legacy backend retained only as migration inventory:
 
 ```mermaid
 flowchart LR
@@ -119,41 +99,71 @@ flowchart LR
   EDGE --> TS["Canonical TypeScript backend<br/>4778"]
   EDGE --> LEGACY["Legacy backend<br/>4779<br/>(migration inventory)"]
   TS --> CAP["Workspace · Git · terminal<br/>tasks · LSP · DAP · services"]
-  TS --> LOCAL["Local model engines<br/>private runtime ports"]
+  TS --> LOCAL["Local model runtimes<br/>private runtime ports"]
   TS -. "explicit opt-in" .-> CLOUD["Configured online providers"]
 ```
 
-See [the canonical architecture document](docs/ARCHITECTURE.md) for route ownership, migration boundaries, and verification tiers. The legacy backend is not a second product surface.
+New user-facing behavior is expected to travel through the façade. The legacy backend is not a second product architecture.
 
-## Privacy and security boundary
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the canonical route ownership and migration details.
 
-- Services bind to loopback by default. Loopback is a transport boundary, not a blanket guarantee that user-selected content can never leave the machine.
-- Local models and local tools can run without cloud credentials. Model Hub search/download and configured online providers are network operations and must be treated as explicit operator choices.
-- When online providers are enabled, the provider receives the content selected for that request. Review the provider boundary before enabling it.
-- Provider credentials are held by the daemon and protected according to the platform implementation; they are not intended for browser state or logs.
-- Model-generated changes remain proposals until the operator reviews and approves the resulting diff or action.
-- Imported models, plugins, dependencies, and generated artifacts are untrusted inputs.
+## Quick start
 
-Read [SECURITY.md](SECURITY.md) before running the workbench with private source or external providers. Report suspected vulnerabilities through [GitHub private vulnerability reporting](https://github.com/AnonymousNomad/covert-coder/security/advisories/new), not public issues.
+### Requirements
 
-## Quickstart
+- Git
+- **Node.js 26.4.0** — the current pinned CI reference runtime
+- npm
+- A supported local model/runtime if you want local inference
 
-Use Node.js **26.4.0**, the pinned CI runtime, for this development checkout. The package still declares `>=20`; that compatibility declaration is not proof that the current TypeScript execution and verification paths pass on Node 20. Local chat additionally requires a compatible `llama-server` binary and a locally available GGUF model.
+The package currently declares `node >=20`; that declaration is **not** a claim that the full current verification path is certified on every Node 20+ release.
+
+### Clone the public baseline
 
 ```bash
 git clone https://github.com/AnonymousNomad/covert-coder.git
 cd covert-coder
 git switch covert-production
-npm install
+npm ci
 npm run doctor
 npm start
 ```
 
-Open `http://127.0.0.1:4173/`. The doctor command reports missing runtime binaries and model artifacts; it does not download private assets or create authority.
+Then open:
+
+```text
+http://127.0.0.1:4173/
+```
+
+`npm run doctor` reports missing runtimes, model artifacts, and related environment requirements. It does not download private assets, create execution authority, or silently enable a cloud provider.
+
+> [!NOTE]
+> Current testing is source-based. A clean-machine installer is part of the release roadmap and is not yet advertised as finished.
+
+## Engineering preview
+
+The active convergence work happens on:
+
+```text
+nightshift/production-convergence-20260926
+```
+
+This branch contains newer Model Access, provider lifecycle, evidence, and release-spine work than the public baseline. It moves quickly and is intended for experienced testers who are comfortable reading CI/evidence and reporting regressions.
+
+```bash
+git fetch origin
+git switch nightshift/production-convergence-20260926
+npm ci
+npm run doctor
+npm start
+```
+
+> [!WARNING]
+> The engineering preview is **not a release branch**. Check the branch's latest GitHub Actions result before evaluating a checkpoint. A temporarily red checkpoint is treated as a defect to investigate, not as something to hide or relabel as green.
 
 ## Verification
 
-Run the commands appropriate to the surface you changed:
+For normal development changes:
 
 ```bash
 npm run check:arch
@@ -161,23 +171,129 @@ npm run build:frontend
 npm run test:e2e
 ```
 
-`check:arch` includes Node/browser typechecking, ESLint, and the architecture battery. Hardware-dependent checks may require local model or language-server artifacts. Do not convert a skipped or environment-gated check into a passing claim without its evidence.
+The repository also contains broader test, acceptance, harness, desktop, and Veritas commands. Run the checks appropriate to the surface you changed.
 
-## Model packs and network choices
+`check:arch` includes:
 
-Public model-pack metadata lives in [models/PACKS.md](models/PACKS.md); weights are not stored in this repository. Local GGUF import is supported. Search and download from external model hosts, and calls to configured online providers, are separate opt-in network boundaries.
+- Node TypeScript
+- browser TypeScript
+- ESLint
+- bounded architecture tests
 
-## Reproducibility and evidence
+Hardware- or artifact-dependent checks may be skipped when their required environment is absent. A skip is not a pass.
 
-- `common/` contains shared typed contracts and generated API descriptions.
-- `harness/` contains model-independent verification and operating gates.
-- `capsules/` describes portable evidence and runtime metadata without exporting private source by default.
-- `benchmarks/` contains smoke-suite definitions and published measurements when available.
-- Release claims should carry route, test, live-probe, or artifact evidence under `docs/evidence/`.
+For a fuller contributor gate, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Evidence model
+
+Covert deliberately separates **implementation**, **availability**, **qualification**, **authority**, and **verification**.
+
+Examples:
+
+- a stored credential does not prove provider authentication;
+- provider health does not prove support for an exact model route;
+- an installed model artifact does not prove qualification;
+- a successful fixture does not prove live provider execution;
+- a successful compile does not prove runtime behavior;
+- Veritas evidence does not grant execution authority.
+
+Evidence lives across typed contracts, tests, CI, Veritas reports, dated evidence records, and replay/provenance surfaces.
+
+Relevant locations include:
+
+- `common/` — shared typed contracts and generated API descriptions
+- `tests/` — unit, integration, architecture, and acceptance coverage
+- `harness/` — model-independent verification and operating gates
+- `docs/evidence/` — public evidence records where appropriate
+- `docs/nightshift/evidence/` — dated engineering convergence evidence
+- `capsules/` — portable evidence/runtime metadata
+- `benchmarks/` — benchmark definitions and published results when available
+
+## Privacy and security
+
+Covert is local-first, not "cloud can never happen."
+
+- Services bind to loopback by default.
+- Local models and local tools can operate without cloud credentials.
+- Model Hub searches/downloads and configured online providers are explicit network operations.
+- When an online provider is enabled, the provider receives the content selected for that request.
+- Provider credentials are intended to remain daemon-side rather than browser state or logs.
+- Imported models, plugins, dependencies, and model-generated output are treated as untrusted inputs.
+- Privileged writes and tool actions are expected to pass through the applicable authority boundary.
+
+Read [SECURITY.md](SECURITY.md) before using Covert with private source or external providers.
+
+Security issues should be reported through [GitHub private vulnerability reporting](https://github.com/AnonymousNomad/covert-coder/security/advisories/new), not through a public issue.
+
+## Models and network choices
+
+Model weights are not stored in this repository.
+
+Public model-pack metadata lives in [models/PACKS.md](models/PACKS.md). Local imports and configured provider connections are separate from network model search/download operations.
+
+The project is actively converging its model identity and execution path around explicit distinctions between:
+
+```text
+model identity
+→ source / artifact identity
+→ provider route
+→ credential source
+→ execution adapter
+```
+
+Those boundaries exist to prevent "configured" from being mistaken for "verified and executable."
+
+## Testing Covert
+
+Technical testers are welcome.
+
+For the cleanest signal:
+
+1. Start with the default `covert-production` branch unless you specifically want the engineering preview.
+2. Use Node.js 26.4.0.
+3. Run `npm ci` and `npm run doctor`.
+4. Record the exact branch and commit SHA you tested.
+5. Include the failing command, operating system, and relevant non-sensitive logs in bug reports.
+6. Do **not** post credentials, private source, model weights, auth artifacts, or private data.
+
+Useful feedback includes:
+
+- setup/clone failures;
+- broken first-run behavior;
+- browser/workbench usability;
+- model/runtime discovery problems;
+- Git/terminal/LSP/DAP regressions;
+- cancellation or cleanup failures;
+- misleading status/readiness labels;
+- documentation gaps;
+- accessibility or responsive-layout issues.
+
+Use [GitHub Issues](https://github.com/AnonymousNomad/covert-coder/issues) for normal bugs and feature discussion. Use private vulnerability reporting for security findings.
+
+## Current release focus
+
+The active release spine is focused on closing, with evidence:
+
+- Model Access and provider lifecycle correctness;
+- real governed provider/model execution;
+- Mission Receipt and provenance;
+- restart/recovery;
+- Resident end-to-end orchestration;
+- first-user/browser acceptance;
+- local-model acquisition and integrity;
+- installer/package/signing/SBOM/license gates;
+- clean-user and clean-machine install;
+- upgrade/uninstall/state preservation;
+- adaptive onboarding;
+- final release evidence.
+
+Cosmetic polish and public launch work remain secondary to these gates.
+
+See [docs/RELEASE_ROADMAP.md](docs/RELEASE_ROADMAP.md) for the public release roadmap.
 
 ## Documentation
 
-Start with the [documentation index](docs/README.md):
+Start with [docs/README.md](docs/README.md).
 
 - [Getting started](docs/GETTING_STARTED.md)
 - [Architecture](docs/ARCHITECTURE.md)
@@ -186,13 +302,52 @@ Start with the [documentation index](docs/README.md):
 - [Veritas and Harness](docs/VERITAS_HARNESS.md)
 - [Release roadmap](docs/RELEASE_ROADMAP.md)
 - [Research log](docs/RESEARCH_LOG.md)
+- [Support](SUPPORT.md)
+
+Historical documents may use the AIDE name or contain time-bound paths/status. Verify historical records against the current source and canonical documentation before treating them as product truth.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for local checks and contribution boundaries. Keep credentials, model weights, private source, training data, and machine-specific paths out of commits. See [SUPPORT.md](SUPPORT.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for project conduct and support guidance.
+Contributions should preserve user control, reproducibility, and honest capability reporting.
+
+Before submitting substantial changes:
+
+- read [CONTRIBUTING.md](CONTRIBUTING.md);
+- keep credentials, model weights, private data, and machine-specific secrets out of commits;
+- add or update the applicable tests;
+- update contracts/manifests/documentation when behavior changes;
+- report limitations and skips instead of hiding them.
+
+The current contributor gate includes:
+
+```bash
+npm test
+npm run check
+npm run veritas
+```
+
+Desktop work has additional preparation/build requirements described in the contributing guide.
+
+## Community standards
+
+This repository includes:
+
+- [Security Policy](SECURITY.md)
+- [Contribution Guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Support Guide](SUPPORT.md)
+- [Apache-2.0 License](LICENSE)
+
+These files define the project's contribution, support, disclosure, and conduct expectations.
 
 ## License
 
-Apache-2.0 unless a file or dependency states otherwise ([LICENSE](LICENSE)). Third-party models and tools retain their original licenses and attribution.
+Covert Coder is licensed under **Apache-2.0** unless a file or dependency states otherwise.
 
-Sponsorship supports issue triage, releases, documentation, dependency updates, and long-term maintenance of the offline tooling and model evaluation work.
+Third-party models, runtimes, libraries, and tools retain their own licenses and attribution requirements.
+
+## Support the project
+
+If Covert's local-first, evidence-driven direction is useful to you, you can follow the repository, test pre-production checkpoints, report reproducible issues, contribute code/documentation, or sponsor ongoing development.
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub_Sponsors-Support%20Covert-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/anonymousnomad)
