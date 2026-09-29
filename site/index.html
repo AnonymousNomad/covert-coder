@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Covert Coder — a local-first AI development workbench for governed model choice, execution, verification, and evidence." />
+  <title>Covert Coder — Engineering Preview</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Covert Coder home">
+      <img src="https://raw.githubusercontent.com/AnonymousNomad/covert-coder/covert-production/docs/assets/branding/covert-coder-emblem.png" alt="" />
+      <span>Covert Coder</span>
+    </a>
+    <nav aria-label="Primary">
+      <a href="#why">Why Covert</a>
+      <a href="#status">Status</a>
+      <a href="#architecture">Architecture</a>
+      <a href="https://github.com/AnonymousNomad/covert-coder" rel="noreferrer">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="eyebrow">Engineering Preview · Pre-release</div>
+      <h1>Vibe at the surface.<br><span>Engineering underneath.</span></h1>
+      <p class="hero-copy">
+        A local-first AI development workbench built to govern model choice, context,
+        execution, verification, provenance, and evidence around real software projects.
+      </p>
+      <p class="motto">Your models. Your machine. Your workflow.<br>Local by default. Connected by choice.</p>
+      <div class="cta-row">
+        <a class="button primary" href="https://github.com/AnonymousNomad/covert-coder" rel="noreferrer">View on GitHub</a>
+        <a class="button" href="https://github.com/AnonymousNomad/covert-coder/blob/docs/public-readme-polish-20260929/docs/ENGINEERING_PREVIEW.md" rel="noreferrer">Preview Status</a>
+      </div>
+      <div class="proof-strip" aria-label="Current product principles">
+        <span>Local-first</span>
+        <span>Model-neutral</span>
+        <span>Governed execution</span>
+        <span>Evidence-backed</span>
+      </div>
+    </section>
+
+    <section id="why" class="shell section">
+      <div class="section-head">
+        <div class="eyebrow">Why Covert</div>
+        <h2>Models are workers. They are not the control plane.</h2>
+        <p>
+          Covert is designed so a model does not automatically inherit raw authority over
+          your repository, machine, credentials, context, or evidence just because it can generate code.
+        </p>
+      </div>
+
+      <div class="card-grid four">
+        <article class="card">
+          <h3>Resident</h3>
+          <p>Project-aware operator interface for missions, context, coordination, and status.</p>
+          <span class="state experimental">Experimental</span>
+        </article>
+        <article class="card">
+          <h3>Execution Authority</h3>
+          <p>Privileged actions are mediated through explicit governed boundaries.</p>
+          <span class="state available">Available</span>
+        </article>
+        <article class="card">
+          <h3>Model Access</h3>
+          <p>Local models, connected providers, and exact model identity are treated as separate concerns.</p>
+          <span class="state partial">Converging</span>
+        </article>
+        <article class="card">
+          <h3>Veritas</h3>
+          <p>Tests and evidence remain distinct from model-generated claims or prose.</p>
+          <span class="state available">Implemented</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="shell section model-section">
+      <div class="section-head">
+        <div class="eyebrow">Model Access</div>
+        <h2>One control plane. Multiple model sources.</h2>
+        <p>
+          Covert is being built around explicit source, model, credential, route, adapter,
+          runtime, and qualification identity rather than a single locked model provider.
+        </p>
+      </div>
+      <div class="model-flow">
+        <div class="flow-box">OpenCode Go</div>
+        <div class="flow-box">Local GGUF</div>
+        <div class="flow-box">BYOK</div>
+        <div class="flow-box muted">Codex adapter<br><small>planned governed promotion</small></div>
+      </div>
+      <p class="fineprint">
+        Availability and support are evidence-bound. A connected account or local file is not automatically considered a verified executable model route.
+      </p>
+    </section>
+
+    <section id="architecture" class="shell section">
+      <div class="section-head">
+        <div class="eyebrow">Governed loop</div>
+        <h2>Built around a traceable execution path.</h2>
+      </div>
+      <div class="architecture" role="img" aria-label="User to Resident to Context Control to Workflow and Skills to Orchestrator to Execution Authority to Resource Admission to Worker Models and Tools to Veritas to Mission Receipt and back to Resident">
+        <span>User</span>
+        <b>→</b>
+        <span>Resident</span>
+        <b>→</b>
+        <span>Context Control</span>
+        <b>→</b>
+        <span>Workflow + Skills</span>
+        <b>→</b>
+        <span>Orchestrator</span>
+        <b>→</b>
+        <span>Authority</span>
+        <b>→</b>
+        <span>Resource Admission</span>
+        <b>→</b>
+        <span>Worker</span>
+        <b>→</b>
+        <span>Veritas</span>
+        <b>→</b>
+        <span>Mission Receipt</span>
+      </div>
+    </section>
+
+    <section id="status" class="shell section">
+      <div class="section-head">
+        <div class="eyebrow">Engineering Preview</div>
+        <h2>Show the evidence. Keep the boundaries honest.</h2>
+        <p>Covert is not being advertised as a finished consumer release yet.</p>
+      </div>
+
+      <div class="status-grid">
+        <article class="status-column">
+          <h3>Implemented / available</h3>
+          <ul>
+            <li>Browser workbench and Monaco editor</li>
+            <li>Workspace, search, Git, tasks</li>
+            <li>Governed terminal</li>
+            <li>TypeScript LSP and Python DAP</li>
+            <li>Execution Authority</li>
+            <li>Orchestrator</li>
+            <li>Veritas tooling</li>
+            <li>Local runtime foundation</li>
+          </ul>
+        </article>
+        <article class="status-column">
+          <h3>Still being closed</h3>
+          <ul>
+            <li>Live OpenCode Go mission through Covert</li>
+            <li>Resident end-to-end live orchestration</li>
+            <li>Live Mission Receipt acceptance</li>
+            <li>Restart/recovery on real missions</li>
+            <li>Automatic GGUF qualification workflow</li>
+            <li>Current clean-machine installer acceptance</li>
+            <li>Codex governed adapter</li>
+            <li>Standalone CLI and TUI distributions</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="notice">
+        <strong>Public claim rule:</strong>
+        screenshots, routes, model files, fixtures, and successful compilation do not automatically equal production readiness.
+      </div>
+    </section>
+
+    <section class="shell section final-cta">
+      <div>
+        <div class="eyebrow">Follow the build</div>
+        <h2>Engineering preview now. Release evidence before release claims.</h2>
+      </div>
+      <div class="cta-row">
+        <a class="button primary" href="https://github.com/AnonymousNomad/covert-coder" rel="noreferrer">Repository</a>
+        <a class="button" href="https://github.com/AnonymousNomad/covert-coder/discussions" rel="noreferrer">Discussions</a>
+        <a class="button" href="https://github.com/AnonymousNomad/covert-coder/issues" rel="noreferrer">Report an issue</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer shell">
+    <span>Covert Coder · Engineering Preview</span>
+    <span>Apache-2.0</span>
+  </footer>
+</body>
+</html>
