@@ -5,8 +5,8 @@
 // - corrupt ledger lines never break reads (counted, not trusted).
 // - the receipt never overclaims: every recorded run must complete with
 //   verified evidence before the receipt supports a mission-level conclusion.
-// - LIVE wiring: a real agent session finalize appends one run through the loop
-//   hook, and the reads project it.
+// - Route-backed integration (stub model): agent session finalization appends
+//   one run through the loop hook, and the routes project it across restart.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
@@ -18,6 +18,15 @@ import { pairFixture } from './authority-fixture.ts';
 const { buildRoutes } = await import('../../node/src/openapi.ts');
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function closeArchServer(server: ArchServer, http?: Awaited<ReturnType<ArchServer['listen']>>): Promise<void> {
+  if (http !== undefined) {
+    http.closeAllConnections?.();
+    await new Promise<void>(resolve => http.close(() => resolve()));
+  }
+  server.events.close();
+  await server.logger.flush();
+}
 
 function run(overrides: Record<string, unknown> = {}) {
   return {
@@ -96,10 +105,11 @@ test('receipt projects canonical handoffs for the mission', async () => {
   assert.equal(receipt.handoffs[0]?.to, 'opencode-go/deepseek-v4.1-flash');
 });
 
-test('LIVE: agent session finalize appends one run and the routes project it', async () => {
+test('INTEGRATION (fixture-backed): agent finalization persists a receipt across server restart', async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'prov-live-'));
   const server = new ArchServer(workspace, path.join(workspace, 'arch.log'));
   let lane = 0;
+  let originalClosed = false;
   const routes = await buildRoutes(workspace, 'test', {
     authority: server.authority,
     events: server.events,
@@ -171,11 +181,81 @@ test('LIVE: agent session finalize appends one run and the routes project it', a
     assert.equal(receiptReady.data.evidence_file, runRecord.evidence_file);
     assert.equal(receiptReady.data.trajectory_file, runRecord.trajectory_file);
     assert.equal(receiptReady.data.verification_state, runRecord.verification_state);
+
+    const canonicalReceiptBeforeRestart = {
+      mission_id: receipt.data.mission_id,
+      workspace: receipt.data.workspace,
+      runs: receipt.data.runs,
+      handoffs: receipt.data.handoffs,
+      verification: receipt.data.verification,
+      supported_conclusion: receipt.data.supported_conclusion,
+      limitations: receipt.data.limitations,
+      evidence_refs: receipt.data.evidence_refs
+    };
+    const attemptPath = '/api/harness/attempt?id=' + encodeURIComponent(attemptId);
+    const attemptEventsPath = '/api/harness/attempt/events?id=' + encodeURIComponent(attemptId);
+    const eventsBeforeRestart = await (await owner.request(attemptEventsPath)).json();
+    assert.equal(eventsBeforeRestart.data.terminal, true);
+    const attemptBeforeRestart = await (await owner.request(attemptPath)).json();
+    await closeArchServer(server, http);
+    originalClosed = true;
+
+    // Recreate the server services over the same workspace. The receipt and
+    // attempt stream must come from disk without replaying the agent session.
+    const restartedServer = new ArchServer(workspace, path.join(workspace, 'arch-restarted.log'));
+    let restartedHttp: Awaited<ReturnType<ArchServer['listen']>> | undefined;
+    let replayedChatCalls = 0;
+    try {
+      const restartedRoutes = await buildRoutes(workspace, 'test', {
+        authority: restartedServer.authority,
+        events: restartedServer.events,
+        modelRuntime: {
+          list: () => [{ id: 'stub', name: 'Stub', endpoint: 'http://127.0.0.1:9/v1', model: 'stub', context_tokens: 8192, roles: ['chat', 'act'] }],
+          status: async () => ({ models: [{ id: 'stub', status: 'running' }] }),
+          verifyEndpointModel: async () => ({ ready: true }),
+          getEffectiveContext: () => 8192,
+          getEffectiveBudget: () => 8192 - 512,
+          refreshServedContext: async () => undefined,
+          chat: async () => ({ text: '', modelId: 'stub', timingMs: 1 }),
+          chatStream: async () => ({ modelId: 'stub', usedApprox: 1, dropped: 0, truncatedSystem: false, timingMs: 1 })
+        } as never,
+        agentChatFn: async () => {
+          replayedChatCalls += 1;
+          return '';
+        }
+      });
+      for (const route of restartedRoutes) restartedServer.route(route);
+      restartedHttp = await restartedServer.listen(0);
+      const restartedAddress = restartedHttp.address() as { port: number };
+      const restartedOwner = await pairFixture(restartedServer, 'http://127.0.0.1:' + restartedAddress.port);
+
+      const recoveredReceipt = await (await restartedOwner.request(
+        '/api/mission/receipt?id=' + encodeURIComponent(sessionId)
+      )).json();
+      assert.deepEqual({
+        mission_id: recoveredReceipt.data.mission_id,
+        workspace: recoveredReceipt.data.workspace,
+        runs: recoveredReceipt.data.runs,
+        handoffs: recoveredReceipt.data.handoffs,
+        verification: recoveredReceipt.data.verification,
+        supported_conclusion: recoveredReceipt.data.supported_conclusion,
+        limitations: recoveredReceipt.data.limitations,
+        evidence_refs: recoveredReceipt.data.evidence_refs
+      }, canonicalReceiptBeforeRestart);
+      assert.equal(recoveredReceipt.data.supported_conclusion, null, 'restart does not turn unavailable verification into success');
+
+      const recoveredAttemptEvents = await (await restartedOwner.request(attemptEventsPath)).json();
+      const recoveredAttempt = await (await restartedOwner.request(attemptPath)).json();
+      assert.deepEqual(recoveredAttemptEvents.data, eventsBeforeRestart.data, 'the durable attempt stream is unchanged after service reconstruction');
+      assert.equal(recoveredAttempt.data.state, attemptBeforeRestart.data.state);
+      assert.deepEqual(recoveredAttempt.data.events, attemptBeforeRestart.data.events);
+      assert.equal(replayedChatCalls, 0, 'receipt recovery does not replay the completed agent session');
+    } finally {
+      await closeArchServer(restartedServer, restartedHttp);
+    }
   } finally {
-    http.closeAllConnections?.();
-    await new Promise<void>(resolve => http.close(() => resolve()));
-    server.events.close();
-    await server.logger.flush();
+    if (!originalClosed) await closeArchServer(server, http);
+    await fs.rm(workspace, { recursive: true, force: true });
   }
 });
 
