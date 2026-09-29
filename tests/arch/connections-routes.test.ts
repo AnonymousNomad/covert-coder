@@ -125,6 +125,32 @@ test('connections: unified view composes existing surfaces truthfully', async ()
   assert.ok(!privacy.includes('sk-prov1'), 'the unified view never leaks stored credentials');
 });
 
+test('connections: exact OpenCode model test approval binds the delegated provider/model pair', async () => {
+  const exact = { connection_id: 'opencode-managed', provider_model_id: 'opencode-go/deepseek-v4.1-flash' };
+  byokStatusValue = {
+    providers: [],
+    routing: { plan: { provider_id: 'opencode', model_id: exact.provider_model_id }, act: 'local', utility: 'local' },
+    consent_enabled: true
+  };
+
+  const prepared = await owner.request('/api/authority/prepare', {
+    method: 'POST',
+    body: JSON.stringify({
+      method: 'POST',
+      path: '/api/connections/test',
+      task_id: 'task:opencode-model-verify',
+      body: exact
+    })
+  });
+  assert.equal(prepared.status, 200);
+  const envelopeText = await prepared.text();
+  const envelope = JSON.parse(envelopeText) as { data: { operation_id: string; args: { body: typeof exact } } };
+  assert.deepEqual(envelope.data.args.body, exact, 'Authority digest contains the exact delegated provider and model');
+  assert.ok(!envelopeText.includes('credential'), 'the operation contains no credential material');
+  assert.equal((await owner.decide(envelope.data.operation_id, 'reject')).status, 200);
+  byokStatusValue = { providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: false };
+});
+
 test('connections: routing preference is a governed write (approval + replay + change refusal)', async () => {
   const unapproved = await call<unknown>('PUT', '/api/connections/preference', { preference: 'local-only' });
   assert.equal(unapproved.status, 409);

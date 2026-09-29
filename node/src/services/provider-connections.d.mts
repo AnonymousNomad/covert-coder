@@ -5,7 +5,7 @@ export interface ProviderConnectionsService {
   list(): Promise<ConnectionsViewResponseT>;
   getPreference(): string;
   setPreference(preference: string): string;
-  test(connectionId: string): Promise<{ ok: boolean; detail: string }>;
+  test(connectionId: string, providerModelId?: string): Promise<{ ok: boolean; detail: string }>;
   subscriptionAuth(subscriptionId: string): Promise<{ ok: boolean; command: string; status: string; detail: string }>;
   getHfTokenStored(): { stored: boolean };
   setHfToken(apiKey: string): { stored: true };
@@ -22,6 +22,27 @@ export interface ProviderConnectionsServiceOptions {
     status(): unknown;
     testProvider(providerId: string): Promise<{ ok: boolean; detail: string }>;
   };
+  opencodeBridge?: {
+    runTaskStream(options: {
+      workspace: string;
+      prompt: string;
+      providerID: string;
+      modelID: string;
+      timeoutMs?: number;
+      signal?: AbortSignal;
+      onDelta: (delta: string) => void;
+    }): Promise<{
+      text: string;
+      delegated_provider: string | null;
+      delegated_model: string | null;
+      session_id: string;
+      server_url: string;
+      duration_ms: number;
+      version: string | null;
+    }>;
+  };
+  assertExternalEgressAllowed?: () => void;
+  onEgress?: (entry: { action: string; url: string; [key: string]: unknown }) => void | Promise<void>;
   modelRuntime?: { status(): Promise<unknown> };
   modelRuntimeStatus?: () => Promise<{ runtime: unknown; models: Array<Record<string, unknown>> }>;
   secretStore: {

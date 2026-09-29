@@ -18,6 +18,8 @@ import { readRoutingPreference } from './routing-preference.mjs';
 
 const HF_SLOT = 'huggingface';
 const PREFERENCE_FILE = '.aide/routing-preference.json';
+const OPENCODE_CONNECTION_ID = 'opencode-managed';
+const OPENCODE_SUPPORT_TTL_MS = 60_000;
 const SUBSCRIPTION_RUNTIMES = {
   codex: { exec: 'codex', authFile: () => path.join(os.homedir(), '.codex', 'auth.json'), display: 'Codex' },
   claude: { exec: 'claude', authFile: () => path.join(os.homedir(), '.claude', '.credentials.json'), display: 'Claude Code' }
@@ -32,8 +34,28 @@ export function createProviderConnectionsService(options) {
     options.modelRuntimeStatus ??
     (async () => (modelRuntime ? await modelRuntime.status() : { runtime: null, models: [] }));
   const secretStore = options.secretStore;
+  const opencodeBridge = options.opencodeBridge ?? null;
+  const assertExternalEgressAllowed = options.assertExternalEgressAllowed ?? null;
+  const onEgress = options.onEgress ?? null;
   const findExecutable = options.findExecutable ?? defaultFindExecutable;
   const preferencePath = options.preferencePath ?? path.join(workspace, PREFERENCE_FILE);
+  const opencodeModelSupport = new Map();
+
+  function exactOpenCodeRef(value) {
+    if (typeof value !== 'string') return null;
+    const slash = value.indexOf('/');
+    if (slash <= 0 || slash === value.length - 1 || value.indexOf('/', slash + 1) !== -1) return null;
+    const providerId = value.slice(0, slash);
+    const modelId = value.slice(slash + 1);
+    if (providerId !== 'opencode-go' || !/^[A-Za-z0-9._:-]{1,200}$/.test(modelId)) return null;
+    return { providerId, modelId };
+  }
+
+  function openCodeSupportState(providerModelId) {
+    const cached = opencodeModelSupport.get(providerModelId);
+    if (cached === undefined || Date.now() - cached.at >= OPENCODE_SUPPORT_TTL_MS) return 'unknown';
+    return cached.state;
+  }
 
   function writeJson(filePath, value) {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -237,6 +259,50 @@ export function createProviderConnectionsService(options) {
         })
       });
     }
+    const opencodeReferences = new Map();
+    const routedRoles = byokStatus.routing && typeof byokStatus.routing === 'object' ? byokStatus.routing : {};
+    for (const role of ['plan', 'act', 'utility']) {
+      const target = routedRoles[role];
+      if (!target || typeof target !== 'object' || target.provider_id !== 'opencode') continue;
+      const providerModelId = safeLabel(target.model_id, '');
+      if (!exactOpenCodeRef(providerModelId)) continue;
+      opencodeReferences.set(providerModelId, safeModelReference('opencode', providerModelId));
+    }
+    const modelRefs = [...opencodeReferences.entries()]
+      .filter((entry) => entry[1] !== null)
+      .map(([providerModelId, reference]) => ({
+        ...reference,
+        model_support_state: openCodeSupportState(providerModelId)
+      }));
+    if (modelRefs.length > 0) {
+      const verified = modelRefs.some(reference => reference.model_support_state === 'verified');
+      const routingAvailable = verified && consentEnabled && getPreference() !== 'local-only';
+      const credentialConfigured = verified;
+      result.push({
+        id: OPENCODE_CONNECTION_ID,
+        provider_id: 'opencode',
+        name: 'OpenCode Go managed auth',
+        kind: 'subscription',
+        status: credentialConfigured ? 'connected' : 'configured_not_verified',
+        detail: credentialConfigured ? 'an exact OpenCode Go model identity probe passed recently' : 'an exact OpenCode Go model reference is selected; managed authentication and exact model support are unverified',
+        capabilities: ['chat'],
+        routing_available: routingAvailable,
+        account_label: 'OpenCode managed auth',
+        access: accessMetadata({
+          authenticationMode: 'opencode_managed',
+          authenticationConfigured: credentialConfigured,
+          credentialId: 'credential-source:opencode-managed',
+          credentialKind: 'opencode_managed_auth',
+          credentialState: credentialConfigured ? 'configured' : 'unknown',
+          health: credentialConfigured ? 'healthy' : 'unknown',
+          executionAdapters: ['opencode'],
+          modelRefs,
+          externalEgressRequired: true,
+          operatorSetupRequired: !routingAvailable,
+          setupState: !consentEnabled || getPreference() === 'local-only' ? 'consent_required' : credentialConfigured ? 'ready' : 'verification_required'
+        })
+      });
+    }
     return result;
   }
 
@@ -368,7 +434,60 @@ export function createProviderConnectionsService(options) {
     return preference;
   }
 
-  async function test(connectionId) {
+  async function test(connectionId, providerModelId) {
+    if (connectionId === OPENCODE_CONNECTION_ID) {
+      if (typeof providerModelId !== 'string' || !exactOpenCodeRef(providerModelId)) {
+        return { ok: false, detail: 'an exact OpenCode Go provider/model reference is required for model verification' };
+      }
+      const status = byokService.status() ?? {};
+      const routing = status.routing && typeof status.routing === 'object' ? status.routing : {};
+      const selected = ['plan', 'act', 'utility'].some(role => {
+        const target = routing[role];
+        return target && typeof target === 'object' && target.provider_id === 'opencode' && target.model_id === providerModelId;
+      });
+      if (!selected) return { ok: false, detail: 'the exact OpenCode Go target is not selected by a configured role' };
+      if (status.consent_enabled !== true || getPreference() === 'local-only') {
+        return { ok: false, detail: 'external model verification is blocked by missing consent or Local-Only preference' };
+      }
+      if (opencodeBridge === null || typeof opencodeBridge.runTaskStream !== 'function' || typeof assertExternalEgressAllowed !== 'function') {
+        return { ok: false, detail: 'OpenCode managed model verification is unavailable' };
+      }
+      opencodeModelSupport.delete(providerModelId);
+      try {
+        assertExternalEgressAllowed();
+        const identity = exactOpenCodeRef(providerModelId);
+        const result = await opencodeBridge.runTaskStream({
+          workspace,
+          prompt: 'Reply with exactly: OK',
+          providerID: identity.providerId,
+          modelID: identity.modelId,
+          timeoutMs: 30000,
+          onDelta: () => undefined
+        });
+        if (result.delegated_provider !== identity.providerId || result.delegated_model !== identity.modelId || result.text.trim().length === 0) {
+          return { ok: false, detail: 'OpenCode did not return the exact requested provider/model identity' };
+        }
+        if (typeof onEgress === 'function') {
+          await onEgress({
+            action: 'opencode-model-verification',
+            url: 'https://opencode.ai/zen/go/v1/',
+            provider_id: 'opencode',
+            delegated_provider: identity.providerId,
+            delegated_model: identity.modelId
+          });
+        }
+        opencodeModelSupport.set(providerModelId, { state: 'verified', at: Date.now() });
+        return { ok: true, detail: 'exact OpenCode Go provider/model identity verified' };
+      } catch (error) {
+        const code = error && typeof error === 'object' ? error.code : null;
+        const detail = code === 'CLEANUP_FAILED' ? 'OpenCode session cleanup failed; exact model remains unverified'
+          : code === 'TIMEOUT' ? 'OpenCode exact model verification timed out'
+            : code === 'CANCELLED' ? 'OpenCode exact model verification was cancelled'
+              : code === 'FORBIDDEN' ? 'external model verification is blocked by Authority policy'
+                : 'OpenCode exact model verification failed; exact model remains unverified';
+        return { ok: false, detail };
+      }
+    }
     if (connectionId.startsWith('api:')) {
       const providerId = connectionId.slice('api:'.length);
       try {

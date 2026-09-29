@@ -119,11 +119,51 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     setup_state: 'READY',
     selected_roles: ['chat']
   };
+  const openCodeModelRoute: ModelProviderRouteT = {
+    id: 'route:opencode-managed:opencode-go/deepseek-v4.1-flash:opencode',
+    model_id: 'provider:opencode-go:deepseek-v4.1-flash',
+    provider_id: 'opencode',
+    connection_id: 'opencode-managed',
+    provider_model_id: 'opencode-go/deepseek-v4.1-flash',
+    credential_source_id: 'credential-source:opencode-managed',
+    execution_adapter_id: 'opencode',
+    model_support_state: 'VERIFIED',
+    configured: true,
+    health: 'HEALTHY',
+    available: true,
+    external_egress_required: true,
+    operator_setup_required: false,
+    setup_state: 'READY',
+    selected_roles: ['chat']
+  };
+  const opencodeCalls: Array<{ workspace: string; providerID: string; modelID: string; prompt: string; signal?: AbortSignal }> = [];
+  let opencodeEgressGuardCalls = 0;
   const router = new ModelRouter(
     runtime as unknown as ModelRuntime,
     providers as unknown as ProviderService,
     providerCatalog,
-    async () => [providerModelRoute]
+    async () => [providerModelRoute, openCodeModelRoute],
+    {
+      workspace,
+      assertExternalEgressAllowed: () => { opencodeEgressGuardCalls++; },
+      runTaskStream: async options => {
+        const call: typeof opencodeCalls[number] = {
+          workspace: options.workspace,
+          providerID: options.providerID,
+          modelID: options.modelID,
+          prompt: options.prompt
+        };
+        if (options.signal !== undefined) call.signal = options.signal;
+        opencodeCalls.push(call);
+        options.onDelta('opencode-stream-result');
+        return {
+          text: 'opencode-stream-result',
+          duration_ms: 3,
+          delegated_provider: 'opencode-go',
+          delegated_model: 'deepseek-v4.1-flash'
+        };
+      }
+    }
   );
   const arch = new ArchServer(workspace, path.join(workspace, '.aide', 'authority.log'));
   for (const route of routesForAuthority()) arch.route(route);
@@ -150,8 +190,10 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
   try {
     const localBody = { modelId: 'local:fixture-model', messages: [{ role: 'user' as const, content: 'local fixture' }], harness: false };
     const cloudBody = { modelId: 'cloud:openai:local-gguf-q4', messages: [{ role: 'user' as const, content: 'external fixture' }], harness: false };
+    const opencodeBody = { modelId: 'cloud:opencode:opencode-go/deepseek-v4.1-flash', messages: [{ role: 'user' as const, content: 'exact OpenCode fixture' }], harness: false };
     const localStreamBody = { modelId: localBody.modelId, messages: localBody.messages };
     const cloudStreamBody = { modelId: cloudBody.modelId, messages: cloudBody.messages };
+    const opencodeStreamBody = { modelId: opencodeBody.modelId, messages: opencodeBody.messages };
     const routingPreferenceFile = path.join(workspace, '.aide', 'routing-preference.json');
 
     for (const [url, body] of [
@@ -205,6 +247,12 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     assert.equal(localOnlyExternalStreamPrepare.status, 403, 'streaming cannot bypass Local-Only external-chat policy');
     assert.equal(providers.calls.length, 0, 'blocked streaming request never dispatches the provider');
     assert.equal(providers.streamCalls.length, 0, 'blocked streaming request never reaches the streaming adapter');
+    const localOnlyOpenCodePrepare = await owner.request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({
+      method: 'POST', path: '/api/chat/stream', body: opencodeStreamBody, task_id: 'contract-local-only-opencode'
+    }) });
+    assert.equal(localOnlyOpenCodePrepare.status, 403, 'Local-Only blocks the exact OpenCode route before approval');
+    assert.equal(opencodeCalls.length, 0, 'Local-Only never dispatches the managed OpenCode adapter');
+    assert.equal(opencodeEgressGuardCalls, 0, 'Local-Only is rejected before even entering the external-egress guard');
     await fs.writeFile(routingPreferenceFile, JSON.stringify({ preference: 'local-first' }), 'utf8');
 
     const crossRouteTask = 'contract-cross-route-replay';
@@ -260,6 +308,51 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     assert.equal(approvedExternalStream.status, 200);
     assert.match(await approvedExternalStream.text(), /external-result/);
     assert.deepEqual(providers.streamCalls.at(-1), { providerId: 'openai', model: 'local-gguf-q4' });
+
+    const opencodeTask = 'contract-opencode-stream-approved';
+    const opencodeOperation = await owner.propose('POST', '/api/chat/stream', opencodeStreamBody, opencodeTask);
+    const opencodeReceiptBeforeExecution = await inspect(opencodeOperation.operation_id);
+    assert.equal(opencodeReceiptBeforeExecution.kind, 'capability.external');
+    assert.equal(opencodeReceiptBeforeExecution.risk, 'external');
+    const opencodeArgs = opencodeReceiptBeforeExecution.args as { chat_target: Record<string, unknown> };
+    const opencodeTarget = opencodeArgs.chat_target;
+    assert.equal(opencodeTarget.execution_class, 'EXTERNAL');
+    assert.equal(opencodeTarget.source, 'model-access');
+    assert.equal(opencodeTarget.runtime_class, 'opencode-managed');
+    assert.equal(opencodeTarget.provider_id, 'opencode');
+    assert.equal(opencodeTarget.provider_model, 'opencode-go/deepseek-v4.1-flash');
+    assert.equal(opencodeTarget.model_access_route_id, openCodeModelRoute.id);
+    assert.equal(opencodeTarget.canonical_model_id, openCodeModelRoute.model_id);
+    assert.equal(opencodeTarget.connection_id, openCodeModelRoute.connection_id);
+    assert.equal(opencodeTarget.credential_source_id, openCodeModelRoute.credential_source_id);
+    assert.equal(opencodeTarget.execution_adapter_id, 'opencode');
+    assert.equal(opencodeTarget.egress_host, 'opencode.ai');
+    await owner.decide(opencodeOperation.operation_id, 'approve');
+    const beforeOpenCodeDispatch = {
+      providerCalls: providers.calls.length,
+      providerStreamCalls: providers.streamCalls.length
+    };
+    const opencodeResponse = await request('/api/chat/stream', opencodeStreamBody, {
+      operation_id: opencodeOperation.operation_id,
+      task_id: opencodeTask
+    });
+    assert.equal(opencodeResponse.status, 200);
+    assert.match(await opencodeResponse.text(), /opencode-stream-result/);
+    assert.equal(providers.calls.length, beforeOpenCodeDispatch.providerCalls, 'OpenCode route bypasses the direct provider executor');
+    assert.equal(providers.streamCalls.length, beforeOpenCodeDispatch.providerStreamCalls, 'OpenCode stream uses only its managed adapter');
+    assert.equal(opencodeCalls.length, 1, 'approved exact OpenCode operation dispatches once');
+    assert.equal(opencodeEgressGuardCalls, 1, 'approved Authority operation rechecks external-egress policy at dispatch');
+    assert.equal(opencodeCalls[0]?.workspace, workspace);
+    assert.equal(opencodeCalls[0]?.providerID, 'opencode-go');
+    assert.equal(opencodeCalls[0]?.modelID, 'deepseek-v4.1-flash');
+    assert.match(opencodeCalls[0]?.prompt ?? '', /exact OpenCode fixture/);
+    assert.ok(opencodeCalls[0]?.signal instanceof AbortSignal, 'Authority streaming forwards a cancellation signal to the managed adapter');
+    const opencodeSuccessReceipt = await inspect(opencodeOperation.operation_id);
+    assert.equal(opencodeSuccessReceipt.state, 'succeeded', 'successful streaming records an Authority success receipt');
+    const successfulTarget = (opencodeSuccessReceipt.args as { chat_target: Record<string, unknown> }).chat_target;
+    assert.equal(successfulTarget.model_access_route_id, openCodeModelRoute.id);
+    assert.equal(successfulTarget.provider_model, openCodeModelRoute.provider_model_id);
+    assert.equal(successfulTarget.execution_adapter_id, 'opencode');
 
     providers.nextStreamError = new Error('fixture provider execution failure');
     const failedStreamTask = 'contract-external-stream-error';

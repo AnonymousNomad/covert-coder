@@ -26,7 +26,7 @@ interface ConnectionsService {
   list(): Promise<unknown>;
   getPreference(): string;
   setPreference(preference: string): string;
-  test(connectionId: string): Promise<{ ok: boolean; detail: string }>;
+  test(connectionId: string, providerModelId?: string): Promise<{ ok: boolean; detail: string }>;
   subscriptionAuth(subscriptionId: string): Promise<{ ok: boolean; command: string; status: string; detail: string }>;
   getHfTokenStored(): { stored: boolean };
   setHfToken(apiKey: string): { stored: true };
@@ -63,11 +63,19 @@ export function routesForConnections(service: ConnectionsService, workspace: str
       return { preference: service.setPreference(request.preference) };
     }) },
     { method: 'POST', path: '/api/connections/test', body: ConnectionsTestRequest, response: ConnectionsTestResponse, describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
-      const request = body as { connection_id: string };
-      return { workspace, taskId, kind: 'capability.external', args: { body: { connection_id: request.connection_id } } };
+      const request = body as { connection_id: string; provider_model_id?: string };
+      return {
+        workspace,
+        taskId,
+        kind: 'capability.external',
+        args: { body: {
+          connection_id: request.connection_id,
+          ...(request.provider_model_id !== undefined ? { provider_model_id: request.provider_model_id } : {})
+        } }
+      };
     }, handler: wrap(async ({ body }) => {
-      const request = body as { connection_id: string };
-      return await service.test(request.connection_id);
+      const request = body as { connection_id: string; provider_model_id?: string };
+      return await service.test(request.connection_id, request.provider_model_id);
     }) },
     { method: 'PUT', path: '/api/connections/hf-token', body: HfTokenPutRequest, response: HfTokenPutResponse, describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
       const request = body as { api_key: string };

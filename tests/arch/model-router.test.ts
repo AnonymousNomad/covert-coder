@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ChatTargetChangedError, ModelRouter, RouterError } from '../../node/src/services/model-router.ts';
+import { ChatTargetChangedError, ModelRouter, RouterError, type OpenCodeModelRouterAdapter } from '../../node/src/services/model-router.ts';
 import type { ModelRuntime } from '../../node/src/services/model-runtime.ts';
 import type { ProviderDefinition, ProviderService } from '../../node/src/services/providers.ts';
 import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
@@ -129,9 +129,20 @@ function makeRouter(
   runtime: FakeRuntime,
   providers: FakeProviders,
   catalog?: readonly ProviderDefinition[],
-  providerRoutes: readonly ModelProviderRouteT[] = []
+  providerRoutes: readonly ModelProviderRouteT[] = [],
+  openCode: OpenCodeModelRouterAdapter | null = null
 ): ModelRouter {
-  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, catalog, async () => providerRoutes);
+  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, catalog, async () => providerRoutes, openCode);
+}
+
+function openCodeModelRoute(overrides: Partial<ModelProviderRouteT> = {}): ModelProviderRouteT {
+  return providerModelRoute('opencode', 'opencode-go/deepseek-v4.1-flash', {
+    id: 'route:opencode-managed:opencode-go/deepseek-v4.1-flash:opencode',
+    model_id: 'provider:opencode-go:deepseek-v4.1-flash',
+    connection_id: 'opencode-managed',
+    execution_adapter_id: 'opencode',
+    ...overrides
+  });
 }
 
 function entry(id: string, status: string, roles: string[], contextTokens = 2048): FakeEntry {
@@ -485,4 +496,150 @@ test('dispatch refuses a local target whose registered destination changed after
     ChatTargetChangedError
   );
   assert.equal(runtime.chatCalls, 0, 'changed target is rejected before runtime dispatch');
+});
+
+test('OpenCode Model Access route stays unresolved until the exact model is VERIFIED and available', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  const route = openCodeModelRoute({ model_support_state: 'UNKNOWN', available: false });
+  const router = makeRouter(runtime, providers, undefined, [route]);
+  const routeId = 'cloud:opencode:opencode-go/deepseek-v4.1-flash';
+
+  const listed = await router.routes();
+  assert.equal(listed.find(candidate => candidate.id === routeId)?.status, 'down');
+  assert.deepEqual(await router.resolveAuthorityTarget(routeId), {
+    status: 'UNKNOWN', reason: 'provider-model-route-ineligible'
+  });
+  assert.deepEqual(providers.calls, []);
+  assert.deepEqual(providers.streamCalls, []);
+});
+
+test('Authority-bound OpenCode route streams the exact delegated identity and caller signal', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  const calls: Array<{ workspace: string; providerID: string; modelID: string; prompt: string; signal?: AbortSignal }> = [];
+  const openCode: OpenCodeModelRouterAdapter = {
+    workspace: 'E:\\fixture-workspace',
+    assertExternalEgressAllowed: () => undefined,
+    runTaskStream: async options => {
+      const call: typeof calls[number] = {
+        workspace: options.workspace,
+        providerID: options.providerID,
+        modelID: options.modelID,
+        prompt: options.prompt
+      };
+      if (options.signal !== undefined) call.signal = options.signal;
+      calls.push(call);
+      options.onDelta('verified stream');
+      return {
+        text: 'verified stream response',
+        duration_ms: 12,
+        delegated_provider: 'opencode-go',
+        delegated_model: 'deepseek-v4.1-flash'
+      };
+    }
+  };
+  const route = openCodeModelRoute();
+  const router = makeRouter(runtime, providers, undefined, [route], openCode);
+  const routeId = 'cloud:opencode:opencode-go/deepseek-v4.1-flash';
+  const resolution = await router.resolveAuthorityTarget(routeId);
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+  assert.equal(resolution.target.binding.source, 'model-access');
+  assert.equal(resolution.target.binding.runtime_class, 'opencode-managed');
+  assert.equal(resolution.target.binding.connection_id, 'opencode-managed');
+  assert.equal(resolution.target.binding.credential_source_id, 'credential-source:provider:opencode');
+  assert.equal(resolution.target.binding.execution_adapter_id, 'opencode');
+  assert.equal(resolution.target.binding.egress_host, 'opencode.ai');
+
+  const controller = new AbortController();
+  const deltas: string[] = [];
+  const result = await router.chatStreamResolvedTarget(
+    resolution.target,
+    [{ role: 'user', content: 'bounded fixture task' }],
+    delta => deltas.push(delta),
+    controller.signal
+  );
+  assert.deepEqual(deltas, ['verified stream']);
+  assert.equal(result.text, 'verified stream response');
+  assert.equal(result.modelId, routeId);
+  assert.deepEqual(calls, [{
+    workspace: 'E:\\fixture-workspace',
+    providerID: 'opencode-go',
+    modelID: 'deepseek-v4.1-flash',
+    prompt: 'USER: bounded fixture task',
+    signal: controller.signal
+  }]);
+  assert.equal(runtime.chatStreamCalls, 0);
+  assert.deepEqual(providers.streamCalls, []);
+});
+
+test('Authority-bound OpenCode dispatch rejects revoked exact model eligibility before adapter egress', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  let adapterCalls = 0;
+  const openCode: OpenCodeModelRouterAdapter = {
+    workspace: 'E:\\fixture-workspace',
+    assertExternalEgressAllowed: () => undefined,
+    runTaskStream: async () => {
+      adapterCalls += 1;
+      return { text: 'must not dispatch', duration_ms: 1, delegated_provider: 'opencode-go', delegated_model: 'deepseek-v4.1-flash' };
+    }
+  };
+  const route = openCodeModelRoute();
+  const router = makeRouter(runtime, providers, undefined, [route], openCode);
+  const resolution = await router.resolveAuthorityTarget('cloud:opencode:opencode-go/deepseek-v4.1-flash');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+
+  route.model_support_state = 'UNKNOWN';
+  await assert.rejects(
+    () => router.chatStreamResolvedTarget(resolution.target, [{ role: 'user', content: 'revoked' }], () => {}, new AbortController().signal),
+    ChatTargetChangedError
+  );
+  assert.equal(adapterCalls, 0);
+});
+
+test('Authority egress guard rejects the OpenCode managed adapter before network dispatch', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  let adapterCalls = 0;
+  const openCode: OpenCodeModelRouterAdapter = {
+    workspace: 'E:\\fixture-workspace',
+    assertExternalEgressAllowed: () => { throw Object.assign(new Error('egress denied'), { code: 'FORBIDDEN' }); },
+    runTaskStream: async () => {
+      adapterCalls += 1;
+      return { text: 'must not dispatch', duration_ms: 1, delegated_provider: 'opencode-go', delegated_model: 'deepseek-v4.1-flash' };
+    }
+  };
+  const router = makeRouter(runtime, providers, undefined, [openCodeModelRoute()], openCode);
+  const resolution = await router.resolveAuthorityTarget('cloud:opencode:opencode-go/deepseek-v4.1-flash');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+  await assert.rejects(
+    () => router.chatStreamResolvedTarget(resolution.target, [{ role: 'user', content: 'guard fixture' }], () => {}, new AbortController().signal),
+    error => (error as { code?: string }).code === 'FORBIDDEN'
+  );
+  assert.equal(adapterCalls, 0, 'Authority egress denial occurs before the managed adapter can dispatch');
+});
+
+test('OpenCode adapter result cannot substitute a different delegated model identity', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  const openCode: OpenCodeModelRouterAdapter = {
+    workspace: 'E:\\fixture-workspace',
+    assertExternalEgressAllowed: () => undefined,
+    runTaskStream: async options => {
+      options.onDelta('untrusted delta');
+      return { text: 'wrong model', duration_ms: 1, delegated_provider: 'opencode-go', delegated_model: 'deepseek-v4-flash' };
+    }
+  };
+  const router = makeRouter(runtime, providers, undefined, [openCodeModelRoute()], openCode);
+  const resolution = await router.resolveAuthorityTarget('cloud:opencode:opencode-go/deepseek-v4.1-flash');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+  await assert.rejects(
+    () => router.chatStreamResolvedTarget(resolution.target, [{ role: 'user', content: 'fixture' }], () => {}, new AbortController().signal),
+    error => (error as { code?: string }).code === 'TARGET_MISMATCH'
+  );
 });

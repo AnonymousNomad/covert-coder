@@ -404,7 +404,14 @@ export async function buildRoutes(workspace: string, version: string, options: B
       logger: options.logger
     });
   let modelProviderRouteSnapshot: () => Promise<readonly ModelProviderRouteT[]> = async () => [];
-  const modelRouter = new ModelRouter(modelRuntime, providerService, undefined, () => modelProviderRouteSnapshot());
+  // Create once and share the managed adapter between Authority-bound chat,
+  // exact Model Access routes, and the legacy Agent BYOK compatibility path.
+  const opencodeBridge = createOpenCodeBridge();
+  const modelRouter = new ModelRouter(modelRuntime, providerService, undefined, () => modelProviderRouteSnapshot(), {
+    workspace,
+    assertExternalEgressAllowed,
+    runTaskStream: options => opencodeBridge.runTaskStream(options)
+  });
   const learnerState = new LearnerState({ statePath: path.join(workspace, '.aide', 'learner-state.json') });
   await learnerState.load();
   const tutorManager = new TutorManager({
@@ -663,8 +670,6 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // desktopServiceRef. The /api/experts/* routes and the agent loop's
   // consultExpert callback both close over this one instance.
   const expertsService = createExpertsService(workspace);
-  // OpenCode bridge (documented server API; vendor owns its credentials).
-  const opencodeBridge = createOpenCodeBridge();
   // Freshness: fs watcher → 5s debounce → incremental reindex. Opt-in via
   // options.watchIndex (server boot only; see BuildRoutesOptions note). .aide
   // is filtered or the index's own persist writes would retrigger forever.
@@ -693,7 +698,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
     providerService,
     byokService,
     modelRuntime,
-    secretStore
+    secretStore,
+    opencodeBridge,
+    assertExternalEgressAllowed,
+    onEgress: (entry: { action: string; url: string; [key: string]: unknown }) => logEgress(workspace, entry)
   });
   const modelManagerView = createModelManagerView({
     workspace,

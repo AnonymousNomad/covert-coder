@@ -71,7 +71,10 @@ export type ConnectionsViewResponseT = z.infer<typeof ConnectionsViewResponse>;
 
 export const ConnectionsPreferencePutRequest = z.strictObject({ preference: RoutingPreference });
 
-export const ConnectionsTestRequest = z.strictObject({ connection_id: z.string().min(1).max(72) });
+export const ConnectionsTestRequest = z.strictObject({
+  connection_id: z.string().min(1).max(72),
+  provider_model_id: z.string().min(1).max(240).optional()
+});
 export const ConnectionsTestResponse = z.strictObject({ ok: z.boolean(), detail: z.string().max(300) });
 
 export const HfTokenPutRequest = z.strictObject({ api_key: z.string().min(1).max(4096) });

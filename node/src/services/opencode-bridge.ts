@@ -391,7 +391,12 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
           return;
         }
         if (event.type === 'message.updated') {
-          if (info?.sessionID === sessionId && info.role === 'assistant' && typeof info.id === 'string') assistantMessages.add(info.id);
+          if (info?.sessionID === sessionId && info.role === 'assistant' && typeof info.id === 'string') {
+            if (info.providerID !== runOptions.providerID || info.modelID !== runOptions.modelID) {
+              throw Object.assign(new Error('opencode assistant stream identity did not match the authorized target'), { code: 'TARGET_MISMATCH' });
+            }
+            assistantMessages.add(info.id);
+          }
           return;
         }
         if (event.type === 'message.part.updated') {

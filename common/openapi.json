@@ -6062,6 +6062,11 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 72
+                  },
+                  "provider_model_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
                   }
                 },
                 "required": [

@@ -299,6 +299,101 @@ test('only the exact provider model confirmed by its probe becomes an eligible M
   assert.equal(unverified.available, false, 'a sibling model inherits neither support nor availability');
 });
 
+test('OpenCode exact target remains UNKNOWN until its Authority-authorized provider/model test succeeds', async t => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'model-access-opencode-exact-'));
+  t.after(() => fs.rm(workspace, { recursive: true, force: true }));
+  const exactRef = 'opencode-go/deepseek-v4.1-flash';
+  const calls: Array<{ providerID: string; modelID: string; prompt: string }> = [];
+  const egress: Array<Record<string, unknown>> = [];
+  let guardCalls = 0;
+  const service = createProviderConnectionsService({
+    workspace,
+    providerService: { list: async () => [] },
+    byokService: {
+      status: () => ({
+        providers: [],
+        routing: { plan: { provider_id: 'opencode', model_id: exactRef }, act: 'local', utility: 'local' },
+        consent_enabled: true
+      }),
+      testProvider: async () => ({ ok: false, detail: 'not configured' })
+    },
+    opencodeBridge: {
+      runTaskStream: async (options: { providerID: string; modelID: string; prompt: string }) => {
+        calls.push({ providerID: options.providerID, modelID: options.modelID, prompt: options.prompt });
+        return {
+          text: 'OK',
+          delegated_provider: options.providerID,
+          delegated_model: options.modelID,
+          session_id: 'fixture-session',
+          server_url: 'http://127.0.0.1:12345',
+          duration_ms: 4,
+          version: 'fixture'
+        };
+      }
+    },
+    assertExternalEgressAllowed: () => { guardCalls++; },
+    onEgress: async (entry: Record<string, unknown>) => { egress.push(entry); },
+    modelRuntimeStatus: async () => ({ runtime: false, models: [] }),
+    secretStore: { setKey: () => undefined, getKey: () => null, deleteKey: () => true, listProviderIds: () => [] },
+    findExecutable: async () => null
+  });
+
+  const before = await ConnectionsViewResponse.parseAsync(await service.list());
+  const pendingConnection = before.connections.find(connection => connection.id === 'opencode-managed');
+  assert.ok(pendingConnection);
+  assert.equal(pendingConnection.access.model_refs[0]?.provider_model_id, exactRef);
+  assert.equal(pendingConnection.access.model_refs[0]?.model_support_state, 'unknown');
+  assert.equal(pendingConnection.access.health, 'unknown');
+  assert.equal(pendingConnection.routing_available, false);
+  assert.deepEqual(calls, [], 'reading Model Access never starts a provider task');
+
+  const manager = createModelManagerView({
+    workspace,
+    manifestPath: path.join(workspace, 'manifest.json'),
+    modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
+    connectionsService: service as any,
+    runtimeStatus: async () => ({ backend: null, health: 'NOT_INSTALLED' }) as any
+  });
+  const routeId = 'cloud:opencode:opencode-go/deepseek-v4.1-flash';
+  const blocked = (await manager.snapshot()).routes.find(route => route.provider_model_id === exactRef);
+  assert.ok(blocked);
+  assert.equal(blocked.model_support_state, 'UNKNOWN');
+  assert.equal(blocked.available, false);
+
+  const wrongTarget = await service.test('opencode-managed', 'opencode-go/deepseek-v4-flash');
+  assert.equal(wrongTarget.ok, false);
+  assert.equal(calls.length, 0, 'a model not selected in the role route cannot be probed');
+  assert.equal(guardCalls, 0);
+
+  const verified = await service.test('opencode-managed', exactRef);
+  assert.deepEqual(verified, { ok: true, detail: 'exact OpenCode Go provider/model identity verified' });
+  assert.equal(guardCalls, 1);
+  assert.deepEqual(calls, [{ providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash', prompt: 'Reply with exactly: OK' }]);
+  assert.equal(egress[0]?.url, 'https://opencode.ai/zen/go/v1/');
+
+  const after = await ConnectionsViewResponse.parseAsync(await service.list());
+  const readyConnection = after.connections.find(connection => connection.id === 'opencode-managed');
+  assert.ok(readyConnection);
+  assert.equal(readyConnection.access.model_refs[0]?.model_support_state, 'verified');
+  assert.equal(readyConnection.access.health, 'healthy');
+  assert.equal(readyConnection.routing_available, true);
+  const verifiedRoute = (await manager.snapshot()).routes.find(route => route.provider_model_id === exactRef);
+  assert.ok(verifiedRoute);
+  assert.equal(verifiedRoute.execution_adapter_id, 'opencode');
+  assert.equal(verifiedRoute.model_support_state, 'VERIFIED');
+  assert.equal(verifiedRoute.available, true);
+  assert.equal(routeId, `cloud:${verifiedRoute.provider_id}:${verifiedRoute.provider_model_id}`);
+
+  service.setPreference('local-only');
+  const localOnly = await service.list();
+  const gatedConnection = localOnly.connections.find(connection => connection.id === 'opencode-managed');
+  assert.ok(gatedConnection);
+  assert.equal(gatedConnection.access.model_refs[0]?.model_support_state, 'verified');
+  assert.equal(gatedConnection.routing_available, false, 'Local-Only revokes connection routing despite recent exact model proof');
+  const gatedRoute = (await manager.snapshot()).routes.find(route => route.provider_model_id === exactRef);
+  assert.equal(gatedRoute?.available, false);
+});
+
 test('Model Manager GET is passive and selection policy cannot change execution routing', async () => {
   const workspace = path.join(os.tmpdir(), 'model-manager-read-only-missing-workspace');
   let preferenceWrites = 0;

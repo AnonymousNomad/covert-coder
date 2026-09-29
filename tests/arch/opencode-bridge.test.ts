@@ -49,7 +49,10 @@ const server = http.createServer((request, response) => {
           emit('session.error', { sessionID: 'ses_fixture', error: { data: { message: 'credential sentinel must not escape' } } });
           return;
         }
-        emit('message.updated', { info: { id: 'msg_fixture', sessionID: 'ses_fixture', role: 'assistant' } });
+        emit('message.updated', { info: {
+          id: 'msg_fixture', sessionID: 'ses_fixture', role: 'assistant',
+          providerID: mode === 'mismatch' ? 'other-provider' : 'opencode-go', modelID: 'deepseek-v4.1-flash'
+        } });
         emit('message.part.updated', { part: { id: 'prt_fixture', sessionID: 'ses_fixture', messageID: 'msg_fixture', type: 'text' } });
         emit('message.part.delta', { sessionID: 'ses_fixture', messageID: 'msg_fixture', partID: 'prt_fixture', field: 'text', delta: mode === 'cancel' ? 'first' : 'streamed ' });
         if (mode !== 'cancel') {
@@ -188,6 +191,7 @@ test('delegated provider identity mismatch fails closed and cleans the session',
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-mismatch-'));
   const { bridge, log } = await fixtureBridge(dir, 'mismatch');
   try {
+    const deltas: string[] = [];
     await assert.rejects(
       () => bridge.runTaskStream({
         workspace: dir,
@@ -195,10 +199,11 @@ test('delegated provider identity mismatch fails closed and cleans the session',
         providerID: 'opencode-go',
         modelID: 'deepseek-v4.1-flash',
         timeoutMs: 30000,
-        onDelta: () => undefined
+        onDelta: delta => deltas.push(delta)
       }),
       (error: unknown) => (error as { code?: string })?.code === 'TARGET_MISMATCH'
     );
+    assert.deepEqual(deltas, [], 'a mismatched delegated identity is rejected before any assistant delta escapes');
     const events = await readLog(log);
     assert.ok(events.some(item => item.event === 'abort'));
     assert.ok(events.some(item => item.event === 'delete'));

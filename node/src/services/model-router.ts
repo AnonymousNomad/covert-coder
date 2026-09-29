@@ -58,8 +58,8 @@ export interface ChatAuthorityTargetBinding {
   execution_class: 'LOCAL' | 'EXTERNAL';
   route_id: string;
   model_id: string;
-  source: 'model-runtime' | 'provider-service';
-  runtime_class: 'local-model-runtime' | 'provider-service';
+  source: 'model-runtime' | 'provider-service' | 'model-access';
+  runtime_class: 'local-model-runtime' | 'provider-service' | 'opencode-managed';
   endpoint_origin: string;
   target_revision: string;
   provider_id?: string;
@@ -149,10 +149,29 @@ function bindingEqual(left: Readonly<ChatAuthorityTargetBinding>, right: Readonl
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function modelAccessProviderRouteEligible(route: ModelProviderRouteT): boolean {
+function modelAccessProviderRouteEligible(route: ModelProviderRouteT, adapter: string): boolean {
   return route.model_support_state === 'VERIFIED' && route.available && route.configured &&
     route.health === 'HEALTHY' && route.external_egress_required && !route.operator_setup_required &&
-    route.setup_state === 'READY' && route.credential_source_id !== null;
+    route.setup_state === 'READY' && route.credential_source_id !== null && route.execution_adapter_id === adapter;
+}
+
+const OPENCODE_PROVIDER_ID = 'opencode';
+const OPENCODE_GO_ID = 'opencode-go';
+const OPENCODE_GO_EGRESS_HOST = 'opencode.ai';
+const OPENCODE_GO_ORIGIN = `https://${OPENCODE_GO_EGRESS_HOST}`;
+
+export interface OpenCodeModelRouterAdapter {
+  workspace: string;
+  assertExternalEgressAllowed: () => void;
+  runTaskStream(options: {
+    workspace: string;
+    prompt: string;
+    providerID: string;
+    modelID: string;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onDelta: (delta: string) => void;
+  }): Promise<{ text: string; duration_ms: number; delegated_provider: string | null; delegated_model: string | null }>;
 }
 
 export class ModelRouter {
@@ -160,18 +179,21 @@ export class ModelRouter {
   private readonly providers: ProviderService;
   private readonly providerCatalog: readonly ProviderDefinition[];
   private readonly providerModelRoutes: () => Promise<readonly ModelProviderRouteT[]>;
+  private readonly openCode: OpenCodeModelRouterAdapter | null;
   private readonly health = new Map<string, { status: RouteStatusT; at: number }>();
 
   constructor(
     runtime: ModelRuntime,
     providers: ProviderService,
     providerCatalog: readonly ProviderDefinition[] = BUILTIN_PROVIDERS,
-    providerModelRoutes: () => Promise<readonly ModelProviderRouteT[]> = async () => []
+    providerModelRoutes: () => Promise<readonly ModelProviderRouteT[]> = async () => [],
+    openCode: OpenCodeModelRouterAdapter | null = null
   ) {
     this.runtime = runtime;
     this.providers = providers;
     this.providerCatalog = providerCatalog;
     this.providerModelRoutes = providerModelRoutes;
+    this.openCode = openCode;
   }
 
   private async eligibleProviderModelRoute(providerId: string, providerModelId: string): Promise<ModelProviderRouteT | null> {
@@ -180,7 +202,7 @@ export class ModelRouter {
       route.provider_model_id === providerModelId &&
       route.execution_adapter_id === 'direct-http'
     );
-    if (matches.length !== 1 || !modelAccessProviderRouteEligible(matches[0]!)) return null;
+    if (matches.length !== 1 || !modelAccessProviderRouteEligible(matches[0]!, 'direct-http')) return null;
     return matches[0]!;
   }
 
@@ -233,7 +255,7 @@ export class ModelRouter {
         candidate.provider_id === providerId && candidate.provider_model_id === route.modelString &&
         candidate.execution_adapter_id === 'direct-http'
       );
-      if (connected.has(providerId) && matches.length === 1 && modelAccessProviderRouteEligible(matches[0]!)) {
+      if (connected.has(providerId) && matches.length === 1 && modelAccessProviderRouteEligible(matches[0]!, 'direct-http')) {
         const health = this.health.get(route.id);
         route.status = health !== undefined && Date.now() - health.at < PROBE_TTL_MS ? health.status : 'unverified';
         route.probeMs = health?.at ?? null;
@@ -243,7 +265,28 @@ export class ModelRouter {
       }
       return route;
     });
-    return [...local, ...cloud];
+    const openCodeRoutes = providerModelRoutes
+      .filter(candidate => candidate.execution_adapter_id === 'opencode' && candidate.provider_id === OPENCODE_PROVIDER_ID)
+      .map(candidate => {
+        const id = `cloud:${OPENCODE_PROVIDER_ID}:${candidate.provider_model_id}`;
+        const routeEligible = modelAccessProviderRouteEligible(candidate, 'opencode');
+        const health = this.health.get(id);
+        const healthFresh = health !== undefined && Date.now() - health.at < PROBE_TTL_MS;
+        return {
+          id,
+          displayName: `OpenCode Go · ${candidate.provider_model_id}`,
+          providerType: 'cloud' as const,
+          baseUrl: OPENCODE_GO_ORIGIN,
+          modelString: candidate.provider_model_id,
+          contextLength: 8192,
+          chatTemplate: 'provider',
+          status: !routeEligible ? 'down' as const : healthFresh ? health.status : 'unverified' as const,
+          probeMs: routeEligible && healthFresh ? health!.at : null,
+          roles: ['chat'],
+          capabilities: []
+        };
+      });
+    return [...local, ...cloud, ...openCodeRoutes];
   }
 
   /**
@@ -339,6 +382,61 @@ export class ModelRouter {
         return { status: 'RESOLVED', target: Object.freeze({ binding, route }) };
       }
     }
+    const openCodeRoutes = (await this.providerModelRoutes()).filter(candidate =>
+      candidate.execution_adapter_id === 'opencode' && candidate.provider_id === OPENCODE_PROVIDER_ID &&
+      requestedId === `cloud:${OPENCODE_PROVIDER_ID}:${candidate.provider_model_id}`
+    );
+    if (openCodeRoutes.length > 0) {
+      if (openCodeRoutes.length !== 1 || !modelAccessProviderRouteEligible(openCodeRoutes[0]!, 'opencode')) {
+        return { status: 'UNKNOWN', reason: 'provider-model-route-ineligible' };
+      }
+      const providerRoute = openCodeRoutes[0]!;
+      const [delegatedProvider, delegatedModel, extra] = providerRoute.provider_model_id.split('/');
+      if (delegatedProvider !== OPENCODE_GO_ID || !delegatedModel || extra !== undefined || providerRoute.credential_source_id === null) {
+        return { status: 'UNKNOWN', reason: 'provider-model-route-ineligible' };
+      }
+      const routeId = `cloud:${OPENCODE_PROVIDER_ID}:${providerRoute.provider_model_id}`;
+      const route: ModelRoute = {
+        id: routeId,
+        displayName: `OpenCode Go · ${providerRoute.provider_model_id}`,
+        providerType: 'cloud',
+        baseUrl: OPENCODE_GO_ORIGIN,
+        modelString: providerRoute.provider_model_id,
+        contextLength: 8192,
+        chatTemplate: 'provider',
+        status: 'unverified',
+        probeMs: null,
+        roles: ['chat'],
+        capabilities: []
+      };
+      const binding = Object.freeze({
+        execution_class: 'EXTERNAL' as const,
+        route_id: routeId,
+        model_id: providerRoute.model_id,
+        source: 'model-access' as const,
+        runtime_class: 'opencode-managed' as const,
+        endpoint_origin: OPENCODE_GO_ORIGIN,
+        target_revision: targetRevision({
+          route_id: routeId,
+          canonical_model_id: providerRoute.model_id,
+          provider_model: providerRoute.provider_model_id,
+          model_access_route_id: providerRoute.id,
+          connection_id: providerRoute.connection_id,
+          credential_source_id: providerRoute.credential_source_id,
+          execution_adapter_id: providerRoute.execution_adapter_id,
+          egress_host: OPENCODE_GO_EGRESS_HOST
+        }),
+        provider_id: OPENCODE_PROVIDER_ID,
+        provider_model: providerRoute.provider_model_id,
+        model_access_route_id: providerRoute.id,
+        canonical_model_id: providerRoute.model_id,
+        connection_id: providerRoute.connection_id,
+        credential_source_id: providerRoute.credential_source_id,
+        execution_adapter_id: providerRoute.execution_adapter_id,
+        egress_host: OPENCODE_GO_EGRESS_HOST
+      });
+      return { status: 'RESOLVED', target: Object.freeze({ binding, route }) };
+    }
     return { status: 'UNKNOWN', reason: 'route-not-registered' };
   }
 
@@ -352,9 +450,11 @@ export class ModelRouter {
     const route = await this.currentBoundRoute(target);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
     const chatOptions = normalizeOptions(options);
-    const result = route.providerType === 'local'
+    const result: { text: string; modelId: string; tokens?: number; timingMs: number } = route.providerType === 'local'
       ? await this.runtime.chat(route.id.slice('local:'.length), fit.messages, chatOptions)
-      : await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, fit.messages, chatOptions);
+      : target.binding.execution_adapter_id === 'opencode'
+        ? await this.runOpenCode(target, fit.messages, undefined, chatOptions.signal, chatOptions.timeoutMs)
+        : await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, fit.messages, chatOptions);
     const out: RouteChatResult = {
       text: result.text,
       modelId: route.id,
@@ -383,7 +483,9 @@ export class ModelRouter {
       }, signal, chatOptions);
       result = { text, modelId, timingMs: Date.now() - started };
     } else {
-      result = await this.providers.chatStream(target.binding.provider_id!, target.binding.provider_model!, fit.messages, onDelta, chatOptions);
+      result = target.binding.execution_adapter_id === 'opencode'
+        ? await this.runOpenCode(target, fit.messages, onDelta, signal)
+        : await this.providers.chatStream(target.binding.provider_id!, target.binding.provider_model!, fit.messages, onDelta, chatOptions);
     }
     const out: RouteChatResult = {
       text: result.text,
@@ -398,6 +500,37 @@ export class ModelRouter {
     return out;
   }
 
+  private async runOpenCode(
+    target: ResolvedChatAuthorityTarget,
+    messages: ChatMessageT[],
+    onDelta?: (delta: string) => void,
+    signal?: AbortSignal,
+    timeoutMs?: number
+  ): Promise<{ text: string; modelId: string; timingMs: number }> {
+    if (this.openCode === null) throw new RouterError('unsupported', 'OpenCode route has no managed stream adapter');
+    if (target.binding.execution_adapter_id !== 'opencode' || target.binding.provider_id !== OPENCODE_PROVIDER_ID) {
+      throw new RouterError('unsupported', 'OpenCode route binding is invalid');
+    }
+    const [providerID, modelID, extra] = (target.binding.provider_model ?? '').split('/');
+    if (providerID !== OPENCODE_GO_ID || !modelID || extra !== undefined) {
+      throw new RouterError('unsupported', 'OpenCode route does not bind the exact OpenCode Go model');
+    }
+    this.openCode.assertExternalEgressAllowed();
+    const result = await this.openCode.runTaskStream({
+      workspace: this.openCode.workspace,
+      prompt: messages.map(message => `${message.role.toUpperCase()}: ${message.content}`).join('\n\n'),
+      providerID,
+      modelID,
+      onDelta: onDelta ?? (() => undefined),
+      ...(signal !== undefined ? { signal } : {}),
+      ...(timeoutMs !== undefined ? { timeoutMs } : {})
+    });
+    if (result.delegated_provider !== providerID || result.delegated_model !== modelID) {
+      throw Object.assign(new Error('OpenCode returned a different provider/model identity'), { code: 'TARGET_MISMATCH' });
+    }
+    return { text: result.text, modelId: target.route.id, timingMs: result.duration_ms };
+  }
+
   async probe(id: string): Promise<RouteStatusT> {
     const route = (await this.routes()).find(entry => entry.id === id);
     if (route === undefined) return 'down';
@@ -407,6 +540,13 @@ export class ModelRouter {
       const modelId = id.slice('local:'.length);
       const result = await this.runtime.verifyEndpointModel(modelId, LOCAL_PROBE_TIMEOUT_MS).catch(() => ({ ready: false as const }));
       status = result.ready ? 'ready' : 'down';
+    } else if (id.startsWith(`cloud:${OPENCODE_PROVIDER_ID}:`)) {
+      const target = (await this.providerModelRoutes()).filter(candidate =>
+        candidate.execution_adapter_id === 'opencode' && candidate.provider_id === OPENCODE_PROVIDER_ID &&
+        id === `cloud:${OPENCODE_PROVIDER_ID}:${candidate.provider_model_id}`
+      );
+      status = target.length === 1 && modelAccessProviderRouteEligible(target[0]!, 'opencode') ? 'ready' : 'down';
+      if (status !== 'ready') at = Date.now();
     } else {
       const parts = id.split(':');
       const providerId = parts[1]!;
