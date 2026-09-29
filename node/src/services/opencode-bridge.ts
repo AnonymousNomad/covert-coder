@@ -7,7 +7,10 @@
 //   GET  /provider               providers + connected[] (authoritative)
 //   GET  /provider/auth          supported authentication methods per provider
 //   POST /session                create a session
-//   POST /session/:id/message    send a message, wait for the response
+//   GET  /event                  receive session/message deltas and terminal state
+//   POST /session/:id/prompt_async  start a prompt without blocking the event stream
+//   POST /session/:id/abort       cancel an active prompt
+//   GET  /session/:id/message    read the authoritative final message identity
 //   DELETE /session/:id          cleanup
 // OAuth authorization stays inside OpenCode's own auth mechanism
 // (/provider/{id}/oauth/authorize + callback); Covert never reads or copies
@@ -248,60 +251,260 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     }
   }
 
-  async function runTask(runOptions: { workspace: string; prompt: string; providerID?: string | undefined; modelID?: string | undefined; timeoutMs?: number }): Promise<OpenCodeTaskResult> {
+  async function runTaskStream(runOptions: {
+    workspace: string;
+    prompt: string;
+    providerID: string;
+    modelID: string;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onDelta: (delta: string) => void;
+  }): Promise<OpenCodeTaskResult> {
+    if (runOptions.providerID.length === 0 || runOptions.modelID.length === 0) {
+      throw Object.assign(new Error('OpenCode execution requires an exact provider and model identity'), { code: 'TARGET_MISMATCH' });
+    }
+    if (runOptions.signal?.aborted) throw Object.assign(new Error('OpenCode task cancelled'), { code: 'CANCELLED' });
+
     const startedAt = clock();
     const running = await ensureServer(runOptions.workspace);
     const executable = await resolveExecutable();
     const timeoutMs = Math.max(5000, Math.min(runOptions.timeoutMs ?? 300000, 900000));
-    const created = await fetchJson(`${running.url}/session`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'covert-task' })
-    }, 30000);
-    const sessionId = (created.body as { id?: unknown } | null)?.id;
-    if (created.status !== 200 || typeof sessionId !== 'string') {
-      throw Object.assign(new Error(`opencode session creation failed (HTTP ${created.status})`), { code: 'CHILD_FAILED' });
-    }
-    const payload: Record<string, unknown> = { parts: [{ type: 'text', text: runOptions.prompt }] };
-    if (typeof runOptions.providerID === 'string' && typeof runOptions.modelID === 'string' && runOptions.providerID.length > 0 && runOptions.modelID.length > 0) {
-      payload.model = { providerID: runOptions.providerID, modelID: runOptions.modelID };
-    }
-    const message = await fetchJson(`${running.url}/session/${encodeURIComponent(sessionId)}/message`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload)
-    }, timeoutMs);
-    if (message.status !== 200) {
-      const detail = JSON.stringify(message.body ?? {}).slice(0, 220);
-      throw Object.assign(new Error(`opencode task failed (HTTP ${message.status}): ${detail}`), { code: message.status === 401 || message.status === 403 ? 'NOT_READY' : 'CHILD_FAILED' });
-    }
-    const body = message.body as { info?: Record<string, unknown>; parts?: Array<Record<string, unknown>> } | null;
-    const parts = Array.isArray(body?.parts) ? body.parts : [];
-    const text = parts.filter(part => part?.type === 'text' && typeof part.text === 'string').map(part => String(part.text)).join('\n').trim();
-    const info = body?.info ?? {};
-    const delegatedProvider = typeof info.providerID === 'string' ? info.providerID : null;
-    const delegatedModel = typeof info.modelID === 'string' ? info.modelID : null;
-    if (text.length === 0) {
-      // Truthful failure: surface the provider error OpenCode returned instead
-      // of an opaque empty response.
-      const error = info.error as { name?: unknown; data?: { message?: unknown; statusCode?: unknown } } | undefined;
-      const errorMessage = typeof error?.data?.message === 'string' ? error.data.message : null;
-      if (errorMessage !== null) {
-        const statusCode = typeof error?.data?.statusCode === 'number' ? error.data.statusCode : null;
-        const code = statusCode === 401 || statusCode === 403 ? 'NOT_READY' : 'CHILD_FAILED';
-        throw Object.assign(new Error(`opencode delegated provider error (${String(error?.name ?? 'error')}${statusCode !== null ? ` HTTP ${statusCode}` : ''}): ${errorMessage.slice(0, 200)}`), { code });
-      }
-      throw Object.assign(new Error('opencode returned an empty response'), { code: 'CHILD_FAILED' });
-    }
-    await fetchJson(`${running.url}/session/${encodeURIComponent(sessionId)}`, { method: 'DELETE' }, 15000).catch(() => undefined);
-    return {
-      provider: 'opencode',
-      text,
-      session_id: sessionId,
-      delegated_provider: delegatedProvider,
-      delegated_model: delegatedModel,
-      server_url: running.url,
-      duration_ms: clock() - startedAt,
-      version: executable?.version ?? null
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort('timeout'), timeoutMs);
+    const abortFromCaller = (): void => controller.abort('caller');
+    runOptions.signal?.addEventListener('abort', abortFromCaller, { once: true });
+    let sessionId: string | null = null;
+
+    const cancellationError = (): Error => {
+      const callerCancelled = runOptions.signal?.aborted || controller.signal.reason === 'caller';
+      return Object.assign(new Error(callerCancelled ? 'OpenCode task cancelled' : 'OpenCode task timed out'), {
+        code: callerCancelled ? 'CANCELLED' : 'TIMEOUT'
+      });
     };
+    const request = async (url: string, init: RequestInit, requestTimeoutMs: number): Promise<Response> => {
+      if (controller.signal.aborted) throw cancellationError();
+      try {
+        return await fetchFn(url, { ...init, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(requestTimeoutMs)]) });
+      } catch (error) {
+        if (controller.signal.aborted) throw cancellationError();
+        throw error;
+      }
+    };
+    const exactModelAvailable = async (): Promise<boolean> => {
+      const response = await request(`${running.url}/provider`, { method: 'GET' }, 15000);
+      let body: unknown = null;
+      try { body = await response.json(); } catch { body = null; }
+      if (response.status !== 200 || body === null || typeof body !== 'object') return false;
+      const catalog = body as { all?: unknown; connected?: unknown };
+      const connected = Array.isArray(catalog.connected) && catalog.connected.includes(runOptions.providerID);
+      const providers = Array.isArray(catalog.all) ? catalog.all as Array<Record<string, unknown>> : [];
+      const provider = providers.find(candidate => candidate.id === runOptions.providerID);
+      const models = provider?.models;
+      return connected && models !== null && typeof models === 'object' && Object.hasOwn(models, runOptions.modelID);
+    };
+    const cleanup = async (abort: boolean): Promise<void> => {
+      if (sessionId === null) return;
+      const encoded = encodeURIComponent(sessionId);
+      if (abort) {
+        await fetchFn(`${running.url}/session/${encoded}/abort`, {
+          method: 'POST', signal: AbortSignal.timeout(5000)
+        }).catch(() => undefined);
+      }
+      const deleted = await fetchFn(`${running.url}/session/${encoded}`, {
+        method: 'DELETE', signal: AbortSignal.timeout(5000)
+      }).catch(() => null);
+      if (deleted === null || !deleted.ok) {
+        throw Object.assign(new Error('opencode session cleanup could not be confirmed'), { code: 'CLEANUP_FAILED' });
+      }
+      sessionId = null;
+    };
+
+    try {
+      if (!(await exactModelAvailable())) {
+        throw Object.assign(new Error('OpenCode provider is disconnected or the exact model is absent from its local catalog'), { code: 'NOT_READY' });
+      }
+      const createdResponse = await request(`${running.url}/session`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: 'covert-task' })
+      }, 30000);
+      let created: { id?: unknown } | null = null;
+      try { created = await createdResponse.json() as { id?: unknown }; } catch { created = null; }
+      if (createdResponse.status !== 200 || typeof created?.id !== 'string' || created.id.length === 0) {
+        throw Object.assign(new Error(`opencode session creation failed (HTTP ${createdResponse.status})`), { code: 'CHILD_FAILED' });
+      }
+      sessionId = created.id;
+
+      const eventResponse = await request(`${running.url}/event`, { method: 'GET', headers: { accept: 'text/event-stream' } }, 15000);
+      if (eventResponse.status !== 200 || eventResponse.body === null) {
+        throw Object.assign(new Error(`opencode event stream unavailable (HTTP ${eventResponse.status})`), { code: 'CHILD_FAILED' });
+      }
+
+      let resolveTerminal!: (event: { kind: 'idle' } | { kind: 'error' }) => void;
+      let rejectTerminal!: (error: unknown) => void;
+      const terminal = new Promise<{ kind: 'idle' } | { kind: 'error' }>((resolve, reject) => {
+        resolveTerminal = resolve;
+        rejectTerminal = reject;
+      });
+      // Attach a rejection handler before starting the reader so a fast stream
+      // failure cannot become an unhandled rejection while prompt_async returns.
+      const terminalOutcome = terminal.then(value => ({ value }), error => ({ error }));
+      const assistantMessages = new Set<string>();
+      const textParts = new Set<string>();
+      let receivedBytes = 0;
+      let settled = false;
+      const settle = (value: { kind: 'idle' } | { kind: 'error' }): void => {
+        if (settled) return;
+        settled = true;
+        resolveTerminal(value);
+      };
+      const settleError = (error: unknown): void => {
+        if (settled) return;
+        settled = true;
+        rejectTerminal(error);
+      };
+      const unwrapEvent = (value: unknown): { type?: unknown; properties?: unknown } | null => {
+        if (value === null || typeof value !== 'object') return null;
+        const outer = value as Record<string, unknown>;
+        const candidate = outer.payload !== null && typeof outer.payload === 'object'
+          ? outer.payload as Record<string, unknown>
+          : outer;
+        return candidate;
+      };
+      const handleEvent = (raw: string): void => {
+        if (raw.length === 0 || raw.length > 1024 * 1024) return;
+        let decoded: unknown;
+        try { decoded = JSON.parse(raw); } catch { return; }
+        const event = unwrapEvent(decoded);
+        if (event === null || typeof event.type !== 'string' || event.properties === null || typeof event.properties !== 'object') return;
+        const properties = event.properties as Record<string, unknown>;
+        const info = properties.info as Record<string, unknown> | undefined;
+        const part = properties.part as Record<string, unknown> | undefined;
+        const eventSession = properties.sessionID ?? info?.sessionID ?? part?.sessionID;
+        if (eventSession !== sessionId) return;
+
+        if (event.type === 'session.error') {
+          settle({ kind: 'error' });
+          return;
+        }
+        if (event.type === 'session.idle') {
+          settle({ kind: 'idle' });
+          return;
+        }
+        if (event.type === 'message.updated') {
+          if (info?.sessionID === sessionId && info.role === 'assistant' && typeof info.id === 'string') assistantMessages.add(info.id);
+          return;
+        }
+        if (event.type === 'message.part.updated') {
+          if (part?.sessionID === sessionId && part.type === 'text' && typeof part.id === 'string' && typeof part.messageID === 'string' && assistantMessages.has(part.messageID)) {
+            textParts.add(part.id);
+          }
+          return;
+        }
+        if (event.type === 'message.part.delta' && properties.field === 'text' && typeof properties.delta === 'string' && typeof properties.partID === 'string' && textParts.has(properties.partID)) {
+          try { runOptions.onDelta(properties.delta); } catch { throw Object.assign(new Error('OpenCode delta consumer failed'), { code: 'CHILD_FAILED' }); }
+          if (controller.signal.aborted) throw cancellationError();
+        }
+      };
+      const readEvents = async (): Promise<void> => {
+        const reader = eventResponse.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        try {
+          while (!settled) {
+            const next = await reader.read();
+            if (next.done) break;
+            receivedBytes += next.value.byteLength;
+            if (receivedBytes > MAX_TOTAL_BYTES) throw Object.assign(new Error('opencode event stream exceeded its size limit'), { code: 'CHILD_FAILED' });
+            buffer += decoder.decode(next.value, { stream: true });
+            if (buffer.length > 2 * 1024 * 1024) throw Object.assign(new Error('opencode event frame exceeded its size limit'), { code: 'CHILD_FAILED' });
+            let boundary = buffer.indexOf('\n\n');
+            while (boundary >= 0) {
+              const frame = buffer.slice(0, boundary).replace(/\r/g, '');
+              buffer = buffer.slice(boundary + 2);
+              const data = frame.split('\n').filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+              if (data.length > 0) handleEvent(data);
+              if (settled) break;
+              boundary = buffer.indexOf('\n\n');
+            }
+          }
+          if (!settled) settleError(Object.assign(new Error('opencode event stream ended before the task completed'), { code: 'CHILD_FAILED' }));
+        } catch (error) {
+          settleError(controller.signal.aborted ? cancellationError() : error);
+        } finally {
+          await reader.cancel().catch(() => undefined);
+          reader.releaseLock();
+        }
+      };
+      const readerTask = readEvents();
+
+      const promptResponse = await request(`${running.url}/session/${encodeURIComponent(sessionId)}/prompt_async`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: { providerID: runOptions.providerID, modelID: runOptions.modelID }, parts: [{ type: 'text', text: runOptions.prompt }] })
+      }, 30000);
+      if (promptResponse.status !== 204 && promptResponse.status !== 200) {
+        throw Object.assign(new Error(`opencode prompt submission failed (HTTP ${promptResponse.status})`), { code: promptResponse.status === 401 || promptResponse.status === 403 ? 'NOT_READY' : 'CHILD_FAILED' });
+      }
+      const outcome = await terminalOutcome;
+      if ('error' in outcome) throw outcome.error;
+      if (outcome.value.kind === 'error') throw Object.assign(new Error('opencode delegated provider task failed'), { code: 'CHILD_FAILED' });
+      await readerTask;
+
+      const messagesResponse = await request(`${running.url}/session/${encodeURIComponent(sessionId)}/message`, { method: 'GET' }, 15000);
+      let messages: unknown = null;
+      try { messages = await messagesResponse.json(); } catch { messages = null; }
+      const rows = Array.isArray(messages) ? messages as Array<{ info?: Record<string, unknown>; parts?: Array<Record<string, unknown>> }> : [];
+      const target = [...rows].reverse().find(row => row.info?.role === 'assistant' && row.info.sessionID === sessionId);
+      if (messagesResponse.status !== 200 || target === undefined) throw Object.assign(new Error('opencode returned no authoritative assistant message'), { code: 'CHILD_FAILED' });
+      const delegatedProvider = typeof target.info?.providerID === 'string' ? target.info.providerID : null;
+      const delegatedModel = typeof target.info?.modelID === 'string' ? target.info.modelID : null;
+      if (delegatedProvider !== runOptions.providerID || delegatedModel !== runOptions.modelID) {
+        throw Object.assign(new Error('opencode delegated provider/model identity did not match the authorized target'), { code: 'TARGET_MISMATCH' });
+      }
+      const parts = Array.isArray(target.parts) ? target.parts : [];
+      const text = parts.filter(part => part.type === 'text' && typeof part.text === 'string').map(part => String(part.text)).join('\n').trim();
+      if (text.length === 0) throw Object.assign(new Error('opencode returned an empty response'), { code: 'CHILD_FAILED' });
+      const completedSessionId = sessionId;
+      await cleanup(false);
+      return {
+        provider: 'opencode', text, session_id: completedSessionId, delegated_provider: delegatedProvider,
+        delegated_model: delegatedModel, server_url: running.url,
+        duration_ms: clock() - startedAt, version: executable?.version ?? null
+      };
+    } catch (error) {
+      const mapped = controller.signal.aborted ? cancellationError() : error;
+      try {
+        await cleanup(sessionId !== null);
+      } catch {
+        throw Object.assign(new Error('opencode task failed and session cleanup could not be confirmed'), { code: 'CLEANUP_FAILED', cause: mapped });
+      }
+      throw mapped;
+    } finally {
+      clearTimeout(timeout);
+      runOptions.signal?.removeEventListener('abort', abortFromCaller);
+    }
   }
 
-  return Object.freeze({ detect: resolveExecutable, status, runTask, stop, ensureServer });
+  async function runTask(runOptions: {
+    workspace: string;
+    prompt: string;
+    providerID?: string;
+    modelID?: string;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+  }): Promise<OpenCodeTaskResult> {
+    if (!runOptions.providerID || !runOptions.modelID) {
+      throw Object.assign(new Error('OpenCode task requires an exact provider and model identity'), { code: 'TARGET_MISMATCH' });
+    }
+    return runTaskStream({
+      workspace: runOptions.workspace,
+      prompt: runOptions.prompt,
+      providerID: runOptions.providerID,
+      modelID: runOptions.modelID,
+      ...(runOptions.timeoutMs !== undefined ? { timeoutMs: runOptions.timeoutMs } : {}),
+      ...(runOptions.signal !== undefined ? { signal: runOptions.signal } : {}),
+      onDelta: () => undefined
+    });
+  }
+
+  return Object.freeze({ detect: resolveExecutable, status, runTask, runTaskStream, stop, ensureServer });
 }

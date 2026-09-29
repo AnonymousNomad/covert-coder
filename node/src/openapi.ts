@@ -973,18 +973,23 @@ export async function buildRoutes(workspace: string, version: string, options: B
         const providerId = String((target as { provider_id?: unknown }).provider_id ?? '');
         const modelId = String((target as { model_id?: unknown }).model_id ?? '');
         if (providerId === 'opencode') {
-          return async messages => {
+          return async (messages, signal) => {
             const prompt = messages
               .map(message => `${message.role.toUpperCase()}: ${message.content}`)
               .join('\n\n');
             const modelRef = parseOpenCodeModelRef(modelId);
+            if (!modelRef.providerID || !modelRef.modelID) {
+              throw Object.assign(new Error('OpenCode route must bind an explicit provider and model'), { code: 'NOT_READY' });
+            }
             assertExternalEgressAllowed();
-            const result = await opencodeBridge.runTask({
+            const result = await opencodeBridge.runTaskStream({
               workspace,
               prompt,
               providerID: modelRef.providerID,
               modelID: modelRef.modelID,
-              timeoutMs: 300000
+              timeoutMs: 300000,
+              ...(signal !== undefined ? { signal } : {}),
+              onDelta: () => undefined
             });
             logEgress(workspace, {
               action: 'opencode',
