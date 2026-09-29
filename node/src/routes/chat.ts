@@ -185,22 +185,19 @@ export function routeForChatStream(
           const parsed = ChatStreamDelta.safeParse({ delta });
           if (parsed.success) write(parsed.data);
         }, controller.signal);
-        const done = ChatStreamDone.safeParse({
+        return ChatStreamDone.parse({
           done: true,
           modelId: result.modelId,
           usedApprox: result.usedApprox,
           dropped: result.dropped,
           truncatedSystem: result.truncatedSystem
         });
-        if (done.success) write(done.data);
       } catch (error) {
         if (!aborted) {
           const parsed = ChatStreamError.safeParse({ error: error instanceof Error ? error.message : 'stream failed' });
           if (parsed.success) write(parsed.data);
         }
         throw error;
-      } finally {
-        if (!aborted) res.end();
       }
     }
   };

@@ -280,6 +280,7 @@ test('production provider route is governed end to end and recovers only after e
     const streamBody = { modelId: CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'stream path' }] };
     const streamed = await prepareAndApprove(owner, 'POST', '/api/chat/stream', streamBody, 'provider-lifecycle-stream');
     assertExactTarget(receiptTarget(streamed.before));
+    const auditFile = path.join(workspace, '.aide', 'cipher-state.jsonl');
     const streamResponse = await owner.request('/api/chat/stream', {
       method: 'POST',
       headers: { 'X-AIDE-Operation': streamed.operationId, 'X-AIDE-Task': 'provider-lifecycle-stream' },
@@ -289,6 +290,8 @@ test('production provider route is governed end to end and recovers only after e
     const streamText = await streamResponse.text();
     assert.match(streamText, /streamed:stream path/);
     assert.match(streamText, /"done":true/);
+    const streamAuditEvents = (await fs.readFile(auditFile, 'utf8')).trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+    assert.ok(streamAuditEvents.some(event => event.type === 'authority' && event.operation_id === streamed.operationId && event.decision === 'execution-succeeded'), 'the terminal success frame is not returned before durable Authority evidence');
     const streamAfter = await operationReceipt(owner, streamed.operationId);
     assert.equal(streamAfter.state, 'succeeded');
     assertExactTarget(receiptTarget(streamAfter));
@@ -350,7 +353,6 @@ test('production provider route is governed end to end and recovers only after e
     assert.equal(cancelledAfter.state, 'failed', 'caller cancellation is never reported as success');
     assertExactTarget(receiptTarget(cancelledAfter));
 
-    const auditFile = path.join(workspace, '.aide', 'cipher-state.jsonl');
     const auditEvents = (await fs.readFile(auditFile, 'utf8')).trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
     const durableSuccess = auditEvents.find(event => event.type === 'authority' && event.operation_id === streamed.operationId && event.decision === 'execution-succeeded');
     assert.ok(durableSuccess, 'stream completion has a durable Authority evidence row');
@@ -617,9 +619,13 @@ test('production OpenCode Model Access route is governed and requires exact re-v
     const cleanupText = await cleanupResponse.text();
     assert.match(cleanupText, /cleanup could not be confirmed/);
     assert.doesNotMatch(cleanupText, /"done":true/, 'cleanup failure cannot be converted into a successful stream');
+    const cleanupAuditEvents = (await fs.readFile(auditFile, 'utf8')).trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+    const durableCleanupFailure = cleanupAuditEvents.find(event => event.type === 'authority' && event.operation_id === cleanupMission.operationId && event.decision === 'execution-failed');
+    assert.ok(durableCleanupFailure, 'the terminal failure response is not returned before durable failed Authority evidence');
     const cleanupAfter = await operationReceipt(stack.owner, cleanupMission.operationId);
     assert.equal(cleanupAfter.state, 'failed');
     assertExactOpenCodeTarget(receiptTarget(cleanupAfter));
+    assert.equal(durableCleanupFailure.digest, (cleanupAfter as { digest: unknown }).digest);
 
     const terminalAuditEvents = (await fs.readFile(auditFile, 'utf8')).trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
     const durableCancellation = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === cancelled.operationId && event.decision === 'execution-failed');
@@ -631,9 +637,6 @@ test('production OpenCode Model Access route is governed and requires exact re-v
     const durableProviderError = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === failed.operationId && event.decision === 'execution-failed');
     assert.ok(durableProviderError, 'provider error has a durable failed Authority outcome');
     assert.equal(durableProviderError.digest, (failedAfter as { digest: unknown }).digest);
-    const durableCleanupFailure = terminalAuditEvents.find(event => event.type === 'authority' && event.operation_id === cleanupMission.operationId && event.decision === 'execution-failed');
-    assert.ok(durableCleanupFailure, 'cleanup failure has a durable failed Authority outcome');
-    assert.equal(durableCleanupFailure.digest, (cleanupAfter as { digest: unknown }).digest);
     const opencodeEvents = await readLog(openCodeFixture!.log);
     const lifecyclePrompts = opencodeEvents.filter(event => event.event === 'prompt');
     assert.equal(lifecyclePrompts.length, 8, 'verification, governed runs, restart re-verification, timeout, and other terminal-path cases dispatch once each');

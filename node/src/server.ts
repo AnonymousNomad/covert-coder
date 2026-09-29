@@ -48,7 +48,7 @@ export interface Route {
   response: ZodTypeAny;
   describeOperation?: (ctx: RouteContext, taskId: string) => Promise<OperationInput>;
   handler: (ctx: RouteContext) => Promise<unknown> | unknown;
-  stream?: (ctx: RouteContext, res: http.ServerResponse) => Promise<void>;
+  stream?: (ctx: RouteContext, res: http.ServerResponse) => Promise<unknown>;
 }
 
 export const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -163,7 +163,16 @@ export class ArchServer {
       if (!bodyResult.success) throw new RouteError('BAD_REQUEST', 'invalid request body', bodyResult.error.issues);
       const context: RouteContext = { query: queryResult.data as Record<string, string>, body: bodyResult.data, authority: this.authority, origin,
         ...(actor ? { actor, prepareOperation: (input: { adapter?: 'ts' | 'legacy' | undefined; method: string; path: string; task_id: string; body?: unknown }) => this.prepareOperation(actor, input) } : {}) };
-      const invoke = async () => route.stream ? route.stream(context, response) : route.handler(context);
+      const invoke = async () => {
+        if (route.stream === undefined) return route.handler(context);
+        const data = await route.stream(context, response);
+        const responseResult = route.response.safeParse(data);
+        if (!responseResult.success) {
+          this.logger.error('stream handler produced a response that violates the contract', { route: route.path, issues: responseResult.error.issues });
+          throw new RouteError('INTERNAL', 'stream response violates the contract');
+        }
+        return responseResult.data;
+      };
       const dispatch = async () => {
         if (publicHealth || route.authorityMode) return invoke();
         if (!actor) throw new RouteError('FORBIDDEN', 'authenticated actor required');
@@ -180,7 +189,11 @@ export class ArchServer {
         });
       };
       if (route.stream !== undefined) {
-        await dispatch();
+        const terminal = await dispatch();
+        if (!response.destroyed && !response.writableEnded) {
+          response.write(`data: ${JSON.stringify(terminal)}\n\n`);
+          response.end();
+        }
         this.logger.info('stream ok', { method: request.method, path: url.pathname, ms: Date.now() - started });
         return;
       }
@@ -250,7 +263,7 @@ export class ArchServer {
         this.events.publish('log', { level: 'warn', message: 'request failed', method: request.method, path: url.pathname, code });
       }
       if (response.headersSent) {
-        if (!response.writableEnded) response.end();
+        if (!response.writableEnded && !response.destroyed) response.end();
         return;
       }
       return this.send(response, this.httpStatus(code), fail(code, message, detail));
