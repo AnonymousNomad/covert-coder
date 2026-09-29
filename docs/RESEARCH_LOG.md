@@ -508,3 +508,11 @@ the result, and refuse unsupported completion claims.
   `network.localhost` with an explicit runtime capability check, and run the
   full CI capability matrix on Node 26. Older supported Node runtimes still run
   non-network plugins and fail closed with an actionable message.
+
+## 2026-09-28 P2 Provider Adapter Lifecycle
+
+- Source checkpoint `9bf4abb1a135b9f0429c0fda965c2e300f639b85` binds external chat execution to an exact verified Model Manager route and preserves provider/model/connection/credential-source/adapter identity through Authority dispatch and terminal receipts.
+- Provider verification now requires a provider-shaped completion for the exact selected model; healthy connection state, a generic 2xx, a custom endpoint, or a sibling model cannot establish that route.
+- Streaming uses the provider SSE adapter and closes the upstream response on caller cancellation, timeout, provider errors, and non-2xx responses. The integration fixture covers restart behavior: stored credential remains available, but stale health/model verification does not.
+- Focused evidence is recorded in `docs/nightshift/evidence/provider-adapter-lifecycle-local-2026-09-28.md`. The 66-test P2 regression set, the provider-route lifecycle fixture (1/1), model lifecycle Authority test (1/1), and Node TypeScript check passed locally.
+- These are deterministic fixture results, not real vendor execution. The full architecture gate remains unverified after its earlier 807/786/9/12 red run; current ESLint for the new lifecycle test and live OpenCode Go/DeepSeek execution remain open.
