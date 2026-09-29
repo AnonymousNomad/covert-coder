@@ -5,6 +5,7 @@ import { BUILTIN_PROVIDERS, type ProviderDefinition } from './providers.ts';
 import { fitHistory, estimateTokens } from './history-fit.ts';
 import type { ChatMessageT } from '../../../common/contracts/chat.ts';
 import type { RouteFallbackT, RouteStatusT } from '../../../common/contracts/routing.ts';
+import type { ModelProviderRouteT } from '../../../common/contracts/model-access.ts';
 
 export type RouteFailureReason = 'down' | 'busy' | 'unsupported' | 'context_overflow';
 
@@ -63,6 +64,11 @@ export interface ChatAuthorityTargetBinding {
   target_revision: string;
   provider_id?: string;
   provider_model?: string;
+  model_access_route_id?: string;
+  canonical_model_id?: string;
+  connection_id?: string;
+  credential_source_id?: string;
+  execution_adapter_id?: string;
   egress_host?: string;
 }
 
@@ -73,7 +79,7 @@ export interface ResolvedChatAuthorityTarget {
 
 export type ChatAuthorityTargetResolution =
   | { status: 'RESOLVED'; target: ResolvedChatAuthorityTarget }
-  | { status: 'UNKNOWN'; reason: 'route-not-registered' | 'local-source-not-contained' | 'provider-catalog-invalid' };
+  | { status: 'UNKNOWN'; reason: 'route-not-registered' | 'local-source-not-contained' | 'provider-catalog-invalid' | 'provider-model-route-ineligible' };
 
 export class ChatTargetChangedError extends Error {
   constructor() {
@@ -143,16 +149,39 @@ function bindingEqual(left: Readonly<ChatAuthorityTargetBinding>, right: Readonl
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function modelAccessProviderRouteEligible(route: ModelProviderRouteT): boolean {
+  return route.model_support_state === 'VERIFIED' && route.available && route.configured &&
+    route.health === 'HEALTHY' && route.external_egress_required && !route.operator_setup_required &&
+    route.setup_state === 'READY' && route.credential_source_id !== null;
+}
+
 export class ModelRouter {
   private readonly runtime: ModelRuntime;
   private readonly providers: ProviderService;
   private readonly providerCatalog: readonly ProviderDefinition[];
+  private readonly providerModelRoutes: () => Promise<readonly ModelProviderRouteT[]>;
   private readonly health = new Map<string, { status: RouteStatusT; at: number }>();
 
-  constructor(runtime: ModelRuntime, providers: ProviderService, providerCatalog: readonly ProviderDefinition[] = BUILTIN_PROVIDERS) {
+  constructor(
+    runtime: ModelRuntime,
+    providers: ProviderService,
+    providerCatalog: readonly ProviderDefinition[] = BUILTIN_PROVIDERS,
+    providerModelRoutes: () => Promise<readonly ModelProviderRouteT[]> = async () => []
+  ) {
     this.runtime = runtime;
     this.providers = providers;
     this.providerCatalog = providerCatalog;
+    this.providerModelRoutes = providerModelRoutes;
+  }
+
+  private async eligibleProviderModelRoute(providerId: string, providerModelId: string): Promise<ModelProviderRouteT | null> {
+    const matches = (await this.providerModelRoutes()).filter(route =>
+      route.provider_id === providerId &&
+      route.provider_model_id === providerModelId &&
+      route.execution_adapter_id === 'direct-http'
+    );
+    if (matches.length !== 1 || !modelAccessProviderRouteEligible(matches[0]!)) return null;
+    return matches[0]!;
   }
 
   private localRoute(entry: { id: string; name: string; endpoint: string; model: string; context_tokens: number; roles: string[] }): ModelRoute {
@@ -196,10 +225,15 @@ export class ModelRouter {
       }
       return route;
     });
+    const providerModelRoutes = await this.providerModelRoutes();
     const connected = new Set(await this.providers.list().then(list => list.filter(provider => provider.status === 'connected').map(provider => provider.id)));
     const cloud = this.cloudRoutes().map(route => {
       const providerId = route.id.split(':')[1]!;
-      if (connected.has(providerId)) {
+      const matches = providerModelRoutes.filter(candidate =>
+        candidate.provider_id === providerId && candidate.provider_model_id === route.modelString &&
+        candidate.execution_adapter_id === 'direct-http'
+      );
+      if (connected.has(providerId) && matches.length === 1 && modelAccessProviderRouteEligible(matches[0]!)) {
         const health = this.health.get(route.id);
         route.status = health !== undefined && Date.now() - health.at < PROBE_TTL_MS ? health.status : 'unverified';
         route.probeMs = health?.at ?? null;
@@ -218,7 +252,7 @@ export class ModelRouter {
    * is included in the Authority operation digest and must be revalidated at
    * dispatch.
    */
-  resolveAuthorityTarget(requestedId: string): ChatAuthorityTargetResolution {
+  async resolveAuthorityTarget(requestedId: string): Promise<ChatAuthorityTargetResolution> {
     const localId = requestedId.startsWith('local:')
       ? requestedId.slice('local:'.length)
       : requestedId.startsWith('cloud:') ? null : requestedId;
@@ -258,6 +292,8 @@ export class ModelRouter {
         if (requestedId !== routeId) continue;
         const endpointOrigin = providerEndpoint(provider);
         if (endpointOrigin === null) return { status: 'UNKNOWN', reason: 'provider-catalog-invalid' };
+        const providerRoute = await this.eligibleProviderModelRoute(provider.id, model);
+        if (providerRoute === null) return { status: 'UNKNOWN', reason: 'provider-model-route-ineligible' };
         const route: ModelRoute = {
           id: routeId,
           displayName: `${provider.name} · ${model}`,
@@ -284,10 +320,20 @@ export class ModelRouter {
             provider_model: model,
             endpoint: provider.baseUrl,
             egress_host: provider.egressHost,
-            provider_kind: provider.kind
+            provider_kind: provider.kind,
+            model_access_route_id: providerRoute.id,
+            canonical_model_id: providerRoute.model_id,
+            connection_id: providerRoute.connection_id,
+            credential_source_id: providerRoute.credential_source_id!,
+            execution_adapter_id: providerRoute.execution_adapter_id
           }),
           provider_id: provider.id,
           provider_model: model,
+          model_access_route_id: providerRoute.id,
+          canonical_model_id: providerRoute.model_id,
+          connection_id: providerRoute.connection_id,
+          credential_source_id: providerRoute.credential_source_id!,
+          execution_adapter_id: providerRoute.execution_adapter_id,
           egress_host: provider.egressHost
         });
         return { status: 'RESOLVED', target: Object.freeze({ binding, route }) };
@@ -296,14 +342,14 @@ export class ModelRouter {
     return { status: 'UNKNOWN', reason: 'route-not-registered' };
   }
 
-  private currentBoundRoute(target: ResolvedChatAuthorityTarget): ModelRoute {
-    const current = this.resolveAuthorityTarget(target.binding.route_id);
+  private async currentBoundRoute(target: ResolvedChatAuthorityTarget): Promise<ModelRoute> {
+    const current = await this.resolveAuthorityTarget(target.binding.route_id);
     if (current.status !== 'RESOLVED' || !bindingEqual(current.target.binding, target.binding)) throw new ChatTargetChangedError();
     return current.target.route;
   }
 
   async chatResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined } = {}): Promise<RouteChatResult> {
-    const route = this.currentBoundRoute(target);
+    const route = await this.currentBoundRoute(target);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
     const chatOptions = normalizeOptions(options);
     const result = route.providerType === 'local'
@@ -323,9 +369,9 @@ export class ModelRouter {
   }
 
   async chatStreamResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], onDelta: (delta: string) => void, signal: AbortSignal, options: { maxTokens?: number | undefined } = {}): Promise<RouteChatResult> {
-    const route = this.currentBoundRoute(target);
+    const route = await this.currentBoundRoute(target);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
-    const chatOptions = normalizeOptions(options);
+    const chatOptions = normalizeOptions({ ...options, signal });
     let result: { text: string; modelId: string; tokens?: number; timingMs: number };
     if (route.providerType === 'local') {
       const modelId = route.id.slice('local:'.length);
@@ -337,8 +383,7 @@ export class ModelRouter {
       }, signal, chatOptions);
       result = { text, modelId, timingMs: Date.now() - started };
     } else {
-      result = await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, fit.messages, chatOptions);
-      onDelta(result.text);
+      result = await this.providers.chatStream(target.binding.provider_id!, target.binding.provider_model!, fit.messages, onDelta, chatOptions);
     }
     const out: RouteChatResult = {
       text: result.text,
@@ -367,8 +412,9 @@ export class ModelRouter {
       const providerId = parts[1]!;
       const list = await this.providers.list();
       const provider = list.find(entry => entry.id === providerId);
-      status = provider !== undefined && provider.status === 'connected' ? 'ready' : 'down';
-      if (provider !== undefined && provider.status === 'connected') at = Date.now();
+      const exactRoute = await this.eligibleProviderModelRoute(providerId, route.modelString);
+      status = provider !== undefined && provider.status === 'connected' && exactRoute !== null ? 'ready' : 'down';
+      if (provider !== undefined && provider.status === 'connected' && exactRoute !== null) at = Date.now();
     }
     this.health.set(id, { status, at });
     return status;
@@ -470,8 +516,7 @@ export class ModelRouter {
       if (route.providerType === 'local') {
         result = await this.runtime.chat(route.id.slice('local:'.length), fit.messages, chatOptions);
       } else {
-        const parts = route.id.split(':');
-        result = await this.providers.chat(parts[1]!, route.modelString, fit.messages, chatOptions);
+        throw new RouterError('unsupported', 'external chat requires an Authority-resolved provider model route');
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('busy')) throw new RouterError('busy', error.message);
@@ -494,7 +539,7 @@ export class ModelRouter {
   async chatStream(routeId: string, messages: ChatMessageT[], onDelta: (delta: string) => void, signal: AbortSignal, options: { maxTokens?: number | undefined } = {}): Promise<RouteChatResult> {
     const { route, selection } = await this.resolve(routeId);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
-    const chatOptions = normalizeOptions(options);
+    const chatOptions = normalizeOptions({ ...options, signal });
     let result: { text: string; modelId: string; tokens?: number; timingMs: number };
     if (route.providerType === 'local') {
       const modelId = route.id.slice('local:'.length);
@@ -506,9 +551,7 @@ export class ModelRouter {
       }, signal, chatOptions);
       result = { text, modelId, timingMs: Date.now() - started };
     } else {
-      const parts = route.id.split(':');
-      result = await this.providers.chat(parts[1]!, route.modelString, fit.messages, chatOptions);
-      onDelta(result.text);
+      throw new RouterError('unsupported', 'external streaming requires an Authority-resolved provider model route');
     }
     const out: RouteChatResult = {
       text: result.text,

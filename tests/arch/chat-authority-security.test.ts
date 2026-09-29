@@ -10,6 +10,7 @@ import { routeForChat, routeForChatStream } from '../../node/src/routes/chat.ts'
 import { ModelRouter } from '../../node/src/services/model-router.ts';
 import type { ModelEntry, ModelRuntime } from '../../node/src/services/model-runtime.ts';
 import type { ProviderDefinition, ProviderService } from '../../node/src/services/providers.ts';
+import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 import { pairFixture } from './authority-fixture.ts';
 
 const providerCatalog: readonly ProviderDefinition[] = [{
@@ -76,10 +77,22 @@ class FixtureRuntime {
 
 class FixtureProviders {
   listCalls = 0;
+  nextStreamError: Error | null = null;
   calls: Array<{ providerId: string; model: string }> = [];
+  streamCalls: Array<{ providerId: string; model: string }> = [];
   async list() { this.listCalls += 1; return []; }
   async chat(providerId: string, model: string) {
     this.calls.push({ providerId, model });
+    return { text: 'external-result', modelId: `${providerId}:${model}`, timingMs: 1 };
+  }
+  async chatStream(providerId: string, model: string, _messages: unknown, onDelta: (delta: string) => void) {
+    this.streamCalls.push({ providerId, model });
+    if (this.nextStreamError !== null) {
+      const error = this.nextStreamError;
+      this.nextStreamError = null;
+      throw error;
+    }
+    onDelta('external-result');
     return { text: 'external-result', modelId: `${providerId}:${model}`, timingMs: 1 };
   }
 }
@@ -89,7 +102,29 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
   await fs.mkdir(path.join(workspace, '.aide'), { recursive: true });
   const runtime = new FixtureRuntime(workspace);
   const providers = new FixtureProviders();
-  const router = new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, providerCatalog);
+  const providerModelRoute: ModelProviderRouteT = {
+    id: 'route:builtin:openai:local-gguf-q4:direct-http',
+    model_id: 'provider:openai:local-gguf-q4',
+    provider_id: 'openai',
+    connection_id: 'builtin:openai',
+    provider_model_id: 'local-gguf-q4',
+    credential_source_id: 'credential-source:provider:openai',
+    execution_adapter_id: 'direct-http',
+    model_support_state: 'VERIFIED',
+    configured: true,
+    health: 'HEALTHY',
+    available: true,
+    external_egress_required: true,
+    operator_setup_required: false,
+    setup_state: 'READY',
+    selected_roles: ['chat']
+  };
+  const router = new ModelRouter(
+    runtime as unknown as ModelRuntime,
+    providers as unknown as ProviderService,
+    providerCatalog,
+    async () => [providerModelRoute]
+  );
   const arch = new ArchServer(workspace, path.join(workspace, '.aide', 'authority.log'));
   for (const route of routesForAuthority()) arch.route(route);
   arch.route(routeForChat(router, runtime as unknown as ModelRuntime, workspace));
@@ -128,7 +163,7 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
       const denied = await request(url, body);
       assert.equal(denied.status, 403, `${url} denies an unresolved target`);
     }
-    assert.equal(runtime.chatCalls + runtime.streamCalls + providers.calls.length, 0, 'unknown requests never reach an executor');
+    assert.equal(runtime.chatCalls + runtime.streamCalls + providers.calls.length + providers.streamCalls.length, 0, 'unknown requests never reach an executor');
 
     await fs.writeFile(routingPreferenceFile, JSON.stringify({ preference: 'local-only' }), 'utf8');
     const localTask = 'contract-local';
@@ -163,11 +198,13 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     }) });
     assert.equal(localOnlyExternalPrepare.status, 403, 'Local-Only blocks external chat before approval/dispatch');
     assert.equal(providers.calls.length, 0, 'Local-Only never dispatches the provider');
+    assert.equal(providers.streamCalls.length, 0, 'Local-Only never dispatches the streaming provider');
     const localOnlyExternalStreamPrepare = await owner.request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({
       method: 'POST', path: '/api/chat/stream', body: cloudStreamBody, task_id: 'contract-local-only-cloud-stream'
     }) });
     assert.equal(localOnlyExternalStreamPrepare.status, 403, 'streaming cannot bypass Local-Only external-chat policy');
     assert.equal(providers.calls.length, 0, 'blocked streaming request never dispatches the provider');
+    assert.equal(providers.streamCalls.length, 0, 'blocked streaming request never reaches the streaming adapter');
     await fs.writeFile(routingPreferenceFile, JSON.stringify({ preference: 'local-first' }), 'utf8');
 
     const crossRouteTask = 'contract-cross-route-replay';
@@ -190,6 +227,11 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     assert.equal(externalArgs.chat_target.provider_id, 'openai');
     assert.equal(externalArgs.chat_target.provider_model, 'local-gguf-q4');
     assert.equal(externalArgs.chat_target.egress_host, 'api.openai.com');
+    assert.equal(externalArgs.chat_target.model_access_route_id, providerModelRoute.id);
+    assert.equal(externalArgs.chat_target.canonical_model_id, providerModelRoute.model_id);
+    assert.equal(externalArgs.chat_target.connection_id, providerModelRoute.connection_id);
+    assert.equal(externalArgs.chat_target.credential_source_id, providerModelRoute.credential_source_id);
+    assert.equal(externalArgs.chat_target.execution_adapter_id, providerModelRoute.execution_adapter_id);
     await owner.decide(externalOperation.operation_id, 'approve');
     const externalResponse = await request('/api/chat', cloudBody, { operation_id: externalOperation.operation_id, task_id: externalTask });
     assert.equal(externalResponse.status, 200);
@@ -201,9 +243,11 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     assert.equal(deniedStreamReceipt.kind, externalReceipt.kind, 'streaming preserves external permission semantics');
     await owner.decide(deniedStreamOperation.operation_id, 'reject');
     const beforeDeniedStreamCalls = providers.calls.length;
+    const beforeDeniedStreamCallsStream = providers.streamCalls.length;
     const deniedStream = await request('/api/chat/stream', cloudStreamBody, { operation_id: deniedStreamOperation.operation_id, task_id: deniedStreamTask });
     assert.equal(deniedStream.status, 409);
     assert.equal(providers.calls.length, beforeDeniedStreamCalls, 'rejected external stream does not dispatch');
+    assert.equal(providers.streamCalls.length, beforeDeniedStreamCallsStream, 'rejected external stream never reaches the streaming adapter');
 
     const approvedExternalStreamTask = 'contract-external-stream-approved';
     const approvedExternalStreamOperation = await owner.propose('POST', '/api/chat/stream', cloudStreamBody, approvedExternalStreamTask);
@@ -215,7 +259,24 @@ test('HTTP chat Authority binds local/external identity, enforces stream parity,
     });
     assert.equal(approvedExternalStream.status, 200);
     assert.match(await approvedExternalStream.text(), /external-result/);
-    assert.deepEqual(providers.calls.at(-1), { providerId: 'openai', model: 'local-gguf-q4' });
+    assert.deepEqual(providers.streamCalls.at(-1), { providerId: 'openai', model: 'local-gguf-q4' });
+
+    providers.nextStreamError = new Error('fixture provider execution failure');
+    const failedStreamTask = 'contract-external-stream-error';
+    const failedStreamOperation = await owner.propose('POST', '/api/chat/stream', cloudStreamBody, failedStreamTask);
+    await owner.decide(failedStreamOperation.operation_id, 'approve');
+    const failedStreamResponse = await request('/api/chat/stream', cloudStreamBody, {
+      operation_id: failedStreamOperation.operation_id,
+      task_id: failedStreamTask
+    });
+    assert.equal(failedStreamResponse.status, 200, 'the stream error is reported through its established SSE envelope');
+    assert.match(await failedStreamResponse.text(), /fixture provider execution failure/);
+    const failedStreamReceipt = await inspect(failedStreamOperation.operation_id);
+    assert.equal(failedStreamReceipt.state, 'failed');
+    const failedTarget = (failedStreamReceipt.args as { chat_target: Record<string, unknown> }).chat_target;
+    assert.equal(failedTarget.model_access_route_id, providerModelRoute.id, 'failure receipt retains the exact Model Manager route');
+    assert.equal(failedTarget.connection_id, providerModelRoute.connection_id, 'failure receipt retains the provider connection');
+    assert.equal(failedTarget.execution_adapter_id, providerModelRoute.execution_adapter_id, 'failure receipt retains the adapter');
 
     const substitutionTask = 'contract-local-to-cloud';
     const localApproved = await owner.propose('POST', '/api/chat', localBody, substitutionTask);

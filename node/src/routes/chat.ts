@@ -73,7 +73,7 @@ function describeChatOperation(
 ) {
   return async (context: RouteContext, taskId: string): Promise<OperationInput> => {
     const request = context.body as ChatRequestT | ChatStreamRequestT;
-    const resolution = router.resolveAuthorityTarget(request.modelId);
+    const resolution = await router.resolveAuthorityTarget(request.modelId);
     if (resolution.status !== 'RESOLVED') {
       throw new RouteError('FORBIDDEN', `chat execution target is unresolved (${resolution.reason})`);
     }
@@ -198,6 +198,7 @@ export function routeForChatStream(
           const parsed = ChatStreamError.safeParse({ error: error instanceof Error ? error.message : 'stream failed' });
           if (parsed.success) write(parsed.data);
         }
+        throw error;
       } finally {
         if (!aborted) res.end();
       }

@@ -12,6 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHealthSupervisor } from '../../node/src/services/health-supervisor.ts';
 import { createReadinessService } from '../../node/src/services/readiness.ts';
+import { createResourceAdmission } from '../../node/src/services/resource-admission.ts';
 import { ArchServer } from '../../node/src/server.ts';
 import { pairFixture } from './authority-fixture.ts';
 const { buildRoutes } = await import('../../node/src/openapi.ts');
@@ -68,7 +69,16 @@ test('doctor LIVE: real route stack with no model runtime yields degraded, not f
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'doctor-live-'));
   const server = new ArchServer(workspace, path.join(workspace, 'arch.log'));
   // Deliberately NO modelRuntime: corpus of failure category "missing model".
-  const routes = await buildRoutes(workspace, 'test', { authority: server.authority, events: server.events });
+  const routes = await buildRoutes(workspace, 'test', {
+    authority: server.authority,
+    events: server.events,
+    resourceAdmission: createResourceAdmission({
+      memoryProbeMB: () => 4096,
+      vramProbeMB: async () => null,
+      loadProbe: () => 0,
+      cores: 4
+    })
+  });
   for (const route of routes) server.route(route);
   const http = await server.listen(0);
   const address = http.address() as { port: number };

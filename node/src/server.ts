@@ -249,6 +249,10 @@ export class ArchServer {
         });
         this.events.publish('log', { level: 'warn', message: 'request failed', method: request.method, path: url.pathname, code });
       }
+      if (response.headersSent) {
+        if (!response.writableEnded) response.end();
+        return;
+      }
       return this.send(response, this.httpStatus(code), fail(code, message, detail));
     }
   }

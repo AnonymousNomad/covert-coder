@@ -79,6 +79,7 @@ export interface ProviderServiceOptions {
   assertExternalEgressAllowed?: () => void;
   allowlistFile?: string;
   logger?: { info(message: string): void } | undefined;
+  requestTimeoutMs?: number;
 }
 
 export class ProviderError extends Error {
@@ -98,10 +99,14 @@ interface AllowlistFile {
 interface ProbeCacheEntry {
   status: Exclude<ProbeResult, 'connected'> | 'connected';
   at: number;
+  model: string;
+  endpointIdentity: string | null;
 }
 
 const PROBE_TIMEOUT_MS = 5_000;
 const PROBE_CACHE_TTL_MS = 60_000;
+const PROVIDER_REQUEST_TIMEOUT_MS = 60_000;
+const MAX_SSE_DATA_CHARS = 1_048_576;
 
 function hostOf(baseUrl: string): string {
   try {
@@ -111,12 +116,99 @@ function hostOf(baseUrl: string): string {
   }
 }
 
+function endpointIdentity(baseUrl: string): string | null {
+  try {
+    const endpoint = new URL(baseUrl);
+    if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) return null;
+    endpoint.pathname = endpoint.pathname.replace(/\/+$/, '') || '/';
+    return endpoint.href;
+  } catch {
+    return null;
+  }
+}
+
+function abortReason(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new DOMException('The operation was aborted', 'AbortError');
+}
+
+async function consumeSse(
+  body: ReadableStream<Uint8Array> | null,
+  signal: AbortSignal,
+  onEvent: (eventName: string, data: string) => void
+): Promise<void> {
+  if (body === null) throw new Error('provider response did not include a stream body');
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let eventName = '';
+  let dataLines: string[] = [];
+  let dataChars = 0;
+  let completed = false;
+
+  const cancelReader = (): void => {
+    void reader.cancel(signal.reason).catch(() => {});
+  };
+  signal.addEventListener('abort', cancelReader, { once: true });
+
+  const dispatch = (): void => {
+    if (dataLines.length > 0) onEvent(eventName || 'message', dataLines.join('\n'));
+    eventName = '';
+    dataLines = [];
+    dataChars = 0;
+  };
+  const processLine = (rawLine: string): void => {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (line.length === 0) {
+      dispatch();
+      return;
+    }
+    if (line.startsWith(':')) return;
+    const separator = line.indexOf(':');
+    const field = separator < 0 ? line : line.slice(0, separator);
+    const value = separator < 0 ? '' : line.slice(separator + 1).replace(/^ /, '');
+    if (field === 'event') eventName = value;
+    else if (field === 'data') {
+      dataLines.push(value);
+      dataChars += value.length;
+      if (dataChars > MAX_SSE_DATA_CHARS) {
+        throw new Error('provider stream event exceeded the size limit');
+      }
+    }
+  };
+
+  try {
+    for (;;) {
+      if (signal.aborted) throw abortReason(signal);
+      const result = await reader.read();
+      if (signal.aborted) throw abortReason(signal);
+      if (result.done) break;
+      buffer += decoder.decode(result.value, { stream: true });
+      let newline = buffer.indexOf('\n');
+      while (newline >= 0) {
+        processLine(buffer.slice(0, newline));
+        buffer = buffer.slice(newline + 1);
+        newline = buffer.indexOf('\n');
+      }
+      if (buffer.length > MAX_SSE_DATA_CHARS) throw new Error('provider stream line exceeded the size limit');
+    }
+    buffer += decoder.decode();
+    if (buffer.length > 0) processLine(buffer);
+    dispatch();
+    completed = true;
+  } finally {
+    signal.removeEventListener('abort', cancelReader);
+    if (!completed) await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 export class ProviderService {
   private readonly credentials: CredentialStore;
   private readonly fetchFn: typeof fetch;
   private readonly allowlistPath: string;
   private readonly logger: { info(message: string): void } | undefined;
   private readonly externalEgressGuard: (() => void) | undefined;
+  private readonly requestTimeoutMs: number;
   private allowlist: Set<string> | null = null;
   private readonly probeCache = new Map<string, ProbeCacheEntry>();
 
@@ -126,6 +218,10 @@ export class ProviderService {
     this.externalEgressGuard = options.assertExternalEgressAllowed;
     this.allowlistPath = options.allowlistFile ?? path.join(workspace, '.aide', 'provider-hosts.json');
     this.logger = options.logger;
+    const configuredTimeout = options.requestTimeoutMs;
+    this.requestTimeoutMs = configuredTimeout !== undefined && Number.isFinite(configuredTimeout)
+      ? Math.min(PROVIDER_REQUEST_TIMEOUT_MS, Math.max(1, Math.floor(configuredTimeout)))
+      : PROVIDER_REQUEST_TIMEOUT_MS;
   }
 
   async list(): Promise<ProviderInfoT[]> {
@@ -149,6 +245,16 @@ export class ProviderService {
     });
   }
 
+  modelSupportState(providerId: string, modelId: string): 'verified' | 'unknown' {
+    const provider = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
+    const cached = this.probeCache.get(providerId);
+    if (provider === undefined || cached === undefined || Date.now() - cached.at >= PROBE_CACHE_TTL_MS ||
+        cached.status !== 'connected' || cached.model !== modelId || cached.endpointIdentity !== endpointIdentity(provider.baseUrl)) {
+      return 'unknown';
+    }
+    return 'verified';
+  }
+
   async connect(request: ProviderConnectRequestT): Promise<{ status: ProbeResult; message: string }> {
     this.assertExternalEgressAllowed();
     const provider = BUILTIN_PROVIDERS.find(entry => entry.id === request.providerId);
@@ -170,14 +276,14 @@ export class ProviderService {
     await this.credentials.set(request.providerId, request.key);
     const model = request.model ?? provider.models[0]!;
     const probe = await this.probe(provider, request.key, baseUrl, model, host);
-    this.probeCache.set(request.providerId, { status: probe, at: Date.now() });
+    this.probeCache.set(request.providerId, { status: probe, at: Date.now(), model, endpointIdentity: endpointIdentity(baseUrl) });
     this.logger?.info(`PROVIDER: ${provider.id} probe -> ${probe} (host=${host}, model=${model})`);
     const message =
       probe === 'connected'
         ? `connected (${model})`
         : probe === 'invalid_key'
           ? 'the key was rejected by the provider'
-          : 'the provider could not be reached';
+          : 'the selected provider/model route could not be verified';
     return { status: probe, message };
   }
 
@@ -281,6 +387,140 @@ export class ProviderService {
     }
   }
 
+  async chatStream(
+    providerId: string,
+    model: string,
+    messages: Array<{ role: string; content: string }>,
+    onDelta: (delta: string) => void,
+    options: { maxTokens?: number; temperature?: number; signal?: AbortSignal } = {}
+  ): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
+    this.assertExternalEgressAllowed();
+    const provider = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
+    if (provider === undefined) throw new ProviderError('NOT_READY', `unknown provider ${providerId}`);
+    const key = await this.credentials.get(providerId);
+    if (key === undefined) throw new ProviderError('NOT_READY', `provider ${providerId} is not connected`);
+    const started = Date.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new DOMException('provider request timed out', 'TimeoutError')), this.requestTimeoutMs);
+    const signal = options.signal !== undefined ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
+    let readerBody: ReadableStream<Uint8Array> | null = null;
+    try {
+      if (signal.aborted) throw abortReason(signal);
+      this.assertExternalEgressAllowed();
+      const baseUrl = provider.baseUrl.replace(/\/$/, '');
+      let response: Response;
+      if (provider.kind === 'anthropic') {
+        const systemParts = messages.filter(message => message.role === 'system' || message.role === 'developer').map(message => message.content);
+        const conversation: Array<{ role: string; content: string }> = [];
+        for (const message of messages) {
+          if (message.role === 'system' || message.role === 'developer') continue;
+          const previous = conversation[conversation.length - 1];
+          if (previous !== undefined && previous.role === message.role) previous.content += `\n${message.content}`;
+          else conversation.push({ role: message.role, content: message.content });
+        }
+        const body: Record<string, unknown> = {
+          model,
+          max_tokens: Math.min(options.maxTokens ?? 512, 8192),
+          messages: conversation,
+          stream: true
+        };
+        if (systemParts.length > 0) body.system = systemParts.join('\n');
+        response = await this.fetchFn(`${baseUrl}/messages`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify(body),
+          signal
+        });
+      } else {
+        response = await this.fetchFn(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: options.temperature ?? 0.2,
+            max_tokens: Math.min(options.maxTokens ?? 512, 8192),
+            stream: true
+          }),
+          signal
+        });
+      }
+      readerBody = response.body;
+      if (response.status === 429 || response.status === 503) throw new ProviderError('CHILD_FAILED', `provider ${providerId} is busy (HTTP ${response.status})`);
+      if (response.status === 401 || response.status === 403) throw new ProviderError('NOT_READY', `provider ${providerId} rejected the stored key (HTTP ${response.status})`);
+      if (!response.ok) throw new ProviderError('CHILD_FAILED', `provider ${providerId} returned HTTP ${response.status}`);
+
+      let text = '';
+      let tokens: number | undefined;
+      let protocolComplete = false;
+      await consumeSse(readerBody, signal, (eventName, data) => {
+        if (data === '[DONE]') {
+          protocolComplete = true;
+          return;
+        }
+        let payload: {
+          type?: string;
+          error?: unknown;
+          choices?: Array<{ delta?: { content?: unknown }; finish_reason?: string | null }>;
+          usage?: { completion_tokens?: number; output_tokens?: number };
+          delta?: { type?: string; text?: unknown };
+        };
+        try {
+          payload = JSON.parse(data) as typeof payload;
+        } catch {
+          throw new ProviderError('CHILD_FAILED', `provider ${providerId} returned malformed stream data`);
+        }
+        if (eventName === 'error' || payload.error !== undefined || payload.type === 'error') {
+          throw new ProviderError('CHILD_FAILED', `provider ${providerId} reported a stream error`);
+        }
+        if (provider.kind === 'anthropic') {
+          if (eventName === 'message_stop' || payload.type === 'message_stop') protocolComplete = true;
+          const delta = payload.type === 'content_block_delta' ? payload.delta?.text : undefined;
+          if (typeof delta === 'string' && delta.length > 0) {
+            text += delta;
+            onDelta(delta);
+          }
+          const outputTokens = payload.usage?.output_tokens;
+          if (typeof outputTokens === 'number') tokens = outputTokens;
+        } else {
+          const delta = payload.choices?.[0]?.delta?.content;
+          if (typeof delta === 'string' && delta.length > 0) {
+            text += delta;
+            onDelta(delta);
+          }
+          const completionTokens = payload.usage?.completion_tokens;
+          if (typeof completionTokens === 'number') tokens = completionTokens;
+        }
+      });
+      if (!protocolComplete) throw new ProviderError('CHILD_FAILED', `provider ${providerId} ended the stream before completion`);
+      if (text.length === 0) throw new ProviderError('CHILD_FAILED', `provider ${providerId} returned an empty response`);
+      const result: { text: string; modelId: string; tokens?: number; timingMs: number } = {
+        text,
+        modelId: `${providerId}:${model}`,
+        timingMs: Date.now() - started
+      };
+      if (tokens !== undefined) result.tokens = tokens;
+      return result;
+    } catch (error) {
+      if ((error as { code?: string })?.code === 'FORBIDDEN' || (error as { code?: string })?.code === 'NOT_READY') throw error;
+      if (error instanceof ProviderError) throw error;
+      if (options.signal?.aborted) throw abortReason(options.signal);
+      if (controller.signal.aborted) throw new ProviderError('CHILD_FAILED', `provider ${providerId} timed out after ${this.requestTimeoutMs}ms`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new ProviderError('CHILD_FAILED', scrubKey(message, key));
+    } finally {
+      clearTimeout(timer);
+      if (readerBody !== null) await readerBody.cancel().catch(() => {});
+    }
+  }
+
   private async probe(
     provider: ProviderDefinition,
     key: string,
@@ -317,7 +557,16 @@ export class ProviderService {
           signal: controller.signal
         });
       }
-      if (response.status >= 200 && response.status < 300) return 'connected';
+      if (response.status >= 200 && response.status < 300) {
+        const payload = await response.json().catch(() => null) as {
+          choices?: Array<{ message?: { content?: unknown } }>;
+          content?: Array<{ type?: string; text?: unknown }>;
+        } | null;
+        const output = provider.kind === 'anthropic'
+          ? payload?.content?.map(block => block.type === 'text' && typeof block.text === 'string' ? block.text : '').join('')
+          : payload?.choices?.[0]?.message?.content;
+        return typeof output === 'string' && output.length > 0 ? 'connected' : 'unreachable';
+      }
       if (response.status === 401 || response.status === 403) return 'invalid_key';
       return 'unreachable';
     } catch (error) {

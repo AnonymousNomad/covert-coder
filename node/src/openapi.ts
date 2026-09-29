@@ -105,6 +105,7 @@ import { createByokService } from '../../node/src/services/byok-service.mjs';
 import { routesForByok } from './routes/byok.ts';
 import { createProviderConnectionsService, type ProviderConnectionsService } from '../../node/src/services/provider-connections.mjs';
 import { createModelManagerView } from './services/model-manager-view.ts';
+import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 import { routesForConnections } from './routes/connections.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
@@ -162,6 +163,9 @@ export interface BuildRoutesOptions {
   byokSecretStore?: { setKey(id: string, key: string): void; getKey(id: string): string | null; deleteKey(id: string): boolean; listProviderIds(): string[] };
   // Unified provider connections service override (tests inject hermetic stubs).
   connectionsService?: unknown;
+  // Optional resource probes for deterministic integration tests; production
+  // uses the canonical host probes by default.
+  resourceAdmission?: ReturnType<typeof createResourceAdmission>;
   // Optional Authorization bearer source for modelhub egress (e.g. a vaulted
   // Hugging Face access token). Failures degrade to anonymous access.
   modelHubAuthorization?: () => Promise<string | null>;
@@ -399,7 +403,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
       assertExternalEgressAllowed,
       logger: options.logger
     });
-  const modelRouter = new ModelRouter(modelRuntime, providerService);
+  let modelProviderRouteSnapshot: () => Promise<readonly ModelProviderRouteT[]> = async () => [];
+  const modelRouter = new ModelRouter(modelRuntime, providerService, undefined, () => modelProviderRouteSnapshot());
   const learnerState = new LearnerState({ statePath: path.join(workspace, '.aide', 'learner-state.json') });
   await learnerState.load();
   const tutorManager = new TutorManager({
@@ -584,7 +589,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // HARNESS vNEXT H3 — durable attempt/admission journal around the live
   // mutation path. Recovery classification runs once at construction.
   const attemptJournal = createAttemptJournal({ workspace });
-  const resourceAdmission = createResourceAdmission();
+  const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
   void attemptJournal.recover().catch(() => {});
   const agentLoop = createAgentLoop({
     workspace,
@@ -697,6 +702,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     connectionsService,
     ...(modelRuntime instanceof BrokerModelRuntime ? { runtimeStatus: () => modelRuntime.runtimeStatusSnapshot() } : {})
   });
+  modelProviderRouteSnapshot = async () => (await modelManagerView.snapshot()).routes;
   const huggingfaceAuthorization =
     options.modelHubAuthorization ??
     (async () => {

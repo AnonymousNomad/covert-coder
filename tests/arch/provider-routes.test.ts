@@ -49,8 +49,12 @@ before(async () => {
     assertExternalEgressAllowed: () => server.authority.assertExternalEgressAllowed(),
     fetchFn: (async (_url: RequestInfo | URL, init?: RequestInit) => {
       const headers = new Headers(init?.headers);
-      if (headers.get('authorization') === 'Bearer sk-valid') return new Response(null, { status: 200 });
-      if (headers.get('x-api-key') === 'ant-valid') return new Response(null, { status: 200 });
+      if (headers.get('authorization') === 'Bearer sk-valid') {
+        return Response.json({ choices: [{ message: { content: 'probe ok' } }] });
+      }
+      if (headers.get('x-api-key') === 'ant-valid') {
+        return Response.json({ content: [{ type: 'text', text: 'probe ok' }] });
+      }
       return new Response(null, { status: 401 });
     }) as typeof fetch
   });

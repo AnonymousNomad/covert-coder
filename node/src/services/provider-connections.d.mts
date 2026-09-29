@@ -14,7 +14,10 @@ export interface ProviderConnectionsService {
 
 export interface ProviderConnectionsServiceOptions {
   workspace: string;
-  providerService: { list(): Promise<Array<Record<string, unknown>>> };
+  providerService: {
+    list(): Promise<Array<Record<string, unknown>>>;
+    modelSupportState?(providerId: string, modelId: string): 'verified' | 'unknown' | 'unsupported';
+  };
   byokService: {
     status(): unknown;
     testProvider(providerId: string): Promise<{ ok: boolean; detail: string }>;

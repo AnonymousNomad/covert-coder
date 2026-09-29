@@ -7338,7 +7338,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/doctor-truth.test.ts",
-          "line": 77
+          "line": 87
         }
       ],
       "requestShape": {

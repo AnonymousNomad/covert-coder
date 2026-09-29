@@ -264,6 +264,41 @@ test('provider health does not imply exact model route support and local-only ga
   assert.equal(gated.routing_available, false, 'local-only disables a healthy external connection');
 });
 
+test('only the exact provider model confirmed by its probe becomes an eligible Model Manager route', async t => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'model-access-exact-provider-model-'));
+  t.after(() => fs.rm(workspace, { recursive: true, force: true }));
+  const connections = createProviderConnectionsService({
+    workspace,
+    providerService: {
+      list: async () => [{ id: 'openai', name: 'OpenAI', models: ['gpt-4o-mini', 'gpt-4o'], status: 'connected', configured: true }],
+      modelSupportState: (_providerId: string, modelId: string) => modelId === 'gpt-4o-mini' ? 'verified' : 'unknown'
+    },
+    byokService: {
+      status: () => ({ providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: true }),
+      testProvider: async () => ({ ok: false, detail: 'not configured' })
+    },
+    modelRuntimeStatus: async () => ({ runtime: false, models: [] }),
+    secretStore: { setKey: () => undefined, getKey: () => null, deleteKey: () => true, listProviderIds: () => [] },
+    findExecutable: async () => null
+  });
+  const manager = createModelManagerView({
+    workspace,
+    manifestPath: path.join(workspace, 'manifest.json'),
+    modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
+    connectionsService: connections as any,
+    runtimeStatus: async () => ({ backend: null, health: 'NOT_INSTALLED' }) as any
+  });
+  const routes = (await manager.snapshot()).routes.filter(route => route.provider_id === 'openai');
+  const verified = routes.find(route => route.provider_model_id === 'gpt-4o-mini');
+  const unverified = routes.find(route => route.provider_model_id === 'gpt-4o');
+  assert.ok(verified);
+  assert.equal(verified.model_support_state, 'VERIFIED');
+  assert.equal(verified.available, true);
+  assert.ok(unverified);
+  assert.equal(unverified.model_support_state, 'UNKNOWN');
+  assert.equal(unverified.available, false, 'a sibling model inherits neither support nor availability');
+});
+
 test('Model Manager GET is passive and selection policy cannot change execution routing', async () => {
   const workspace = path.join(os.tmpdir(), 'model-manager-read-only-missing-workspace');
   let preferenceWrites = 0;

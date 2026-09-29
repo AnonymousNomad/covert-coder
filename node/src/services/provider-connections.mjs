@@ -203,7 +203,12 @@ export function createProviderConnectionsService(options) {
       const health = healthy ? 'healthy' : state === 'invalid_key' ? 'unhealthy' : state === 'unreachable' ? 'unavailable' : configured ? 'unknown' : 'unavailable';
       const status = !configured ? 'not_configured' : state === 'connected' ? 'connected' : state === 'invalid_key' ? 'invalid_key' : state === 'unreachable' ? 'unreachable' : 'configured_not_verified';
       const references = (Array.isArray(provider?.models) ? provider.models : [])
-        .map(modelId => safeModelReference(providerId, modelId))
+        .map(modelId => {
+          const reference = safeModelReference(providerId, modelId);
+          if (!reference) return null;
+          const supportState = providerService.modelSupportState?.(providerId, modelId);
+          return { ...reference, model_support_state: supportState === 'verified' ? 'verified' : 'unknown' };
+        })
         .filter(Boolean);
       const routeAvailable = healthy && consentEnabled;
       const setupState = !configured ? 'setup_required' : state === 'invalid_key' ? 'remediation_required' : !consentEnabled ? 'consent_required' : healthy ? 'ready' : 'verification_required';

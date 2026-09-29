@@ -20,7 +20,7 @@ class FakeCrypt implements CryptService {
   }
 }
 
-function makeService(dir: string, fetchFn: typeof fetch, assertExternalEgressAllowed?: () => void): { service: ProviderService; logs: string[] } {
+function makeService(dir: string, fetchFn: typeof fetch, assertExternalEgressAllowed?: () => void, requestTimeoutMs?: number): { service: ProviderService; logs: string[] } {
   const logs: string[] = [];
   const options: ProviderServiceOptions = {
     credentials: new CredentialStore(dir, new FakeCrypt()),
@@ -28,7 +28,26 @@ function makeService(dir: string, fetchFn: typeof fetch, assertExternalEgressAll
     assertExternalEgressAllowed: assertExternalEgressAllowed ?? (() => {}),
     logger: { info: (message: string) => logs.push(message) }
   };
+  if (requestTimeoutMs !== undefined) options.requestTimeoutMs = requestTimeoutMs;
   return { service: new ProviderService(dir, options), logs };
+}
+
+function streamResponse(chunks: string[]): Response {
+  return new Response(new ReadableStream<Uint8Array>({
+    start(controller) {
+      const encoder = new TextEncoder();
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    }
+  }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+}
+
+function openAiProbeResponse(): Response {
+  return Response.json({ choices: [{ message: { content: 'ok' } }] }, { status: 200 });
+}
+
+function anthropicProbeResponse(): Response {
+  return Response.json({ content: [{ type: 'text', text: 'ok' }] }, { status: 200 });
 }
 
 test('built-in provider registry is well-formed', () => {
@@ -84,7 +103,7 @@ test('connect probes with a successful response -> connected and persists the ke
       calls.push(String(url));
       const headers = new Headers(init?.headers);
       assert.equal(headers.get('authorization'), 'Bearer sk-test');
-      return new Response(null, { status: 200 });
+      return openAiProbeResponse();
     }) as typeof fetch;
     const { service } = makeService(dir, fetchFn);
     const result = await service.connect({ providerId: 'openai', key: 'sk-test' });
@@ -92,7 +111,21 @@ test('connect probes with a successful response -> connected and persists the ke
     assert.ok(calls[0]!.includes('/chat/completions'), `probe must hit the chat completions endpoint: ${calls[0]}`);
     const providers = await service.list();
     assert.equal(providers.find(provider => provider.id === 'openai')?.status, 'connected');
+    assert.equal(service.modelSupportState('openai', 'gpt-4o-mini'), 'verified');
+    assert.equal(service.modelSupportState('openai', 'gpt-4o'), 'unknown', 'provider health cannot certify a different model');
     assert.ok(await new CredentialStore(dir, new FakeCrypt()).has('openai'));
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('a success status without a valid completion does not verify model support', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-empty-probe-'));
+  try {
+    const { service } = makeService(dir, (async () => Response.json({}, { status: 200 })) as typeof fetch);
+    const result = await service.connect({ providerId: 'openai', key: 'sk-test' });
+    assert.equal(result.status, 'unreachable');
+    assert.equal(service.modelSupportState('openai', 'gpt-4o-mini'), 'unknown');
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
@@ -132,10 +165,11 @@ test('anthropic probes the /v1/messages shape with x-api-key', async () => {
       url = String(input);
       headers = new Headers(init?.headers);
       body = String(init?.body);
-      return new Response(null, { status: 200 });
+      return anthropicProbeResponse();
     }) as typeof fetch;
     const { service } = makeService(dir, fetchFn);
     await service.connect({ providerId: 'anthropic', key: 'x-ant-1' });
+    assert.equal(service.modelSupportState('anthropic', 'claude-3-5-haiku-latest'), 'verified');
     assert.ok(url.endsWith('/messages'), `anthropic probe must hit /messages: ${url}`);
     assert.equal(headers?.get('x-api-key'), 'x-ant-1');
     assert.equal(headers?.get('anthropic-version'), '2023-06-01');
@@ -148,13 +182,14 @@ test('anthropic probes the /v1/messages shape with x-api-key', async () => {
 test('a user-added baseUrl requires explicit host approval', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-'));
   try {
-    const { service } = makeService(dir, (() => Promise.resolve(new Response(null, { status: 200 }))) as typeof fetch);
+    const { service } = makeService(dir, (() => Promise.resolve(openAiProbeResponse())) as typeof fetch);
     await assert.rejects(
       () => service.connect({ providerId: 'openai', key: 'k', baseUrl: 'https://my-relay.example/v1' }),
       error => error instanceof ProviderError && error.code === 'FORBIDDEN' && error.message.includes('approve')
     );
     const result = await service.connect({ providerId: 'openai', key: 'k', baseUrl: 'https://my-relay.example/v1', approveHost: true });
     assert.equal(result.status, 'connected');
+    assert.equal(service.modelSupportState('openai', 'gpt-4o-mini'), 'unknown', 'a custom endpoint cannot certify the built-in route');
     const allowlist = JSON.parse(await fs.readFile(path.join(dir, '.aide', 'provider-hosts.json'), 'utf8')) as { hosts: string[] };
     assert.ok(allowlist.hosts.includes('my-relay.example'), 'approved host must persist');
   } finally {
@@ -165,11 +200,13 @@ test('a user-added baseUrl requires explicit host approval', async () => {
 test('disconnect removes the credential and resets status', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-'));
   try {
-    const { service } = makeService(dir, (() => Promise.resolve(new Response(null, { status: 200 }))) as typeof fetch);
+    const { service } = makeService(dir, (() => Promise.resolve(openAiProbeResponse())) as typeof fetch);
     await service.connect({ providerId: 'mistral', key: 'k' });
+    assert.equal(service.modelSupportState('mistral', 'mistral-small-latest'), 'verified');
     await service.disconnect('mistral');
     const provider = (await service.list()).find(entry => entry.id === 'mistral');
     assert.equal(provider?.status, 'not_connected');
+    assert.equal(service.modelSupportState('mistral', 'mistral-small-latest'), 'unknown', 'credential revocation also clears exact model support');
     assert.equal(await new CredentialStore(dir, new FakeCrypt()).has('mistral'), false);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
@@ -182,7 +219,7 @@ test('chat propagates caller cancellation instead of misreporting a provider tim
     let calls = 0;
     const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
       calls += 1;
-      if (calls === 1) return new Response(null, { status: 200 });
+      if (calls === 1) return openAiProbeResponse();
       return await new Promise<Response>((_resolve, reject) => {
         const rejectAbort = (): void => reject(new DOMException('caller cancelled', 'AbortError'));
         if (init?.signal?.aborted) rejectAbort();
@@ -198,6 +235,177 @@ test('chat propagates caller cancellation instead of misreporting a provider tim
     controller.abort();
     await assert.rejects(pending, error => error instanceof Error && error.name === 'AbortError');
     assert.equal(calls, 2, 'connect probe plus one chat request');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('chatStream emits OpenAI-compatible SSE deltas and completion usage', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-stream-'));
+  try {
+    let streamBody: Record<string, unknown> | undefined;
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (typeof init?.body === 'string' && init.body.includes('"stream":true')) {
+        streamBody = JSON.parse(init.body) as Record<string, unknown>;
+        return streamResponse([
+          ': provider keepalive\r\n\r\ndata: {"choices":[{"delta":{"content":"first "}}]}\r\n\r\n',
+          'data: {"choices":[{"delta":{"content":"second"}}]}\r\n\r\n',
+          'data: {"choices":[],"usage":{"completion_tokens":2}}\r\n\r\n',
+          'data: [DONE]\r\n\r\n'
+        ]);
+      }
+      return openAiProbeResponse();
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn);
+    await service.connect({ providerId: 'openai', key: 'sk-stream-test' });
+
+    const deltas: string[] = [];
+    const result = await service.chatStream('openai', 'gpt-4o-mini', [{ role: 'user', content: 'hello' }], delta => deltas.push(delta));
+    assert.deepEqual(deltas, ['first ', 'second']);
+    assert.equal(result.text, 'first second');
+    assert.equal(result.modelId, 'openai:gpt-4o-mini');
+    assert.equal(result.tokens, 2);
+    assert.equal(streamBody?.stream, true, 'provider request opts into SSE');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('chatStream parses Anthropic text events and keeps system messages provider-shaped', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-anthropic-stream-'));
+  try {
+    let streamBody: Record<string, unknown> | undefined;
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (typeof init?.body === 'string' && init.body.includes('"stream":true')) {
+        streamBody = JSON.parse(init.body) as Record<string, unknown>;
+        return streamResponse([
+          'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"hello"}}\n\n',
+          'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":1}}\n\n',
+          'event: message_stop\ndata: {"type":"message_stop"}\n\n'
+        ]);
+      }
+      return anthropicProbeResponse();
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn);
+    await service.connect({ providerId: 'anthropic', key: 'anthropic-stream-test' });
+
+    const deltas: string[] = [];
+    const result = await service.chatStream('anthropic', 'claude-3-5-haiku-latest', [
+      { role: 'system', content: 'system instruction' },
+      { role: 'user', content: 'hello' }
+    ], delta => deltas.push(delta));
+    assert.deepEqual(deltas, ['hello']);
+    assert.equal(result.text, 'hello');
+    assert.equal(result.tokens, 1);
+    assert.equal(streamBody?.stream, true);
+    assert.equal(streamBody?.system, 'system instruction');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('chatStream rejects malformed and provider-error SSE frames without exposing payloads', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-stream-error-'));
+  try {
+    let nextStream = streamResponse(['data: {not-json}\n\n']);
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (typeof init?.body === 'string' && init.body.includes('"stream":true')) return nextStream;
+      return openAiProbeResponse();
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn);
+    await service.connect({ providerId: 'openai', key: 'sensitive-stream-fixture' });
+    await assert.rejects(
+      () => service.chatStream('openai', 'gpt-4o-mini', [{ role: 'user', content: 'hello' }], () => {}),
+      error => error instanceof ProviderError && error.code === 'CHILD_FAILED' && !error.message.includes('sensitive-stream-fixture')
+    );
+
+    nextStream = streamResponse(['data: {"error":{"message":"sensitive-stream-fixture rejected"}}\n\n']);
+    await assert.rejects(
+      () => service.chatStream('openai', 'gpt-4o-mini', [{ role: 'user', content: 'hello' }], () => {}),
+      error => error instanceof ProviderError && error.code === 'CHILD_FAILED' && !error.message.includes('sensitive-stream-fixture')
+    );
+
+    nextStream = streamResponse(['data: {"choices":[{"delta":{"content":"partial"}}]}\n\n']);
+    await assert.rejects(
+      () => service.chatStream('openai', 'gpt-4o-mini', [{ role: 'user', content: 'hello' }], () => {}),
+      error => error instanceof ProviderError && error.code === 'CHILD_FAILED' && error.message.includes('before completion')
+    );
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('chatStream cancels an HTTP error response body before returning the provider error', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-stream-http-error-'));
+  try {
+    let cancelCalls = 0;
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (typeof init?.body === 'string' && init.body.includes('"stream":true')) {
+        return new Response(new ReadableStream<Uint8Array>({
+          start(controller) { controller.enqueue(new TextEncoder().encode('provider error body')); },
+          cancel() { cancelCalls += 1; }
+        }), { status: 503 });
+      }
+      return openAiProbeResponse();
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn);
+    await service.connect({ providerId: 'openai', key: 'sk-http-error-test' });
+
+    await assert.rejects(
+      () => service.chatStream('openai', 'gpt-4o-mini', [{ role: 'user', content: 'hello' }], () => {}),
+      error => error instanceof ProviderError && error.code === 'CHILD_FAILED' && error.message.includes('busy')
+    );
+    assert.equal(cancelCalls, 1, 'non-OK provider response body is cancelled');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('chatStream propagates caller abort and cancels the response reader', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-stream-abort-'));
+  try {
+    let cancelCalls = 0;
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (typeof init?.body === 'string' && init.body.includes('"stream":true')) {
+        return new Response(new ReadableStream<Uint8Array>({
+          pull() {},
+          cancel() { cancelCalls += 1; }
+        }), { status: 200 });
+      }
+      return openAiProbeResponse();
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn);
+    await service.connect({ providerId: 'openai', key: 'sk-abort-test' });
+    const controller = new AbortController();
+    const pending = service.chatStream('openai', 'gpt-4o-mini', [{ role: 'user', content: 'hello' }], () => {}, { signal: controller.signal });
+    setTimeout(() => controller.abort(), 10);
+    await assert.rejects(pending, error => error instanceof Error && error.name === 'AbortError');
+    assert.equal(cancelCalls, 1, 'aborted response reader is cancelled');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('chatStream enforces its bounded request timeout and cancels the response reader', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-stream-timeout-'));
+  try {
+    let cancelCalls = 0;
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (typeof init?.body === 'string' && init.body.includes('"stream":true')) {
+        return new Response(new ReadableStream<Uint8Array>({
+          pull() {},
+          cancel() { cancelCalls += 1; }
+        }), { status: 200 });
+      }
+      return openAiProbeResponse();
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn, undefined, 25);
+    await service.connect({ providerId: 'openai', key: 'sk-timeout-test' });
+    await assert.rejects(
+      () => service.chatStream('openai', 'gpt-4o-mini', [{ role: 'user', content: 'hello' }], () => {}),
+      error => error instanceof ProviderError && error.code === 'CHILD_FAILED' && error.message.includes('timed out')
+    );
+    assert.equal(cancelCalls, 1, 'timed out response reader is cancelled');
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
@@ -232,6 +440,8 @@ test('Local-Only guard blocks provider credential probe and chat before fake fet
     localOnly = true;
     await assert.rejects(() => service.chat('openai', 'gpt-fixture', [{ role: 'user', content: 'hello' }]), { code: 'FORBIDDEN' });
     assert.equal(calls, 1, 'blocked chat performs no provider request');
+    await assert.rejects(() => service.chatStream('openai', 'gpt-fixture', [{ role: 'user', content: 'hello' }], () => {}), { code: 'FORBIDDEN' });
+    assert.equal(calls, 1, 'blocked streaming chat performs no provider request');
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

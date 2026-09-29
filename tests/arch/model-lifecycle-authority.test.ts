@@ -16,6 +16,7 @@ import type http from 'node:http';
 import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
 import { ModelRuntime } from '../../node/src/services/model-runtime.ts';
+import type { HardwareInfo } from '../../node/src/services/hardware.ts';
 import { pairFixture } from './authority-fixture.ts';
 
 async function freePort(): Promise<number> {
@@ -75,7 +76,15 @@ test('model start/stop require approved exact operations over retained child han
     manifestPath,
     ingestedPath: path.join(dir, '.aide', 'ingested-models.json'),
     modelDir: path.join(dir, 'models'),
-    spawnChild: fakeSpawn
+    spawnChild: fakeSpawn,
+    hardwareProbe: async (): Promise<HardwareInfo> => ({
+      totalRamBytes: 8 * 1024 ** 3,
+      freeRamBytes: 4 * 1024 ** 3,
+      logicalCpus: 4,
+      vramBytes: 0,
+      freeVramBytes: 0,
+      vramSource: 'none'
+    })
   });
   await runtime.load();
 

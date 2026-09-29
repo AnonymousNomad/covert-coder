@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { ChatTargetChangedError, ModelRouter, RouterError } from '../../node/src/services/model-router.ts';
 import type { ModelRuntime } from '../../node/src/services/model-runtime.ts';
 import type { ProviderDefinition, ProviderService } from '../../node/src/services/providers.ts';
+import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 
 interface FakeEntry {
   id: string;
@@ -73,6 +74,7 @@ class FakeProviders {
   connected = new Set<string>();
   listCalls = 0;
   calls: Array<{ providerId: string; model: string }> = [];
+  streamCalls: Array<{ providerId: string; model: string; signal?: AbortSignal }> = [];
 
   async list(): Promise<Array<{ id: string; status: string }>> {
     this.listCalls += 1;
@@ -83,10 +85,53 @@ class FakeProviders {
     this.calls.push({ providerId, model });
     return { text: `cloud:${providerId}:${model}:${messages.length}`, modelId: `${providerId}:${model}`, timingMs: 2 };
   }
+
+  async chatStream(
+    providerId: string,
+    model: string,
+    messages: Array<{ role: string; content: string }>,
+    onDelta: (delta: string) => void,
+    options: { signal?: AbortSignal } = {}
+  ): Promise<{ text: string; modelId: string; timingMs: number }> {
+    const call: { providerId: string; model: string; signal?: AbortSignal } = { providerId, model };
+    if (options.signal !== undefined) call.signal = options.signal;
+    this.streamCalls.push(call);
+    const first = `cloud:${providerId}:`;
+    const second = `${model}:${messages.length}`;
+    onDelta(first);
+    onDelta(second);
+    return { text: first + second, modelId: `${providerId}:${model}`, timingMs: 3 };
+  }
 }
 
-function makeRouter(runtime: FakeRuntime, providers: FakeProviders, catalog?: readonly ProviderDefinition[]): ModelRouter {
-  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, catalog);
+function providerModelRoute(providerId = 'openai', providerModelId = 'gpt-4o-mini', overrides: Partial<ModelProviderRouteT> = {}): ModelProviderRouteT {
+  return {
+    id: `route:builtin:${providerId}:${providerModelId}:direct-http`,
+    model_id: `provider:${providerId}:${providerModelId}`,
+    provider_id: providerId,
+    connection_id: `builtin:${providerId}`,
+    provider_model_id: providerModelId,
+    credential_source_id: `credential-source:provider:${providerId}`,
+    execution_adapter_id: 'direct-http',
+    model_support_state: 'VERIFIED',
+    configured: true,
+    health: 'HEALTHY',
+    available: true,
+    external_egress_required: true,
+    operator_setup_required: false,
+    setup_state: 'READY',
+    selected_roles: ['chat'],
+    ...overrides
+  };
+}
+
+function makeRouter(
+  runtime: FakeRuntime,
+  providers: FakeProviders,
+  catalog?: readonly ProviderDefinition[],
+  providerRoutes: readonly ModelProviderRouteT[] = []
+): ModelRouter {
+  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, catalog, async () => providerRoutes);
 }
 
 function entry(id: string, status: string, roles: string[], contextTokens = 2048): FakeEntry {
@@ -179,15 +224,17 @@ test('chat fits history to the route context and reports the estimate', async ()
   assert.ok(result.usedApprox > 0, 'context estimate is reported');
 });
 
-test('chat routes cloud requests to the provider executor', async () => {
+test('unbound cloud chat cannot bypass the Authority-resolved provider route', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat'])];
   const providers = new FakeProviders();
   providers.connected.add('openai');
-  const router = makeRouter(runtime, providers);
-  const result = await router.chat('cloud:openai:gpt-4o-mini', [{ role: 'user', content: 'hi' }]);
-  assert.ok(result.text.startsWith('cloud:openai:gpt-4o-mini:'));
-  assert.equal(result.modelId, 'cloud:openai:gpt-4o-mini');
+  const router = makeRouter(runtime, providers, undefined, [providerModelRoute()]);
+  await assert.rejects(
+    () => router.chat('cloud:openai:gpt-4o-mini', [{ role: 'user', content: 'hi' }]),
+    (error: unknown) => error instanceof RouterError && error.reason === 'unsupported' && error.message.includes('Authority-resolved')
+  );
+  assert.deepEqual(providers.calls, [], 'generic chat cannot dispatch an external route outside the Authority-bound surface');
 });
 
 test('chatStream emits deltas and reports the answering model on fallback', async () => {
@@ -241,6 +288,42 @@ test('declared context is used when no served window has been probed', async () 
 });
 });
 
+test('unbound cloud streaming cannot bypass the Authority-resolved provider route', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  providers.connected.add('openai');
+  const router = makeRouter(runtime, providers, undefined, [providerModelRoute()]);
+  const controller = new AbortController();
+  await assert.rejects(
+    () => router.chatStream('cloud:openai:gpt-4o-mini', [{ role: 'user', content: 'hello' }], () => {}, controller.signal),
+    (error: unknown) => error instanceof RouterError && error.reason === 'unsupported' && error.message.includes('Authority-resolved')
+  );
+  assert.deepEqual(providers.streamCalls, [], 'generic streaming cannot dispatch an external route outside Authority');
+  assert.deepEqual(providers.calls, [], 'streaming does not fall back to one-shot provider chat');
+});
+
+test('Authority-resolved cloud streaming uses the bound provider adapter and caller signal', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  const router = makeRouter(runtime, providers, undefined, [providerModelRoute()]);
+  const resolution = await router.resolveAuthorityTarget('cloud:openai:gpt-4o-mini');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+
+  const controller = new AbortController();
+  const deltas: string[] = [];
+  const result = await router.chatStreamResolvedTarget(
+    resolution.target,
+    [{ role: 'user', content: 'governed request' }],
+    delta => deltas.push(delta),
+    controller.signal
+  );
+  assert.deepEqual(deltas, ['cloud:openai:', 'gpt-4o-mini:1']);
+  assert.equal(result.modelId, 'cloud:openai:gpt-4o-mini');
+  assert.equal(providers.streamCalls[0]?.signal, controller.signal);
+  assert.equal(runtime.chatStreamCalls, 0, 'external Authority binding never enters the local runtime');
+});
+
 test('chat throws RouterError down when the route is unknown', async () => {
   const runtime = new FakeRuntime();
   const router = makeRouter(runtime, new FakeProviders());
@@ -250,13 +333,13 @@ test('chat throws RouterError down when the route is unknown', async () => {
   );
 });
 
-test('Authority target resolution is read-only and classifies only registered local artifacts', () => {
+test('Authority target resolution is read-only and classifies only registered local artifacts', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('fixture', 'ready', ['chat'])];
   const providers = new FakeProviders();
   const router = makeRouter(runtime, providers);
 
-  const resolution = router.resolveAuthorityTarget('local:fixture');
+  const resolution = await router.resolveAuthorityTarget('local:fixture');
   assert.equal(resolution.status, 'RESOLVED');
   if (resolution.status !== 'RESOLVED') return;
   assert.equal(resolution.target.binding.execution_class, 'LOCAL');
@@ -268,13 +351,13 @@ test('Authority target resolution is read-only and classifies only registered lo
   assert.ok(!JSON.stringify(resolution.target.binding).includes('E:\\models'), 'private artifact path is not exposed');
 
   runtime.entries[0]!.endpoint = 'https://api.openai.com/v1';
-  const disguised = router.resolveAuthorityTarget('local:fixture');
+  const disguised = await router.resolveAuthorityTarget('local:fixture');
   assert.deepEqual(disguised, { status: 'UNKNOWN', reason: 'local-source-not-contained' },
     'a local registry label cannot authorize a non-loopback endpoint');
 
   runtime.entries[0]!.endpoint = 'http://127.0.0.1:8080/v1';
   runtime.entries[0]!.artifact_uri = 'https://models.example/fixture.gguf';
-  const loopbackOnly = router.resolveAuthorityTarget('local:fixture');
+  const loopbackOnly = await router.resolveAuthorityTarget('local:fixture');
   assert.deepEqual(loopbackOnly, { status: 'UNKNOWN', reason: 'local-source-not-contained' },
     'a localhost runtime alone does not establish local artifact provenance');
 });
@@ -291,18 +374,100 @@ test('provider identity wins over a local-looking model label', async () => {
     contextLength: 4096,
     egressHost: 'api.openai.com'
   }];
-  const router = makeRouter(runtime, providers, catalog);
-  const resolution = router.resolveAuthorityTarget('cloud:openai:local-gguf-q4');
+  const router = makeRouter(runtime, providers, catalog, [providerModelRoute('openai', 'local-gguf-q4')]);
+  const resolution = await router.resolveAuthorityTarget('cloud:openai:local-gguf-q4');
   assert.equal(resolution.status, 'RESOLVED');
   if (resolution.status !== 'RESOLVED') return;
   assert.equal(resolution.target.binding.execution_class, 'EXTERNAL');
   assert.equal(resolution.target.binding.source, 'provider-service');
   assert.equal(resolution.target.binding.provider_id, 'openai');
   assert.equal(resolution.target.binding.provider_model, 'local-gguf-q4');
+  assert.equal(resolution.target.binding.model_access_route_id, 'route:builtin:openai:local-gguf-q4:direct-http');
+  assert.equal(resolution.target.binding.connection_id, 'builtin:openai');
+  assert.equal(resolution.target.binding.execution_adapter_id, 'direct-http');
 
   await router.chatResolvedTarget(resolution.target, [{ role: 'user', content: 'fixture' }]);
   assert.equal(runtime.chatCalls, 0);
   assert.deepEqual(providers.calls, [{ providerId: 'openai', model: 'local-gguf-q4' }]);
+});
+
+test('external Authority resolution requires the exact verified, available, consent-ready model route', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  const routeId = 'cloud:openai:gpt-4o-mini';
+  const ineligibleStates: Array<Partial<ModelProviderRouteT>> = [
+    { model_support_state: 'UNKNOWN' },
+    { model_support_state: 'UNSUPPORTED' },
+    { available: false },
+    { configured: false },
+    { health: 'UNKNOWN' },
+    { external_egress_required: false },
+    { operator_setup_required: true },
+    { setup_state: 'CONSENT_REQUIRED' },
+    { credential_source_id: null },
+    { execution_adapter_id: 'opencode' }
+  ];
+  for (const state of ineligibleStates) {
+    const router = makeRouter(runtime, providers, undefined, [providerModelRoute('openai', 'gpt-4o-mini', state)]);
+    assert.deepEqual(await router.resolveAuthorityTarget(routeId), {
+      status: 'UNKNOWN', reason: 'provider-model-route-ineligible'
+    });
+  }
+  const duplicated = makeRouter(runtime, providers, undefined, [providerModelRoute(), providerModelRoute()]);
+  assert.deepEqual(await duplicated.resolveAuthorityTarget(routeId), {
+    status: 'UNKNOWN', reason: 'provider-model-route-ineligible'
+  }, 'ambiguous duplicate provider/model/adapter identities fail closed');
+  assert.deepEqual(providers.calls, []);
+  assert.deepEqual(providers.streamCalls, []);
+});
+
+test('Authority-bound external stream rechecks exact route availability immediately before dispatch', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  const eligible = providerModelRoute();
+  const router = makeRouter(runtime, providers, undefined, [eligible]);
+  const resolution = await router.resolveAuthorityTarget('cloud:openai:gpt-4o-mini');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+
+  eligible.available = false;
+  await assert.rejects(
+    () => router.chatStreamResolvedTarget(resolution.target, [{ role: 'user', content: 'revoked' }], () => {}, new AbortController().signal),
+    ChatTargetChangedError
+  );
+  assert.deepEqual(providers.streamCalls, [], 'revoked exact route never reaches provider transport');
+});
+
+test('Authority-bound external stream preserves caller cancellation and never reports a cancelled completion', async () => {
+  const runtime = new FakeRuntime();
+  const providers = new FakeProviders();
+  let started!: () => void;
+  const dispatchStarted = new Promise<void>(resolve => { started = resolve; });
+  providers.chatStream = async (providerId, model, _messages, _onDelta, options = {}) => {
+    const call: { providerId: string; model: string; signal?: AbortSignal } = { providerId, model };
+    if (options.signal !== undefined) call.signal = options.signal;
+    providers.streamCalls.push(call);
+    started();
+    return await new Promise<{ text: string; modelId: string; timingMs: number }>((_resolve, reject) => {
+      if (options.signal?.aborted) reject(options.signal.reason);
+      else options.signal?.addEventListener('abort', () => reject(options.signal?.reason), { once: true });
+    });
+  };
+  const router = makeRouter(runtime, providers, undefined, [providerModelRoute()]);
+  const resolution = await router.resolveAuthorityTarget('cloud:openai:gpt-4o-mini');
+  assert.equal(resolution.status, 'RESOLVED');
+  if (resolution.status !== 'RESOLVED') return;
+  const controller = new AbortController();
+  const pending = router.chatStreamResolvedTarget(
+    resolution.target,
+    [{ role: 'user', content: 'cancel this request' }],
+    () => {},
+    controller.signal
+  );
+  await dispatchStarted;
+  controller.abort(new DOMException('caller cancelled', 'AbortError'));
+  await assert.rejects(pending, error => error instanceof Error && error.name === 'AbortError');
+  assert.equal(providers.streamCalls[0]?.signal, controller.signal);
 });
 
 test('dispatch refuses a local target whose registered destination changed after resolution', async () => {
@@ -310,7 +475,7 @@ test('dispatch refuses a local target whose registered destination changed after
   runtime.entries = [entry('fixture', 'ready', ['chat'])];
   const providers = new FakeProviders();
   const router = makeRouter(runtime, providers);
-  const resolution = router.resolveAuthorityTarget('local:fixture');
+  const resolution = await router.resolveAuthorityTarget('local:fixture');
   assert.equal(resolution.status, 'RESOLVED');
   if (resolution.status !== 'RESOLVED') return;
 

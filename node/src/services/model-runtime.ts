@@ -5,7 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { probeGguf } from './gguf.ts';
 import { fitModel } from './model-fit.ts';
-import { probeHardware } from './hardware.ts';
+import { probeHardware, type HardwareInfo } from './hardware.ts';
 import { estimateTokens } from './history-fit.ts';
 import type { ModelFitReportT } from '../../../common/contracts/models.ts';
 
@@ -93,6 +93,7 @@ export interface ModelRuntimeOptions {
   modelDir: string;
   pythonServer?: boolean;
   spawnChild?: typeof spawn;
+  hardwareProbe?: () => Promise<HardwareInfo>;
   requestTimeoutMs?: number;
   logger?: { error(msg: string, meta?: Record<string, unknown>): void; warn(msg: string, meta?: Record<string, unknown>): void; info(msg: string, meta?: Record<string, unknown>): void } | undefined;
   onStatusChange?: (id: string, status: string, detail?: string) => void;
@@ -128,6 +129,7 @@ export class ModelRuntime {
   private readonly enginePidsPath: string;
   readonly modelDir: string;
   private readonly spawnChild: typeof spawn;
+  private readonly hardwareProbe: () => Promise<HardwareInfo>;
   private readonly logger: ModelRuntimeOptions['logger'];
   private readonly onStatusChange: NonNullable<ModelRuntimeOptions['onStatusChange']>;
 
@@ -148,6 +150,7 @@ export class ModelRuntime {
     this.modelDir = options.modelDir;
     this.enginePidsPath = path.join(options.workspace, '.aide', 'model-engines.json');
     this.spawnChild = options.spawnChild ?? spawn;
+    this.hardwareProbe = options.hardwareProbe ?? probeHardware;
     this.logger = options.logger;
     this.onStatusChange = options.onStatusChange ?? (() => {});
   }
@@ -405,7 +408,7 @@ export class ModelRuntime {
     await fs.access(model.file).catch(() => {
       throw new ModelRuntimeError('NOT_READY', `Local model setup required: model file was not found at ${model.file}.`);
     });
-    const hardware = await probeHardware();
+    const hardware = await this.hardwareProbe();
     if (hardware.freeRamBytes < RAM_GUARD_BYTES) {
       throw new ModelRuntimeError('NOT_READY', `Not enough free RAM to start a model: ${Math.round(hardware.freeRamBytes / 1048576)} MB free, at least ${RAM_GUARD_BYTES / 1048576} MB required.`);
     }
@@ -474,7 +477,7 @@ export class ModelRuntime {
       // releases commit asynchronously; spawning a multi-GB mmap load into
       // that transient hole causes commit exhaustion and machine-wide thrash
       // (reproduced 2026-08-27).
-      if ((await probeHardware()).freeRamBytes < RAM_GUARD_BYTES) {
+      if ((await this.hardwareProbe()).freeRamBytes < RAM_GUARD_BYTES) {
         await this.waitForMemoryDrain();
       }
       for (let attempt = 1; attempt <= 2; attempt++) {
@@ -564,7 +567,7 @@ export class ModelRuntime {
     const deadline = Date.now() + timeoutMs;
     let last = minFreeBytes;
     while (Date.now() < deadline) {
-      last = (await probeHardware()).freeRamBytes;
+      last = (await this.hardwareProbe()).freeRamBytes;
       if (last >= minFreeBytes) return;
       await new Promise(resolve => setTimeout(resolve, 500));
     }
