@@ -29,6 +29,7 @@ const server = http.createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1');
 
   if (url.pathname === '/provider' && request.method === 'GET') {
+    record('catalog');
     const models = mode === 'catalog-missing'
       ? { 'deepseek-v4-flash': { name: 'DeepSeek V4 Flash' } }
       : { 'deepseek-v4.1-flash': { name: 'DeepSeek V4.1 Flash' } };
@@ -36,7 +37,10 @@ const server = http.createServer((request, response) => {
   }
   if (url.pathname === '/global/health') return send(response, 200, { healthy: true, version: '1.18.20-fixture' });
   if (url.pathname === '/provider/auth') return send(response, 200, { 'opencode-go': [{ type: 'fixture' }] });
-  if (url.pathname === '/session' && request.method === 'POST') return send(response, 200, { id: 'ses_fixture' });
+  if (url.pathname === '/session' && request.method === 'POST') {
+    record('create');
+    return send(response, 200, { id: 'ses_fixture' });
+  }
 
   if (url.pathname === '/event' && request.method === 'GET') {
     response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
@@ -124,7 +128,10 @@ const server = http.createServer((request, response) => {
   return send(response, 404, { error: 'not found' });
 });
 
-server.listen(0, '127.0.0.1', () => {
+const listen = () => server.listen(0, '127.0.0.1', () => {
   const address = server.address();
   console.log('opencode server listening on http://127.0.0.1:' + address.port);
 });
+const startupDelayMs = Number(process.env.FIXTURE_START_DELAY_MS ?? 0);
+if (startupDelayMs > 0) setTimeout(listen, startupDelayMs);
+else listen();

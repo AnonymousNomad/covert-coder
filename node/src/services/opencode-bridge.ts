@@ -57,6 +57,28 @@ const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
 const SENSITIVE_ENV = /(_KEY|_TOKEN|_SECRET|PASSWORD|CREDENTIAL|AUTH)/i;
 const ENV_KEEP = new Set(['PATH', 'Path', 'PATHEXT', 'SystemRoot', 'windir', 'COMSPEC', 'ComSpec', 'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'TZ', 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE', 'OS', 'LANG']);
 
+function operationAbortError(signal: AbortSignal): Error {
+  const timedOut = signal.reason === 'timeout';
+  return Object.assign(new Error(timedOut ? 'OpenCode task timed out' : 'OpenCode task cancelled'), {
+    code: timedOut ? 'TIMEOUT' : 'CANCELLED'
+  });
+}
+
+function waitForChildClose(child: ChildProcess, timeoutMs: number): Promise<boolean> {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(true);
+  return new Promise(resolve => {
+    const finish = (closed: boolean): void => {
+      clearTimeout(timer);
+      child.off('close', onClose);
+      resolve(closed);
+    };
+    const onClose = (): void => finish(true);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    child.once('close', onClose);
+    if (child.exitCode !== null || child.signalCode !== null) finish(true);
+  });
+}
+
 function defaultFindExecutable(name: 'opencode'): Promise<string | null> {
   const isWin = process.platform === 'win32';
   const probe = isWin ? 'where.exe' : 'which';
@@ -145,11 +167,17 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     });
   }
 
-  async function ensureServer(workspace: string): Promise<{ child: ChildProcess; url: string; workspace: string }> {
+  async function ensureServer(workspace: string, signal?: AbortSignal): Promise<{ child: ChildProcess; url: string; workspace: string }> {
+    const throwIfAborted = (): void => {
+      if (signal?.aborted) throw operationAbortError(signal);
+    };
+    throwIfAborted();
     const resolved = path.resolve(workspace);
     if (server !== null && server.child.exitCode === null && server.child.signalCode === null && server.workspace === resolved) return server;
     if (server !== null) await stop();
+    throwIfAborted();
     const executable = await resolveExecutable();
+    throwIfAborted();
     if (executable === null) throw Object.assign(new Error('opencode CLI not detected on PATH'), { code: 'NOT_READY' });
     const needsShell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(executable.bin);
     const child = spawnFn(executable.bin, [...executable.prefix, 'serve', '--port', '0', '--hostname', '127.0.0.1'], {
@@ -158,16 +186,66 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     }) as ChildProcess;
     let output = '';
     const url = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => { killTree(child); reject(Object.assign(new Error('opencode serve did not announce a port in time'), { code: 'CHILD_FAILED' })); }, startTimeout);
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout>;
+      const cleanupListeners = (): void => {
+        clearTimeout(timer);
+        child.stdout?.off('data', onData);
+        child.stderr?.off('data', onData);
+        child.off('error', onError);
+        child.off('close', onClose);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      const fail = (error: Error): void => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        reject(error);
+      };
+      const onAbort = (): void => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        killTree(child);
+        void waitForChildClose(child, 5000).then(closed => {
+          reject(closed
+            ? operationAbortError(signal!)
+            : Object.assign(new Error('opencode startup child cleanup could not be confirmed'), { code: 'CLEANUP_FAILED' }));
+        });
+      };
       const onData = (chunk: Buffer): void => {
         output = (output + String(chunk)).slice(-MAX_TOTAL_BYTES);
         const match = output.match(/listening on (http:\/\/127\.0\.0\.1:\d+)/);
-        if (match !== null) { clearTimeout(timer); resolve(match[1]!); }
+        if (match !== null) {
+          if (signal?.aborted) { onAbort(); return; }
+          if (settled) return;
+          settled = true;
+          cleanupListeners();
+          resolve(match[1]!);
+        }
       };
+      const onError = (error: Error): void => fail(Object.assign(new Error(`opencode serve process failure: ${error.message}`), { code: 'CHILD_FAILED' }));
+      const onClose = (code: number | null): void => fail(Object.assign(new Error(`opencode serve exited early with code ${String(code)}`), { code: 'CHILD_FAILED' }));
+      const onStartTimeout = (): void => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        killTree(child);
+        void waitForChildClose(child, 5000).then(closed => {
+          reject(closed
+            ? Object.assign(new Error('opencode serve did not announce a port in time'), { code: 'CHILD_FAILED' })
+            : Object.assign(new Error('opencode startup child cleanup could not be confirmed'), { code: 'CLEANUP_FAILED' }));
+        });
+      };
+      timer = setTimeout(onStartTimeout, startTimeout);
       child.stdout?.on('data', onData);
       child.stderr?.on('data', onData);
-      child.once('error', error => { clearTimeout(timer); reject(Object.assign(new Error(`opencode serve process failure: ${error.message}`), { code: 'CHILD_FAILED' })); });
-      child.once('close', code => { clearTimeout(timer); reject(Object.assign(new Error(`opencode serve exited early with code ${String(code)}`), { code: 'CHILD_FAILED' })); });
+      child.on('error', onError);
+      child.on('close', onClose);
+      if (signal !== undefined) {
+        if (signal.aborted) onAbort();
+        else signal.addEventListener('abort', onAbort, { once: true });
+      }
     });
     server = { child, url, workspace: resolved };
     return server;
@@ -266,14 +344,12 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     if (runOptions.signal?.aborted) throw Object.assign(new Error('OpenCode task cancelled'), { code: 'CANCELLED' });
 
     const startedAt = clock();
-    const running = await ensureServer(runOptions.workspace);
-    const executable = await resolveExecutable();
     const timeoutMs = Math.max(5000, Math.min(runOptions.timeoutMs ?? 300000, 900000));
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort('timeout'), timeoutMs);
     const abortFromCaller = (): void => controller.abort('caller');
     runOptions.signal?.addEventListener('abort', abortFromCaller, { once: true });
-    let sessionId: string | null = null;
+    if (runOptions.signal?.aborted) abortFromCaller();
 
     const cancellationError = (): Error => {
       const callerCancelled = runOptions.signal?.aborted || controller.signal.reason === 'caller';
@@ -281,6 +357,21 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
         code: callerCancelled ? 'CANCELLED' : 'TIMEOUT'
       });
     };
+    let running: { child: ChildProcess; url: string; workspace: string };
+    let executable: Awaited<ReturnType<typeof resolveExecutable>>;
+    try {
+      running = await ensureServer(runOptions.workspace, controller.signal);
+      if (controller.signal.aborted) throw cancellationError();
+      executable = await resolveExecutable();
+      if (controller.signal.aborted) throw cancellationError();
+    } catch (error) {
+      clearTimeout(timeout);
+      runOptions.signal?.removeEventListener('abort', abortFromCaller);
+      const code = (error as { code?: unknown } | null)?.code;
+      throw code === 'CLEANUP_FAILED' ? error : controller.signal.aborted ? cancellationError() : error;
+    }
+    let sessionId: string | null = null;
+
     const request = async (url: string, init: RequestInit, requestTimeoutMs: number): Promise<Response> => {
       if (controller.signal.aborted) throw cancellationError();
       try {
@@ -476,7 +567,8 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
         duration_ms: clock() - startedAt, version: executable?.version ?? null
       };
     } catch (error) {
-      const mapped = controller.signal.aborted ? cancellationError() : error;
+      const code = (error as { code?: unknown } | null)?.code;
+      const mapped = code === 'CLEANUP_FAILED' ? error : controller.signal.aborted ? cancellationError() : error;
       try {
         await cleanup(sessionId !== null);
       } catch {

@@ -60,6 +60,65 @@ test('streamed OpenCode task cancellation aborts and deletes its session', async
   }
 });
 
+test('cancellation during OpenCode server startup prevents catalog and session dispatch', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-startup-cancel-'));
+  const { bridge, log } = await fixtureBridge(dir, 'success', { startupDelayMs: 150 });
+  const controller = new AbortController();
+  const cancelTimer = setTimeout(() => controller.abort(), 10);
+  try {
+    let completion: unknown;
+    let failure: unknown;
+    await bridge.runTaskStream({
+      workspace: dir,
+      prompt: 'bounded startup cancellation fixture task',
+      providerID: 'opencode-go',
+      modelID: 'deepseek-v4.1-flash',
+      timeoutMs: 30000,
+      signal: controller.signal,
+      onDelta: () => undefined
+    }).then(result => { completion = result; }, error => { failure = error; });
+    const events = await readLog(log);
+    assert.equal(
+      (failure as { code?: string } | undefined)?.code,
+      'CANCELLED',
+      JSON.stringify({ completed: completion !== undefined, events })
+    );
+    assert.equal(events.some(event => event.event === 'catalog'), false, 'cancelled startup must not probe the provider catalog');
+    assert.equal(events.some(event => event.event === 'create'), false, 'cancelled startup must not allocate an OpenCode session');
+    assert.equal(events.some(event => event.event === 'prompt'), false, 'cancelled startup must not dispatch a provider task');
+    assert.equal(events.some(event => event.event === 'server-child-close'), true, 'cancelled startup waits for its owned server child to close');
+  } finally {
+    clearTimeout(cancelTimer);
+    await bridge.stop();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('OpenCode operation timeout covers server startup and confirms child cleanup', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-startup-timeout-'));
+  const { bridge, log } = await fixtureBridge(dir, 'success', { startupDelayMs: 6500 });
+  try {
+    let failure: unknown;
+    await bridge.runTaskStream({
+      workspace: dir,
+      prompt: 'bounded startup timeout fixture task',
+      providerID: 'opencode-go',
+      modelID: 'deepseek-v4.1-flash',
+      timeoutMs: 5000,
+      onDelta: () => undefined
+    }).then(() => undefined, error => { failure = error; });
+    const events = await readLog(log);
+    assert.equal((failure as { code?: string } | undefined)?.code, 'TIMEOUT', JSON.stringify(events));
+    assert.equal(events.some(event => event.event === 'catalog'), false, 'startup timeout must not probe the provider catalog');
+    assert.equal(events.some(event => event.event === 'create'), false, 'startup timeout must not allocate an OpenCode session');
+    assert.equal(events.some(event => event.event === 'prompt'), false, 'startup timeout must not dispatch a provider task');
+    assert.equal(events.some(event => event.event === 'server-child-close'), true, 'startup timeout waits for its owned server child to close');
+  } finally {
+    await bridge.stop();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('OpenCode task timeout aborts and deletes its session', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-timeout-'));
   const { bridge, log } = await fixtureBridge(dir, 'timeout');
@@ -196,7 +255,10 @@ test('exact model absent from the pinned provider catalog is rejected before ses
       }),
       (error: unknown) => (error as { code?: string })?.code === 'NOT_READY'
     );
-    assert.deepEqual(await readLog(log), [], 'missing catalog target cannot create or prompt a session');
+    const events = await readLog(log);
+    assert.equal(events.filter(event => event.event === 'catalog').length, 1, 'exact-target verification reads the pinned provider catalog once');
+    assert.equal(events.some(event => event.event === 'create'), false, 'missing catalog target cannot create a session');
+    assert.equal(events.some(event => event.event === 'prompt'), false, 'missing catalog target cannot dispatch a prompt');
   } finally {
     await bridge.stop();
     await fs.rm(dir, { recursive: true, force: true });
