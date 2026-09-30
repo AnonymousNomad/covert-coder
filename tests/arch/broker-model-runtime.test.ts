@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { BrokerModelRuntime } from '../../node/src/services/broker-model-runtime.ts';
 import { createResourceAdmission } from '../../node/src/services/resource-admission.ts';
-import { RuntimeBroker, unknownCapabilities, unknownMetrics, type RuntimeAdapter } from '../../node/src/services/runtime-adapter.ts';
+import { RuntimeAdapterError, RuntimeBroker, unknownCapabilities, unknownMetrics, type RuntimeAdapter } from '../../node/src/services/runtime-adapter.ts';
 import type { RuntimeModelIdentityT, RuntimeStatusResponseT } from '../../common/contracts/runtime.ts';
 
 function admittedLocalStart() {
@@ -211,7 +211,7 @@ test('failed or unverifiable model starts stop only a freshly confirmed Covert-o
           loaded = { model_id: 'fixture', display_name: 'Fixture', artifact_name: 'fixture.gguf', artifact_sha256: 'f'.repeat(64), identity_evidence: 'REQUESTED_ARTIFACT' };
           return loaded;
         }
-        throw new Error('fixture model load failed');
+        throw new RuntimeAdapterError('MODEL_LOAD_FAILED', 'fixture model load failed');
       },
       unload: async () => { loaded = null; },
       infer: async () => { throw new Error('unexpected inference'); },
@@ -219,7 +219,7 @@ test('failed or unverifiable model starts stop only a freshly confirmed Covert-o
       cancel: async () => false, metrics: async () => unknownMetrics(),
       shutdown: async () => {
         shutdowns += 1;
-        if (scenario.shutdownFails) throw new Error('fixture shutdown failure');
+        if (scenario.shutdownFails) throw new RuntimeAdapterError('SHUTDOWN_UNCONFIRMED', 'fixture shutdown failure');
         health = 'STOPPED'; ownership = 'UNKNOWN'; loaded = null;
       }
     } as unknown as RuntimeAdapter;
@@ -234,9 +234,20 @@ test('failed or unverifiable model starts stop only a freshly confirmed Covert-o
       await runtime.saveProfile('fixture', {
         preset: 'custom', samplers: { temperature: 0 }, runtime: { context_tokens: 2048, max_tokens: 64 }
       });
-      await assert.rejects(() => runtime.start('fixture'), scenario.expected, scenario.name);
+      let startFailure: unknown;
+      try {
+        await runtime.start('fixture');
+      } catch (error) {
+        startFailure = error;
+      }
+      assert.ok(startFailure instanceof Error, `${scenario.name}: start failure is propagated`);
+      assert.match(startFailure.message, scenario.expected, scenario.name);
       assert.equal(shutdowns, scenario.shutdowns, `${scenario.name}: shutdown count`);
       if (scenario.shutdownFails) {
+        assert.deepEqual((startFailure as { detail?: unknown }).detail, {
+          startErrorCode: 'MODEL_LOAD_FAILED',
+          cleanupErrorCode: 'SHUTDOWN_UNCONFIRMED'
+        }, 'the start and cleanup failure codes remain independently diagnosable');
         assert.equal((await runtime.runtimeStatusSnapshot()).ownership, 'COVERT_OWNED', 'failed cleanup remains visible for recovery');
       } else if (scenario.owner === 'COVERT_OWNED') {
         assert.equal((await runtime.runtimeStatusSnapshot()).health, 'STOPPED', 'owned runtime is released after start failure');

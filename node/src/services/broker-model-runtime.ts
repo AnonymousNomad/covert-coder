@@ -2,7 +2,7 @@ import path from 'node:path';
 import { existsSync, statSync } from 'node:fs';
 import type { RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
 import type { createResourceAdmission } from './resource-admission.ts';
-import { RuntimeBroker } from './runtime-adapter.ts';
+import { RuntimeAdapterError, RuntimeBroker } from './runtime-adapter.ts';
 import {
   hashModelArtifact,
   ModelRuntime,
@@ -93,15 +93,22 @@ export class BrokerModelRuntime extends ModelRuntime {
     this.observedStatusCache = null;
   }
 
-  private async cleanupOwnedRuntimeAfterFailedStart(): Promise<'STOPPED' | 'NOT_COVERT_OWNED' | 'FAILED'> {
+  private failureCode(error: unknown, fallback: string): string {
+    const code = error instanceof RuntimeAdapterError || error instanceof ModelRuntimeError ? error.code : null;
+    return code !== null && /^[A-Z][A-Z0-9_]{0,63}$/.test(code) ? code : fallback;
+  }
+
+  private async cleanupOwnedRuntimeAfterFailedStart(): Promise<
+    { status: 'STOPPED' | 'NOT_COVERT_OWNED' } | { status: 'FAILED'; code: string }
+  > {
     this.invalidateObservedStatus();
     try {
       const status = await this.activeStatus();
-      if (status.ownership !== 'COVERT_OWNED') return 'NOT_COVERT_OWNED';
+      if (status.ownership !== 'COVERT_OWNED') return { status: 'NOT_COVERT_OWNED' };
       await this.broker.shutdown(true);
-      return 'STOPPED';
-    } catch {
-      return 'FAILED';
+      return { status: 'STOPPED' };
+    } catch (error) {
+      return { status: 'FAILED', code: this.failureCode(error, 'CLEANUP_FAILED') };
     } finally {
       this.invalidateObservedStatus();
     }
@@ -265,8 +272,14 @@ export class BrokerModelRuntime extends ModelRuntime {
       return { id, status: 'running', endpoint };
     } catch (error) {
       const cleanup = await this.cleanupOwnedRuntimeAfterFailedStart();
-      if (cleanup === 'FAILED') {
-        throw new ModelRuntimeError('CHILD_FAILED', 'model start failed and cleanup of the Covert-owned runtime could not be confirmed; inspect runtime status before retrying');
+      if (cleanup.status === 'FAILED') {
+        const startCode = this.failureCode(error, 'RUNTIME_OPERATION_FAILED');
+        const detail = { startErrorCode: startCode, cleanupErrorCode: cleanup.code };
+        throw new ModelRuntimeError(
+          'CHILD_FAILED',
+          `model start failed (${startCode}) and cleanup of the Covert-owned runtime could not be confirmed (${cleanup.code}); inspect runtime status before retrying`,
+          detail
+        );
       }
       throw error;
     }
