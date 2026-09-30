@@ -82,11 +82,16 @@ test('chat routes deliver the same composed messages to their model transports',
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-chat-routes-'));
   try {
     const seen: ChatMessageT[][] = [];
-    const target = { binding: { execution_class: 'LOCAL' } } as unknown as import('../../node/src/services/model-router.ts').ResolvedChatAuthorityTarget;
+    const seenOptions: Array<{ temperature?: number; maxTokens?: number }> = [];
+    const target = {
+      binding: { execution_class: 'LOCAL' },
+      route: { providerType: 'local' }
+    } as unknown as import('../../node/src/services/model-router.ts').ResolvedChatAuthorityTarget;
     const router = {
       resolveAuthorityTarget: () => ({ status: 'RESOLVED', target }),
-      chatResolvedTarget: async (_target: unknown, messages: ChatMessageT[]) => {
+      chatResolvedTarget: async (_target: unknown, messages: ChatMessageT[], options: { temperature?: number; maxTokens?: number }) => {
         seen.push(messages);
+        seenOptions.push(options);
         return { text: 'ok', modelId: 'local:test', timingMs: 1 };
       },
       chatStreamResolvedTarget: async (_target: unknown, messages: ChatMessageT[], onDelta: (delta: string) => void) => {
@@ -122,6 +127,8 @@ test('chat routes deliver the same composed messages to their model transports',
     await stream.stream!(streamContext, response as never);
 
     assert.equal(seen.length, 2);
+    assert.equal(seenOptions.length, 1);
+    assert.equal(seenOptions[0]?.temperature, undefined, 'local profile temperature remains authoritative when the caller omits it');
     assert.deepEqual(seen[1], seen[0]);
     assert.ok(seen[0]!.some(message => message.content.includes('[AIDE harness')));
   } finally {

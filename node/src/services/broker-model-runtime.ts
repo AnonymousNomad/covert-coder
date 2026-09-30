@@ -1,10 +1,17 @@
 import path from 'node:path';
-import { createReadStream, existsSync, statSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { existsSync, statSync } from 'node:fs';
 import type { RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
 import type { createResourceAdmission } from './resource-admission.ts';
 import { RuntimeBroker } from './runtime-adapter.ts';
-import { ModelRuntime, ModelRuntimeError, type ModelRuntimeOptions } from './model-runtime.ts';
+import {
+  hashModelArtifact,
+  ModelRuntime,
+  ModelRuntimeError,
+  readModelProfileSidecar,
+  type ModelProfileBinding,
+  type ModelProfilePatch,
+  type ModelRuntimeOptions
+} from './model-runtime.ts';
 
 /** Frozen V1 profile from docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json. */
 export interface LocalRuntimeQualification {
@@ -115,13 +122,60 @@ export class BrokerModelRuntime extends ModelRuntime {
     catch { return false; }
   }
 
-  private async verifyQualifiedArtifact(file: string): Promise<void> {
+  private async verifyQualifiedArtifact(file: string): Promise<string> {
     if (!this.artifactMatchesProfile(file)) throw new ModelRuntimeError('NOT_READY', 'local artifact is outside the qualified Unsloth V1 profile');
-    const hash = createHash('sha256');
-    for await (const chunk of createReadStream(file)) hash.update(chunk);
-    if (hash.digest('hex') !== this.qualification.artifactSha256.toLowerCase()) {
+    const digest = await hashModelArtifact(file);
+    if (digest !== this.qualification.artifactSha256.toLowerCase()) {
       throw new ModelRuntimeError('CONFLICT', 'local artifact hash differs from the accepted Runtime Passport');
     }
+    return digest;
+  }
+
+  private boundRuntimeProfile(model: NonNullable<ReturnType<ModelRuntime['get']>>, artifactSha256: string): {
+    contextTokens: number;
+    generationDefaults: { maxTokens: number; temperature: number };
+  } {
+    const profile = readModelProfileSidecar(model.file);
+    if (profile.invalid) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is invalid; inspect it before starting the model');
+    const binding = profile.binding;
+    if (profile.schema_version !== 1 || binding === undefined) {
+      throw new ModelRuntimeError('NOT_READY', 'an Authority-saved runtime profile is required before this local model can start');
+    }
+    if (binding.artifact_sha256?.toLowerCase() !== artifactSha256.toLowerCase() ||
+        binding.runtime_id !== 'UNSLOTH' || binding.runtime_version !== this.qualification.backendVersion) {
+      throw new ModelRuntimeError('CONFLICT', 'saved runtime profile is bound to a different artifact or Unsloth version');
+    }
+    const samplerKeys = Object.keys(profile.samplers ?? {});
+    const runtimeKeys = Object.keys(profile.runtime ?? {});
+    if (samplerKeys.some(key => key !== 'temperature') ||
+        runtimeKeys.some(key => key !== 'context_tokens' && key !== 'max_tokens')) {
+      throw new ModelRuntimeError('NOT_READY', 'saved profile contains settings not qualified for the canonical Unsloth adapter');
+    }
+    const temperature = profile.samplers?.temperature;
+    const contextTokens = profile.runtime?.context_tokens;
+    const maxTokens = profile.runtime?.max_tokens;
+    if (typeof temperature !== 'number' || !Number.isFinite(temperature) || temperature < 0 || temperature > 2 ||
+        typeof contextTokens !== 'number' || !Number.isInteger(contextTokens) || contextTokens < 128 || contextTokens > 131072 ||
+        typeof maxTokens !== 'number' || !Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > 8192) {
+      throw new ModelRuntimeError('NOT_READY', 'saved runtime profile must specify supported temperature, context_tokens, and max_tokens values');
+    }
+    return { contextTokens, generationDefaults: { temperature, maxTokens } };
+  }
+
+  override async saveProfile(id: string, patch: ModelProfilePatch): Promise<{ id: string; preset: string; saved: true }> {
+    const model = this.get(id);
+    if (model === undefined) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
+    const artifactSha256 = await this.verifyQualifiedArtifact(model.file);
+    const binding: ModelProfileBinding = {
+      artifact_sha256: artifactSha256,
+      runtime_id: 'UNSLOTH',
+      runtime_version: this.qualification.backendVersion
+    };
+    return this.persistProfile(id, patch, {
+      binding,
+      samplerKeys: ['temperature'],
+      runtimeKeys: ['context_tokens', 'max_tokens']
+    });
   }
 
   private endpointFor(status: RuntimeStatusResponseT): string | null {
@@ -138,7 +192,15 @@ export class BrokerModelRuntime extends ModelRuntime {
       runtime,
       models: this.list().map(model => {
         const artifactAvailable = model.file.length > 0 && existsSync(model.file);
-        const profileCandidate = artifactAvailable && this.artifactMatchesProfile(model.file) && status.version === this.qualification.backendVersion;
+        const artifactCandidate = artifactAvailable && this.artifactMatchesProfile(model.file) && status.version === this.qualification.backendVersion;
+        let savedProfileCandidate = false;
+        if (artifactCandidate) {
+          try {
+            this.boundRuntimeProfile(model, this.qualification.artifactSha256);
+            savedProfileCandidate = true;
+          } catch { /* a missing or incompatible model profile remains setup-required */ }
+        }
+        const profileCandidate = artifactCandidate && savedProfileCandidate;
         const running = this.isLoaded(model.id, status);
         const backendEndpoint = this.endpointFor(status);
         if (running && backendEndpoint !== null) model.endpoint = backendEndpoint;
@@ -155,7 +217,8 @@ export class BrokerModelRuntime extends ModelRuntime {
             'Unsloth CLI not discovered; set AIDE_UNSLOTH_CLI to its absolute path and restart Covert, or install the qualified runtime' :
             `Unsloth unavailable (${status.health}); install or repair the qualified runtime` :
             !artifactAvailable ? 'local model artifact unavailable' :
-              !profileCandidate ? 'artifact or backend version is outside the qualified Unsloth V1 profile' : undefined,
+              !artifactCandidate ? 'artifact or backend version is outside the qualified Unsloth V1 profile' :
+                !savedProfileCandidate ? 'Authority-saved exact-artifact Unsloth profile required before start' : undefined,
           qualification: running ? 'accepted_hash_verified' : 'requires_start_preflight',
           ingested: model.ingested === true
         };
@@ -179,13 +242,21 @@ export class BrokerModelRuntime extends ModelRuntime {
     if (current.loaded_model !== null && current.health === 'HEALTHY') {
       throw new ModelRuntimeError('CONFLICT', 'another model is loaded; stop it before selecting this model');
     }
-    await this.verifyQualifiedArtifact(model.file);
+    const artifactSha256 = await this.verifyQualifiedArtifact(model.file);
+    const profile = this.boundRuntimeProfile(model, artifactSha256);
     const admission = await this.resourceAdmission.admitLocalRuntimeStart();
     if (admission.decision !== 'START') {
       throw new ModelRuntimeError('NOT_READY', `local model start refused by final Resource Admission: ${admission.reason}`, admission);
     }
     try {
-      await this.broker.load({ modelId: id, modelPath: path.resolve(model.file), displayName: model.name, contextTokens: model.context_tokens }, true);
+      model.context_tokens = profile.contextTokens;
+      await this.broker.load({
+        modelId: id,
+        modelPath: path.resolve(model.file),
+        displayName: model.name,
+        contextTokens: profile.contextTokens,
+        generationDefaults: profile.generationDefaults
+      }, true);
       this.invalidateObservedStatus();
       const status = await this.activeStatus();
       const endpoint = this.endpointFor(status);

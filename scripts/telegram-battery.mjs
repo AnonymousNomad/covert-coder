@@ -169,7 +169,8 @@ test('status command reports local-only posture', async () => {
 test('offset acks prevent redelivery', async () => {
   const offset = await until(async () => {
     const o = await fs.readFile(path.join(dir, '.aide', 'telegram', 'offset.txt'), 'utf8').catch(() => null);
-    return o ? Number(o) : null;
+    const value = o === null ? Number.NaN : Number(o);
+    return Number.isSafeInteger(value) && value === 13 ? value : null;
   }, 10000);
   assert.equal(offset, 13); // last update_id 12 + 1
 });

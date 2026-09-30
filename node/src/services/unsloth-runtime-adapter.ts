@@ -336,6 +336,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   private startedAt: string | null = null;
   private loadedModel: RuntimeModelIdentityT | null = null;
   private loadedPath: string | null = null;
+  private generationDefaults: RuntimeLoadRequest['generationDefaults'] | null = null;
   private readonly expectedChildExits = new WeakSet<ChildProcess>();
   private activeControllers = new Set<AbortController>();
   private lastError: RuntimeStatusResponseT['last_error'] = null;
@@ -623,10 +624,11 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       max_seq_length: request.contextTokens ?? 2048
     };
     if (request.loadIn4Bit !== undefined) payload.load_in_4bit = request.loadIn4Bit;
-    if (this.loadedPath !== absolutePath || this.loadedModel?.artifact_sha256 !== artifactHashBeforeLoad) {
-      this.loadedModel = null;
-      this.loadedPath = null;
-    }
+    // A reload can change the profile even for the same artifact. Do not leave
+    // the prior model or its defaults looking current if this load fails.
+    this.loadedModel = null;
+    this.loadedPath = null;
+    this.generationDefaults = null;
     const response = await this.fetchNoRedirect('/api/inference/load', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -652,6 +654,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     };
     this.loadedPath = absolutePath;
     this.loadedModel = identity;
+    this.generationDefaults = request.generationDefaults === undefined ? null : { ...request.generationDefaults };
     this.lastError = null;
     return identity;
   }
@@ -686,6 +689,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     await this.readLifecycleResponse(response, 'unload');
     this.loadedModel = null;
     this.loadedPath = null;
+    this.generationDefaults = null;
   }
 
   async infer(request: RuntimeInferenceRequest, signal?: AbortSignal): Promise<RuntimeInferenceResult> {
@@ -709,8 +713,8 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       model: 'default',
       messages: request.messages,
       stream: streaming,
-      max_tokens: request.maxTokens ?? 512,
-      temperature: request.temperature ?? 0.2
+      max_tokens: request.maxTokens ?? this.generationDefaults?.maxTokens ?? 512,
+      temperature: request.temperature ?? this.generationDefaults?.temperature ?? 0.2
     };
     if (request.tools !== undefined) payload.tools = request.tools;
     try {
@@ -900,6 +904,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     this.ownership = 'UNKNOWN';
     this.loadedModel = null;
     this.loadedPath = null;
+    this.generationDefaults = null;
     this.lastHealth = 'STOPPED';
   }
   async status(): Promise<RuntimeStatusResponseT> {
@@ -1009,6 +1014,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
         this.lastHealth = 'STOPPED';
         this.loadedModel = null;
         this.loadedPath = null;
+        this.generationDefaults = null;
         if (!this.expectedChildExits.has(child)) {
           this.recordOwnershipError(
             'UNSLOTH_PROCESS_EXITED',

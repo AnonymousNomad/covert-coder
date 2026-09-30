@@ -214,7 +214,11 @@ async function gatedChat(
   if (n <= 1) {
     return router.chatResolvedTarget(target, messages, {
       maxTokens: request.options?.maxTokens,
-      temperature: baseTemp,
+      // Let a canonical local runtime apply its artifact-bound temperature
+      // default. External routes retain the established 0.2 default.
+      ...(request.options?.temperature !== undefined
+        ? { temperature: request.options.temperature }
+        : target.route.providerType === 'local' ? {} : { temperature: baseTemp }),
       timeoutMs: request.options?.timeoutMs
     });
   }

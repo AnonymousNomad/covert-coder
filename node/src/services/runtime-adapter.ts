@@ -20,6 +20,10 @@ export interface RuntimeLoadRequest {
   displayName?: string;
   contextTokens?: number;
   loadIn4Bit?: boolean;
+  generationDefaults?: {
+    maxTokens?: number;
+    temperature?: number;
+  };
 }
 
 export interface RuntimeMessage {

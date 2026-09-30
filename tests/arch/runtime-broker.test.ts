@@ -321,6 +321,11 @@ test('Unsloth reports authentication failures explicitly for discovery, load, an
 
 test('Unsloth loopback API health, model list, local artifact identity, inference, streaming, and tool evidence', async () => {
   const calls: Array<{ url: string; method: string; body: string | null }> = [];
+  const latestChatPayload = (): Record<string, unknown> => {
+    const call = calls.slice().reverse().find(entry => entry.url.endsWith('/v1/chat/completions'));
+    if (call === undefined || call.body === null) throw new Error('chat request payload was not captured');
+    return JSON.parse(call.body) as Record<string, unknown>;
+  };
   const fetcher: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
     const method = init?.method ?? 'GET';
@@ -353,7 +358,10 @@ test('Unsloth loopback API health, model list, local artifact identity, inferenc
     assert.equal(models[0]?.model_id, 'default');
     assert.equal(models[0]?.artifact_sha256, null);
 
-    const loaded = await adapter.load({ modelId: 'fixture-model', modelPath: artifact, contextTokens: 2048 }, true);
+    const loaded = await adapter.load({
+      modelId: 'fixture-model', modelPath: artifact, contextTokens: 2048,
+      generationDefaults: { temperature: 0, maxTokens: 64 }
+    }, true);
     assert.equal(loaded.identity_evidence, 'REQUESTED_ARTIFACT');
     assert.match(loaded.artifact_sha256 ?? '', /^[a-f0-9]{64}$/);
     const result = await adapter.infer({ modelId: 'fixture-model', messages: [{ role: 'user', content: 'call a tool' }], tools: [{ type: 'function' }] });
@@ -361,6 +369,13 @@ test('Unsloth loopback API health, model list, local artifact identity, inferenc
     assert.equal(result.toolCalls.length, 1);
     assert.equal(result.toolEvidence.attribution, 'UNKNOWN');
     assert.equal(result.toolEvidence.raw_model_output, null);
+    const firstInference = latestChatPayload();
+    assert.equal(firstInference.temperature, 0);
+    assert.equal(firstInference.max_tokens, 64);
+    await adapter.infer({ modelId: 'fixture-model', messages: [{ role: 'user', content: 'explicit overrides win' }], temperature: 0.4, maxTokens: 12 });
+    const explicitInference = latestChatPayload();
+    assert.equal(explicitInference.temperature, 0.4);
+    assert.equal(explicitInference.max_tokens, 12);
     assert.deepEqual(await adapter.metrics(), { ram_bytes: null, vram_bytes: null, windows_commit_bytes: null, loaded_model_bytes: null, context_tokens: null, source: 'UNKNOWN' });
 
     let streamed = '';
@@ -380,6 +395,10 @@ test('Unsloth loopback API health, model list, local artifact identity, inferenc
     assert.equal(switchedStatus.loaded_model?.model_id, 'fixture-model-switched');
     assert.equal(switchedStatus.loaded_model?.artifact_sha256, switched.artifact_sha256);
     assert.notEqual(switched.artifact_sha256, loaded.artifact_sha256);
+    await adapter.infer({ modelId: 'fixture-model-switched', messages: [{ role: 'user', content: 'defaults must not leak across model loads' }] });
+    const switchedInference = latestChatPayload();
+    assert.equal(switchedInference.temperature, 0.2);
+    assert.equal(switchedInference.max_tokens, 512);
 
     const beforeUnload = calls.length;
     await assert.rejects(() => adapter.unload('fixture-model-switched'), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'OPERATOR_ACTION_REQUIRED');

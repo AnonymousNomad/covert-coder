@@ -35,6 +35,7 @@ test('product inventory starts, chats, streams and stops only through canonical 
     artifact_uri: 'local://fixture.gguf', context_tokens: 2048
   }] }));
   const calls: string[] = [];
+  const loadedOptions: Array<{ contextTokens?: number; generationDefaults?: { maxTokens?: number; temperature?: number } }> = [];
   const digest = createHash('sha256').update('model fixture').digest('hex');
   let loaded: RuntimeModelIdentityT | null = null;
   let health: RuntimeStatusResponseT['health'] = 'STOPPED';
@@ -51,8 +52,12 @@ test('product inventory starts, chats, streams and stops only through canonical 
     backendId: 'UNSLOTH', discover: async () => {}, health: async () => health,
     status: async () => { statusReads += 1; return status(); }, capabilities: unknownCapabilities,
     models: async () => loaded === null ? [] : [loaded],
-    load: async (request: { modelId: string; modelPath: string; contextTokens: number }) => {
-      calls.push(`load:${request.modelId}:${request.contextTokens}`);
+    load: async (request: { modelId: string; modelPath: string; contextTokens: number; generationDefaults?: { maxTokens?: number; temperature?: number } }) => {
+      calls.push(`load:${request.modelId}:${request.contextTokens}:${request.generationDefaults?.maxTokens}:${request.generationDefaults?.temperature}`);
+      loadedOptions.push({
+        contextTokens: request.contextTokens,
+        ...(request.generationDefaults === undefined ? {} : { generationDefaults: request.generationDefaults })
+      });
       assert.equal(request.modelPath, artifact);
       health = 'HEALTHY';
       ownership = 'COVERT_OWNED';
@@ -83,10 +88,45 @@ test('product inventory starts, chats, streams and stops only through canonical 
   }, admittedLocalStart());
   try {
     await runtime.load();
+    await assert.rejects(() => runtime.saveProfile('fixture', { preset: 'balanced' }), /unsupported sampler/);
+    await assert.rejects(() => runtime.start('fixture'), /Authority-saved runtime profile is required/);
+    assert.equal(calls.length, 0, 'missing model-specific profile refuses before the broker load');
+    const beforeProfile = (await runtime.status()).models[0];
+    assert.equal(beforeProfile?.status, 'pending', 'an artifact without its required runtime profile is not reported ready');
+    assert.equal(beforeProfile?.setup_required, true);
+    assert.match(String(beforeProfile?.setup_message), /Authority-saved exact-artifact Unsloth profile required/);
+    await writeFile(`${artifact}.profile.json`, JSON.stringify({
+      preset: 'legacy-balanced', samplers: { temperature: 0.6, top_p: 0.9 }, runtime: { backend: 'llama.cpp', ngl: 24 }
+    }));
+    const saved = await runtime.saveProfile('fixture', {
+      preset: 'custom', samplers: { temperature: 0 }, runtime: { context_tokens: 1536, max_tokens: 64 }
+    });
+    assert.equal(saved.saved, true);
+    const savedProfile = JSON.parse(await readFile(`${artifact}.profile.json`, 'utf8')) as {
+      binding?: { artifact_sha256?: string; runtime_id?: string; runtime_version?: string };
+      runtime?: Record<string, number>;
+      samplers?: Record<string, number>;
+      legacy_unbound?: { previous_profile?: { preset?: string; samplers?: Record<string, number>; runtime?: Record<string, number | string> } };
+    };
+    assert.deepEqual(savedProfile.binding, { artifact_sha256: digest, runtime_id: 'UNSLOTH', runtime_version: '2026.9.11' });
+    assert.equal(savedProfile.runtime?.context_tokens, 1536);
+    assert.equal(savedProfile.runtime?.max_tokens, 64);
+    assert.equal(savedProfile.samplers?.temperature, 0);
+    assert.deepEqual(savedProfile.legacy_unbound?.previous_profile, {
+      schema_version: null,
+      binding: null,
+      preset: 'legacy-balanced',
+      samplers: { temperature: 0.6, top_p: 0.9 },
+      runtime: { backend: 'llama.cpp', ngl: 24 }
+    }, 'prior unbound settings are preserved as inert history, not reinterpreted as Unsloth configuration');
+    const configuredStatus = (await runtime.status()).models[0];
+    assert.equal(configuredStatus?.status, 'ready');
+    assert.equal(configuredStatus?.setup_required, false);
+    assert.equal(runtime.get('fixture')?.context_tokens, 2048, 'passive status must not apply or mutate the saved runtime context');
     const readsBeforeProbe = statusReads;
     await runtime.verifyEndpointModel('fixture');
     await runtime.verifyEndpointModel('fixture');
-    assert.equal(statusReads - readsBeforeProbe, 1, 'read-only model probes share one brief runtime snapshot');
+    assert.ok(statusReads - readsBeforeProbe <= 1, 'read-only model probes reuse or share one brief runtime snapshot');
     assert.equal(runtime.get('fixture')?.endpoint, 'http://127.0.0.1:18888/v1', 'authority target must bind the canonical Unsloth endpoint');
     assert.equal(await readFile(legacyLedger, 'utf8'), legacyEngine, 'Unsloth inventory load must not sweep legacy engine ownership');
     assert.equal((await runtime.status()).models[0]?.status, 'ready');
@@ -98,8 +138,10 @@ test('product inventory starts, chats, streams and stops only through canonical 
     ownership = 'UNKNOWN';
     const started = await runtime.start('fixture');
     assert.equal(started.endpoint, 'http://127.0.0.1:18888/v1');
+    assert.equal(runtime.get('fixture')?.context_tokens, 1536, 'start applies the validated runtime profile context');
     assert.equal((await runtime.start('fixture')).endpoint, started.endpoint);
     assert.equal(calls.filter(call => call.startsWith('load:')).length, 1);
+    assert.deepEqual(loadedOptions[0], { contextTokens: 1536, generationDefaults: { temperature: 0, maxTokens: 64 } });
     assert.equal((await runtime.status()).models[0]?.status, 'running');
     assert.equal((await runtime.verifyEndpointModel('fixture')).ready, true);
     assert.equal((await runtime.chat('fixture', [{ role: 'user', content: 'hello' }])).text, 'answer');
@@ -107,11 +149,20 @@ test('product inventory starts, chats, streams and stops only through canonical 
     await runtime.chatStream('fixture', [{ role: 'user', content: 'hello' }], delta => { streamed += delta; }, new AbortController().signal);
     assert.equal(streamed, 'streamed');
     await runtime.stop('fixture');
-    assert.deepEqual(calls, ['load:fixture:2048', 'infer:fixture', 'stream', 'unload:fixture', 'shutdown']);
     assert.equal((await runtime.status()).models[0]?.status, 'ready');
+    await runtime.start('fixture');
+    assert.deepEqual(loadedOptions[1], { contextTokens: 1536, generationDefaults: { temperature: 0, maxTokens: 64 } }, 'restart reapplies the exact saved model profile');
+    assert.equal((await runtime.chat('fixture', [{ role: 'user', content: 'second generation after restart' }])).text, 'answer');
+    await runtime.stop('fixture');
+    assert.deepEqual(calls, [
+      'load:fixture:1536:64:0', 'infer:fixture', 'stream', 'unload:fixture', 'shutdown',
+      'load:fixture:1536:64:0', 'infer:fixture', 'unload:fixture', 'shutdown'
+    ]);
+    const loadsBeforeArtifactMutation = calls.filter(call => call.startsWith('load:')).length;
+    assert.equal(loadsBeforeArtifactMutation, 2, 'the same exact profile was loaded once before and once after restart');
     await writeFile(artifact, 'model changed');
     await assert.rejects(runtime.start('fixture'), /hash differs/);
-    assert.equal(calls.filter(call => call.startsWith('load:')).length, 1);
+    assert.equal(calls.filter(call => call.startsWith('load:')).length, loadsBeforeArtifactMutation, 'changed artifact is rejected before another load');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -180,6 +231,9 @@ test('failed or unverifiable model starts stop only a freshly confirmed Covert-o
 
     try {
       await runtime.load();
+      await runtime.saveProfile('fixture', {
+        preset: 'custom', samplers: { temperature: 0 }, runtime: { context_tokens: 2048, max_tokens: 64 }
+      });
       await assert.rejects(() => runtime.start('fixture'), scenario.expected, scenario.name);
       assert.equal(shutdowns, scenario.shutdowns, `${scenario.name}: shutdown count`);
       if (scenario.shutdownFails) {
@@ -236,6 +290,9 @@ test('canonical broker repeats local admission after artifact verification and b
 
   try {
     await runtime.load();
+    await runtime.saveProfile('fixture', {
+      preset: 'custom', samplers: { temperature: 0 }, runtime: { context_tokens: 2048, max_tokens: 64 }
+    });
     await assert.rejects(() => runtime.start('fixture'), error => {
       const detail = (error as { detail?: { decision?: string; evidence?: Record<string, unknown> } }).detail;
       assert.equal(detail?.decision, 'REFUSE_RESOURCE');

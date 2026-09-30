@@ -7,6 +7,7 @@ import { probeGguf } from './gguf.ts';
 import { fitModel } from './model-fit.ts';
 import { probeHardware, type HardwareInfo } from './hardware.ts';
 import { estimateTokens } from './history-fit.ts';
+import { atomicWriteJson, withFileMutationLock } from './atomic-json.ts';
 import type { ModelFitReportT } from '../../../common/contracts/models.ts';
 
 export class ModelRuntimeError extends Error {
@@ -34,12 +35,59 @@ const SAMPLER_FLAGS: Record<string, string> = {
   mirostat_tau: '--mirostat-tau', mirostat_eta: '--mirostat-eta', seed: '--seed'
 };
 
-function readProfileSidecar(file: string): { samplers?: Record<string, number>; runtime?: Record<string, number | boolean> } {
+export interface ModelProfileSidecar {
+  schema_version?: number;
+  binding?: { artifact_sha256?: string; runtime_id?: string; runtime_version?: string | null };
+  preset?: string;
+  samplers?: Record<string, number>;
+  runtime?: Record<string, number | string | boolean>;
+  legacy_unbound?: Record<string, unknown>;
+  invalid?: true;
+}
+
+export interface ModelProfilePatch {
+  preset?: string;
+  samplers?: Record<string, number>;
+  runtime?: Record<string, number | string | boolean>;
+}
+
+export interface ModelProfileBinding {
+  artifact_sha256: string;
+  runtime_id: string;
+  runtime_version: string | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function readModelProfileSidecar(file: string): ModelProfileSidecar {
   try {
-    return JSON.parse(readFileSync(`${file}.profile.json`, 'utf8'));
-  } catch {
-    return {};
+    const raw = JSON.parse(readFileSync(`${file}.profile.json`, 'utf8')) as unknown;
+    if (!isRecord(raw) || raw.invalid === true ||
+        (raw.schema_version !== undefined && raw.schema_version !== 1) ||
+        (raw.preset !== undefined && typeof raw.preset !== 'string')) return { invalid: true };
+    if (raw.binding !== undefined) {
+      const binding = raw.binding;
+      if (!isRecord(binding) || typeof binding.artifact_sha256 !== 'string' ||
+          typeof binding.runtime_id !== 'string' ||
+          (binding.runtime_version !== null && typeof binding.runtime_version !== 'string')) return { invalid: true };
+    }
+    if (raw.samplers !== undefined && (!isRecord(raw.samplers) ||
+        Object.values(raw.samplers).some(value => typeof value !== 'number' || !Number.isFinite(value)))) return { invalid: true };
+    if (raw.runtime !== undefined && (!isRecord(raw.runtime) ||
+        Object.values(raw.runtime).some(value => typeof value === 'number' ? !Number.isFinite(value) :
+          typeof value !== 'string' && typeof value !== 'boolean'))) return { invalid: true };
+    return raw as unknown as ModelProfileSidecar;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ENOENT' ? {} : { invalid: true };
   }
+}
+
+export async function hashModelArtifact(file: string): Promise<string> {
+  const hash = crypto.createHash('sha256');
+  for await (const chunk of createReadStream(file)) hash.update(chunk);
+  return hash.digest('hex');
 }
 
 export function resolveLlamaBinary(workspace: string): { path: string; vulkan: boolean } | null {
@@ -62,7 +110,10 @@ export function resolveLlamaBinary(workspace: string): { path: string; vulkan: b
   return null;
 }
 
-function samplerArgs(profile: ReturnType<typeof readProfileSidecar>): string[] {
+function samplerArgs(profile: ReturnType<typeof readModelProfileSidecar>): string[] {
+  // A profile bound to another canonical runtime is never reinterpreted as a
+  // legacy llama.cpp command line.
+  if (profile.binding !== undefined) return [];
   const args: string[] = [];
   for (const [key, flag] of Object.entries(SAMPLER_FLAGS)) {
     const value = profile.samplers?.[key];
@@ -433,7 +484,9 @@ export class ModelRuntime {
       const llamaBinary = llamaResolution.path;
       const llamaBinaryDir = path.dirname(llamaBinary);
       const endpointUrl = new URL(model.endpoint);
-      const profile = readProfileSidecar(model.file);
+      const profile = readModelProfileSidecar(model.file);
+      if (profile.invalid) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is invalid; inspect it before starting the model');
+      if (profile.binding !== undefined) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is bound to a different canonical runtime');
       // For a Vulkan build, the sidecar may not set ngl; default to offload-all
       // so the model actually uses the GPU. CPU builds must NOT default to ngl,
       // since llama-server interprets -ngl > 0 on a CPU binary as an error.
@@ -1041,46 +1094,103 @@ export class ModelRuntime {
   // Profile parity with the legacy /api/models/profile: presets + sampler /
   // runtime key validation (unknown keys -> BAD_REQUEST). Persists the next to
   // the same `${file}.profile.json` sidecar the engine layer reads.
-  async saveProfile(id: string, patch: { preset?: string; samplers?: Record<string, number>; runtime?: Record<string, number | string | boolean> }): Promise<{ id: string; preset: string; saved: true }> {
+  async saveProfile(id: string, patch: ModelProfilePatch): Promise<{ id: string; preset: string; saved: true }> {
+    return this.persistProfile(id, patch, {
+      samplerKeys: ['temperature', 'top_k', 'top_p', 'min_p', 'mirostat', 'mirostat_tau', 'mirostat_eta', 'repeat_penalty', 'seed'],
+      runtimeKeys: ['ngl', 'flash_attn', 'backend']
+    });
+  }
+
+  protected async persistProfile(
+    id: string,
+    patch: ModelProfilePatch,
+    options: { samplerKeys: readonly string[]; runtimeKeys: readonly string[]; binding?: ModelProfileBinding }
+  ): Promise<{ id: string; preset: string; saved: true }> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
-    const SAMPLER_KEYS = ['temperature', 'top_k', 'top_p', 'min_p', 'mirostat', 'mirostat_tau', 'mirostat_eta', 'repeat_penalty', 'seed'];
-    const RUNTIME_KEYS = ['ngl', 'flash_attn', 'backend'];
     const PRESETS: Record<string, Record<string, number>> = {
       precise: { temperature: 0.1, min_p: 0.05, repeat_penalty: 1.05, seed: 0 },
       balanced: { temperature: 0.7, top_p: 0.9, min_p: 0.05 },
       creative: { temperature: 1.0, top_p: 0.95, min_p: 0.03 },
       mirostat: { mirostat: 2, mirostat_tau: 5.0, mirostat_eta: 0.1 }
     };
-    const base = readProfileSidecar(model.file);
-    let next: Record<string, unknown>;
-    if (patch.preset) {
-      const preset = PRESETS[patch.preset];
-      if (!preset) throw new ModelRuntimeError('BAD_REQUEST', `unknown preset: ${patch.preset}`);
-      next = { ...base, preset: patch.preset, samplers: { ...preset } };
-    } else if (patch.samplers !== undefined) {
-      for (const [key, value] of Object.entries(patch.samplers)) {
-        if (!SAMPLER_KEYS.includes(key)) throw new ModelRuntimeError('BAD_REQUEST', `unknown sampler key: ${key}`);
-        if (typeof value !== 'number' || !Number.isFinite(value)) throw new ModelRuntimeError('BAD_REQUEST', `sampler ${key} must be a finite number`);
+    const sidecarPath = `${model.file}.profile.json`;
+    if (!model.file) throw new ModelRuntimeError('NOT_READY', 'model artifact is unavailable for profile binding');
+    await fs.access(model.file).catch(() => { throw new ModelRuntimeError('NOT_READY', 'model artifact is unavailable for profile binding'); });
+    return withFileMutationLock(sidecarPath, async () => {
+      const base = readModelProfileSidecar(model.file);
+      if (base.invalid) throw new ModelRuntimeError('CONFLICT', 'existing model profile is invalid; inspect it before replacing it');
+      const samplerKeys = options.samplerKeys;
+      const runtimeKeys = options.runtimeKeys;
+      const sameBoundProfile = options.binding !== undefined && base.schema_version === 1 &&
+        base.binding?.artifact_sha256?.toLowerCase() === options.binding.artifact_sha256.toLowerCase() &&
+        base.binding.runtime_id === options.binding.runtime_id &&
+        base.binding.runtime_version === options.binding.runtime_version &&
+        Object.keys(base.samplers ?? {}).every(key => samplerKeys.includes(key)) &&
+        Object.keys(base.runtime ?? {}).every(key => runtimeKeys.includes(key));
+      const reuseBaseSettings = options.binding === undefined || sameBoundProfile;
+      const preservedLegacyProfile = options.binding !== undefined && !sameBoundProfile &&
+        (base.preset !== undefined || base.samplers !== undefined || base.runtime !== undefined)
+        ? {
+            schema_version: base.schema_version ?? null,
+            binding: base.binding ?? null,
+            preset: base.preset ?? null,
+            samplers: base.samplers ?? null,
+            runtime: base.runtime ?? null
+          }
+        : undefined;
+      const legacyUnbound = {
+        ...base.legacy_unbound,
+        ...(preservedLegacyProfile === undefined ? {} : { previous_profile: preservedLegacyProfile })
+      };
+      const baseSamplers = reuseBaseSettings ? base.samplers : undefined;
+      const baseRuntime = reuseBaseSettings ? base.runtime : undefined;
+      const requestedSamplers = patch.samplers ?? {};
+      const requestedRuntime = patch.runtime ?? {};
+      for (const [key, value] of Object.entries(requestedSamplers)) {
+        if (!samplerKeys.includes(key)) throw new ModelRuntimeError('BAD_REQUEST', `sampler ${key} is not supported by this runtime profile`);
+        if (!Number.isFinite(value)) throw new ModelRuntimeError('BAD_REQUEST', `sampler ${key} must be a finite number`);
+        if (key === 'temperature' && (value < 0 || value > 2)) throw new ModelRuntimeError('BAD_REQUEST', 'sampler temperature must be between 0 and 2');
       }
-      next = { ...base, preset: patch.preset || 'custom', samplers: patch.samplers };
-    } else if (patch.runtime !== undefined) {
-      for (const [key, value] of Object.entries(patch.runtime)) {
-        if (!RUNTIME_KEYS.includes(key)) throw new ModelRuntimeError('BAD_REQUEST', `unknown runtime key: ${key}`);
+      for (const [key, value] of Object.entries(requestedRuntime)) {
+        if (!runtimeKeys.includes(key)) throw new ModelRuntimeError('BAD_REQUEST', `runtime setting ${key} is not supported by this runtime profile`);
         if (key === 'backend' ? typeof value !== 'string' : typeof value !== 'number' || !Number.isFinite(value)) {
           throw new ModelRuntimeError('BAD_REQUEST', `runtime ${key} has invalid type`);
         }
+        if (key === 'context_tokens' && (typeof value !== 'number' || !Number.isInteger(value) || value < 128 || value > 131072)) {
+          throw new ModelRuntimeError('BAD_REQUEST', 'runtime context_tokens must be an integer from 128 to 131072');
+        }
+        if (key === 'max_tokens' && (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 8192)) {
+          throw new ModelRuntimeError('BAD_REQUEST', 'runtime max_tokens must be an integer from 1 to 8192');
+        }
       }
-      next = { ...base, runtime: patch.runtime };
-    } else {
-      throw new ModelRuntimeError('BAD_REQUEST', 'profile requires preset, samplers or runtime');
-    }
-    if (model.file.length > 0) {
-      await fs.writeFile(`${model.file}.profile.json`, JSON.stringify(next, null, 2), 'utf8').catch(error => {
-        this.logger?.warn('profile write failed', { id, error: error instanceof Error ? error.message : String(error) });
-      });
-    }
-    return { id, preset: String(next.preset ?? 'custom'), saved: true };
+      const preset = patch.preset;
+      let presetValues: Record<string, number> = {};
+      if (preset !== undefined && preset !== 'custom') {
+        const known = PRESETS[preset];
+        if (!known) throw new ModelRuntimeError('BAD_REQUEST', `unknown preset: ${preset}`);
+        const unsupported = Object.keys(known).find(key => !samplerKeys.includes(key));
+        if (unsupported) throw new ModelRuntimeError('BAD_REQUEST', `preset ${preset} requires unsupported sampler ${unsupported}`);
+        presetValues = known;
+      }
+      if (patch.preset === undefined && patch.samplers === undefined && patch.runtime === undefined) {
+        throw new ModelRuntimeError('BAD_REQUEST', 'profile requires preset, samplers or runtime');
+      }
+      const next: ModelProfileSidecar = {
+        schema_version: 1,
+        ...(options.binding === undefined ? {} : { binding: options.binding }),
+        preset: preset ?? (patch.samplers !== undefined ? 'custom' : reuseBaseSettings ? base.preset ?? 'custom' : 'custom'),
+        ...(Object.keys(presetValues).length > 0 || baseSamplers !== undefined || patch.samplers !== undefined
+          ? { samplers: { ...(preset === undefined || preset === 'custom' ? baseSamplers : {}), ...presetValues, ...requestedSamplers } }
+          : {}),
+        ...(baseRuntime !== undefined || patch.runtime !== undefined
+          ? { runtime: { ...baseRuntime, ...requestedRuntime } }
+          : {}),
+        ...(Object.keys(legacyUnbound).length > 0 ? { legacy_unbound: legacyUnbound } : {})
+      };
+      await atomicWriteJson(sidecarPath, next);
+      return { id, preset: String(next.preset ?? 'custom'), saved: true };
+    });
   }
 
   private async persistIngested(): Promise<void> {
