@@ -11,6 +11,9 @@ export interface PanelHandles {
   dispose(): void;
 }
 
+const LFM_PROFILE_ARTIFACT = 'LFM2.5-2.6B-Q4_K_M.gguf';
+const LFM_PROFILE_SHA256 = '02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed';
+
 function el(tag: string, cls: string, text?: string): HTMLElement {
   const node = document.createElement(tag);
   node.className = cls;
@@ -166,6 +169,46 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
         if (artifact.observed_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Observed SHA-256: ' + artifact.observed_sha256));
         else if (artifact.expected_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Expected SHA-256: ' + artifact.expected_sha256));
       }
+      const exactLfmArtifact = model.artifact_ids.some(artifactId => {
+        const artifact = artifactById.get(artifactId);
+        return artifact?.filename === LFM_PROFILE_ARTIFACT &&
+          artifact.expected_sha256?.toLowerCase() === LFM_PROFILE_SHA256 &&
+          artifact.hash_status !== 'MISMATCH' &&
+          (artifact.observed_sha256 === null || artifact.observed_sha256.toLowerCase() === LFM_PROFILE_SHA256);
+      });
+      if (exactLfmArtifact) {
+        const profile = el('div', 'model-profile-config');
+        profile.appendChild(el('div', 'models-section-header', 'RESEARCHED LFM2.5 REQUEST PROFILE'));
+        profile.appendChild(el('p', 'model-card-meta', 'The canonical adapter uses the GGUF embedded chat template and clears inherited template-file overrides. Stop-token behavior remains unmeasured. This saves temperature 0, context request 2,048, and output limit 512 through Model Access Authority. The context is a prior request value, not measured served context. Saving does not start or qualify the model.'));
+        const saveProfile = document.createElement('button');
+        saveProfile.className = 'model-profile-save';
+        saveProfile.textContent = 'Save exact-artifact request profile';
+        saveProfile.type = 'button';
+        const profileStatus = el('p', 'model-card-meta model-profile-status', 'No profile save has been requested from this panel.');
+        profileStatus.setAttribute('role', 'status');
+        profileStatus.setAttribute('aria-live', 'polite');
+        saveProfile.addEventListener('click', async () => {
+          saveProfile.disabled = true;
+          profileStatus.textContent = 'Saving through the Model Access request path; any required Authority approval will be presented…';
+          try {
+            const result = await api.modelProfileSave({
+              id: model.identity.canonical_id,
+              samplers: { temperature: 0 },
+              runtime: { context_tokens: 2048, max_tokens: 512 }
+            });
+            profileStatus.textContent = result.saved
+              ? 'Profile save acknowledged. The service has not started or qualified the model; exact-artifact admission and runtime verification still apply.'
+              : 'The runtime did not confirm that the model profile was saved.';
+          } catch (error) {
+            profileStatus.textContent = 'Profile was not saved: ' + (error instanceof Error ? error.message : String(error));
+          } finally {
+            saveProfile.disabled = !alive;
+          }
+        });
+        profile.appendChild(saveProfile);
+        profile.appendChild(profileStatus);
+        card.appendChild(profile);
+      }
       modelList.appendChild(card);
     }
     if (view.models.length === 0) modelList.appendChild(el('div', 'models-empty', 'No model identities are currently reported.'));
@@ -198,7 +241,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   }
 
   async function refresh(): Promise<void> {
-    if (!alive || pending) return;
+    if (!alive || pending || (document.activeElement instanceof HTMLElement && body.contains(document.activeElement))) return;
     pending = true;
     body.textContent = 'Loading Model Access evidence…';
     try {

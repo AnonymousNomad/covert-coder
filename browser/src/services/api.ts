@@ -51,7 +51,11 @@ import {
 } from '../../../common/contracts/lsp.ts';
 import {
   ModelStatusResponse,
-  type ModelStatusResponseT
+  type ModelStatusResponseT,
+  ModelProfileRequest,
+  ModelProfileResponse,
+  type ModelProfileRequestT,
+  type ModelProfileResponseT
 } from '../../../common/contracts/models.ts';
 import {
   ModelManagerResponse,
@@ -338,6 +342,11 @@ export const api = {
   },
   modelManager(): Promise<ModelManagerResponseT> {
     return call('/api/models/manager', { schema: ModelManagerResponse });
+  },
+  modelProfileSave(request: ModelProfileRequestT): Promise<ModelProfileResponseT> {
+    const body = ModelProfileRequest.safeParse(request);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid model profile request');
+    return call('/api/models/profile', { body: body.data, schema: ModelProfileResponse });
   },
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });

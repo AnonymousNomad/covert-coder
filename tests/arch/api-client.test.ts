@@ -30,6 +30,39 @@ test('api.health returns parsed data from an ok envelope', async () => {
   mock.restoreAll();
 });
 
+test('api.modelProfileSave posts the validated exact runtime profile through the shared transport', async () => {
+  const seen: Array<{ url: string; method: string; format: string | null; body: unknown }> = [];
+  mock.method(globalThis, 'fetch', async (url: string | URL | Request, init?: RequestInit) => {
+    seen.push({
+      url: new URL(String(url)).pathname,
+      method: init?.method ?? 'GET',
+      format: new Headers(init?.headers).get('X-AIDE-API-Format'),
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
+    });
+    return new Response(JSON.stringify(ok({ id: 'liquid-lfm25-2.6b-q4km', preset: 'custom', saved: true })), { status: 200 });
+  });
+  try {
+    const result = await api.modelProfileSave({
+      id: 'liquid-lfm25-2.6b-q4km',
+      samplers: { temperature: 0 },
+      runtime: { context_tokens: 2048, max_tokens: 512 }
+    });
+    assert.equal(result.saved, true);
+    assert.deepEqual(seen, [{
+      url: '/api/models/profile',
+      method: 'POST',
+      format: 'envelope-v1',
+      body: {
+        id: 'liquid-lfm25-2.6b-q4km',
+        samplers: { temperature: 0 },
+        runtime: { context_tokens: 2048, max_tokens: 512 }
+      }
+    }]);
+  } finally {
+    mock.restoreAll();
+  }
+});
+
 test('api throws ApiError with code and message on an error envelope', async () => {
   mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(fail('NOT_READY', 'still warming up')), { status: 409 }));
   await assert.rejects(api.health(), (error: unknown) => {

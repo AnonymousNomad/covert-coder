@@ -1920,6 +1920,31 @@ body {
   color: var(--covert-amber);
 }
 
+.model-profile-config {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--covert-line);
+  border-radius: 3px;
+}
+
+.model-profile-save {
+  padding: 6px 9px;
+  border: 1px solid var(--covert-purple);
+  border-radius: 3px;
+  background: var(--covert-bg-graphite);
+  color: var(--covert-text);
+  cursor: pointer;
+}
+
+.model-profile-save:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.model-profile-status {
+  margin-top: 6px;
+}
+
 .model-card-endpoint,
 .terminal-job-cmd {
   font-size: 10px;
