@@ -5393,7 +5393,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/harness-attempt.test.ts",
-          "line": 424
+          "line": 434
         },
         {
           "file": "tests/arch/provenance.test.ts",
@@ -6208,7 +6208,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/harness-attempt.test.ts",
-          "line": 396
+          "line": 406
         }
       ],
       "requestShape": {
@@ -6355,7 +6355,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/harness-attempt.test.ts",
-          "line": 400
+          "line": 410
         },
         {
           "file": "tests/arch/provenance.test.ts",
@@ -7120,11 +7120,11 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/harness-attempt.test.ts",
-          "line": 416
+          "line": 426
         },
         {
           "file": "tests/arch/harness-attempt.test.ts",
-          "line": 420
+          "line": 430
         },
         {
           "file": "tests/arch/provenance.test.ts",

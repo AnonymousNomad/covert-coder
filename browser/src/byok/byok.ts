@@ -1,8 +1,12 @@
 import { api, ApiError } from '../services/api.ts';
-import type { ByokStatusResponseT } from '../../../common/contracts/byok.ts';
+import type { ByokStatusResponseT, RoleTargetT } from '../../../common/contracts/byok.ts';
+import type { ConnectionsViewResponseT } from '../../../common/contracts/connections.ts';
+import { announceModelAccessChanged } from '../services/model-access-events.ts';
+import { projectRoleTargetOptions, roleTargetKey } from './role-target-options.ts';
 
 export interface ByokPanelOptions {
   onToast: (code: string, message: string) => void;
+  onModelAccessChanged?: () => void;
 }
 
 export interface ByokPanel {
@@ -75,7 +79,7 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
   container.innerHTML = `
     <div class="byok-panel">
       <h3 class="providers-title">BYOK models</h3>
-      <p class="providers-note">Route plan/act/utility to your own API-key providers. Local GGUF stays the default; egress happens ONLY after you enable consent below — every outbound call is journaled.</p>
+      <p class="providers-note">Credentials belong to this project. Outbound calls require consent and are journaled; stored keys do not prove a live connection.</p>
       <label class="byok-consent"><input type="checkbox" id="byok-consent" /> Allow outbound calls to configured providers (journaled)</label>
       <div class="byok-list" id="byok-list"></div>
       <h3 class="providers-title">Add provider</h3>
@@ -86,7 +90,8 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
         <input type="password" id="byok-key" placeholder="API key (stored encrypted, never shown again)" class="provider-key" />
         <button type="button" id="byok-add" class="provider-confirm">Save provider</button>
       </div>
-      <h3 class="providers-title">Role routing</h3>
+      <h3 class="providers-title">Project role defaults</h3>
+      <p class="providers-note">Plan, act, and utility targets persist for this project. OpenCode Go appears as one connected source with its currently discovered models. A Chat model choice is saved with that conversation and does not change these defaults.</p>
       <div class="byok-routing" id="byok-routing"></div>
     </div>
   `;
@@ -112,8 +117,11 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
     opts.onToast(code, message);
   }
 
-  async function refreshRouting(status: ByokStatusResponseT): Promise<void> {
+  const routingTargetByKey = new Map<string, RoleTargetT>();
+
+  async function refreshRouting(status: ByokStatusResponseT, connections: ConnectionsViewResponseT['connections']): Promise<void> {
     routingEl.textContent = '';
+    routingTargetByKey.clear();
     for (const role of ROLES) {
       const line = document.createElement('div');
       line.className = 'byok-role-row';
@@ -123,28 +131,19 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
       const select = document.createElement('select');
       select.className = 'byok-role-select';
       select.dataset.role = role;
-      const localOption = document.createElement('option');
-      localOption.value = 'local';
-      localOption.textContent = 'Local GGUF';
-      select.appendChild(localOption);
-      for (const provider of status.providers) {
+      for (const routeOption of projectRoleTargetOptions(status.providers, connections, status.routing[role])) {
         const option = document.createElement('option');
-        option.value = provider.id;
-        option.textContent = `${provider.name} · ${provider.model_id}`;
+        option.value = routeOption.key;
+        option.textContent = routeOption.label;
+        option.disabled = routeOption.unavailable;
+        routingTargetByKey.set(routeOption.key, routeOption.target);
         select.appendChild(option);
       }
       const current = status.routing[role];
-      if (current !== 'local') select.value = current.provider_id;
-      else select.value = 'local';
+      select.value = roleTargetKey(current);
       select.addEventListener('change', () => {
-        const providerId = select.value;
-        if (providerId === 'local') {
-          void applyRouting(role, 'local');
-          return;
-        }
-        const provider = status.providers.find(p => p.id === providerId);
-        if (provider === undefined) return;
-        void applyRouting(role, { provider_id: provider.id, model_id: provider.model_id });
+        const target = routingTargetByKey.get(select.value);
+        if (target !== undefined) void applyRouting(role, target);
       });
       line.appendChild(label);
       line.appendChild(select);
@@ -161,13 +160,15 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
         routing[other] = target;
         continue;
       }
-      const providerId = select?.value ?? 'local';
-      const provider = lastStatus.providers.find(p => p.id === providerId);
-      routing[other] = provider === undefined ? 'local' : { provider_id: provider.id, model_id: provider.model_id };
+      routing[other] = select === null
+        ? lastStatus.routing[other]
+        : routingTargetByKey.get(select.value) ?? lastStatus.routing[other];
     }
     try {
       await api.byokSetRouting(routing as ByokStatusResponseT['routing']);
       toast('OK', `${role} routed`);
+      announceModelAccessChanged();
+      opts.onModelAccessChanged?.();
     } catch (error) {
       toast('INTERNAL', error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'routing failed');
       await refresh();
@@ -189,6 +190,9 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
       toast('INTERNAL', 'BYOK unavailable');
       return;
     }
+    let connections: ConnectionsViewResponseT['connections'] = [];
+    try { connections = (await api.connections()).connections; }
+    catch { /* preserve persisted targets while the unified connection view is unavailable */ }
     consentEl.checked = status.consent_enabled;
     listEl.textContent = '';
     for (const provider of status.providers) {
@@ -202,18 +206,26 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
         onDelete: () => {
           void api
             .byokDeleteProvider(provider.id)
-            .then(() => void refresh())
+            .then(() => {
+              void refresh();
+              announceModelAccessChanged();
+              opts.onModelAccessChanged?.();
+            })
             .catch((error: unknown) => toast('INTERNAL', error instanceof Error ? error.message : 'delete failed'));
         }
       });
     }
-    await refreshRouting(status);
+    await refreshRouting(status, connections);
   }
 
   consentEl.addEventListener('change', () => {
     void api
       .byokConsent(consentBox.checked)
-      .then(() => toast('OK', consentEl.checked ? 'egress consent ENABLED — calls will be journaled' : 'egress consent disabled'))
+      .then(() => {
+        toast('OK', consentEl.checked ? 'egress consent ENABLED — calls will be journaled' : 'egress consent disabled');
+        announceModelAccessChanged();
+        opts.onModelAccessChanged?.();
+      })
       .catch((error: unknown) => {
         consentEl.checked = !consentEl.checked;
         toast('INTERNAL', error instanceof Error ? error.message : 'consent toggle failed');
@@ -241,6 +253,8 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
         keyEl.value = '';
         delete keyEl.dataset.forProvider;
         toast('OK', `provider ${id} saved`);
+        announceModelAccessChanged();
+        opts.onModelAccessChanged?.();
         await refresh();
       } catch (error) {
         const message = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'save failed';

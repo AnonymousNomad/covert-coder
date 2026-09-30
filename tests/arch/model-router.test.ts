@@ -20,6 +20,7 @@ interface FakeEntry {
 class FakeRuntime {
   entries: FakeEntry[] = [];
   ready = new Set<string>();
+  reportedStatus = new Map<string, string>();
   statusCalls = 0;
   verifyCalls = 0;
   chatCalls = 0;
@@ -32,7 +33,7 @@ class FakeRuntime {
       models: this.entries.map(entry => ({
         id: entry.id,
         name: entry.name,
-        status: this.ready.has(entry.id) ? 'running' : entry.status,
+        status: this.ready.has(entry.id) ? 'running' : this.reportedStatus.get(entry.id) ?? entry.status,
         endpoint: entry.endpoint
       }))
     };
@@ -174,6 +175,19 @@ test('unstarted local models are unverified, not down', async () => {
   const routes = await router.routes();
   const local = routes.find(route => route.id === 'local:a')!;
   assert.equal(local.status, 'unverified', 'declared ready but not running');
+});
+
+test('runtime-pending local models are down and are not probed for role selection', async () => {
+  const runtime = new FakeRuntime();
+  runtime.entries = [entry('a', 'ready', ['chat']), entry('b', 'ready', ['chat'])];
+  runtime.reportedStatus.set('a', 'pending');
+  runtime.reportedStatus.set('b', 'pending');
+  const router = makeRouter(runtime, new FakeProviders());
+
+  const routes = await router.routes();
+  assert.deepEqual(routes.filter(route => route.providerType === 'local').map(route => route.status), ['down', 'down']);
+  await assert.rejects(() => router.routeForRole('chat'), error => error instanceof RouterError && error.reason === 'down');
+  assert.equal(runtime.verifyCalls, 0, 'known-pending artifacts must not trigger endpoint probes');
 });
 
 test('routeForRole returns the first ready model and reports a fallback when the first is down', async () => {

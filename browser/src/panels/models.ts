@@ -51,7 +51,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   header.appendChild(el('h2', 'panel-title', 'MODEL ACCESS'));
   header.appendChild(el('span', 'panel-maturity', 'EVIDENCE'));
   root.appendChild(header);
-  root.appendChild(el('p', 'panel-intro', 'Models, local artifacts, provider connections, and exact route eligibility in one view. Current role targets are shown below; change routing in Settings.'));
+  root.appendChild(el('p', 'panel-intro', 'Models, local artifacts, provider connections, and exact route eligibility in one view. Conversation selection and persistent project role defaults remain separate.'));
   const body = el('div', 'models-body');
   root.appendChild(body);
   parent.appendChild(root);
@@ -67,7 +67,14 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     body.appendChild(counts);
     body.appendChild(el('p', 'panel-intro', 'Route availability is one input to execution. Authority and Resource Admission still govern each task.'));
 
-    body.appendChild(el('div', 'models-section-header', 'CURRENT ROLE TARGETS'));
+    body.appendChild(el('div', 'models-section-header', 'MODEL SELECTION SCOPE'));
+    body.appendChild(metadata(
+      'conversation: Chat selection is saved with that conversation and does not change project defaults',
+      'project role defaults: plan, act, and utility targets below persist for this project',
+      'global model override: none configured; the built-in default lane is the local runtime'
+    ));
+
+    body.appendChild(el('div', 'models-section-header', 'PROJECT ROLE DEFAULTS'));
     const roles = el('div', 'models-list');
     for (const role of ['plan', 'act', 'utility'] as const) {
       const row = el('div', 'route-row');
@@ -76,6 +83,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       roles.appendChild(row);
     }
     body.appendChild(roles);
+    body.appendChild(el('p', 'model-card-meta', 'Edit these persistent targets in Settings. OpenCode Go is one connection with its currently discovered models; exact model verification is still required before routing is available.'));
 
     body.appendChild(el('div', 'models-section-header', 'LOCAL RUNTIME AND DISCOVERY'));
     const runtime = el('div', 'model-card ' + stateClass(view.runtime.health));

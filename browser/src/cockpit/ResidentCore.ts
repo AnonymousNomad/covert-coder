@@ -135,7 +135,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   root.appendChild(composer);
 
   parent.appendChild(root);
-  createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
+  const chatPanel = createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
 
   let alive = true;
   let activeSessionId: string | null = null;
@@ -398,6 +398,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
       alive = false;
       stopAgentPolling();
       window.clearInterval(interval);
+      chatPanel.dispose();
       operator.dispose();
       parent.innerHTML = '';
     }

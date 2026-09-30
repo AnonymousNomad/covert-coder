@@ -12,9 +12,12 @@ import type {
   RoutingPreferenceT,
   ConnectionStatusT
 } from '../../../common/contracts/connections.ts';
+import { announceModelAccessChanged } from '../services/model-access-events.ts';
 
 export interface ConnectionsPanelOptions {
   onToast: (code: string, message: string) => void;
+  onCatalogChanged?: () => void;
+  onModelStatusChanged?: () => void;
 }
 
 export interface ConnectionsPanel {
@@ -55,6 +58,13 @@ function routedRoles(view: ConnectionsViewResponseT, conn: ProviderConnectionT):
     else if (target !== 'local' && target.provider_id === conn.provider_id) roles.push(role);
   }
   return roles;
+}
+
+function exactModelSelected(view: ConnectionsViewResponseT, conn: ProviderConnectionT, providerModelId: string): boolean {
+  return ROLES.some(role => {
+    const target = view.routed_roles[role];
+    return target !== 'local' && target.provider_id === conn.provider_id && target.model_id === providerModelId;
+  });
 }
 
 export function createConnectionsPanel(container: HTMLElement, opts: ConnectionsPanelOptions): ConnectionsPanel {
@@ -112,6 +122,71 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
     meta.textContent = statusHint(conn);
     card.appendChild(meta);
 
+    if (conn.id === 'opencode-managed') {
+      const models = document.createElement('div');
+      models.className = 'conn-models';
+      const title = document.createElement('div');
+      title.className = 'conn-models-title';
+      title.textContent = 'OpenCode Go models';
+      models.appendChild(title);
+      if (conn.access.model_refs.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'conn-meta';
+        empty.textContent = 'Discover the current account catalog to add model choices.';
+        models.appendChild(empty);
+      }
+      for (const reference of conn.access.model_refs) {
+        const row = document.createElement('div');
+        row.className = 'conn-model-row';
+        const exactId = document.createElement('span');
+        exactId.className = 'conn-model-id';
+        exactId.textContent = reference.provider_model_id;
+        const state = document.createElement('span');
+        state.className = 'provider-status';
+        state.textContent = reference.model_support_state.toUpperCase();
+        const verify = document.createElement('button');
+        verify.type = 'button';
+        verify.className = 'provider-action';
+        verify.textContent = reference.model_support_state === 'verified' ? 'Re-verify exact model' : 'Verify exact model';
+        const selected = exactModelSelected(view, conn, reference.provider_model_id);
+        const consentBlocked = conn.access.setup_state === 'consent_required' || view.preference === 'local-only';
+        const unsupported = reference.model_support_state === 'unsupported';
+        verify.disabled = conn.status !== 'connected' || !selected || consentBlocked || unsupported;
+        verify.title = unsupported
+          ? 'This exact provider/model target is marked unsupported.'
+          : conn.status !== 'connected'
+          ? 'Connect OpenCode Go before exact-model verification.'
+          : !selected
+            ? 'Select this exact model as a project role default before verification.'
+            : consentBlocked
+              ? 'External verification is blocked by the current consent or Local-Only setting.'
+              : 'Run the Authority-governed exact provider/model verification.';
+        verify.addEventListener('click', () => {
+          verify.disabled = true;
+          state.textContent = 'VERIFYING…';
+          api.connectionsTest(conn.id, reference.provider_model_id)
+            .then(result => {
+              state.textContent = result.ok ? 'VERIFIED' : 'UNKNOWN';
+              toast(result.ok ? 'OK' : 'NOT_READY', result.detail);
+              void refresh();
+            })
+            .catch((error: unknown) => {
+              const message = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'exact model verification failed';
+              state.textContent = 'UNKNOWN';
+              toast('INTERNAL', message);
+            })
+            .finally(() => {
+              verify.disabled = false;
+              opts.onModelStatusChanged?.();
+              announceModelAccessChanged();
+            });
+        });
+        row.append(exactId, state, verify);
+        models.appendChild(row);
+      }
+      card.appendChild(models);
+    }
+
     const badges = routedRoles(view, conn);
     if (badges.length > 0) {
       const badgeRow = document.createElement('div');
@@ -147,7 +222,11 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
             meta.textContent = message;
             toast('INTERNAL', message);
           })
-          .finally(() => { discover.disabled = false; });
+          .finally(() => {
+            discover.disabled = false;
+            opts.onCatalogChanged?.();
+            announceModelAccessChanged();
+          });
       });
       actions.appendChild(discover);
     } else if (conn.kind === 'subscription') {
@@ -201,6 +280,7 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
           })
           .finally(() => {
             test.disabled = false;
+            announceModelAccessChanged();
           });
       });
       actions.appendChild(test);
@@ -289,7 +369,11 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
     const value = prefEl.value as RoutingPreferenceT;
     api
       .connectionsSetPreference(value)
-      .then(() => toast('OK', `routing preference: ${PREFERENCE_LABELS[value]}`))
+      .then(() => {
+        toast('OK', `routing preference: ${PREFERENCE_LABELS[value]}`);
+        void refresh();
+        announceModelAccessChanged();
+      })
       .catch((error: unknown) => {
         toast('INTERNAL', error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'preference update failed');
         void refresh();

@@ -5,7 +5,7 @@
 // Plus: immutability (drift is journaled, never mutated), H2 partial-commit
 // closure, crash recovery classification, retry safety, secret safety,
 // performance measurement, and live end-to-end fail-closed denial.
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -16,10 +16,19 @@ import { pairFixture } from './authority-fixture.ts';
 const { buildRoutes } = await import('../../node/src/openapi.ts');
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const testWorkspaces = new Set<string>();
 
-async function workspace(): Promise<string> {
-  return await fs.mkdtemp(path.join(os.tmpdir(), 'h3-attempt-'));
+async function workspace(prefix = 'h3-attempt-'): Promise<string> {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  testWorkspaces.add(root);
+  return root;
 }
+
+afterEach(async () => {
+  const roots = [...testWorkspaces];
+  testWorkspaces.clear();
+  await Promise.all(roots.map(root => fs.rm(root, { recursive: true, force: true })));
+});
 
 function admissionInput(overrides: Record<string, unknown> = {}) {
   return {
@@ -296,7 +305,7 @@ test('performance: admission and durability checks are bounded (measured, not as
 });
 
 test('LIVE: end-to-end fail-closed — envelope tampered mid-session -> mutation DENIED, file untouched', async () => {
-  const ws = await fs.mkdtemp(path.join(os.tmpdir(), 'h3-live-'));
+  const ws = await workspace('h3-live-');
   await fs.mkdir(path.join(ws, 'src'), { recursive: true });
   await fs.writeFile(path.join(ws, 'src', 'math.mjs'), 'export function add(a, b) {\n  return a - b;\n}\n', 'utf8');
   const server = new ArchServer(ws, path.join(ws, 'arch.log'));
@@ -350,12 +359,13 @@ test('LIVE: end-to-end fail-closed — envelope tampered mid-session -> mutation
     http.closeAllConnections?.();
     await new Promise<void>(resolve => http.close(() => resolve()));
     server.events.close();
+    server.authority.control.close();
     await server.logger.flush();
   }
 });
 
 test('LIVE: real session seals a complete envelope, binds context, observes effects, feeds provenance', async () => {
-  const ws = await fs.mkdtemp(path.join(os.tmpdir(), 'h3-live-ok-'));
+  const ws = await workspace('h3-live-ok-');
   await fs.mkdir(path.join(ws, 'src'), { recursive: true });
   await fs.writeFile(path.join(ws, 'src', 'math.mjs'), 'export function add(a, b) {\n  return a - b;\n}\n', 'utf8');
   const server = new ArchServer(ws, path.join(ws, 'arch.log'));
@@ -427,6 +437,7 @@ test('LIVE: real session seals a complete envelope, binds context, observes effe
     http.closeAllConnections?.();
     await new Promise<void>(resolve => http.close(() => resolve()));
     server.events.close();
+    server.authority.control.close();
     await server.logger.flush();
   }
 });

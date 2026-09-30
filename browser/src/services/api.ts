@@ -450,9 +450,12 @@ export const api = {
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid routing preference');
     return call('/api/connections/preference', { method: 'PUT', body: body.data, schema: ConnectionsViewResponse.pick({ preference: true }) }).then(result => result.preference);
   },
-  connectionsTest(connectionId: string): Promise<z.infer<typeof ConnectionsTestResponse>> {
-    const body = ConnectionsTestRequest.safeParse({ connection_id: connectionId });
-    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid connection id');
+  connectionsTest(connectionId: string, providerModelId?: string): Promise<z.infer<typeof ConnectionsTestResponse>> {
+    const body = ConnectionsTestRequest.safeParse({
+      connection_id: connectionId,
+      ...(providerModelId !== undefined ? { provider_model_id: providerModelId } : {})
+    });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid connection test target');
     return call('/api/connections/test', { method: 'POST', body: body.data, schema: ConnectionsTestResponse });
   },
   connectionsDiscoverOpenCode(): Promise<z.infer<typeof ConnectionsDiscoverResponse>> {

@@ -1754,6 +1754,35 @@ html, body {
   background: #b3424e;
 }
 
+.byok-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.byok-routing {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.byok-role-row {
+  display: grid;
+  grid-template-columns: minmax(70px, 0.3fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.byok-role-select {
+  min-width: 0;
+  background: var(--ck-bg);
+  color: var(--ck-fg);
+  border: 1px solid var(--ck-line);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font: inherit;
+}
+
 .connections-panel {
   display: flex;
   flex-direction: column;
@@ -1862,6 +1891,35 @@ html, body {
   gap: 8px;
 }
 
+.conn-models {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 0;
+  border-top: 1px solid var(--ck-line);
+}
+
+.conn-models-title {
+  color: var(--ck-text-dim);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.conn-model-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.conn-model-id {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: var(--ck-fg);
+}
+
 @media (max-width: 980px) {
   .cockpit-command-layout {
     grid-template-columns: 1fr;
@@ -1876,6 +1934,15 @@ html, body {
   .cockpit-editor-layout {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(320px, 1fr) auto;
+  }
+
+  .conn-model-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .conn-model-row .provider-action {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .cockpit-editor-search {

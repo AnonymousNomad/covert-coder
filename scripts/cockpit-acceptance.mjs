@@ -134,6 +134,29 @@ const task = {
   source: 'detected'
 };
 
+let routeRefreshFixtureReady = false;
+const chatHistorySaveBodies = [];
+let chatHistorySaveResponseCount = 0;
+let persistedChatConversationId;
+let releaseFirstChatHistorySave;
+const firstChatHistorySaveGate = new Promise(resolve => { releaseFirstChatHistorySave = resolve; });
+
+async function waitForFirstChatHistorySaveRequest() {
+  const deadline = Date.now() + 5000;
+  while (chatHistorySaveBodies.length === 0 && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  assert.equal(chatHistorySaveBodies.length, 1, 'the first chat history save request did not arrive');
+}
+
+async function waitForChatHistorySaveResponses(expected) {
+  const deadline = Date.now() + 5000;
+  while (chatHistorySaveResponseCount < expected && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  assert.equal(chatHistorySaveResponseCount, expected, `expected ${expected} chat history saves to finish`);
+}
+
 const fixtures = {
   '/api/health': {
     version: 'fixture',
@@ -179,7 +202,46 @@ const fixtures = {
     push: { repo: true, branch: 'covert-production', ahead: 0, behind: 0, changed_files: [], changed_count: 0, staged_count: 0, diagnostics_errors: 0, test_script_present: true, risky_changes: [], generated_artifacts: [], verdict: 'READY', reasons: [] }
   },
   '/api/resident/decisions': { decisions: [] },
-  '/api/byok/status': { providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: false },
+  '/api/byok/status': {
+    providers: [],
+    routing: {
+      plan: { provider_id: 'opencode', model_id: 'opencode-go/deepseek-v4.1-flash' },
+      act: 'local', utility: 'local'
+    },
+    consent_enabled: false
+  },
+  '/api/connections': {
+    consensus: 'OpenCode Go catalog connected; exact model verification and egress consent remain separate gates.',
+    routed_roles: {
+      plan: { provider_id: 'opencode', model_id: 'opencode-go/deepseek-v4.1-flash' },
+      act: 'local', utility: 'local'
+    },
+    preference: 'local-first',
+    connections: [{
+      id: 'opencode-managed', provider_id: 'opencode', name: 'OpenCode Go managed auth',
+      kind: 'subscription', status: 'connected',
+      detail: 'OpenCode Go account catalog is connected; exact model support still requires verification.',
+      capabilities: ['chat'], routing_available: false, account_label: 'OpenCode managed account',
+      access: {
+        authentication_mode: 'opencode_managed', authentication_configured: true,
+        credential_source: {
+          id: 'credential-source:opencode-managed', kind: 'opencode_managed_auth', configuration_state: 'configured'
+        },
+        health: 'unknown', execution_adapters: ['opencode'],
+        model_refs: [
+          {
+            model_id: 'provider:opencode:opencode-go/deepseek-v4.1-flash',
+            provider_model_id: 'opencode-go/deepseek-v4.1-flash', model_support_state: 'unknown'
+          },
+          {
+            model_id: 'provider:opencode:opencode-go/minimax-m2.5',
+            provider_model_id: 'opencode-go/minimax-m2.5', model_support_state: 'unknown'
+          }
+        ],
+        external_egress_required: true, operator_setup_required: true, setup_state: 'consent_required'
+      }
+    }]
+  },
   '/api/providers': { providers: [] },
   '/api/workbenches': { workbenches: [] },
   '/api/closed-loop/status': { enabled: false, last_run_logged_at: null, signal_file_count: 0, bus_event_count: 0 },
@@ -200,11 +262,70 @@ async function fulfillApi(route) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: envelope({ version: 1, tabs: [] }) });
     return;
   }
+  if (url.pathname === '/api/chat/stream' && route.request().method() === 'POST') {
+    const events = [
+      { delta: 'fixture answer' },
+      { done: true, modelId: 'local:model-a', usedApprox: 2, dropped: 0, truncatedSystem: false }
+    ];
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: events.map(event => `data: ${JSON.stringify(event)}\n\n`).join('')
+    });
+    return;
+  }
+  if (url.pathname === '/api/chat/history' && route.request().method() === 'GET') {
+    const latest = chatHistorySaveBodies.at(-1);
+    const conversations = latest === undefined ? [] : [{
+      id: persistedChatConversationId,
+      modelId: latest.modelId,
+      title: latest.title,
+      messages: latest.messages,
+      updatedAt: chatHistorySaveResponseCount
+    }];
+    await route.fulfill({ status: 200, contentType: 'application/json', body: envelope({ conversations }) });
+    return;
+  }
+  if (url.pathname === '/api/chat/history' && route.request().method() === 'POST') {
+    const body = route.request().postDataJSON();
+    chatHistorySaveBodies.push(body);
+    if (chatHistorySaveBodies.length === 1) {
+      await firstChatHistorySaveGate;
+    }
+    const id = body.id ?? `fixture-conversation-${chatHistorySaveBodies.length}`;
+    persistedChatConversationId = id;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: envelope({
+        id,
+        updatedAt: chatHistorySaveBodies.length,
+        memory: { persisted: true, degraded: false }
+      })
+    });
+    chatHistorySaveResponseCount += 1;
+    return;
+  }
   if (url.pathname === '/api/audit/events' && url.searchParams.get('type') === 'agent.verification') {
     await route.fulfill({ status: 200, contentType: 'application/json', body: envelope({ events: [], count: 0, known_types: [] }) });
     return;
   }
-  const data = fixtures[url.pathname] ?? {};
+  let data = fixtures[url.pathname] ?? {};
+  if (url.pathname === '/api/models/routes' && routeRefreshFixtureReady) {
+    data = {
+      routes: [
+        ...routes.routes,
+        {
+          id: 'cloud:opencode:opencode-go/minimax-m2.5',
+          displayName: 'OpenCode Go · opencode-go/minimax-m2.5',
+          providerType: 'cloud', baseUrl: 'https://opencode.ai',
+          modelString: 'opencode-go/minimax-m2.5', contextLength: 8192,
+          chatTemplate: 'provider', status: 'unverified', probeMs: null,
+          roles: ['chat'], capabilities: []
+        }
+      ]
+    };
+  }
   await route.fulfill({ status: 200, contentType: 'application/json', body: envelope(data) });
 }
 
@@ -460,6 +581,60 @@ try {
       assert.equal(await openCodeRoute.locator('.route-status').innerText(), 'UNKNOWN', 'unverified exact route was overstated');
       assert.equal(await openCodeRoute.locator('.route-status.ok').count(), 0, 'unverified exact route appeared available');
     }
+    if (id === 'resident') {
+      await page.waitForSelector('#chat-model');
+      assert.match(await page.locator('.chat-model-scope').innerText(), /saved with this conversation/i, 'conversation model scope is unclear');
+      assert.match(await page.locator('.chat-model-scope').innerText(), /does not change project role defaults/i, 'conversation model must not imply project routing mutation');
+    }
+    if (id === 'settings') {
+      const planOptions = await page.locator('.byok-role-select[data-role="plan"] option').allTextContents();
+      assert.ok(planOptions.some(label => label.includes('opencode-go/deepseek-v4.1-flash')), 'first dynamically discovered Go model is missing from role choices');
+      assert.ok(planOptions.some(label => label.includes('opencode-go/minimax-m2.5')), 'second dynamically discovered Go model is missing from role choices');
+      assert.equal(await page.locator('.conn-card[data-connection-id="opencode-managed"]').count(), 1, 'OpenCode Go must appear as one connected source');
+      assert.equal(await page.locator('.conn-card[data-connection-id="opencode-managed"] .conn-model-row').count(), 2, 'both exact model references must be shown under the same source');
+      const verificationButtons = page.locator('.conn-card[data-connection-id="opencode-managed"] .conn-model-row .provider-action');
+      assert.equal(await verificationButtons.count(), 2, 'each exact model needs its own verification action');
+      assert.equal(await verificationButtons.nth(0).isDisabled(), true, 'exact model verification must stay disabled without egress consent');
+      assert.match(await verificationButtons.nth(0).getAttribute('title') ?? '', /consent/i, 'verification disable reason must explain the consent gate');
+      assert.equal(await verificationButtons.nth(1).isDisabled(), true, 'an exact model not selected by any role cannot be verified');
+      assert.match(await verificationButtons.nth(1).getAttribute('title') ?? '', /select this exact model/i, 'unselected-model disable reason must identify the exact role requirement');
+
+      routeRefreshFixtureReady = true;
+      await page.evaluate(() => window.dispatchEvent(new Event('covert:model-access-changed')));
+      await clickDestination(page, 'resident');
+      await page.waitForFunction(() => Array.from(document.querySelectorAll('#chat-model option')).some(option => option.value === 'cloud:opencode:opencode-go/minimax-m2.5'));
+      assert.equal(await page.locator('#chat-model').inputValue(), 'local:model-a', 'catalog refresh must preserve the conversation’s existing model binding');
+
+      await page.locator('#chat-input').fill('queued model binding persistence');
+      await page.locator('#chat-send').click();
+      await waitForFirstChatHistorySaveRequest();
+      await page.locator('#chat-model').selectOption('cloud:opencode:opencode-go/minimax-m2.5');
+      await page.locator('#chat-model').selectOption('local:model-a');
+      releaseFirstChatHistorySave();
+      await waitForChatHistorySaveResponses(3);
+      assert.equal(chatHistorySaveBodies[0].id, undefined, 'first save should create the new conversation');
+      assert.equal(chatHistorySaveBodies[0].modelId, 'local:model-a');
+      assert.equal(chatHistorySaveBodies[1].id, 'fixture-conversation-1', 'queued model save must use the ID created by the first save');
+      assert.equal(chatHistorySaveBodies[1].modelId, 'cloud:opencode:opencode-go/minimax-m2.5');
+      assert.equal(chatHistorySaveBodies[2].id, 'fixture-conversation-1', 'later queued saves must keep the same conversation ID');
+      assert.equal(chatHistorySaveBodies[2].modelId, 'local:model-a');
+
+      await page.locator('#chat-model').selectOption('cloud:opencode:opencode-go/minimax-m2.5');
+      await waitForChatHistorySaveResponses(4);
+      assert.equal(chatHistorySaveBodies[3].id, 'fixture-conversation-1');
+      assert.equal(chatHistorySaveBodies[3].modelId, 'cloud:opencode:opencode-go/minimax-m2.5');
+      routeRefreshFixtureReady = false;
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: bootTimeoutMs });
+      await page.waitForFunction(() => document.querySelector('#chat-model')?.value === 'cloud:opencode:opencode-go/minimax-m2.5', null, { timeout: bootTimeoutMs });
+      const selectedAfterCatalogDrift = await page.locator('#chat-model').inputValue();
+      assert.equal(selectedAfterCatalogDrift, 'cloud:opencode:opencode-go/minimax-m2.5', 'a saved model absent from the refreshed route catalog must stay selected');
+      const unavailableSavedTarget = page.locator('#chat-model option').filter({ hasText: 'Unavailable saved target' });
+      assert.equal(await unavailableSavedTarget.count(), 1, 'catalog drift must be shown as an unavailable saved target');
+      assert.equal(await unavailableSavedTarget.isDisabled(), true, 'an unavailable saved target must not be dispatched');
+      for (const destination of ['models', 'terminal', 'verification', 'projects', 'settings', 'extensions']) {
+        await clickDestination(page, destination);
+      }
+    }
   }
   assert.equal(await page.locator('.models-panel').count(), 1, 'MODELS did not mount the existing model surface');
   assert.equal(await page.locator('.terminal-panel').count(), 1, 'TERMINAL did not mount the existing terminal surface');
@@ -494,7 +669,7 @@ try {
 
   assert.deepEqual(pageErrors, [], `browser page exceptions: ${pageErrors.join(' | ')}`);
   assert.deepEqual(consoleErrors, [], `browser console errors: ${consoleErrors.join(' | ')}`);
-  console.log('COCKPIT ACCEPTANCE PASSED: shell, registry, truth surfaces, toast isolation, editor/search, geometry, responsive layout, and no browser errors.');
+  console.log('COCKPIT ACCEPTANCE PASSED: shell, Model Access scope and Go model choices, consent-gated verification, serialized conversation saves, exact selection through catalog drift/reload, truth surfaces, and no browser errors.');
 } finally {
   await context?.close();
   for (const client of wsServer.clients) client.terminate();

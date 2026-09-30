@@ -57,8 +57,17 @@ export function createSettingsSurface(parent: HTMLElement, _store: Store<AppStat
   parent.appendChild(root);
 
   createProvidersPanel(providersMount, opts);
-  createByokPanel(byokMount, { onToast: opts.onToast });
-  createConnectionsPanel(connectionsMount, { onToast: opts.onToast });
+  let byokPanel: ReturnType<typeof createByokPanel> | null = null;
+  let connectionsPanel: ReturnType<typeof createConnectionsPanel> | null = null;
+  byokPanel = createByokPanel(byokMount, {
+    onToast: opts.onToast,
+    onModelAccessChanged: () => { void connectionsPanel?.refresh(); }
+  });
+  connectionsPanel = createConnectionsPanel(connectionsMount, {
+    onToast: opts.onToast,
+    onCatalogChanged: () => { void byokPanel?.refresh(); },
+    onModelStatusChanged: () => { void byokPanel?.refresh(); }
+  });
 
   return {
     dispose() {

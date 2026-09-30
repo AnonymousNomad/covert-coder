@@ -235,6 +235,7 @@ export class ModelRouter {
   async routes(): Promise<ModelRoute[]> {
     const status = await this.runtime.status();
     const running = new Set(status.models.filter(model => model.status === 'running').map(model => String(model.id)));
+    const runtimeStatusById = new Map(status.models.map(model => [String(model.id), model.status]));
     const local = this.runtime.list().map(entry => {
       const route = this.localRoute(entry);
       if (running.has(entry.id)) {
@@ -242,7 +243,12 @@ export class ModelRouter {
         route.status = health !== undefined && Date.now() - health.at < PROBE_TTL_MS ? health.status : 'unverified';
         route.probeMs = health?.at ?? null;
       } else {
-        route.status = entry.status === 'ready' ? 'unverified' : 'down';
+        // The canonical runtime's per-model state includes artifact and
+        // qualification truth. A manifest declaration alone must not make a
+        // pending model probeable or selectable.
+        route.status = runtimeStatusById.get(entry.id) === 'pending'
+          ? 'down'
+          : entry.status === 'ready' ? 'unverified' : 'down';
         route.probeMs = null;
       }
       return route;
@@ -572,7 +578,8 @@ export class ModelRouter {
     if (candidates.length === 0) {
       throw new RouterError('down', `no local model is configured for role "${role}"`);
     }
-    for (const candidate of candidates) {
+    const probeable = candidates.filter(candidate => candidate.status !== 'down');
+    for (const candidate of probeable) {
       const status = await this.freshStatus(candidate.id);
       if (status === 'ready') {
         const fellBack = candidate.id !== candidates[0]!.id ? { from: candidates[0]!.id, to: candidate.id, reason: 'down' as const } : undefined;
