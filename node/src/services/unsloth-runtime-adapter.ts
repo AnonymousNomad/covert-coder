@@ -621,7 +621,11 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     const artifactHashBeforeLoad = await sha256(absolutePath);
     const payload: Record<string, unknown> = {
       model_path: absolutePath,
-      max_seq_length: request.contextTokens ?? 2048
+      max_seq_length: request.contextTokens ?? 2048,
+      // Unsloth can inherit same-model llama-server extras when this field is
+      // omitted. Explicit null clears a stale --chat-template-file and lets
+      // the model/runtime's own template-selection rules apply.
+      chat_template_override: null
     };
     if (request.loadIn4Bit !== undefined) payload.load_in_4bit = request.loadIn4Bit;
     // A reload can change the profile even for the same artifact. Do not leave

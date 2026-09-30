@@ -326,6 +326,11 @@ test('Unsloth loopback API health, model list, local artifact identity, inferenc
     if (call === undefined || call.body === null) throw new Error('chat request payload was not captured');
     return JSON.parse(call.body) as Record<string, unknown>;
   };
+  const latestLoadPayload = (): Record<string, unknown> => {
+    const call = calls.slice().reverse().find(entry => entry.url.endsWith('/api/inference/load'));
+    if (call === undefined || call.body === null) throw new Error('model load payload was not captured');
+    return JSON.parse(call.body) as Record<string, unknown>;
+  };
   const fetcher: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
     const method = init?.method ?? 'GET';
@@ -364,6 +369,7 @@ test('Unsloth loopback API health, model list, local artifact identity, inferenc
     }, true);
     assert.equal(loaded.identity_evidence, 'REQUESTED_ARTIFACT');
     assert.match(loaded.artifact_sha256 ?? '', /^[a-f0-9]{64}$/);
+    assert.equal(latestLoadPayload().chat_template_override, null, 'an absent Covert template override explicitly selects the GGUF/runtime default and clears stale same-model Unsloth template flags');
     const result = await adapter.infer({ modelId: 'fixture-model', messages: [{ role: 'user', content: 'call a tool' }], tools: [{ type: 'function' }] });
     assert.equal(result.text, 'answer');
     assert.equal(result.toolCalls.length, 1);
