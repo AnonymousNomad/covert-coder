@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { z } from 'zod';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:net';
+import { PassThrough } from 'node:stream';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -506,7 +507,11 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
   let unknownPortReads = 0;
   let unknownTreeReads = 0;
   let forceUnknownPort = false;
-  const fakeChild = Object.assign(new EventEmitter(), { pid: 50001, exitCode: null as number | null, kill: () => { launcherKillCalls++; return true; } });
+  const generatedApiKey = 'sk-unsloth-test-runtime-generated-token';
+  const stdout = new PassThrough();
+  const authenticatedCalls: string[] = [];
+  let configuredCredentialReads = 0;
+  const fakeChild = Object.assign(new EventEmitter(), { pid: 50001, exitCode: null as number | null, kill: () => { launcherKillCalls++; return true; }, stdout });
   try {
     const adapter = new UnslothRuntimeAdapter({
       workspace: dir,
@@ -524,9 +529,12 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
         if (unknownTreeReads > 0) { unknownTreeReads--; return null; }
         return true;
       },
-      fetcher: async input => {
+      fetcher: async (input, init) => {
         requests++;
         const pathname = new URL(String(input)).pathname;
+        if (['/api/inference/load', '/api/inference/unload', '/api/shutdown'].includes(pathname)) {
+          authenticatedCalls.push(new Headers(init?.headers).get('Authorization') ?? '');
+        }
         if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
         if (pathname === '/api/inference/load') {
           unknownPortReads = 1;
@@ -547,21 +555,27 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
         }
         return jsonResponse({});
       },
-      spawnProcess: ((command: string, args: string[], options: { env?: NodeJS.ProcessEnv }) => {
+      spawnProcess: ((command: string, args: string[], options: { env?: NodeJS.ProcessEnv; stdio?: unknown }) => {
         assert.equal(command, path.join(dir, 'unsloth.exe'));
         launchArgs = args;
+        assert.deepEqual(options.stdio, ['ignore', 'pipe', 'ignore'], 'only stdout is piped for the secret marker and all output stays out of logs');
         assert.equal(options.env?.UNSLOTH_API_ONLY, '1');
         assert.equal(options.env?._UNSLOTH_CLOUDFLARE_INTENT, 'disabled');
         portState = 'LISTENING';
+        queueMicrotask(() => stdout.end(`startup output is discarded\nUNSLOTH_START_API_KEY: ${generatedApiKey}\n`));
         return fakeChild;
       }) as never,
+      credentialStore: { get: async () => { configuredCredentialReads++; return undefined; } },
       startupTimeoutMs: 1000,
       now: () => FIXED_TIME
     });
     const loaded = await adapter.load({ modelId: 'owned-model', modelPath: artifact });
     assert.match(loaded.artifact_sha256 ?? '', /^[a-f0-9]{64}$/);
     assert.ok(launchArgs.includes('--api-only'));
+    assert.ok(launchArgs.includes('--start-api-key-marker'));
     assert.ok(!launchArgs.includes('--disable-tools'));
+    assert.equal(configuredCredentialReads, 0, 'owned runtime bootstrap uses its private key channel, not credential storage');
+    assert.equal(JSON.stringify(await adapter.status()).includes(generatedApiKey), false, 'the captured API key is never exposed by runtime status');
     assert.equal((await adapter.status()).ownership, 'COVERT_OWNED');
     assert.equal((await adapter.status()).pid, 50002, 'status reports the listener PID, not only the CLI parent PID');
 
@@ -581,7 +595,13 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
     assert.equal((await adapter.infer({ modelId: 'owned-model', messages: [{ role: 'user', content: 'recovered' }], temperature: 0 })).text, 'alive');
     assert.equal((await adapter.status()).last_error, null, 'a successful request after fresh ownership proof clears the transient diagnostic');
 
+    await adapter.unload('owned-model', true);
     await adapter.shutdown();
+    assert.deepEqual(authenticatedCalls, [
+      `Bearer ${generatedApiKey}`,
+      `Bearer ${generatedApiKey}`,
+      `Bearer ${generatedApiKey}`
+    ], 'load, unload, and shutdown authenticate with the captured child key');
     assert.equal(gracefulShutdownRequests, 1);
     assert.equal(launcherKillCalls, 0, 'graceful API shutdown should exit without terminating even the launcher');
     assert.equal((await adapter.status()).health, 'STOPPED');
@@ -592,16 +612,73 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
   }
 });
 
+test('owned Unsloth startup refuses authenticated work and cleans up when its private API-key marker is missing', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-api-key-marker-missing-'));
+  const artifact = path.join(dir, 'fixture.gguf');
+  await writeFile(artifact, 'owned fixture');
+  let portState: 'FREE' | 'LISTENING' = 'FREE';
+  let authenticatedRequests = 0;
+  let processCleanups = 0;
+  const stdout = new PassThrough();
+  const fakeChild = Object.assign(new EventEmitter(), {
+    pid: 51001,
+    exitCode: null as number | null,
+    kill: () => true,
+    stdout
+  });
+
+  try {
+    const adapter = new UnslothRuntimeAdapter({
+      workspace: dir,
+      cliPath: path.join(dir, 'unsloth.exe'),
+      findExecutable: async () => path.join(dir, 'unsloth.exe'),
+      discoverVersion: async () => '2026.9.11',
+      inspectPort: async () => portState === 'FREE' ? { state: 'FREE' } : { state: 'LISTENING', pid: 51002 },
+      processTreeContains: async (rootPid, targetPid) => rootPid === 51001 && targetPid === 51002,
+      terminateOwnedProcess: async child => {
+        processCleanups++;
+        portState = 'FREE';
+        (child as unknown as typeof fakeChild).exitCode = 0;
+        child.emit('exit', 0, null);
+      },
+      fetcher: async input => {
+        const pathname = new URL(String(input)).pathname;
+        if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+        authenticatedRequests++;
+        return jsonResponse({}, 401);
+      },
+      spawnProcess: (() => {
+        portState = 'LISTENING';
+        queueMicrotask(() => stdout.end('Unsloth startup output without the private marker\n'));
+        return fakeChild;
+      }) as never,
+      startupTimeoutMs: 100
+    });
+
+    await assert.rejects(
+      () => adapter.load({ modelId: 'owned-model', modelPath: artifact }),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'AUTH_KEY_CAPTURE_FAILED' && !error.message.includes('sk-unsloth-')
+    );
+    assert.equal(authenticatedRequests, 0, 'no protected endpoint is contacted without the captured key');
+    assert.equal(processCleanups, 1, 'the exact owned process is reaped after marker failure');
+    assert.equal(portState, 'FREE', 'the owned listener is confirmed absent after marker failure');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('unexpected owned launcher exit is exposed as a sanitized runtime error', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-unexpected-exit-'));
   const artifact = path.join(dir, 'fixture.gguf');
   await writeFile(artifact, 'owned fixture');
   let portState: 'FREE' | 'LISTENING' = 'FREE';
+  const stdout = new PassThrough();
   const fakeChild = Object.assign(new EventEmitter(), {
     pid: 52001,
     exitCode: null as number | null,
     signalCode: null as NodeJS.Signals | null,
-    kill: () => true
+    kill: () => true,
+    stdout
   });
   try {
     const adapter = new UnslothRuntimeAdapter({
@@ -618,7 +695,11 @@ test('unexpected owned launcher exit is exposed as a sanitized runtime error', a
         if (pathname === '/api/inference/load') return jsonResponse({ completed: true });
         return jsonResponse({});
       },
-      spawnProcess: (() => { portState = 'LISTENING'; return fakeChild; }) as never,
+      spawnProcess: (() => {
+        portState = 'LISTENING';
+        queueMicrotask(() => stdout.end('UNSLOTH_START_API_KEY: sk-unsloth-unexpected-exit-fixture-token\n'));
+        return fakeChild;
+      }) as never,
       startupTimeoutMs: 1000,
       now: () => FIXED_TIME
     });
@@ -645,10 +726,12 @@ test('rejected graceful shutdown leaves the owned runtime untouched', async () =
   let portState: 'FREE' | 'LISTENING' = 'FREE';
   let killCalls = 0;
   let shutdownRequests = 0;
+  const stdout = new PassThrough();
   const child = Object.assign(new EventEmitter(), {
     pid: 51001,
     exitCode: null as number | null,
-    kill: () => { killCalls++; return true; }
+    kill: () => { killCalls++; return true; },
+    stdout
   });
   try {
     const adapter = new UnslothRuntimeAdapter({
@@ -668,7 +751,11 @@ test('rejected graceful shutdown leaves the owned runtime untouched', async () =
         }
         return jsonResponse({});
       },
-      spawnProcess: (() => { portState = 'LISTENING'; return child; }) as never,
+      spawnProcess: (() => {
+        portState = 'LISTENING';
+        queueMicrotask(() => stdout.end('UNSLOTH_START_API_KEY: sk-unsloth-rejected-shutdown-fixture-token\n'));
+        return child;
+      }) as never,
       startupTimeoutMs: 1000,
       now: () => FIXED_TIME
     });

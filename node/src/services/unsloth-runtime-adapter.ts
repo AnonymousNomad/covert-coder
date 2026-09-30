@@ -331,6 +331,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
   private versionChecked = false;
   private ownership: RuntimeOwnershipT = 'UNKNOWN';
   private processHandle: ChildProcess | null = null;
+  private ownedApiKey: string | null = null;
   private listenerPid: number | null = null;
   private portState: PortInspection['state'] = 'UNKNOWN';
   private startedAt: string | null = null;
@@ -525,10 +526,15 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     const headers = new Headers(init.headers);
     if (withAuth && this.authTokenProvider) {
       let token: string | null;
-      try {
-        token = await this.authTokenProvider();
-      } catch {
-        throw new RuntimeAdapterError('AUTH_PROVIDER_FAILED', 'configured Unsloth token provider failed');
+      if (this.ownership === 'COVERT_OWNED') {
+        token = this.ownedApiKey;
+        if (token === null) throw new RuntimeAdapterError('AUTH_KEY_UNAVAILABLE', 'Covert-owned Unsloth API key was not captured from its startup marker');
+      } else {
+        try {
+          token = await this.authTokenProvider();
+        } catch {
+          throw new RuntimeAdapterError('AUTH_PROVIDER_FAILED', 'configured Unsloth token provider failed');
+        }
       }
       if (token?.trim()) headers.set('Authorization', `Bearer ${token.trim()}`);
     }
@@ -905,6 +911,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       throw new RuntimeAdapterError('SHUTDOWN_UNCONFIRMED', 'the Unsloth listener remained or could not be checked after graceful shutdown; it was not terminated again');
     }
     this.processHandle = null;
+    this.ownedApiKey = null;
     this.ownership = 'UNKNOWN';
     this.loadedModel = null;
     this.loadedPath = null;
@@ -962,7 +969,10 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
         // Keep the retained handle and fail closed; never widen cleanup to an unverified listener.
       }
     }
-    if (child.exitCode !== null && this.processHandle === child) this.processHandle = null;
+    if (child.exitCode !== null && this.processHandle === child) {
+      this.processHandle = null;
+      this.ownedApiKey = null;
+    }
     try {
       const listener = await this.inspectPort(Number(this.endpoint.port));
       this.portState = listener.state;
@@ -999,21 +1009,38 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     }
     env.UNSLOTH_API_ONLY = '1';
     env._UNSLOTH_CLOUDFLARE_INTENT = 'disabled';
-    const invocation = buildUnslothCliInvocation(cliPath, ['studio', '-H', '127.0.0.1', '-p', String(port), '--api-only']);
+    const invocation = buildUnslothCliInvocation(cliPath, ['studio', '-H', '127.0.0.1', '-p', String(port), '--api-only', '--start-api-key-marker']);
     const child = this.spawnProcess(invocation.command, invocation.args, {
       cwd: this.workspace,
       env,
-      stdio: 'ignore',
+      // The hidden marker is a private parent-child bootstrap channel. Drain
+      // stdout in memory and retain only the validated key; never forward or
+      // persist the runtime's startup banner.
+      stdio: ['ignore', 'pipe', 'ignore'],
       windowsHide: true,
       detached: process.platform !== 'win32',
       ...(invocation.windowsVerbatimArguments === true ? { windowsVerbatimArguments: true } : {})
     });
     this.processHandle = child;
+    this.ownedApiKey = null;
+    let outputRemainder = '';
+    child.stdout?.setEncoding('utf8');
+    child.stdout?.on('data', (chunk: string | Buffer) => {
+      const lines = `${outputRemainder}${String(chunk)}`.split(/\r?\n/u);
+      outputRemainder = lines.pop()?.slice(-512) ?? '';
+      for (const line of lines) {
+        if (line.length > 512) continue;
+        const match = /^UNSLOTH_START_API_KEY:\s*(sk-unsloth-[A-Za-z0-9_-]{16,256})\s*$/u.exec(line);
+        if (match?.[1] !== undefined) this.ownedApiKey = match[1];
+      }
+    });
+    child.stdout?.on('error', () => { this.ownedApiKey = null; });
     this.ownership = 'UNKNOWN';
     this.startedAt = this.now().toISOString();
     child.once('exit', (code, signal) => {
       if (this.processHandle === child) {
         this.processHandle = null;
+        this.ownedApiKey = null;
         this.ownership = 'UNKNOWN';
         this.lastHealth = 'STOPPED';
         this.loadedModel = null;
@@ -1040,7 +1067,15 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
           if (relation === true) {
             this.ownership = 'COVERT_OWNED';
             const health = await this.health();
-            if (health === 'HEALTHY') return;
+            if (health === 'HEALTHY') {
+              while (this.ownedApiKey === null && Date.now() < deadline && child.exitCode === null) {
+                await new Promise(resolve => setTimeout(resolve, 25));
+              }
+              if (this.ownedApiKey === null) {
+                throw new RuntimeAdapterError('AUTH_KEY_CAPTURE_FAILED', 'Covert-owned Unsloth did not emit its private API-key startup marker');
+              }
+              return;
+            }
           } else {
             this.ownership = relation === false ? 'FOREIGN' : 'UNKNOWN';
             throw new RuntimeAdapterError(relation === false ? 'PROCESS_OWNERSHIP_MISMATCH' : 'PROCESS_OWNERSHIP_UNKNOWN', 'Unsloth listener ancestry could not be proven for the process Covert started; no endpoint request was made');

@@ -2,14 +2,15 @@
 
 ## Outcome
 
-**No live local inference was attempted in this closure run.** The canonical Model Access start was refused by Resource Admission because free physical RAM remained below the existing 6.5 GiB floor. The 5.0 GiB free-commit floor, qualified-profile VRAM floor, and GPU-load ceiling passed. A model-server start, generation, cancellation, stop, and restart must wait for a fresh preflight above all floors.
+**No live local generation has succeeded.** Earlier start attempts below the unchanged 6.5 GiB physical-RAM floor were refused correctly. A later Authority-governed start above every admission floor reached Unsloth but failed with AUTH_REQUIRED; its graceful cleanup also failed because Covert had discarded the owned runtime's generated API-key marker. The adapter now captures that marker privately in memory and fails closed when it is absent. The repair has passed local lifecycle tests and full Veritas, but a post-repair live start/generation has not yet been attempted.
 
-The bounded code work repaired two Covert defects before that preflight:
+The bounded code work has repaired three Covert defects during closure:
 
 1. the Authority-bound `/api/models/start` route had no canonical local-runtime admission gate; and
-2. a failed or unverifiable canonical model load could leave a Covert-owned Unsloth server running.
+2. a failed or unverifiable canonical model load could leave a Covert-owned Unsloth server running; and
+3. a Covert-owned Unsloth child could generate an API key that its parent discarded, making authenticated model operations and graceful shutdown fail.
 
-No floor was weakened. No foreign or unrelated process was terminated. The local GGUF collection was not changed.
+No floor was weakened. The local GGUF collection was not changed. Only owner-authorized browser cleanup and the verified Covert-owned runtime tree were terminated during this investigation; unrelated OS and user processes remain untouched.
 
 ## Repository and checkpoint scope
 
@@ -287,3 +288,13 @@ This follow-up did not clear the physical admission blocker. It did close a Cove
 - `BrokerModelRuntime.start()` now preserves independently safe failure codes when both model start and owned-runtime cleanup fail. The error message/detail carries only bounded enum-style codes (no response body, credential, path, or token), allowing the route log and caller to distinguish the original start failure from cleanup failure without exposing arbitrary runtime text. The focused regression now asserts both codes independently.
 - Verification: `node --test tests/arch/broker-model-runtime.test.ts` **4/4 passed**; `tsc -p tsconfig.node.json` passed; targeted ESLint passed with no output; `git diff --check` passed. No live runtime was restarted for this code change. Live load cause, generation, cancellation, clean stop, restart, and exact-model qualification remain open; the model is not READY or rejected.
 - Exact-SHA CI and Issue #38 review are pending the checkpoint push.
+
+### Owned Unsloth authentication repair and full regression — 2026-09-30T16:24Z
+
+- The earlier canonical Authority operation was admitted above all fixed floors and reached the installed Unsloth 2026.9.11 runtime. Its safe failure codes were AUTH_REQUIRED for the model operation and UNSLOTH_SHUTDOWN_REJECTED for cleanup. The API-only child had generated its API key, but Covert launched it with stdout ignored; the supported startup marker was therefore discarded. The credential store has no unsloth-local-runtime entry. This establishes a Covert-owned authentication/bootstrap defect; it is not evidence of a bad GGUF, template, or unsupported model.
+- The adapter now starts the owned CLI with --start-api-key-marker, pipes only stdout into a private in-memory reader, retains only the bounded UNSLOTH_START_API_KEY marker, and waits for it before considering startup successful. It never forwards, logs, persists, or returns the key. Owned load/unload/shutdown use that captured key; it is cleared after clean shutdown or child exit. User-owned runtimes continue using their configured credential provider. If the marker is absent, the adapter makes no protected endpoint call and cleans up the exact owned child fail-closed.
+- Regression coverage proves authenticated load, unload, and shutdown use the captured child key; the value is absent from public runtime status; the owned path does not query credential storage; and missing-marker startup performs no protected request and confirms process/listener cleanup.
+- The first focused run was **19/22** because three fake-child fixtures still modeled the previous stdout contract and the happy-path assertion had not exercised unload. Those fixture assumptions were corrected without weakening assertions. The rerun passed **22/22**; the combined Broker + adapter lifecycle suite passed **26/26**. A first TypeScript run also caught a fixture returning null where the credential store contract is undefined; the fixture was corrected and tsc -p tsconfig.node.json passed. Targeted ESLint and git diff --check passed.
+- Full npm run veritas -- --task-class code-change completed with status verified, score **1.00/1.00**, and all six gates passing: path-boundary, secret-scan, manifest-validation, compile, tests, and git-diff. The compile gate and complete test chain passed. Its generic Desktop Control battery result was **9/9** at 2026-09-30T16:22:14.614Z; Office COM acceptance was not run. This tooling result is not Covert runtime or model qualification evidence.
+- After Veritas exited, Windows measured at 2026-09-30T16:24:15.926Z: **8,683.7 MiB free physical** and **8,662 MiB available**; commit **16,584.9 / 26,915.2 MiB**, leaving **10,330.4 MiB free commit**. C: and E: pagefiles remained active at **7,664 MiB allocated / 5,385 MiB used** and **2,944 / 2,391 MiB**, respectively. No pagefile or admission-floor change was made. WSL reported no running distribution. No Covert checkout, Veritas, test, Unsloth, llama, or Ollama process remained; listeners on 18888, 18889, 4777, 4778, 4779, and 5173 were absent. Two small WebView2 crash handlers belonged to existing Windows/PC Manager trees and were left untouched.
+- The live key was never read from a credential file or emitted into this evidence. Tests use synthetic fixture values only. The current candidate remains not READY: exact model health, generation, cancellation, clean stop, restart, and role-specific qualification are still open. Next: push this reviewed code/evidence checkpoint, verify exact-SHA CI, then restart only the supervised typed stack and obtain a new canonical admission result immediately before one Authority-governed start.
