@@ -45,7 +45,9 @@ function defaultIsProcessAlive(pid: number): boolean {
   }
 }
 
-const RUNNING_MODEL_STATUSES = new Set(['running', 'ready', 'loaded']);
+// ModelRuntime status "ready" means an artifact is configured and startable;
+// it does not prove a live model process or successful endpoint probe.
+const RUNNING_MODEL_STATUSES = new Set(['running', 'loaded']);
 const FAILED_MODEL_STATUSES = new Set(['error', 'failed', 'crashed']);
 
 export function createHealthSupervisor(options: HealthSupervisorOptions) {

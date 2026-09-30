@@ -32,6 +32,19 @@ test('no engines and no models -> model_engines STOPPED and aggregate DEGRADED',
   assert.equal(snapshot.components.find((component: { component: string; state: string }) => component.component === 'backend')?.state, 'HEALTHY');
 });
 
+test('startable model status ready is not counted as a running engine', async () => {
+  const workspace = await workspaceWithEngines(null);
+  const supervisor = createHealthSupervisor({
+    workspace, version: 'test', isProcessAlive: () => false,
+    modelStatus: async () => ({ models: [{ id: 'local-startable', status: 'ready' }] })
+  });
+  const snapshot = await supervisor.snapshot();
+  const engines = snapshot.components.find((component: { component: string; state: string }) => component.component === 'model_engines');
+  assert.equal(engines?.state, 'STOPPED');
+  assert.equal(engines?.evidence.models_running, 0);
+  assert.equal(snapshot.state, 'DEGRADED');
+});
+
 test('dead recorded pid is not healthy: stale bookkeeping -> DEGRADED', async () => {
   const workspace = await workspaceWithEngines({ 'local-1': { pid: 999999, file: 'model.gguf' } });
   const supervisor = createHealthSupervisor({ workspace, version: 'test', isProcessAlive: () => false });
