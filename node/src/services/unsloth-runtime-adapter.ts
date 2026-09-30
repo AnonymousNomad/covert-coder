@@ -1009,7 +1009,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     }
     env.UNSLOTH_API_ONLY = '1';
     env._UNSLOTH_CLOUDFLARE_INTENT = 'disabled';
-    const invocation = buildUnslothCliInvocation(cliPath, ['studio', '-H', '127.0.0.1', '-p', String(port), '--api-only', '--start-api-key-marker']);
+    const invocation = buildUnslothCliInvocation(cliPath, ['studio', 'run', '-H', '127.0.0.1', '-p', String(port), '--api-only', '--start-api-key-marker']);
     const child = this.spawnProcess(invocation.command, invocation.args, {
       cwd: this.workspace,
       env,

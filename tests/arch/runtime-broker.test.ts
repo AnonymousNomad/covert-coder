@@ -42,11 +42,11 @@ test('Windows Unsloth discovery prefers the managed CLI wrapper and quotes its f
     String.raw`C:\Program Files\Unsloth Studio\bin\unsloth.exe`,
     wrapper
   ], 'win32'), wrapper);
-  const launch = buildUnslothCliInvocation(wrapper, ['studio', '-H', '127.0.0.1', '-p', '18888', '--api-only'], 'win32');
+  const launch = buildUnslothCliInvocation(wrapper, ['studio', 'run', '-H', '127.0.0.1', '-p', '18888', '--api-only', '--start-api-key-marker'], 'win32');
   assert.equal(launch.command, 'cmd.exe');
   assert.deepEqual(launch.args, [
     '/d', '/v:off', '/s', '/c',
-    String.raw`""C:\Program Files\Unsloth Studio\bin\unsloth.cmd" studio -H 127.0.0.1 -p 18888 --api-only"`
+    String.raw`""C:\Program Files\Unsloth Studio\bin\unsloth.cmd" studio run -H 127.0.0.1 -p 18888 --api-only --start-api-key-marker"`
   ]);
   assert.equal(launch.windowsVerbatimArguments, true);
   assert.throws(() => buildUnslothCliInvocation(wrapper, ['studio', '& whoami'], 'win32'), /not safe/);
@@ -571,6 +571,7 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
     });
     const loaded = await adapter.load({ modelId: 'owned-model', modelPath: artifact });
     assert.match(loaded.artifact_sha256 ?? '', /^[a-f0-9]{64}$/);
+    assert.deepEqual(launchArgs.slice(0, 2), ['studio', 'run'], 'the owned server uses the installed CLI run command before its options');
     assert.ok(launchArgs.includes('--api-only'));
     assert.ok(launchArgs.includes('--start-api-key-marker'));
     assert.ok(!launchArgs.includes('--disable-tools'));
