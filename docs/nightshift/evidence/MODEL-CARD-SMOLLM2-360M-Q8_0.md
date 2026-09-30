@@ -1,6 +1,6 @@
 # Model Card — SmolLM2 360M Instruct Q8_0
 
-**State:** `ARTIFACT_OBSERVED`; upstream GGUF file identity and embedded-template bytes are established. Effective runtime-template selection, canonical configuration, runtime, and Covert role qualification remain **UNVERIFIED / REQUIRED**. This is not a rejection of the model.
+**State:** `ARTIFACT_OBSERVED`; upstream GGUF file identity and embedded-template bytes are established. The pinned Unsloth source has an embedded-metadata default for ordinary GGUFs, but a loaded-server instance, canonical configuration, runtime, and Covert role qualification remain **UNVERIFIED / REQUIRED**. This is not a rejection of the model.
 
 ## Identity and provenance
 
@@ -26,7 +26,7 @@ The local SHA and metadata are recorded in the [13-file host inventory](local-gg
 - The pinned base tokenizer configuration also lists special tokens `<|endoftext|>`, `<repo_name>`, `<reponame>`, `<file_sep>`, `<filename>`, `<gh_stars>`, `<issue_start>`, `<issue_comment>`, `<issue_closed>`, `<jupyter_start>`, `<jupyter_text>`, `<jupyter_code>`, `<jupyter_output>`, `<jupyter_script>`, and `<empty_output>`. The GGUF chat template does not use these as a general tool protocol; their task-specific behavior has not been qualified by Covert.
 - This template has no `<think>` section or dedicated tool-call markers. The upstream model card describes function calling for the 1.7B model variant; it does not establish function calling for this 360M artifact. No Covert tool behavior is qualified.
 - The upstream model-card example uses `max_new_tokens=50`, temperature `0.2`, `top_p=0.9`, and sampling enabled. Those are example settings, not a Covert profile or measured defaults. The upstream card says the family primarily handles English and warns outputs may be inaccurate, inconsistent, or biased. Vendor claims and benchmarks are not Covert role qualification.
-- Covert's current local completion adapter sends structured messages and may send tools, temperature, and max tokens; it does not send explicit `stop` or `chat_template` fields. Effective selection of this GGUF template and effective EOS/stop behavior in the installed runtime remain **UNKNOWN** until directly verified.
+- Covert's current local completion adapter sends structured messages and may send tools, temperature, and max tokens; it does not send explicit `stop` or `chat_template` fields. In the installed Unsloth `2026.9.11` source, a non-Gemma GGUF with no user override follows its embedded `tokenizer.chat_template`, unless the runtime's narrow numeric-member compatibility repair applies. This establishes the source-level default path, not the template observed on a live SmolLM2 server. Effective EOS/stop behavior remains **UNKNOWN**. See the [pinned runtime source observations](LOCAL-RUNTIME-CLOSURE-2026-09-30.md#pinned-unsloth-chat-template-resolution).
 
 ## Model-specific runtime profile
 
@@ -39,7 +39,7 @@ The local SHA and metadata are recorded in the [13-file host inventory](local-gg
 | GPU offload | **UNKNOWN** for this artifact under the canonical runtime. |
 | Threads / batch | **UNKNOWN**. |
 | mmap / mlock | **UNKNOWN** for the canonical runtime path. |
-| Chat template source | Embedded GGUF template is the intended model-specific source. Covert sends no template override, but effective runtime selection remains **UNKNOWN**. |
+| Chat template source | Embedded GGUF template is the intended model-specific source. Covert sends no override; the pinned Unsloth source defaults ordinary GGUFs to embedded metadata, with a narrow numeric-member compatibility repair. A live SmolLM2 server has not been observed. |
 | Stop behavior | GGUF EOS is `<|im_end|>` / token ID `2`; Covert has no explicit stop list for this artifact. Effective server behavior remains **UNKNOWN**. |
 | Sampler/profile persistence | Upstream example settings are above. No Authority-saved sidecar exists for this local file; no SmolLM2 runtime profile is accepted by the current exact-artifact Unsloth qualification. |
 | Resource projection | Per-model peak RAM, commit, and VRAM demand is **UNKNOWN**. File size is not a resident-memory estimate. Preserve current admission floors: 6.5 GiB free physical RAM, 5.0 GiB free commit, 4.5 GiB free VRAM, and GPU utilization below 50%. |
