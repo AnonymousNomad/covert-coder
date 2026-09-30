@@ -558,7 +558,7 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
       spawnProcess: ((command: string, args: string[], options: { env?: NodeJS.ProcessEnv; stdio?: unknown }) => {
         assert.equal(command, path.join(dir, 'unsloth.exe'));
         launchArgs = args;
-        assert.deepEqual(options.stdio, ['ignore', 'pipe', 'ignore'], 'only stdout is piped for the secret marker and all output stays out of logs');
+        assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe'], 'stdout carries only the private marker and stderr is classified without persisting raw output');
         assert.equal(options.env?.UNSLOTH_API_ONLY, '1');
         assert.equal(options.env?._UNSLOTH_CLOUDFLARE_INTENT, 'disabled');
         portState = 'LISTENING';
@@ -663,6 +663,57 @@ test('owned Unsloth startup refuses authenticated work and cleans up when its pr
     assert.equal(authenticatedRequests, 0, 'no protected endpoint is contacted without the captured key');
     assert.equal(processCleanups, 1, 'the exact owned process is reaped after marker failure');
     assert.equal(portState, 'FREE', 'the owned listener is confirmed absent after marker failure');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('failed Unsloth startup exposes only an allowlisted diagnostic code', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-startup-diagnostic-'));
+  const artifact = path.join(dir, 'fixture.gguf');
+  await writeFile(artifact, 'owned fixture');
+  const stdout = new PassThrough();
+  const stderr = new PassThrough();
+  const fakeChild = Object.assign(new EventEmitter(), {
+    pid: 51501,
+    exitCode: null as number | null,
+    signalCode: null as NodeJS.Signals | null,
+    kill: () => true,
+    stdout,
+    stderr
+  });
+  try {
+    const adapter = new UnslothRuntimeAdapter({
+      workspace: dir,
+      cliPath: path.join(dir, 'unsloth.cmd'),
+      findExecutable: async () => path.join(dir, 'unsloth.cmd'),
+      discoverVersion: async () => '2026.9.11',
+      inspectPort: async () => ({ state: 'FREE' }),
+      authTokenProvider: async () => null,
+      spawnProcess: ((command: string, _args: string[], options: { env?: NodeJS.ProcessEnv; stdio?: unknown }) => {
+        assert.equal(command, 'cmd.exe');
+        assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+        queueMicrotask(() => {
+          stderr.write("ModuleNotFoundError: No module named 'example_dependency'; sk-unsloth-private-startup-token\n");
+          fakeChild.exitCode = 3;
+          fakeChild.emit('exit', 3, null);
+        });
+        return fakeChild;
+      }) as never,
+      startupTimeoutMs: 1000,
+      now: () => FIXED_TIME
+    });
+    await assert.rejects(
+      () => adapter.load({ modelId: 'owned-model', modelPath: artifact }),
+      (error: unknown) => error instanceof RuntimeAdapterError &&
+        error.code === 'UNSLOTH_DEPENDENCY_MISSING' &&
+        !error.message.includes('example_dependency') &&
+        !error.message.includes('sk-unsloth-')
+    );
+    const status = RuntimeStatusResponse.parse(await adapter.status());
+    assert.equal(status.health, 'STOPPED');
+    assert.equal(status.last_error?.code, 'UNSLOTH_DEPENDENCY_MISSING');
+    assert.doesNotMatch(JSON.stringify(status), /example_dependency|sk-unsloth-private-startup-token/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

@@ -35,7 +35,14 @@ const OWNERSHIP_DIAGNOSTIC_CODES = new Set([
   'PORT_INSPECTION_UNKNOWN',
   'PROCESS_TREE_UNVERIFIED',
   'FOREIGN_LISTENER',
-  'UNSLOTH_PROCESS_EXITED'
+  'UNSLOTH_PROCESS_EXITED',
+  'UNSLOTH_START_FAILED',
+  'UNSLOTH_CLI_ARGUMENT_INVALID',
+  'UNSLOTH_DEPENDENCY_MISSING',
+  'UNSLOTH_NATIVE_LIBRARY_FAILED',
+  'UNSLOTH_PORT_BIND_FAILED',
+  'UNSLOTH_ACCESS_DENIED',
+  'UNSLOTH_INTERPRETER_UNAVAILABLE'
 ]);
 export const UNSLOTH_API_KEY_CREDENTIAL_ID = 'unsloth-local-runtime';
 
@@ -52,6 +59,44 @@ type CliInvocation = {
   args: string[];
   windowsVerbatimArguments?: boolean;
 };
+type UnslothStartupFailureCode =
+  | 'UNSLOTH_CLI_ARGUMENT_INVALID'
+  | 'UNSLOTH_DEPENDENCY_MISSING'
+  | 'UNSLOTH_NATIVE_LIBRARY_FAILED'
+  | 'UNSLOTH_PORT_BIND_FAILED'
+  | 'UNSLOTH_ACCESS_DENIED'
+  | 'UNSLOTH_INTERPRETER_UNAVAILABLE';
+
+function redactUnslothStartupText(value: string): string {
+  return value
+    .replace(/\bsk-unsloth-[A-Za-z0-9_-]{16,256}\b/giu, '[redacted]')
+    .replace(/\bBearer\s+\S+/giu, 'Bearer [redacted]')
+    .replace(/\bhf_[A-Za-z0-9]{20,}\b/giu, '[redacted]')
+    .replace(/\b(?:ghp_|github_pat_|xox[baprs]-)[A-Za-z0-9_-]{12,}\b/giu, '[redacted]');
+}
+
+function classifyUnslothStartupFailure(value: string): UnslothStartupFailureCode | null {
+  const text = value.replace(/\u001b\[[0-?]*[ -/]*[@-~]/gu, '').toLowerCase();
+  if (/no such option|unrecognized arguments|unknown option|invalid choice|was unexpected at this time/u.test(text)) {
+    return 'UNSLOTH_CLI_ARGUMENT_INVALID';
+  }
+  if (/modulenotfounderror:\s*no module named|importerror:\s*no module named/u.test(text)) {
+    return 'UNSLOTH_DEPENDENCY_MISSING';
+  }
+  if (/dll load failed|failed to load.{0,80}dll|cannot load.{0,80}dll/u.test(text)) {
+    return 'UNSLOTH_NATIVE_LIBRARY_FAILED';
+  }
+  if (/address already in use|only one usage of each socket address|winerror 10048|errno 10048/u.test(text)) {
+    return 'UNSLOTH_PORT_BIND_FAILED';
+  }
+  if (/permissionerror|access is denied|permission denied|winerror 5|eacces/u.test(text)) {
+    return 'UNSLOTH_ACCESS_DENIED';
+  }
+  if (/python executable.{0,80}not found|no python interpreter|python\.exe.{0,80}not found/u.test(text)) {
+    return 'UNSLOTH_INTERPRETER_UNAVAILABLE';
+  }
+  return null;
+}
 
 export interface UnslothRuntimeAdapterOptions {
   workspace: string;
@@ -1010,13 +1055,16 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     env.UNSLOTH_API_ONLY = '1';
     env._UNSLOTH_CLOUDFLARE_INTENT = 'disabled';
     const invocation = buildUnslothCliInvocation(cliPath, ['studio', 'run', '-H', '127.0.0.1', '-p', String(port), '--api-only', '--start-api-key-marker']);
+    let stderrRemainder = '';
+    let startupFailureCode: UnslothStartupFailureCode | null = null;
+    let startupDiagnosticsActive = true;
     const child = this.spawnProcess(invocation.command, invocation.args, {
       cwd: this.workspace,
       env,
-      // The hidden marker is a private parent-child bootstrap channel. Drain
-      // stdout in memory and retain only the validated key; never forward or
-      // persist the runtime's startup banner.
-      stdio: ['ignore', 'pipe', 'ignore'],
+      // Stdout is only the private API-key marker channel. Stderr is consumed
+      // in memory and reduced to allowlisted diagnostic codes; raw output is
+      // never forwarded or persisted.
+      stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
       detached: process.platform !== 'win32',
       ...(invocation.windowsVerbatimArguments === true ? { windowsVerbatimArguments: true } : {})
@@ -1035,6 +1083,15 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       }
     });
     child.stdout?.on('error', () => { this.ownedApiKey = null; });
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk: string | Buffer) => {
+      if (!startupDiagnosticsActive) return;
+      const lines = (stderrRemainder + redactUnslothStartupText(String(chunk))).split(/\r?\n/u);
+      stderrRemainder = lines.pop()?.slice(-512) ?? '';
+      for (const line of lines) startupFailureCode ??= classifyUnslothStartupFailure(line);
+      startupFailureCode ??= classifyUnslothStartupFailure(stderrRemainder);
+    });
+    child.stderr?.on('error', () => { stderrRemainder = ''; });
     this.ownership = 'UNKNOWN';
     this.startedAt = this.now().toISOString();
     child.once('exit', (code, signal) => {
@@ -1074,6 +1131,9 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
               if (this.ownedApiKey === null) {
                 throw new RuntimeAdapterError('AUTH_KEY_CAPTURE_FAILED', 'Covert-owned Unsloth did not emit its private API-key startup marker');
               }
+              startupDiagnosticsActive = false;
+              startupFailureCode = null;
+              stderrRemainder = '';
               return;
             }
           } else {
@@ -1088,7 +1148,16 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
         }
         await new Promise(resolve => setTimeout(resolve, 250));
       }
-      if (child.exitCode !== null) throw new RuntimeAdapterError('UNSLOTH_START_FAILED', 'Covert-owned Unsloth process exited before becoming healthy');
+      if (child.exitCode !== null) {
+        const classified = startupFailureCode ?? classifyUnslothStartupFailure(stderrRemainder);
+        const code = classified ?? 'UNSLOTH_START_FAILED';
+        const message = classified
+          ? 'Covert-owned Unsloth startup failed (' + classified + ')'
+          : 'Covert-owned Unsloth process exited before becoming healthy (code=' + child.exitCode + ')';
+        this.recordOwnershipError(code, message);
+        stderrRemainder = '';
+        throw new RuntimeAdapterError(code, message);
+      }
       throw new RuntimeAdapterError('UNSLOTH_START_TIMEOUT', 'Covert-owned Unsloth did not become healthy before the startup deadline');
     } catch (error) {
       await this.cleanupFailedStart(child);
