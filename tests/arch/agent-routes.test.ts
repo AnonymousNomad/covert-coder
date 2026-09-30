@@ -17,6 +17,10 @@ let owner: Awaited<ReturnType<typeof pairFixture>>;
 
 const scriptedReplies: string[] = [];
 let scriptIndex = 0;
+// Match the Authority fixture's opt-in timeout for serialized Windows runs.
+// This only extends polling when requested; terminal-state and approval
+// assertions remain identical.
+const fixtureWaitMs = Math.max(5000, Number.parseInt(process.env.AIDE_FIXTURE_TIMEOUT_MS ?? '', 10) || 0);
 
 before(async () => {
   await fs.writeFile(path.join(workspace, 'README.md'), '# demo\n\nhello line\n', 'utf8');
@@ -127,7 +131,7 @@ function nextEvent(socket: WebSocket): Promise<Record<string, unknown>> {
   });
 }
 
-async function waitForStatus<T extends { state: string }>(sessionId: string, predicate: (status: T) => boolean, timeoutMs = 8000): Promise<T> {
+async function waitForStatus<T extends { state: string }>(sessionId: string, predicate: (status: T) => boolean, timeoutMs = Math.max(8000, fixtureWaitMs)): Promise<T> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const current = await get<T>(`/api/agent/status?id=${encodeURIComponent(sessionId)}`);
@@ -210,7 +214,7 @@ test('e2e scripted session over HTTP: read → approved write → done, zero egr
   let sawApproval = false;
   let sawToolApproval = false;
   let lastDecided: string | null = null;
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + Math.max(15000, fixtureWaitMs);
   let finalState = '';
   while (Date.now() < deadline) {
     const status = await get<{ state: string; pending_approval: { approval_id: string; tool?: string } | null }>(`/api/agent/status?id=${sessionId}`);
@@ -309,7 +313,7 @@ test('agent cancellation kills an already-running command tree with no orphaned 
   assert.ok(sessionId);
 
   let approvalCount = 0;
-  const approvalDeadline = Date.now() + 8000;
+  const approvalDeadline = Date.now() + Math.max(8000, fixtureWaitMs);
   while (Date.now() < approvalDeadline && approvalCount < 2) {
     const current = await get<{ state: string; pending_approval: { approval_id: string } | null }>(`/api/agent/status?id=${encodeURIComponent(sessionId)}`);
     const pending = current.body.data?.pending_approval;
@@ -323,7 +327,7 @@ test('agent cancellation kills an already-running command tree with no orphaned 
   }
   assert.equal(approvalCount, 2, 'checkpoint and run_command approvals must both be consumed');
 
-  const pidDeadline = Date.now() + 5000;
+  const pidDeadline = Date.now() + Math.max(5000, fixtureWaitMs);
   while (Date.now() < pidDeadline && !(await fs.access(pidFile).then(() => true).catch(() => false))) {
     await new Promise(resolve => setTimeout(resolve, 50));
   }
@@ -335,7 +339,7 @@ test('agent cancellation kills an already-running command tree with no orphaned 
   assert.equal(cancelled.body.data?.state, 'aborted');
 
   let alive = true;
-  const reapDeadline = Date.now() + 5000;
+  const reapDeadline = Date.now() + Math.max(5000, fixtureWaitMs);
   while (Date.now() < reapDeadline && alive) {
     try { process.kill(childPid, 0); }
     catch { alive = false; break; }

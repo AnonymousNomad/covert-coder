@@ -417,6 +417,54 @@ test('Unsloth loopback API health, model list, local artifact identity, inferenc
   }
 });
 
+test('Unsloth cancellation releases the active request and permits a subsequent inference', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-cancel-'));
+  const artifact = path.join(dir, 'fixture.gguf');
+  let chatRequests = 0;
+  let resolveStarted!: () => void;
+  const requestStarted = new Promise<void>(resolve => { resolveStarted = resolve; });
+  const fetcher: typeof fetch = async (input, init) => {
+    const pathname = new URL(String(input)).pathname;
+    if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+    if (pathname === '/v1/models') return jsonResponse({ data: [{ id: 'default' }] });
+    if (pathname === '/api/inference/load' || pathname === '/api/inference/unload') return jsonResponse({ completed: true });
+    if (pathname === '/v1/chat/completions') {
+      chatRequests++;
+      if (chatRequests === 1) {
+        resolveStarted();
+        const signal = init?.signal;
+        return await new Promise<Response>((_resolve, reject) => {
+          const abort = (): void => reject(new DOMException('cancelled', 'AbortError'));
+          if (signal?.aborted) abort();
+          else signal?.addEventListener('abort', abort, { once: true });
+        });
+      }
+      return jsonResponse({ choices: [{ message: { content: 'recovered' }, finish_reason: 'stop' }] });
+    }
+    return jsonResponse({ error: 'unexpected path' }, 404);
+  };
+
+  try {
+    await writeFile(artifact, 'fixed artifact bytes');
+    const adapter = makeUserServer(fetcher);
+    await adapter.discover();
+    await adapter.load({ modelId: 'fixture-model', modelPath: artifact, contextTokens: 2048 }, true);
+
+    const pending = adapter.infer({ modelId: 'fixture-model', messages: [{ role: 'user', content: 'hold until cancelled' }] });
+    await requestStarted;
+    assert.equal(await adapter.cancel(), true, 'active inference is cancellable');
+    await assert.rejects(pending, (error: unknown) => error instanceof DOMException && error.name === 'AbortError');
+    assert.equal(await adapter.cancel(), false, 'the completed cancellation releases its active controller');
+
+    const recovered = await adapter.infer({ modelId: 'fixture-model', messages: [{ role: 'user', content: 'retry after cancellation' }] });
+    assert.equal(recovered.text, 'recovered');
+    assert.equal(await adapter.cancel(), false, 'successful inference also releases its active controller');
+    await adapter.unload('fixture-model', true);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('port conflict and unknown ownership fail closed without endpoint requests or process control', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-port-'));
   const artifact = path.join(dir, 'fixture.gguf');
