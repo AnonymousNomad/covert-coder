@@ -38,3 +38,16 @@ Keep the active `docs/nightshift/COVERT-NIGHTSHIFT-EXECUTION-LEDGER.md` concise:
 ## Final standard
 
 Research once; encode durable procedure; retrieve narrowly; execute deeply; verify aggressively; checkpoint compactly; reuse what was learned. Close the loop from research to procedural intelligence to implementation to evidence to reusable capability. Maximize correct work from the minimum sufficient context.
+
+## Supplemental first-run intelligence pack — 2026-09-29
+
+Imported additively at `docs/production-closure/first-run-intelligence-2026-09-29/`. This guidance extends the production bundle without replacing this addendum, the standing directive, accepted architecture, or active release work.
+
+The owner-supplied `OWNER_SUPPLEMENTAL_DIRECTIVE_AND_ACCEPTANCE_GATES.md` beside the pack adds concrete FR0–FR17 release gates. Those gates remain `UNVERIFIED` until exercised through the real packaged product.
+
+- Finish dependency-ordered production and release-closure blockers before broad first-run implementation, unless a specific active release gate requires it.
+- Reconcile the bootstrap stages against the existing Setup Session, Model Manager/Model Access, Runtime Broker, credential, Context Control, onboarding, memory, workflow, project import, and Authority owners. Do not create parallel systems.
+- Keep model packs opt-in; a downloaded or discovered model remains unqualified until exact identity, artifact integrity, runtime and required role evidence pass. Preserve unavailable selected targets for an explicit user decision.
+- Treat imported conversations and preferences as provenance-tracked candidate context for user review. Credentials and private user data are not training data by default.
+- Treat candidate model notes as research inputs only. Benchmark exact revisions on target hardware and review current license and redistribution terms before recommendation or bundling.
+- Benchmark Resident candidates before selecting or tuning; improve prompting, context and orchestration first, and fine-tune only for measured persistent deficits.

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Covert Model Pack Manifest",
+  "type": "object",
+  "required": ["id","role_profile","upstream","license","artifact","runtime","evaluation"],
+  "properties": {
+    "id": {"type":"string"},
+    "role_profile": {"type":"array","items":{"type":"string"}},
+    "upstream": {"type":"object","required":["repository","revision"],"properties":{"repository":{"type":"string"},"revision":{"type":"string"}}},
+    "license": {"type":"object","required":["spdx_or_name","redistribution_review"],"properties":{"spdx_or_name":{"type":"string"},"redistribution_review":{"enum":["PASS","HOLD","FAIL"]},"notice_files":{"type":"array","items":{"type":"string"}}}},
+    "artifact": {"type":"object","required":["filename","sha256","bytes","format"],"properties":{"filename":{"type":"string"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"bytes":{"type":"integer"},"format":{"type":"string"},"quantization":{"type":["string","null"]}}},
+    "runtime": {"type":"object","properties":{"adapter":{"type":"string"},"backends":{"type":"array","items":{"type":"string"}},"tested_context_tokens":{"type":"integer"}}},
+    "evaluation": {"type":"object","required":["covert_source_sha","status"],"properties":{"covert_source_sha":{"type":"string"},"status":{"enum":["UNVERIFIED","PARTIAL","QUALIFIED","REJECTED"]},"evidence":{"type":"array","items":{"type":"string"}}}}
+  }
+}

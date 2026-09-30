@@ -1,0 +1,6 @@
+claim_id,release_gate,operator_claim,declared_scope,requirement_source,implementation_paths,test_or_fixture_evidence,runtime_evidence,packaged_evidence,source_sha,artifact_sha256,status,limitations,owner_decision_ref,notes
+RC-001,G3,"Exact model selection is preserved without silent fallback",TBD,TBD,TBD,TBD,TBD,TBD,TBD,TBD,UNVERIFIED,TBD,,
+RC-002,G3,"Declared live provider/model route executes through Authority and Admission",TBD,TBD,TBD,TBD,TBD,TBD,TBD,TBD,UNVERIFIED,TBD,,
+RC-003,G2,"Mission Receipt and execution identity survive required restart/recovery",TBD,TBD,TBD,TBD,TBD,TBD,TBD,TBD,UNVERIFIED,TBD,,
+RC-004,G6,"Packaged artifact installs and reaches first-run onboarding on clean environment",TBD,TBD,TBD,TBD,TBD,TBD,TBD,TBD,UNVERIFIED,TBD,,
+RC-005,G7,"Representative packaged user journey completes and recovers after restart",TBD,TBD,TBD,TBD,TBD,TBD,TBD,TBD,UNVERIFIED,TBD,,
