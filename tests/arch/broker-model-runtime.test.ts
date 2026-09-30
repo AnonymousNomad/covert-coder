@@ -5,8 +5,19 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { BrokerModelRuntime } from '../../node/src/services/broker-model-runtime.ts';
+import { createResourceAdmission } from '../../node/src/services/resource-admission.ts';
 import { RuntimeBroker, unknownCapabilities, unknownMetrics, type RuntimeAdapter } from '../../node/src/services/runtime-adapter.ts';
 import type { RuntimeModelIdentityT, RuntimeStatusResponseT } from '../../common/contracts/runtime.ts';
+
+function admittedLocalStart() {
+  return createResourceAdmission({
+    memoryProbeMB: () => 7000,
+    vramProbeMB: async () => 5000,
+    commitProbeMB: async () => 6000,
+    gpuUtilizationProbePercent: async () => 10,
+    loadProbe: () => 0
+  });
+}
 
 test('product inventory starts, chats, streams and stops only through canonical Unsloth', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-broker-product-'));
@@ -69,7 +80,7 @@ test('product inventory starts, chats, streams and stops only through canonical 
   }, new RuntimeBroker(adapter, null, dir), {
     artifactName: 'fixture.gguf', artifactBytes: 'model fixture'.length,
     artifactSha256: digest, backendVersion: '2026.9.11'
-  });
+  }, admittedLocalStart());
   try {
     await runtime.load();
     const readsBeforeProbe = statusReads;
@@ -106,6 +117,138 @@ test('product inventory starts, chats, streams and stops only through canonical 
   }
 });
 
+test('failed or unverifiable model starts stop only a freshly confirmed Covert-owned runtime', async () => {
+  const digest = createHash('sha256').update('model fixture').digest('hex');
+  const scenarios = [
+    { name: 'model-load failure', owner: 'COVERT_OWNED' as const, identityMismatch: false, shutdownFails: false, expected: /fixture model load failed/, shutdowns: 1 },
+    { name: 'user-owned model-load failure', owner: 'USER_OWNED' as const, identityMismatch: false, shutdownFails: false, expected: /fixture model load failed/, shutdowns: 0 },
+    { name: 'post-load identity mismatch', owner: 'COVERT_OWNED' as const, identityMismatch: true, shutdownFails: false, expected: /did not confirm the loaded model/, shutdowns: 1 },
+    { name: 'owned cleanup failure', owner: 'COVERT_OWNED' as const, identityMismatch: false, shutdownFails: true, expected: /cleanup of the Covert-owned runtime could not be confirmed/, shutdowns: 1 }
+  ];
+
+  for (const scenario of scenarios) {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-broker-failed-start-'));
+    const modelDir = path.join(dir, 'models');
+    const artifact = path.join(modelDir, 'fixture.gguf');
+    await mkdir(modelDir);
+    await writeFile(artifact, 'model fixture');
+    const manifestPath = path.join(modelDir, 'manifest.json');
+    await writeFile(manifestPath, JSON.stringify({ models: [{
+      id: 'fixture', name: 'Fixture', status: 'ready', roles: ['chat'], file: artifact,
+      endpoint: 'http://127.0.0.1:8083/v1', model: 'fixture.gguf',
+      artifact_uri: 'local://fixture.gguf', context_tokens: 2048
+    }] }));
+
+    let health: RuntimeStatusResponseT['health'] = 'STOPPED';
+    let ownership: RuntimeStatusResponseT['ownership'] = 'UNKNOWN';
+    let loaded: RuntimeModelIdentityT | null = null;
+    let shutdowns = 0;
+    const adapter = {
+      backendId: 'UNSLOTH', discover: async () => {}, health: async () => health,
+      status: async (): Promise<RuntimeStatusResponseT> => ({
+        contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: '2026.9.11', engine: 'vulkan',
+        endpoint: 'http://127.0.0.1:18888', port: 18888, pid: health === 'HEALTHY' ? 12 : null,
+        started_at: null, health, ownership, loaded_model: loaded,
+        capabilities: unknownCapabilities(), metrics: unknownMetrics(), last_error: null,
+        fallback_event_id: null, updated_at: new Date().toISOString()
+      }),
+      capabilities: unknownCapabilities, models: async () => loaded === null ? [] : [loaded],
+      load: async () => {
+        health = 'HEALTHY';
+        ownership = scenario.owner;
+        if (scenario.identityMismatch) {
+          loaded = { model_id: 'fixture', display_name: 'Fixture', artifact_name: 'fixture.gguf', artifact_sha256: 'f'.repeat(64), identity_evidence: 'REQUESTED_ARTIFACT' };
+          return loaded;
+        }
+        throw new Error('fixture model load failed');
+      },
+      unload: async () => { loaded = null; },
+      infer: async () => { throw new Error('unexpected inference'); },
+      stream: async () => { throw new Error('unexpected stream'); },
+      cancel: async () => false, metrics: async () => unknownMetrics(),
+      shutdown: async () => {
+        shutdowns += 1;
+        if (scenario.shutdownFails) throw new Error('fixture shutdown failure');
+        health = 'STOPPED'; ownership = 'UNKNOWN'; loaded = null;
+      }
+    } as unknown as RuntimeAdapter;
+    const runtime = new BrokerModelRuntime({
+      workspace: dir, modelDir, manifestPath, ingestedPath: path.join(dir, '.aide', 'ingested-models.json')
+    }, new RuntimeBroker(adapter, null, dir), {
+      artifactName: 'fixture.gguf', artifactBytes: 'model fixture'.length, artifactSha256: digest, backendVersion: '2026.9.11'
+    }, admittedLocalStart());
+
+    try {
+      await runtime.load();
+      await assert.rejects(() => runtime.start('fixture'), scenario.expected, scenario.name);
+      assert.equal(shutdowns, scenario.shutdowns, `${scenario.name}: shutdown count`);
+      if (scenario.shutdownFails) {
+        assert.equal((await runtime.runtimeStatusSnapshot()).ownership, 'COVERT_OWNED', 'failed cleanup remains visible for recovery');
+      } else if (scenario.owner === 'COVERT_OWNED') {
+        assert.equal((await runtime.runtimeStatusSnapshot()).health, 'STOPPED', 'owned runtime is released after start failure');
+      } else {
+        assert.equal((await runtime.runtimeStatusSnapshot()).ownership, 'USER_OWNED', 'user-owned runtime is preserved');
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('canonical broker repeats local admission after artifact verification and before load', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-broker-final-admission-'));
+  const modelDir = path.join(dir, 'models');
+  const artifact = path.join(modelDir, 'fixture.gguf');
+  await mkdir(modelDir);
+  await writeFile(artifact, 'model fixture');
+  const manifestPath = path.join(modelDir, 'manifest.json');
+  await writeFile(manifestPath, JSON.stringify({ models: [{
+    id: 'fixture', name: 'Fixture', status: 'ready', roles: ['chat'], file: artifact,
+    endpoint: 'http://127.0.0.1:8083/v1', model: 'fixture.gguf',
+    artifact_uri: 'local://fixture.gguf', context_tokens: 2048
+  }] }));
+  let loadCalls = 0;
+  const digest = createHash('sha256').update('model fixture').digest('hex');
+  const adapter = {
+    backendId: 'UNSLOTH', discover: async () => {}, health: async () => 'STOPPED',
+    status: async (): Promise<RuntimeStatusResponseT> => ({
+      contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: '2026.9.11', engine: 'vulkan',
+      endpoint: 'http://127.0.0.1:18888', port: 18888, pid: null, started_at: null,
+      health: 'STOPPED', ownership: 'UNKNOWN', loaded_model: null,
+      capabilities: unknownCapabilities(), metrics: unknownMetrics(), last_error: null,
+      fallback_event_id: null, updated_at: new Date().toISOString()
+    }),
+    capabilities: unknownCapabilities, models: async () => [],
+    load: async () => { loadCalls += 1; throw new Error('must not load below the final floor'); },
+    unload: async () => {}, infer: async () => { throw new Error('unexpected inference'); },
+    stream: async () => { throw new Error('unexpected stream'); }, cancel: async () => false,
+    metrics: async () => unknownMetrics(), shutdown: async () => {}
+  } as unknown as RuntimeAdapter;
+  const finalAdmission = createResourceAdmission({
+    memoryProbeMB: () => 6655, vramProbeMB: async () => 5000, commitProbeMB: async () => 6000,
+    gpuUtilizationProbePercent: async () => 10, loadProbe: () => 0
+  });
+  const runtime = new BrokerModelRuntime({
+    workspace: dir, modelDir, manifestPath, ingestedPath: path.join(dir, '.aide', 'ingested-models.json')
+  }, new RuntimeBroker(adapter, null, dir), {
+    artifactName: 'fixture.gguf', artifactBytes: 'model fixture'.length, artifactSha256: digest, backendVersion: '2026.9.11'
+  }, finalAdmission);
+
+  try {
+    await runtime.load();
+    await assert.rejects(() => runtime.start('fixture'), error => {
+      const detail = (error as { detail?: { decision?: string; evidence?: Record<string, unknown> } }).detail;
+      assert.equal(detail?.decision, 'REFUSE_RESOURCE');
+      assert.equal(detail?.evidence?.free_memory_mb, 6655);
+      assert.equal(detail?.evidence?.minimum_free_physical_memory_mb, 6656);
+      return true;
+    });
+    assert.equal(loadCalls, 0, 'no runtime load occurs after the final admission refusal');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('unavailable Unsloth CLI gives scoped setup guidance in model status', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-broker-setup-'));
   const modelDir = path.join(dir, 'models');
@@ -132,7 +275,7 @@ test('unavailable Unsloth CLI gives scoped setup guidance in model status', asyn
   }, new RuntimeBroker(adapter, null, dir), {
     artifactName: 'fixture.gguf', artifactBytes: 'model fixture'.length,
     artifactSha256: createHash('sha256').update('model fixture').digest('hex'), backendVersion: '2026.9.11'
-  });
+  }, admittedLocalStart());
   try {
     await runtime.load();
     const state = await runtime.status();

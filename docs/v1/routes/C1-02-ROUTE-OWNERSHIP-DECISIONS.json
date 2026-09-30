@@ -5240,7 +5240,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/resource-admission.test.ts",
-          "line": 86
+          "line": 130
         }
       ],
       "requestShape": {

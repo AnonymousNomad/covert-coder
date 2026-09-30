@@ -20,6 +20,16 @@ const { buildRoutes } = await import('../../node/src/openapi.ts');
 const noVram = async () => null;
 const noLoad = () => 0;
 
+function qualifiedLocalAdmission(overrides: { ram?: number; commit?: number | null; vram?: number | null; gpu?: number | null } = {}) {
+  return createResourceAdmission({
+    memoryProbeMB: () => overrides.ram === undefined ? 7000 : overrides.ram,
+    vramProbeMB: async () => overrides.vram === undefined ? 5000 : overrides.vram,
+    commitProbeMB: async () => overrides.commit === undefined ? 6000 : overrides.commit,
+    gpuUtilizationProbePercent: async () => overrides.gpu === undefined ? 10 : overrides.gpu,
+    loadProbe: noLoad
+  });
+}
+
 test('resident priority: same requirement STARTs as resident, QUEUEs as disposable worker', async () => {
   const service = createResourceAdmission({ memoryProbeMB: () => 3000, vramProbeMB: noVram, loadProbe: noLoad, cores: 12 });
   const resident = await service.admit({ kind: 'resident', requirement: { memory_mb: 1500 } });
@@ -71,6 +81,40 @@ test('no requirement fields -> START with honest evidence', async () => {
   const decision = await service.admit({ kind: 'worker', requirement: {} });
   assert.equal(decision.decision, 'START');
   assert.equal(decision.evidence.required_memory_mb, null);
+});
+
+test('qualified local runtime admission accepts the exact configured floors and records every probe', async () => {
+  const service = qualifiedLocalAdmission({ ram: 6656, commit: 5120, vram: 4608, gpu: 49 });
+  const decision = await service.admitLocalRuntimeStart();
+  assert.equal(decision.decision, 'START');
+  assert.equal(decision.evidence.free_memory_mb, 6656);
+  assert.equal(decision.evidence.free_commit_mb, 5120);
+  assert.equal(decision.evidence.vram_free_mb, 4608);
+  assert.equal(decision.evidence.gpu_utilization_percent, 49);
+});
+
+test('qualified local runtime admission refuses physical or commit shortfall and unknown commit', async () => {
+  const lowRam = await qualifiedLocalAdmission({ ram: 6655 }).admitLocalRuntimeStart();
+  assert.equal(lowRam.decision, 'REFUSE_RESOURCE');
+  assert.match(lowRam.reason, /6655MB.*6656MB local runtime start floor/);
+
+  const lowCommit = await qualifiedLocalAdmission({ commit: 5119 }).admitLocalRuntimeStart();
+  assert.equal(lowCommit.decision, 'REFUSE_RESOURCE');
+  assert.match(lowCommit.reason, /5119MB.*5120MB local runtime start floor/);
+
+  const unknownCommit = await qualifiedLocalAdmission({ commit: null }).admitLocalRuntimeStart();
+  assert.equal(unknownCommit.decision, 'REFUSE_RESOURCE');
+  assert.match(unknownCommit.reason, /could not be measured/);
+});
+
+test('qualified local runtime admission refuses unknown or busy GPU state', async () => {
+  const unknownVram = await qualifiedLocalAdmission({ vram: null }).admitLocalRuntimeStart();
+  assert.equal(unknownVram.decision, 'REFUSE_RESOURCE');
+  assert.match(unknownVram.reason, /free VRAM null/);
+
+  const busy = await qualifiedLocalAdmission({ gpu: 50 }).admitLocalRuntimeStart();
+  assert.equal(busy.decision, 'REFUSE_RESOURCE');
+  assert.match(busy.reason, /not below the 50%/);
 });
 
 test('route serves the canonical decision over real machine memory', async () => {

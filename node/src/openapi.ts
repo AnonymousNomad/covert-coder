@@ -243,6 +243,7 @@ export async function createDapManager(repoRoot: string, workspace: string, opti
 }
 
 export async function createModelRuntime(repoRoot: string, workspace: string, options: BuildRoutesOptions): Promise<ModelRuntime> {
+  const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
   const runtime = new BrokerModelRuntime({
     workspace,
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
@@ -253,7 +254,7 @@ export async function createModelRuntime(repoRoot: string, workspace: string, op
       const eventStatus = status === 'running' ? 'ready' : status === 'starting' ? 'loading' : status === 'stopped' ? 'stopped' : 'error';
       options.events?.publish('model', { id, status: eventStatus });
     }
-  }, new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), null, workspace), UNSLOTH_V1_QUALIFICATION);
+  }, new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), null, workspace), UNSLOTH_V1_QUALIFICATION, resourceAdmission);
   await runtime.load();
   return runtime;
 }
@@ -396,7 +397,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const manager =
     options.lspManager ?? createLspManager(repoRoot, workspace, options);
   const dapManager = options.dapManager ?? (await createDapManager(repoRoot, workspace, options));
-  const modelRuntime = options.modelRuntime ?? (await createModelRuntime(repoRoot, workspace, options));
+  const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
+  const modelRuntime = options.modelRuntime ?? (await createModelRuntime(repoRoot, workspace, { ...options, resourceAdmission }));
   const chatStore = new ChatStore(workspace);
   const sessionStore = new SessionStore(workspace);
   const providerService =
@@ -599,7 +601,6 @@ export async function buildRoutes(workspace: string, version: string, options: B
   // HARNESS vNEXT H3 — durable attempt/admission journal around the live
   // mutation path. Recovery classification runs once at construction.
   const attemptJournal = createAttemptJournal({ workspace });
-  const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
   void attemptJournal.recover().catch(() => {});
   const agentLoop = createAgentLoop({
     workspace,
@@ -803,7 +804,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForSessionPut(sessionStore),
     routeForModelStatus(modelRuntime),
     routeForModelManager(modelManagerView),
-    routeForModelStart(modelRuntime),
+    routeForModelStart(modelRuntime, resourceAdmission),
     routeForModelStop(modelRuntime),
     routeForModelIngest(modelRuntime),
     routeForModelReady(modelRuntime),

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { routeForModelReady, routeForModelStart } from '../../node/src/routes/models.ts';
 import type { ModelRuntime } from '../../node/src/services/model-runtime.ts';
+import { createResourceAdmission } from '../../node/src/services/resource-admission.ts';
 
 test('model readiness/start reject manifest endpoints outside numeric loopback before runtime contact', async () => {
   let endpoint = 'https://provider.example.invalid/v1';
@@ -14,7 +15,7 @@ test('model readiness/start reject manifest endpoints outside numeric loopback b
     async start(id: string) { starts += 1; return { id, status: 'running', endpoint }; }
   } as unknown as ModelRuntime;
   const ready = routeForModelReady(manager);
-  const start = routeForModelStart(manager);
+  const start = routeForModelStart(manager, createResourceAdmission());
   const readyHandler = ready.handler as unknown as (context: unknown) => Promise<unknown>;
   const startHandler = start.handler as unknown as (context: unknown) => Promise<unknown>;
   const startDescriptor = start.describeOperation as unknown as (context: unknown, taskId: string) => Promise<unknown>;

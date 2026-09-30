@@ -17,6 +17,7 @@ import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
 import { ModelRuntime } from '../../node/src/services/model-runtime.ts';
 import type { HardwareInfo } from '../../node/src/services/hardware.ts';
+import { createResourceAdmission } from '../../node/src/services/resource-admission.ts';
 import { pairFixture } from './authority-fixture.ts';
 
 async function freePort(): Promise<number> {
@@ -79,7 +80,7 @@ test('model start/stop require approved exact operations over retained child han
     spawnChild: fakeSpawn,
     hardwareProbe: async (): Promise<HardwareInfo> => ({
       totalRamBytes: 8 * 1024 ** 3,
-      freeRamBytes: 4 * 1024 ** 3,
+      freeRamBytes: 7 * 1024 ** 3,
       logicalCpus: 4,
       vramBytes: 0,
       freeVramBytes: 0,
@@ -90,9 +91,23 @@ test('model start/stop require approved exact operations over retained child han
 
   const canary = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore', windowsHide: true });
   const server = new ArchServer(dir, path.join(dir, 'model-lifecycle.log'));
+  let admittedFreeMemoryMB = 6655;
+  let admissionCalls = 0;
+  const resourceAdmission = createResourceAdmission({
+    memoryProbeMB: () => admittedFreeMemoryMB,
+    vramProbeMB: async () => 5000,
+    commitProbeMB: async () => 6000,
+    gpuUtilizationProbePercent: async () => 10,
+    loadProbe: () => 0
+  });
+  const admitLocalRuntimeStart = resourceAdmission.admitLocalRuntimeStart;
+  resourceAdmission.admitLocalRuntimeStart = async () => {
+    admissionCalls += 1;
+    return admitLocalRuntimeStart();
+  };
   let httpServer: http.Server | undefined;
   try {
-    const routes = await buildRoutes(dir, 'test', { authority: server.authority, events: server.events, modelRuntime: runtime });
+    const routes = await buildRoutes(dir, 'test', { authority: server.authority, events: server.events, modelRuntime: runtime, resourceAdmission });
     for (const route of routes) server.route(route);
     httpServer = await server.listen(0);
     const address = httpServer.address();
@@ -115,20 +130,37 @@ test('model start/stop require approved exact operations over retained child han
     assert.equal((await post('/api/models/start', startBody)).status, 409, 'unapproved start denied');
     assert.equal((await post('/api/models/start', { id: 'fixture-1b', port: 9 })).status, 400, 'callers cannot inject runtime options');
     assert.equal(spawnCount, 0, 'no process exists before approval');
+    assert.equal(admissionCalls, 0, 'unapproved starts never reach Resource Admission');
 
     const startHeaders = await owner.approve('POST', '/api/models/start', startBody, 'task:model-start');
     const changedStart = await post('/api/models/start', { id: 'fixture-fail' }, startHeaders);
     assert.equal(changedStart.status, 409, 'changed model identity cannot reuse approval');
     assert.equal(spawnCount, 0);
+    assert.equal(admissionCalls, 0, 'a mismatched model identity is rejected before admission');
 
-    const started = await post('/api/models/start', startBody, startHeaders);
+    const blocked = await post('/api/models/start', startBody, startHeaders);
+    const blockedText = await blocked.text();
+    assert.equal(blocked.status, 409, blockedText);
+    assert.match(blockedText, /6655MB.*6656MB local runtime start floor/);
+    const blockedPayload = JSON.parse(blockedText) as { error?: { detail?: { decision?: string; evidence?: Record<string, unknown> } } };
+    assert.equal(blockedPayload.error?.detail?.decision, 'REFUSE_RESOURCE', 'the route returns the measured admission decision');
+    assert.equal(blockedPayload.error?.detail?.evidence?.free_memory_mb, 6655);
+    assert.equal(blockedPayload.error?.detail?.evidence?.minimum_free_physical_memory_mb, 6656);
+    assert.equal(spawnCount, 0, 'below-floor admission does not start a process');
+    assert.equal(admissionCalls, 1);
+
+    admittedFreeMemoryMB = 7000;
+    const retryHeaders = await owner.approve('POST', '/api/models/start', startBody, 'task:model-start-after-admission');
+    const started = await post('/api/models/start', startBody, retryHeaders);
     const startedText = await started.text();
     assert.equal(started.status, 200, startedText);
     assert.equal(spawnCount, 1, 'exactly one canonical child spawned');
+    assert.equal(admissionCalls, 2, 'approved model start rechecks the shared Resource Admission service');
     const ownedPid = fixturePids[0]!;
     process.kill(ownedPid, 0);
 
-    assert.equal((await post('/api/models/start', startBody, startHeaders)).status, 409, 'consumed start approval cannot replay');
+    assert.equal((await post('/api/models/start', startBody, startHeaders)).status, 409, 'resource-refused start approval cannot replay');
+    assert.equal((await post('/api/models/start', startBody, retryHeaders)).status, 409, 'successful start approval cannot replay');
     assert.equal(spawnCount, 1);
 
     const duplicateHeaders = await owner.approve('POST', '/api/models/start', startBody, 'task:model-start-dup');

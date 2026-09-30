@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { fail, ok, type ErrorCode } from '../../common/errors.ts';
 import { Logger } from './services/logger.ts';
 import { ProcessManager } from './services/process-manager.ts';
+import { createResourceAdmission } from './services/resource-admission.ts';
 import { EventHub, type WsControlHandler } from './events.ts';
 import { buildRoutes, createLspManager, createDapManager, createModelRuntime } from './openapi.ts';
 import { TerminalSessionService } from './services/terminal-sessions.ts';
@@ -419,7 +420,8 @@ export async function main(): Promise<void> {
   server.addShutdownHook(() => manager.stopAll());
   const dapManager = await createDapManager(repoRoot, workspace, { events: server.events, logger: server.logger });
   server.addShutdownHook(() => dapManager.stopAll());
-  const modelRuntime = await createModelRuntime(repoRoot, workspace, { events: server.events, logger: server.logger });
+  const resourceAdmission = createResourceAdmission();
+  const modelRuntime = await createModelRuntime(repoRoot, workspace, { events: server.events, logger: server.logger, resourceAdmission });
   server.addShutdownHook(() => modelRuntime.stopAll());
   // Real interactive terminals (DeepSeek #1 lane). Sessions are admitted only
   // via approved terminal.session.start operations; the WS control channel
@@ -435,7 +437,7 @@ export async function main(): Promise<void> {
   server.registerControlHandler((message, context) => terminalSessions.handleControl(message, context.identity));
   server.addShutdownHook(async () => terminalSessions.stopAll());
   const routes = await buildRoutes(workspace, version, {
-    authority: server.authority, events: server.events, logger: server.logger,
+    authority: server.authority, events: server.events, logger: server.logger, resourceAdmission,
     lspManager: manager, dapManager, modelRuntime, terminalSessions, watchIndex: true
   });
   for (const route of routes) server.route(route);

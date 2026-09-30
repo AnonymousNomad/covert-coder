@@ -11,13 +11,18 @@ import type { ModelFitReportT } from '../../../common/contracts/models.ts';
 
 export class ModelRuntimeError extends Error {
   readonly code: 'NOT_READY' | 'CONFLICT' | 'CHILD_FAILED' | 'BAD_REQUEST';
-  constructor(code: 'NOT_READY' | 'CONFLICT' | 'CHILD_FAILED' | 'BAD_REQUEST', message: string) {
+  readonly detail?: unknown;
+  constructor(code: 'NOT_READY' | 'CONFLICT' | 'CHILD_FAILED' | 'BAD_REQUEST', message: string, detail?: unknown) {
     super(message);
     this.code = code;
+    this.detail = detail;
   }
 }
 
-export const RAM_GUARD_BYTES = 2 * 1024 ** 3;
+// Physical-memory guard for the legacy direct ModelRuntime path. The
+// Authority-bound product route applies canonical Resource Admission,
+// including Windows commit and qualified-profile GPU floors, first.
+export const RAM_GUARD_BYTES = Math.ceil(6.5 * 1024 ** 3);
 
 // W6 convergence: binary llama-server is the verified engine path on Windows
 // (python llama_cpp.server spawn hangs under node on this class of machine;

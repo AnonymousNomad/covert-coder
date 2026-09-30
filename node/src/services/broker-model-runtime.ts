@@ -2,6 +2,7 @@ import path from 'node:path';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import type { RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
+import type { createResourceAdmission } from './resource-admission.ts';
 import { RuntimeBroker } from './runtime-adapter.ts';
 import { ModelRuntime, ModelRuntimeError, type ModelRuntimeOptions } from './model-runtime.ts';
 
@@ -24,12 +25,19 @@ export const UNSLOTH_V1_QUALIFICATION: LocalRuntimeQualification = {
 export class BrokerModelRuntime extends ModelRuntime {
   private readonly broker: RuntimeBroker;
   private readonly qualification: LocalRuntimeQualification;
+  private readonly resourceAdmission: Pick<ReturnType<typeof createResourceAdmission>, 'admitLocalRuntimeStart'>;
   private observedStatusCache: { status: RuntimeStatusResponseT; at: number } | null = null;
 
-  constructor(options: ModelRuntimeOptions, broker: RuntimeBroker, qualification: LocalRuntimeQualification) {
+  constructor(
+    options: ModelRuntimeOptions,
+    broker: RuntimeBroker,
+    qualification: LocalRuntimeQualification,
+    resourceAdmission: Pick<ReturnType<typeof createResourceAdmission>, 'admitLocalRuntimeStart'>
+  ) {
     super(options);
     this.broker = broker;
     this.qualification = qualification;
+    this.resourceAdmission = resourceAdmission;
   }
 
   override async load(): Promise<void> {
@@ -76,6 +84,20 @@ export class BrokerModelRuntime extends ModelRuntime {
 
   private invalidateObservedStatus(): void {
     this.observedStatusCache = null;
+  }
+
+  private async cleanupOwnedRuntimeAfterFailedStart(): Promise<'STOPPED' | 'NOT_COVERT_OWNED' | 'FAILED'> {
+    this.invalidateObservedStatus();
+    try {
+      const status = await this.activeStatus();
+      if (status.ownership !== 'COVERT_OWNED') return 'NOT_COVERT_OWNED';
+      await this.broker.shutdown(true);
+      return 'STOPPED';
+    } catch {
+      return 'FAILED';
+    } finally {
+      this.invalidateObservedStatus();
+    }
   }
 
   private isLoaded(id: string, status: RuntimeStatusResponseT): boolean {
@@ -158,13 +180,25 @@ export class BrokerModelRuntime extends ModelRuntime {
       throw new ModelRuntimeError('CONFLICT', 'another model is loaded; stop it before selecting this model');
     }
     await this.verifyQualifiedArtifact(model.file);
-    await this.broker.load({ modelId: id, modelPath: path.resolve(model.file), displayName: model.name, contextTokens: model.context_tokens }, true);
-    this.invalidateObservedStatus();
-    const status = await this.activeStatus();
-    const endpoint = this.endpointFor(status);
-    if (!this.isLoaded(id, status) || endpoint === null) throw new ModelRuntimeError('CHILD_FAILED', 'Unsloth did not confirm the loaded model and endpoint');
-    model.endpoint = endpoint;
-    return { id, status: 'running', endpoint };
+    const admission = await this.resourceAdmission.admitLocalRuntimeStart();
+    if (admission.decision !== 'START') {
+      throw new ModelRuntimeError('NOT_READY', `local model start refused by final Resource Admission: ${admission.reason}`, admission);
+    }
+    try {
+      await this.broker.load({ modelId: id, modelPath: path.resolve(model.file), displayName: model.name, contextTokens: model.context_tokens }, true);
+      this.invalidateObservedStatus();
+      const status = await this.activeStatus();
+      const endpoint = this.endpointFor(status);
+      if (!this.isLoaded(id, status) || endpoint === null) throw new ModelRuntimeError('CHILD_FAILED', 'Unsloth did not confirm the loaded model and endpoint');
+      model.endpoint = endpoint;
+      return { id, status: 'running', endpoint };
+    } catch (error) {
+      const cleanup = await this.cleanupOwnedRuntimeAfterFailedStart();
+      if (cleanup === 'FAILED') {
+        throw new ModelRuntimeError('CHILD_FAILED', 'model start failed and cleanup of the Covert-owned runtime could not be confirmed; inspect runtime status before retrying');
+      }
+      throw error;
+    }
   }
 
   override async stop(id: string): Promise<{ id: string; status: string }> {

@@ -1,4 +1,5 @@
 import type { Route } from '../server.ts';
+import type { createResourceAdmission } from '../services/resource-admission.ts';
 import { RouteError } from '../server.ts';
 import { ModelManagerResponse } from '../../../common/contracts/model-access.ts';
 import type { OperationInput } from '../../../common/security/operation-policy.mjs';
@@ -87,7 +88,7 @@ export function routeForModelManager(manager: { snapshot(): Promise<unknown> }):
 
 function toRouteError(error: unknown): RouteError {
   if (error instanceof RouteError) return error;
-  if (error instanceof ModelRuntimeError) return new RouteError(error.code, error.message);
+  if (error instanceof ModelRuntimeError) return new RouteError(error.code, error.message, error.detail);
   return new RouteError('CHILD_FAILED', error instanceof Error ? error.message : 'model operation failed');
 }
 
@@ -98,7 +99,7 @@ function assertLocalRuntimeEndpoint(manager: ModelRuntime, id: string): void {
   }
 }
 
-export function routeForModelStart(manager: ModelRuntime): Route {
+export function routeForModelStart(manager: ModelRuntime, resourceAdmission: ReturnType<typeof createResourceAdmission>): Route {
   return {
     method: 'POST',
     path: '/api/models/start',
@@ -116,7 +117,12 @@ export function routeForModelStart(manager: ModelRuntime): Route {
     handler: async ({ body }) => {
       const request = body as { id: string };
       try {
+        if (!manager.get(request.id)) throw new RouteError('CHILD_FAILED', 'model is not allowlisted');
         assertLocalRuntimeEndpoint(manager, request.id);
+        const admission = await resourceAdmission.admitLocalRuntimeStart();
+        if (admission.decision !== 'START') {
+          throw new RouteError('NOT_READY', `local model start refused by Resource Admission: ${admission.reason}`, admission);
+        }
         const result = await manager.start(request.id);
         return { id: result.id, status: result.status as 'running' | 'starting', endpoint: result.endpoint };
       } catch (error) {
