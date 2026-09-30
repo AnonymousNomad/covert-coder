@@ -691,7 +691,7 @@ test('failed Unsloth startup exposes only an allowlisted diagnostic code', async
       inspectPort: async () => ({ state: 'FREE' }),
       authTokenProvider: async () => null,
       spawnProcess: ((command: string, _args: string[], options: { env?: NodeJS.ProcessEnv; stdio?: unknown }) => {
-        assert.equal(command, 'cmd.exe');
+        assert.equal(command, process.platform === 'win32' ? 'cmd.exe' : path.join(dir, 'unsloth.cmd'));
         assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
         queueMicrotask(() => {
           stderr.write("ModuleNotFoundError: No module named 'example_dependency'; sk-unsloth-private-startup-token\n");
