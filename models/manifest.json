@@ -92,7 +92,7 @@
       "id": "smollm2-360m-q8",
       "name": "SmolLM2 360M Instruct",
       "lane": "research",
-      "status": "ready",
+      "status": "pending",
       "roles": [
         "research",
         "chat",
@@ -103,7 +103,7 @@
       "endpoint": "http://127.0.0.1:8082/v1",
       "model": "smollm2-360m-instruct-q8_0.gguf",
       "artifact_uri": "local://smollm2-360m-instruct-q8_0.gguf",
-      "source_revision": "HuggingFaceTB/SmolLM2-360M-Instruct-GGUF@main",
+      "source_revision": "HuggingFaceTB/SmolLM2-360M-Instruct-GGUF@2633adad3eb0aec759aec7f41db367d974571ecf",
       "parameters": 360000000,
       "context_tokens": 2048,
       "metrics": null,
@@ -117,7 +117,7 @@
       "id": "qwen-coder-0.5b-q4",
       "name": "Qwen2.5-Coder 0.5B Instruct",
       "lane": "fast",
-      "status": "ready",
+      "status": "pending",
       "roles": [
         "fast",
         "autocomplete"
@@ -127,7 +127,7 @@
       "endpoint": "http://127.0.0.1:8083/v1",
       "model": "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
       "artifact_uri": "local://qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
-      "source_revision": "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF@main",
+      "source_revision": "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF@ebb2015119c907b064c512bf053e945850b5875f",
       "parameters": 490000000,
       "context_tokens": 4096,
       "metrics": null,
@@ -141,7 +141,7 @@
       "id": "qwen-coder-1.5b-q4",
       "name": "Qwen2.5-Coder 1.5B Instruct",
       "lane": "build",
-      "status": "ready",
+      "status": "pending",
       "roles": [
         "build",
         "verify"
@@ -151,14 +151,11 @@
       "endpoint": "http://127.0.0.1:8087/v1",
       "model": "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
       "artifact_uri": "local://qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
-      "source_revision": "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF@main",
+      "source_revision": "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF@f86cb2c1fa58255f8052cc32aeede1b7482d4361",
       "parameters": 1540000000,
       "context_tokens": 8192,
-      "metrics": {
-        "runtime_health": "verified",
-        "coding_smoke": "passed"
-      },
-      "description": "Primary local coding model. Verified on this device.",
+      "metrics": null,
+      "description": "Optional local coding candidate. Exact local artifact and runtime qualification remain unverified.",
       "system_prompt": "You are the build lane. Produce a minimal unified diff only. Never invent files or claim tests passed.",
       "providerType": "local",
       "chatTemplate": "gguf-metadata",
