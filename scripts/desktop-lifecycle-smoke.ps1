@@ -151,6 +151,40 @@ function Stop-InstalledApp {
   if (-not $Process.HasExited) { throw "installed application process tree did not stop for PID $($Process.Id)" }
 }
 
+function Write-InstalledStartupDiagnostics {
+  param([string]$ExecutablePath)
+  $executableDirectory = Split-Path -Path $ExecutablePath -Parent
+  $candidates = @(
+    [PSCustomObject]@{ Label = 'executable directory'; Root = $executableDirectory },
+    [PSCustomObject]@{ Label = 'nested resources'; Root = (Join-Path $executableDirectory 'resources') }
+  )
+  foreach ($candidate in $candidates) {
+    $nodePath = Join-Path (Join-Path $candidate.Root 'runtime') 'node.exe'
+    $launcherPath = Join-Path $candidate.Root 'stack-launcher.mjs'
+    $logsDirectory = Join-Path $candidate.Root '.aide\logs'
+    $nodeExists = Test-Path -LiteralPath $nodePath -PathType Leaf
+    $launcherExists = Test-Path -LiteralPath $launcherPath -PathType Leaf
+    Write-Host "desktop startup diagnostics: candidate=$($candidate.Label); root=$($candidate.Root); node=$nodeExists; launcher=$launcherExists; logs=$logsDirectory"
+    if (-not (Test-Path -LiteralPath $logsDirectory -PathType Container)) {
+      Write-Host "desktop startup diagnostics: no child log directory at $logsDirectory"
+      continue
+    }
+    foreach ($label in @('arch', 'legacy', 'facade')) {
+      foreach ($stream in @('out', 'err')) {
+        $logName = "desktop-$label-$stream.log"
+        $logPath = Join-Path $logsDirectory $logName
+        if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { continue }
+        $logLines = @(Get-Content -LiteralPath $logPath -Tail 80 -ErrorAction SilentlyContinue)
+        $logText = [string]::Join([Environment]::NewLine, [string[]]$logLines)
+        $logText = [regex]::Replace($logText, 'COVERT_PAIRING_V1\s+[A-Za-z0-9_-]{43}', 'COVERT_PAIRING_V1 [redacted]')
+        if ($logText.Length -gt 6000) { $logText = $logText.Substring($logText.Length - 6000) }
+        Write-Host "desktop startup diagnostics: $logName tail (capped at 6000 characters)"
+        if ($logText) { Write-Host $logText }
+      }
+    }
+  }
+}
+
 function Test-ProcessDescendsFrom {
   param([int]$ProcessId, [int]$AncestorProcessId)
   $currentProcessId = $ProcessId
@@ -200,8 +234,14 @@ Write-Host 'desktop lifecycle smoke: checking daemon health'
 try {
   $health = Wait-ForDaemonHealth -Process $app -Url 'http://127.0.0.1:4777/health'
 } catch {
-  Stop-InstalledApp -Process $app
-  throw
+  $healthError = $_
+  $cleanupError = $null
+  try { Stop-InstalledApp -Process $app } catch { $cleanupError = $_ }
+  Write-InstalledStartupDiagnostics -ExecutablePath $installed.Exe
+  if ($cleanupError) {
+    throw "installed daemon health failed: $($healthError.Exception.Message); owned app cleanup failed: $($cleanupError.Exception.Message)"
+  }
+  throw $healthError
 }
 $healthListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue)
 $ownedHealthListeners = @($healthListeners | Where-Object { Test-ProcessDescendsFrom -ProcessId ([int]$_.OwningProcess) -AncestorProcessId $app.Id })
