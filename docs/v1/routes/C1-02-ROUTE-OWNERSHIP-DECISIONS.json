@@ -8406,7 +8406,7 @@
         },
         {
           "file": "tests/unit/test-facade.mjs",
-          "line": 329
+          "line": 343
         }
       ],
       "requestShape": {

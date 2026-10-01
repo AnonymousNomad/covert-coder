@@ -128,3 +128,32 @@ Both installer files and the shell executable report `NotSigned` under Windows A
 - A temporary Windows GUI-subsystem Rust harness used that exact extracted Node and launcher from the MSI's `Covert Coder\resources` path. It used the native parent's argument, working-directory, stdin-null and stdout-only-pipe setup, while leaving stderr inherited. The harness received **62 bytes**, validated the frame in memory, observed the child still alive, and reached facade health **200**. It then stopped only its spawned process tree, verified its three test listeners were gone, and removed its temporary workspace. The private pairing proof was never printed or written.
 - The local release Tauri executable and bundled Node differ from the CI MSI artifact (local Node is **v26.4.0**), so the successful harness does not reproduce the exact Tauri native executable or GitHub runner environment. The exact CI native-shell failure remains **UNKNOWN**; this is not a startup repair or installer acceptance. A direct local launch of the extracted native executable was rejected by the local command-execution policy before process creation; no app or child process was started by that attempt.
 - Next: add a proof-free, per-launch record of whether the native launcher's private-frame stdout write callback completes, surface that record before the smoke's separate direct-launch replay, then rerun exact-SHA Windows NSIS. Use the new observation to select a repair. Keep MSI, packaged acceptance, and release readiness open. PR #31 remains frozen.
+# 2026-10-01 Sol native root-cause repair checkpoint
+
+The earlier EOF observations below remain historical evidence. The current
+execution packet is `../ACTIVE-NATIVE-BOOTSTRAP-CLOSURE-2026-10-01.md`.
+
+- Exact CI native executable reproduced locally, exit 101 and zero-byte read
+  with a live child. Redirected stderr proves bundled Node 22.20.0 exits during
+  entrypoint resolution with `EISDIR`, `lstat E:`. The identical entrypoint runs
+  as a plain drive path and fails with the Windows verbatim prefix.
+- Locked Tauri source canonicalizes its starting executable, producing that
+  prefix for the resource root. Independent GUI-parent console and exact reader
+  canaries pass. The original resolver fails a new canonical-path regression.
+- Bounded repair uses already-locked `dunce` 1.0.5 to simplify safely equivalent
+  paths; nonconvertible verbatim semantics fail explicitly. No Authority,
+  admission, pairing, model or backend behavior is weakened.
+- Native tests **15/15**, release build success, local repaired native first
+  launch plus same-state relaunch **healthy**, exact owned cleanup **zero**.
+  Native SHA-256: `97ee2b71b1776741aabe123128a74dc6dade436a961b6d1c079abbc95cdadb2b`.
+- Real smoke functions exposed another defect: protected `/health` returned
+  **403**. Corrected the smoke to public `/api/health`; two actual function
+  launch/close cycles pass with the same workspace/profile. NSIS/MSI now also
+  require post-reinstall launch and all owned Node/product-port cleanup.
+- Facade unit teardown closed unowned runner/stdout sockets and underreported
+  final tests. Exact owned server/socket teardown fixes the cause; final facade
+  suite **21/21**, focused transport **1/1**, separate required packaging source
+  contract **1/1**. Original underreports are not treated as green receipts.
+- Installed NSIS/MSI, architecture/Veritas and exact-SHA CI are **pending**.
+  These local native experiments do not claim installed/package/release acceptance.
+  PR #31 is frozen; seven isolated truth repairs remain isolated.

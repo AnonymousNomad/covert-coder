@@ -521,21 +521,23 @@ Write-Host 'desktop lifecycle smoke: locating installed executable'
 $installed = Find-InstalledExe
 if (-not $installed) { throw "installed $productName executable was not found" }
 
-Write-Host "desktop lifecycle smoke: launching $($installed.Exe)"
+function Invoke-InstalledAppCycle {
+param($installed, [string]$Label)
+Write-Host "desktop lifecycle smoke: $Label launching $($installed.Exe)"
 $appLaunchedAtUtc = [DateTime]::UtcNow
 $nativeDiagnosticId = [Guid]::NewGuid().ToString('N')
 $diagnosticEnvName = 'COVERT_DESKTOP_STARTUP_DIAGNOSTIC_ID'
 $previousDiagnosticId = [System.Environment]::GetEnvironmentVariable($diagnosticEnvName, [System.EnvironmentVariableTarget]::Process)
 try {
   [System.Environment]::SetEnvironmentVariable($diagnosticEnvName, $nativeDiagnosticId, [System.EnvironmentVariableTarget]::Process)
-  $app = Start-Process -FilePath $installed.Exe -PassThru
+  $app = Start-Process -FilePath $installed.Exe -PassThru -WindowStyle Hidden
 } finally {
   [System.Environment]::SetEnvironmentVariable($diagnosticEnvName, $previousDiagnosticId, [System.EnvironmentVariableTarget]::Process)
 }
 $nativeDiagnosticPath = Join-Path ([System.IO.Path]::GetTempPath()) ("covert-desktop-startup-{0}-{1}.log" -f $nativeDiagnosticId, $app.Id)
 Write-Host 'desktop lifecycle smoke: checking daemon health'
 try {
-  $health = Wait-ForDaemonHealth -Process $app -Url 'http://127.0.0.1:4777/health'
+  $health = Wait-ForDaemonHealth -Process $app -Url 'http://127.0.0.1:4777/api/health'
 } catch {
   $healthError = $_
   $cleanupError = $null
@@ -552,19 +554,33 @@ $healthListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAc
 $ownedHealthListeners = @($healthListeners | Where-Object { Test-ProcessDescendsFrom -ProcessId ([int]$_.OwningProcess) -AncestorProcessId $app.Id })
 if (-not $ownedHealthListeners.Count) { Stop-InstalledApp -Process $app; throw 'daemon health passed but TCP 4777 is not owned by the installed desktop process tree' }
 $healthListenerProcessId = [int]$ownedHealthListeners[0].OwningProcess
+$resourceRoot = Join-Path (Split-Path -Path $installed.Exe -Parent) 'resources'
+$installedNodePath = Join-Path $resourceRoot 'runtime\node.exe'
+$ownedNodeIds = @(Get-InstalledDiagnosticNodeTree -RootProcessId $app.Id -NodePath $installedNodePath)
+if (-not $ownedNodeIds.Count) { Stop-InstalledApp -Process $app; throw 'installed app has no identifiable bundled Node process tree' }
 Stop-InstalledApp -Process $app
 $processDeadline = [DateTime]::UtcNow.AddSeconds(15)
 do {
   $listenerProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $healthListenerProcessId" -ErrorAction SilentlyContinue
-  $portListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue)
-  if (-not $listenerProcess -and -not $portListeners.Count) { break }
+  $remainingOwnedNodes = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    [int]$_.ProcessId -in $ownedNodeIds -and $_.ExecutablePath -ieq $installedNodePath
+  })
+  $portListeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 4777,4778,4779 })
+  if (-not $listenerProcess -and -not $remainingOwnedNodes.Count -and -not $portListeners.Count) { break }
   Start-Sleep -Milliseconds 250
 } while ([DateTime]::UtcNow -lt $processDeadline)
-if ($listenerProcess -or $portListeners.Count) { throw 'installed app closed but its daemon process or TCP 4777 listener remained' }
+if ($listenerProcess -or $remainingOwnedNodes.Count -or $portListeners.Count) { throw 'installed app closed but its owned Node process or product listener remained' }
+Write-Host "desktop lifecycle smoke: $Label health and all owned Node/listener cleanup passed"
+}
+
+Invoke-InstalledAppCycle -installed $installed -Label 'first launch'
+Invoke-InstalledAppCycle -installed $installed -Label 'same-install relaunch'
 
 Write-Host 'desktop lifecycle smoke: same-build reinstall/upgrade probe'
 Invoke-Installer 'upgrade'
-if (-not (Find-InstalledExe)) { throw 'same-build reinstall removed the installed executable' }
+$reinstalled = Find-InstalledExe
+if (-not $reinstalled) { throw 'same-build reinstall removed the installed executable' }
+Invoke-InstalledAppCycle -installed $reinstalled -Label 'after reinstall'
 
 $entry = @(Get-UninstallEntries) | Select-Object -First 1
 if ($entry -and $entry.PSChildName -match '^\{[0-9A-F-]+\}$' -and $installerKind -eq 'msi') {
@@ -580,4 +596,4 @@ if ($entry -and $entry.PSChildName -match '^\{[0-9A-F-]+\}$' -and $installerKind
 Start-Sleep -Seconds 2
 if (Find-InstalledExe) { throw 'installed application remains after uninstall' }
 if (@(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue).Count) { throw 'daemon listener remained after desktop uninstall' }
-Write-Host 'desktop lifecycle smoke passed: install, launch, health, close, reinstall, uninstall, cleanup'
+Write-Host 'desktop lifecycle smoke passed: install, launch, health, close, relaunch, reinstall, post-reinstall launch, uninstall, cleanup'

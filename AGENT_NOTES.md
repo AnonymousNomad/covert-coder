@@ -5,6 +5,32 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-01 07:50] Actor: sol61
+- Type: root cause / bounded repair / verification
+- Status: native bootstrap repaired locally; installed proof and full gates pending
+- Summary: Reproduced exact CI native EOF locally and identified bundled Node entrypoint failure on Tauri's canonical Windows verbatim path; safely normalized that boundary without changing Authority or pairing.
+- Details: Plain and namespaced paths to the same file split success/EISDIR; native stderr confirms EISDIR lstat E: before launcher initialization. Original resolver fails the new canonical-path test. Locked dunce 1.0.5 now simplifies only equivalent paths and explicitly rejects unconvertible semantics. Native tests 15/15 and release build pass; repaired native first launch and same-state restart are healthy with zero owned processes/listeners. Actual lifecycle functions exposed a separate protected /health 403 defect; corrected the smoke to /api/health and proved two same-profile/workspace cycles. Added relaunch/post-reinstall cycles and all owned Node/three-port cleanup requirements. Facade fixture global teardown also underreported tests by closing runner/stdout sockets; exact owned socket/server teardown yields 21/21 plus focused transport 1/1; separate required packaging contract 1/1. No failing run is claimed green.
+- Evidence: docs/nightshift/ACTIVE-NATIVE-BOOTSTRAP-CLOSURE-2026-10-01.md; dated package-candidate evidence. Repaired local native SHA-256 97ee2b71b1776741aabe123128a74dc6dade436a961b6d1c079abbc95cdadb2b.
+- Limits: Extracted exact resources plus a locally built native binary are diagnostic proof, not installation acceptance. Staging, full architecture/Veritas, exact-SHA AIDE CI and fresh NSIS/MSI lifecycle remain pending. No model load, credential inspection, proof logging or unrelated process cleanup occurred. Audit code remains isolated; PR #31 frozen.
+- Next: Finish staging/static/diff review, coherent canonical checkpoint with actual full pre-push gate, exact-SHA AIDE CI and fresh Desktop workflow; repair any red before integration.
+- Staging follow-up: desktop:verify/frontend build/staged resources and scoped ESLint pass. C1-02 generator detected a shifted unit-test caller line; regenerated JSON changes only that reference (329 to 343), then --check passes. No route ownership or frozen reproduction changed. Full required gates remain pending.
+
+Primary executor handoff (2026-10-01 07:10): Sol 6.1 owns canonical production
+convergence per the full owner handoff and Issue #38 comment 5930979375.
+Earlier Luna-ownership statements are historical and superseded. Canonical
+source is clean `fc263fe26f364b5c972be79a8ac6e651a671dcd0`, equal to origin;
+PR #31 remains frozen at `b79d2480498e446cff36b26dd4b4faef7745726b`.
+Isolated audit/evidence `bf6f038` passed exact-SHA CI 36858354648 (23/23).
+Priority: close actual installed native bootstrap EOF before selectively
+converging the seven truth repairs, then real discovered Sol dogfood.
+
+### [2026-10-01 07:10] Actor: sol61
+- Type: ownership / audit / decision
+- Status: canonical packaging closure in progress
+- Summary: Read the full primary-convergence handoff and reconciled its exact worktree/PR identities before mutation.
+- Details: Owner directly reassigned primary execution; Issue #38 correction 5930979375 agrees. Canonical fc263fe and isolated bf6f038 are clean and equal to their origin refs; PR #31 readback is exactly frozen b79d248. Final isolated CI 36858354648 passed all 23 steps with Veritas exit 0; Windows architecture 865/0/11, hosted 860/0/16, 18 browser scenarios; platform skip difference is four Windows-only cases and missing llama-cpp-python. Issue #38 receipt 5931089098 records verification and ownership. Applied Developer's Way, Capability Closure/Product Truth, packaging/release and Windows SOPs. Current native failure is EOF with child still running; exact MSI launcher GUI-parent replay passes but is not native installed acceptance. Historical diagnostics remain evidence, not closure.
+- Next: Read canonical bootstrap/launcher/lifecycle code, reproduce with the exact CI native artifact and bounded proof-free diagnostics, identify the cause and repair/regression-cover it; preserve the audit branch for later selective integration.
+
 Latest status (2026-10-01 04:54): the canonical convergence branch records this documentation checkpoint; runtime source SHA `33eeefe2a2ce3dbc429b2307d497a4f42654a712` passed exact-SHA AIDE CI run `36840528962` (22/22), while Desktop run `36840612821` again failed Windows NSIS startup with EOF before pairing bytes and a live child; MSI lifecycle was skipped. The exact run's MSI-bundled Node 22.20.0 and launcher passed a local Rust GUI-parent stdout-pipe harness, including in-memory frame validation, facade health 200, and owned cleanup. This did not exercise the exact Tauri executable or GitHub runner. Startup root cause and package acceptance remain UNKNOWN; no repair or release claim is made. PR #31 remains frozen.
 
 Previous status (2026-10-01 02:12): `nightshift/production-convergence-20260926` is pushed at `b91fa9c7f67e4a44f5c6f04ca7ea40202027c8dd`; exact-SHA AIDE CI run `36825927073` passed 22/22, while Desktop run `36825959704` again failed installed NSIS startup with exit 101 and skipped MSI. Its bundled Node version, syntax, and authority-module probes passed; there was no exact-path WER event or child log. Local WIP adds a bounded exact-installed-resource launcher reproduction. The exact resource tree extracted from the prior MSI artifact paired and reached facade health 200 three times under direct launch; each run's exact Node tree, listeners, and newly created `.aide` workspace were cleaned. Fresh post-diagnostic sample at `2026-10-01T07:09:31Z` was 7.64/6.50 GiB physical free and 8.94/5.00 GiB commit free. No unrelated process was stopped. The upcoming Windows run must reproduce from the installed NSIS root before the remaining cause can be attributed to that tree or the Tauri parent. Packaged acceptance and the NSIS/MSI lifecycle remain open. The LFM2.5 local-runtime proof remains distinct from packaged acceptance. Live provider execution remains UNKNOWN pending owner-managed auth and spend ceiling; PR #31 remains frozen.

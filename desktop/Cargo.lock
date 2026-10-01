@@ -21,6 +21,7 @@ dependencies = [
 name = "aide-sovereign-workbench"
 version = "0.1.0"
 dependencies = [
+ "dunce",
  "tauri",
  "tauri-build",
 ]

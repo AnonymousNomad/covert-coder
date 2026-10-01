@@ -1,0 +1,60 @@
+{
+  "schema": "covert.native-bootstrap-repair.local.v1",
+  "recorded_at": "2026-10-01T12:54:52.3622294Z",
+  "actor": "sol61",
+  "branch": "nightshift/production-convergence-20260926",
+  "entry_head": "fc263fe26f364b5c972be79a8ac6e651a671dcd0",
+  "verdict": "REPAIRED_AWAITING_INSTALLED_AND_EXACT_SHA_PROOF",
+  "root_cause": "Bundled Node 22.20.0 rejects Tauri canonical verbatim-drive script paths before launcher initialization",
+  "additional_repairs": [
+    "Lifecycle probes canonical public /api/health rather than protected /health",
+    "Fixture teardown closes only owned servers and sockets; runner transport preserved",
+    "Generated route caller line refreshed without ownership changes"
+  ],
+  "exact_ci_native_sha256": "770155d9765f3b847032d50108475f37e17bb7009a73af9c8f6f59eef9f26d07",
+  "local_repaired_native_sha256": "97ee2b71b1776741aabe123128a74dc6dade436a961b6d1c079abbc95cdadb2b",
+  "local": {
+    "native_tests": {
+      "fail": 0,
+      "skip": 0,
+      "pass": 15
+    },
+    "facade_tests": {
+      "fail": 0,
+      "skip": 0,
+      "pass": 21
+    },
+    "focused_transport": {
+      "fail": 0,
+      "skip": 0,
+      "pass": 1
+    },
+    "packaging_contract": {
+      "fail": 0,
+      "skip": 0,
+      "pass": 1
+    },
+    "native_first_launch": "PASS",
+    "native_same_state_relaunch": "PASS",
+    "actual_lifecycle_functions_first_and_relaunch": "PASS",
+    "cleanup_owned_nodes": 0,
+    "cleanup_listeners": 0,
+    "desktop_verify": "PASS",
+    "node_typescript": "PASS",
+    "browser_typescript": "PASS",
+    "scoped_eslint": "PASS",
+    "rust_format": "PASS",
+    "generated_ownership_check": "PASS_AFTER_SOURCE_REFERENCE_REGENERATION",
+    "full_architecture": "PENDING",
+    "veritas": "PENDING"
+  },
+  "installed_nsis": "PENDING",
+  "installed_msi": "PENDING",
+  "exact_sha_aide_ci": "PENDING",
+  "model_load_attempted": false,
+  "credentials_inspected": false,
+  "pairing_proof_logged": false,
+  "audit_truth_repairs": "ISOLATED",
+  "frozen_pr31": "b79d2480498e446cff36b26dd4b4faef7745726b",
+  "execution_packet": "docs/nightshift/ACTIVE-NATIVE-BOOTSTRAP-CLOSURE-2026-10-01.md"
+}

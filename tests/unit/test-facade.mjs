@@ -11,8 +11,20 @@ import { WebSocket } from 'ws';
 import { createFacade, loadRouteMap } from '../../scripts/facade.mjs';
 
 const HOST = '127.0.0.1';
+const ownedServers = new Set();
+const ownedSockets = new Set();
+
+function trackServer(server) {
+  if (ownedServers.has(server)) return;
+  ownedServers.add(server);
+  server.on('connection', socket => {
+    ownedSockets.add(socket);
+    socket.once('close', () => ownedSockets.delete(socket));
+  });
+}
 
 function listen(server) {
+  trackServer(server);
   return new Promise(resolve => server.listen(0, HOST, () => resolve(server.address().port)));
 }
 
@@ -84,8 +96,10 @@ function fixtureRouteMap(input) {
   }
   return { schema: 'covert.facade-route-map.v2', routes, upgrades, legacySourceAudit: [] };
 }
-function createTestFacade(options) {
-  return createFacade({ ...options, routeMap: fixtureRouteMap(options.routeMap), authenticate: AUTHENTICATE });
+async function createTestFacade(options) {
+  const facade = await createFacade({ ...options, routeMap: fixtureRouteMap(options.routeMap), authenticate: AUTHENTICATE });
+  trackServer(facade.server);
+  return facade;
 }
 
 test('prefix routes hit the mapped backend on both sides', async () => {
@@ -533,6 +547,9 @@ test('transport gate: non-exempt routes require a bearer actor while health stay
   assert.equal(anonymous.status, 403, 'unpaired route access fails closed');
   assert.deepEqual(await anonymous.json(), { ok: false, error: { code: 'FORBIDDEN', message: 'authenticated actor required' } });
   assert.equal(ts.seen.length, 0, 'denied callers never reach a backend');
+  const noncanonicalHealth = await fetch(`${base}/health`);
+  assert.equal(noncanonicalHealth.status, 403, 'health aliases are not public bootstrap routes');
+  assert.equal(ts.seen.length, 0, 'noncanonical health never reaches a backend');
   const health = await fetch(`${base}/api/health`);
   assert.equal(health.status, 200, 'health is exempt from the transport gate');
   const paired = await request(port, '/ts-fam/ping');
@@ -542,11 +559,13 @@ test('transport gate: non-exempt routes require a bearer actor while health stay
   ts.server.closeAllConnections?.(); ts.server.close();
 });
 
-after(() => {
-  const leftovers = process._getActiveHandles().filter(h => !(h.constructor.name === 'Server' && h.listening === false));
-  for (const handle of leftovers) {
-    console.log(`teardown: destroying leftover ${handle.constructor.name} lp=${handle.localPort ?? ''} rp=${handle.remotePort ?? ''}`);
-    if (typeof handle.destroy === 'function') handle.destroy();
-    else if (typeof handle.close === 'function') handle.close();
-  }
+after(async () => {
+  await Promise.all([...ownedSockets].map(socket => new Promise(resolve => {
+    socket.once('close', resolve);
+    socket.destroy();
+  })));
+  await Promise.all([...ownedServers].filter(server => server.listening).map(server =>
+    new Promise(resolve => server.close(resolve))));
+  assert.equal(ownedSockets.size, 0, 'every fixture-owned connection closed');
+  assert.ok([...ownedServers].every(server => !server.listening), 'every fixture-owned server closed');
 });
