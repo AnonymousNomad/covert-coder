@@ -112,6 +112,45 @@ function Find-InstalledUninstaller {
   throw "installed $productName uninstaller was not found in its uninstall entry"
 }
 
+function Wait-ForDaemonHealth {
+  param(
+    [System.Diagnostics.Process]$Process,
+    [string]$Url,
+    [int]$TimeoutSeconds = 105
+  )
+  $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+  $nextProgress = [DateTime]::UtcNow.AddSeconds(10)
+  $lastError = 'no health response received'
+  while ([DateTime]::UtcNow -lt $deadline) {
+    $Process.Refresh()
+    if ($Process.HasExited) { throw "installed application exited before daemon health with code $($Process.ExitCode)" }
+    try {
+      $health = Invoke-WebRequest -UseBasicParsing $Url -TimeoutSec 1 -ErrorAction Stop
+      if ($health.StatusCode -eq 200) { return $health }
+      $lastError = "health returned HTTP $($health.StatusCode)"
+    } catch {
+      $lastError = $_.Exception.Message
+    }
+    if ([DateTime]::UtcNow -ge $nextProgress) {
+      Write-Host "desktop lifecycle smoke: waiting for daemon health; app PID $($Process.Id); last probe: $lastError"
+      $nextProgress = [DateTime]::UtcNow.AddSeconds(10)
+    }
+    Start-Sleep -Milliseconds 500
+  }
+  throw "installed daemon health did not return HTTP 200 within $TimeoutSeconds seconds; app PID $($Process.Id); last probe: $lastError"
+}
+
+function Stop-InstalledApp {
+  param([System.Diagnostics.Process]$Process)
+  $Process.Refresh()
+  if ($Process.HasExited) { return }
+  if ($Process.CloseMainWindow() -and $Process.WaitForExit(15000)) { return }
+  $treeStop = Start-Process -FilePath 'taskkill.exe' -ArgumentList @('/PID', [string]$Process.Id, '/T', '/F') -PassThru -WindowStyle Hidden
+  if (-not $treeStop.WaitForExit(15000)) { throw "taskkill did not finish for installed application PID $($Process.Id)" }
+  $Process.Refresh()
+  if (-not $Process.HasExited) { throw "installed application process tree did not stop for PID $($Process.Id)" }
+}
+
 function Test-ProcessDescendsFrom {
   param([int]$ProcessId, [int]$AncestorProcessId)
   $currentProcessId = $ProcessId
@@ -157,17 +196,18 @@ if (-not $installed) { throw "installed $productName executable was not found" }
 
 Write-Host "desktop lifecycle smoke: launching $($installed.Exe)"
 $app = Start-Process -FilePath $installed.Exe -PassThru
-Start-Sleep -Seconds 5
-if ($app.HasExited) { throw "installed application exited during launch with code $($app.ExitCode)" }
 Write-Host 'desktop lifecycle smoke: checking daemon health'
-$health = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:4777/health' -TimeoutSec 15
-if ($health.StatusCode -ne 200) { throw "installed daemon health returned HTTP $($health.StatusCode)" }
+try {
+  $health = Wait-ForDaemonHealth -Process $app -Url 'http://127.0.0.1:4777/health'
+} catch {
+  Stop-InstalledApp -Process $app
+  throw
+}
 $healthListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue)
 $ownedHealthListeners = @($healthListeners | Where-Object { Test-ProcessDescendsFrom -ProcessId ([int]$_.OwningProcess) -AncestorProcessId $app.Id })
-if (-not $ownedHealthListeners.Count) { throw 'daemon health passed but TCP 4777 is not owned by the installed desktop process tree' }
+if (-not $ownedHealthListeners.Count) { Stop-InstalledApp -Process $app; throw 'daemon health passed but TCP 4777 is not owned by the installed desktop process tree' }
 $healthListenerProcessId = [int]$ownedHealthListeners[0].OwningProcess
-if (-not $app.CloseMainWindow()) { $app.Kill() }
-if (-not $app.WaitForExit(15000)) { $app.Kill(); $app.WaitForExit() }
+Stop-InstalledApp -Process $app
 $processDeadline = [DateTime]::UtcNow.AddSeconds(15)
 do {
   $listenerProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $healthListenerProcessId" -ErrorAction SilentlyContinue

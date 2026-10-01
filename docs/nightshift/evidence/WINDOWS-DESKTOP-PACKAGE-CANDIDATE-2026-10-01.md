@@ -25,6 +25,11 @@
 - Root cause: the NSIS uninstall registry entry exposed `InstallLocation` with surrounding quote characters. `Find-InstalledExe` passed that value directly to `Join-Path`, which interpreted the prefix `"C` as a PowerShell drive name and stopped the smoke. No product/runtime failure was observed because the app had not yet launched.
 - Repair at the next local worktree revision: normalize quoted registry `InstallLocation` once before executable or uninstaller path composition. A focused local regression check extracted the production normalizer from the PowerShell AST and verified both quoted and bare paths with spaces. Fresh-runner rerun of NSIS and MSI lifecycle is still required.
 
+- AIDE CI run [36813178795](https://github.com/AnonymousNomad/covert-coder/actions/runs/36813178795) for `e1d5b5c1cbee8b7e8e63928a229940cc536ca603` passed all **22/22** steps.
+- Desktop run [36813206962](https://github.com/AnonymousNomad/covert-coder/actions/runs/36813206962) passed Linux and macOS build/artifact smoke. Windows build and artifact smoke passed; NSIS installed and launched the executable. The lifecycle smoke then made a single health request after a fixed five-second delay and got connection refused. The NSIS step failed and MSI lifecycle was skipped. The application process had not exited when the probe ran.
+- The second failure was a smoke timing defect: `desktop/src/main.rs` allows up to 30 seconds for facade health after bootstrap, while the smoke script slept five seconds and did not retry. This result does not establish a product startup failure.
+- Current local repair replaces that one-shot probe with a bounded 105-second health poll, covering the app's existing 60-second pairing-pipe wait plus 30-second facade-readiness wait with margin. It observes application exit, reports repeated refusal, and stops only the test-launched app process tree if readiness fails. Focused local checks pass for delayed health success and bounded timeout. Fresh-runner NSIS and MSI lifecycle proof remains open.
+
 ## Local artifact hashes
 
 These hashes identify the local outputs only. The GitHub workflow builds separate artifacts and must record their hashes independently.
@@ -45,4 +50,4 @@ Both installer files and the shell executable report `NotSigned` under Windows A
 
 ## Remaining gates
 
-The first hosted desktop workflow run exposed and localized the Windows lifecycle-script defect described above; the source repair and a new exact-SHA desktop run remain pending. Windows NSIS and MSI install, app-owned health listener, close/process cleanup, same-build reinstall, and uninstall must all pass on the fresh runner. Clean-user onboarding, packaged model/runtime setup, whole-product journeys, signing, SBOM/license/provenance closure, and the final RC receipt remain open. No release-readiness or packaged-acceptance claim follows from these builds.
+The latest hosted desktop run localized a second Windows smoke timing defect after the package installed and launched. The bounded readiness-poll repair is local and requires a new exact-SHA runner result. Windows NSIS and MSI app-owned health, close/process cleanup, same-build reinstall, and uninstall must pass on the fresh runner. Clean-user onboarding, packaged model/runtime setup, whole-product journeys, signing, SBOM/license/provenance closure, and the final RC receipt remain open. No release-readiness or packaged-acceptance claim follows from these builds.
