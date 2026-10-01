@@ -11,6 +11,8 @@ use std::time::{Duration, Instant};
 use tauri::Manager;
 
 mod resource_root;
+#[cfg(windows)]
+mod runtime_job;
 
 struct DaemonProcess(Mutex<Option<Child>>);
 struct PairingProof(Mutex<Option<(String, String)>>);
@@ -298,6 +300,9 @@ fn terminate_tree(child: &mut Child) {
 
 fn main() {
     install_startup_panic_diagnostics();
+    #[cfg(windows)]
+    runtime_job::bind_current_process()
+        .expect("required Windows desktop runtime containment unavailable");
     tauri::Builder::default()
         .manage(DaemonProcess(Mutex::new(None)))
         .manage(PairingProof(Mutex::new(None)))

@@ -149,3 +149,42 @@ GPU/RAM impact; focused and browser regressions; affected architecture/Veritas;
 exact-SHA CI; actual installed dogfood; final owner visual identity acceptance.
 
 No UI completion, live telemetry expansion or product acceptance is claimed.
+
+## Additive Corporate correction and activity language
+
+The owner rejected the first Corporate proposal as flat/generic. Preserve it
+as SUPERSEDED history; it is not an approved implementation target. The complete
+correction is attachment `1b6f3ad2-aef0-4399-869a-641d69f08b4b/Pasted text.txt`.
+Owner Corporate reference `04-corporate-workstation-owner-reference.png` under
+`E:\COVERT_OWNER_UI_REFERENCES_2026-10-01` has SHA-256
+`e14b083546c6d5b02ef2ceb0d6a5698064a68739160a2b4677266d55fbbb5894`.
+Its workstation materials/layout guide design, while conceptual gauges/model
+labels are not product evidence. Create original Covert art rather than copying
+the reference character/sigil.
+
+Design first: revised direction, reusable tokens/components and an editable
+high-fidelity concept precede product mutation. Corporate retains editor-first,
+left navigation, real Resident messages/composer/actions on the right, terminal
+below, compact measured telemetry, graphite/gunmetal material depth, purposeful
+emerald lighting, technical typography and consistent controls. It remains a
+distinct identity from Original and Matrix.
+
+The complete activity addendum is attachment
+`1af8312a-8d1c-4c24-bdcc-fa23068e28f1/Pasted text.txt`. The external working
+specification is `proposals/CORPORATE-V2-DESIGN-STATE-SPEC.md` under the same owner
+reference directory. One canonical activity/status mapping supplies three
+presentations: Corporate's precise top-right dial/orb, Original's subtle Resident
+eyes/visor lighting and Matrix's semantic rain. Navigation or response latency
+does not prove thinking. Generic work, waiting, stale/unknown, attention, blocked,
+failure, completion and cancellation remain explicit. Critical states need text
+and icon feedback as well as color.
+
+Acceptance additionally requires all three indicator state maps and captures of
+idle, processing, attention, error and completion; reduced-motion/OFF and inactive
+disposal proof; bounded measured CPU/GPU cost; and no interference with inference
+or telemetry. No activity/UI implementation is accepted from this specification.
+
+Figma plugin is installed/callable but the current account probe returns OAuth
+required. Owner requested editable Figma designs; authentication remains pending.
+No Figma design file or component library has been created. The native/package
+blocker remains ahead of product UI mutation.

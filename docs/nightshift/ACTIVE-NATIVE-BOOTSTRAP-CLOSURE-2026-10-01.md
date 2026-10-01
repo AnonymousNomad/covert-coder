@@ -133,3 +133,58 @@ must not derail this fundamental blocker.
 - Primary sources: https://github.com/nodejs/node/issues/62446 and
   https://github.com/nodejs/node/pull/65378; installed locked Tauri sources
   `src/platform/starting_binary.rs` and `src/platform.rs`.
+
+## Exact `bd4a06a` result and native ownership repair
+
+Source `bd4a06a0d2176864963a0c240c9bb128a473d675` passed exact-SHA
+[AIDE CI 36871320248](https://github.com/AnonymousNomad/covert-coder/actions/runs/36871320248),
+**22/22 steps**, including Veritas. The corrected local full Windows pre-push
+reported **841 pass / 0 fail / 11 skip of 852**. These close the bounded
+embedding/full-gate checkpoint; they do not close packaging.
+
+[Desktop 36871406341](https://github.com/AnonymousNomad/covert-coder/actions/runs/36871406341)
+passed Linux/macOS and Windows native tests, build and artifact smoke. Installed
+Windows NSIS reached health but failed its owned Node/listener cleanup predicate;
+MSI was skipped. The hosted failure remains OPEN. Its exact residual identity
+was not reported by the old smoke; do not infer that a local experiment proves
+the precise hosted normal-close cause.
+
+Exact extracted NSIS native SHA-256
+`1c0597addff1d21de170cda957796b871743976b6296b5ed47318593f99f9178`
+passed local normal window close and same-state restart. Abrupt termination of
+only its native parent then reproduced an independent Covert lifecycle defect:
+four bundled Node processes, their consoles and all three product listeners
+remained after 15 seconds. Exact owned rescue removed them. Windows parent
+termination does not terminate child processes or execute the native Exit
+callback. A separate GUI-parent timer canary passed both inherited and null
+standard-handle cases; that hypothesis was not reproduced.
+
+The bounded repair establishes a private unnamed Windows Job Object before
+Tauri or any child can start. Only `KILL_ON_JOB_CLOSE` is enabled. The native
+process holds its sole non-inheritable handle for its process lifetime; Windows
+closes it on ordinary exit or crash, terminating descendants. Assignment failure
+blocks startup. No breakaway, quota, Authority, model or admission policy changes.
+The direct Windows dependency uses already-locked `windows-sys` 0.61.2; the lock
+adds only the root dependency, with no package version churn.
+
+Local repaired native SHA-256
+`7e15eb45ffbecb8e56d2c5b9b9df7faf42e0443438dc638903da2b50f9b3f023`
+passed **16/16 release native tests** and the two packaging contract tests.
+Against the exact CI Node/resources, four actual native cycles passed: normal
+window close, same-state restart, parent-only forced termination and recovery.
+All captured descendants, including WebView/Node/console/probe children, and
+all three listeners were absent without rescue. The actual lifecycle function
+also passed normal close, forced termination and recovery (**3/3**). A separate
+invalid-private-frame native startup fixture exited with the expected code 101
+and left no owned Node/listener resources without rescue. This is diagnostic
+failure-path evidence, not a production pairing exchange or installer proof.
+
+Receipt: `evidence/SOL61-NATIVE-OWNERSHIP-REPAIR-2026-10-01.json`. Full affected
+architecture/Veritas and fresh exact-SHA NSIS/MSI remain required for this repair.
+The smoke now requires crash/recovery cycles and reports safe residual birth/PID
+metadata on failure. Keep all preceding reds; never accept a rerun-only result.
+
+Primary research: [Windows Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects),
+[nested jobs](https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs),
+[process termination](https://learn.microsoft.com/en-us/windows/win32/procthread/terminating-a-process)
+and [Rust process-owned raw handles](https://doc.rust-lang.org/std/os/windows/io/trait.IntoRawHandle.html).

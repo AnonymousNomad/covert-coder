@@ -522,7 +522,7 @@ $installed = Find-InstalledExe
 if (-not $installed) { throw "installed $productName executable was not found" }
 
 function Invoke-InstalledAppCycle {
-param($installed, [string]$Label)
+param($installed, [string]$Label, [switch]$ForceParentExit)
 Write-Host "desktop lifecycle smoke: $Label launching $($installed.Exe)"
 $appLaunchedAtUtc = [DateTime]::UtcNow
 $nativeDiagnosticId = [Guid]::NewGuid().ToString('N')
@@ -554,27 +554,58 @@ $healthListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAc
 $ownedHealthListeners = @($healthListeners | Where-Object { Test-ProcessDescendsFrom -ProcessId ([int]$_.OwningProcess) -AncestorProcessId $app.Id })
 if (-not $ownedHealthListeners.Count) { Stop-InstalledApp -Process $app; throw 'daemon health passed but TCP 4777 is not owned by the installed desktop process tree' }
 $healthListenerProcessId = [int]$ownedHealthListeners[0].OwningProcess
+$healthListenerIdentity = Get-CimInstance Win32_Process -Filter "ProcessId = $healthListenerProcessId" -ErrorAction Stop
+if (-not $healthListenerIdentity) { Stop-InstalledApp -Process $app; throw 'owned health listener exited before identity capture' }
 $resourceRoot = Join-Path (Split-Path -Path $installed.Exe -Parent) 'resources'
 $installedNodePath = Join-Path $resourceRoot 'runtime\node.exe'
 $ownedNodeIds = @(Get-InstalledDiagnosticNodeTree -RootProcessId $app.Id -NodePath $installedNodePath)
 if (-not $ownedNodeIds.Count) { Stop-InstalledApp -Process $app; throw 'installed app has no identifiable bundled Node process tree' }
-Stop-InstalledApp -Process $app
+$ownedNodeBirths = @{}
+foreach ($ownedNodeId in $ownedNodeIds) {
+  $identity = Get-CimInstance Win32_Process -Filter "ProcessId = $ownedNodeId" -ErrorAction SilentlyContinue
+  if ($identity -and $identity.ExecutablePath -ieq $installedNodePath) {
+    $ownedNodeBirths[[int]$ownedNodeId] = $identity.CreationDate
+  }
+}
+if ($ForceParentExit) {
+  Write-Host "desktop lifecycle smoke: $Label terminating only the exact native parent handle"
+  $app.Kill()
+  if (-not $app.WaitForExit(15000)) { throw 'exact installed native parent did not terminate' }
+} else {
+  Stop-InstalledApp -Process $app
+}
 $processDeadline = [DateTime]::UtcNow.AddSeconds(15)
 do {
-  $listenerProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $healthListenerProcessId" -ErrorAction SilentlyContinue
+  $listenerCandidate = Get-CimInstance Win32_Process -Filter "ProcessId = $healthListenerProcessId" -ErrorAction SilentlyContinue
+  $listenerProcess = $null
+  if ($listenerCandidate -and $listenerCandidate.CreationDate -eq $healthListenerIdentity.CreationDate -and
+      $listenerCandidate.ExecutablePath -ieq $healthListenerIdentity.ExecutablePath) { $listenerProcess = $listenerCandidate }
   $remainingOwnedNodes = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-    [int]$_.ProcessId -in $ownedNodeIds -and $_.ExecutablePath -ieq $installedNodePath
+    $ownedNodeBirths.ContainsKey([int]$_.ProcessId) -and $_.ExecutablePath -ieq $installedNodePath -and
+      $_.CreationDate -eq $ownedNodeBirths[[int]$_.ProcessId]
   })
   $portListeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 4777,4778,4779 })
   if (-not $listenerProcess -and -not $remainingOwnedNodes.Count -and -not $portListeners.Count) { break }
   Start-Sleep -Milliseconds 250
 } while ([DateTime]::UtcNow -lt $processDeadline)
-if ($listenerProcess -or $remainingOwnedNodes.Count -or $portListeners.Count) { throw 'installed app closed but its owned Node process or product listener remained' }
+if ($listenerProcess -or $remainingOwnedNodes.Count -or $portListeners.Count) {
+  $residual = [ordered]@{
+    cycle = $Label
+    forced_parent_exit = [bool]$ForceParentExit
+    listener_process = @($listenerProcess | Where-Object { $_ } | Select-Object ProcessId, ParentProcessId, Name, CreationDate)
+    owned_nodes = @($remainingOwnedNodes | Select-Object ProcessId, ParentProcessId, Name, CreationDate)
+    listeners = @($portListeners | Select-Object LocalPort, OwningProcess)
+  }
+  Write-Host "desktop lifecycle smoke: residual ownership metadata $($residual | ConvertTo-Json -Depth 5 -Compress)"
+  throw 'installed app closed but its owned Node process or product listener remained'
+}
 Write-Host "desktop lifecycle smoke: $Label health and all owned Node/listener cleanup passed"
 }
 
 Invoke-InstalledAppCycle -installed $installed -Label 'first launch'
 Invoke-InstalledAppCycle -installed $installed -Label 'same-install relaunch'
+Invoke-InstalledAppCycle -installed $installed -Label 'forced parent exit' -ForceParentExit
+Invoke-InstalledAppCycle -installed $installed -Label 'recovery after forced exit'
 
 Write-Host 'desktop lifecycle smoke: same-build reinstall/upgrade probe'
 Invoke-Installer 'upgrade'

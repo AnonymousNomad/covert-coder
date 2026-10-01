@@ -1,0 +1,82 @@
+{
+  "schema": "covert.native-ownership-repair.local.v1",
+  "recorded_at": "2026-10-01T15:42:00Z",
+  "actor": "sol61",
+  "branch": "nightshift/production-convergence-20260926",
+  "parent_source": "bd4a06a0d2176864963a0c240c9bb128a473d675",
+  "repair_source_identity": "LOCAL_WIP_PINNED_BY_NATIVE_AND_SOURCE_FILE_HASHES",
+  "verdict": "LOCAL_LIFETIME_REPAIR_PROVEN_INSTALLED_AND_EXACT_SHA_GATES_PENDING",
+  "previous_exact_sha": {
+    "aide_ci_run": 36871320248,
+    "aide_ci_result": "SUCCESS_22_OF_22_STEPS",
+    "local_full_windows": {"tests": 852, "pass": 841, "fail": 0, "skip": 11},
+    "desktop_run": 36871406341,
+    "desktop_result": "WINDOWS_NSIS_OWNED_CLEANUP_FAILED_MSI_SKIPPED",
+    "hosted_cleanup_cause": "UNKNOWN_REQUIRES_FRESH_RESIDUAL_METADATA_IF_REPEATED"
+  },
+  "baseline": {
+    "evidence_layer": "EXACT_EXTRACTED_NSIS_NATIVE_DIAGNOSTIC_NOT_INSTALLATION",
+    "native_sha256": "1c0597addff1d21de170cda957796b871743976b6296b5ed47318593f99f9178",
+    "nsis_installer_sha256": "9031359f36333f3bfc139169ced436cb0df1d829b24250e944bf29d118c62654",
+    "msi_artifact_sha256": "d9a7316a8cab7887b5edd92aa2316f914a3d1648b165eefdc8e182ea54daf7ed",
+    "bundled_node_sha256": "fdddbf4581e046b8102815d56208d6a248950bb554570b81519a8a5dacfee95d",
+    "normal_close_and_restart": "PASS_WITH_ZERO_OWNED_RESIDUALS",
+    "forced_native_parent_exit": "FAIL_WITH_CAUSE",
+    "after_15_seconds": {"owned_node_processes": 4, "product_ports_remaining": [4777, 4778, 4779]},
+    "owned_rescue_final": {"processes": 0, "listeners": 0},
+    "cause": "Parent-only termination runs no Exit callback and children were not kernel-contained",
+    "gui_standard_handle_canary": {"inherit": "PASS", "null": "PASS", "evidence_layer": "TOOL_NODE_GUI_FIXTURE_ONLY"},
+    "receipt": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-s61-nsis-bd4a06a-ca2ac181-7aeb-47cc-bd53-fd8db4163b2c\\forced-close-receipt.json"
+  },
+  "repair": {
+    "scope": "WINDOWS_NATIVE_OWNER_AND_REQUIRED_INSTALLED_LIFECYCLE_CHECKS",
+    "ownership": "Unnamed non-inheritable job; current process assigned before Tauri; sole handle retained for process lifetime",
+    "flags": ["JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE"],
+    "failure_policy": "STARTUP_FAIL_CLOSED",
+    "new_package_versions": [],
+    "direct_locked_dependency": "windows-sys=0.61.2",
+    "native_sha256": "7e15eb45ffbecb8e56d2c5b9b9df7faf42e0443438dc638903da2b50f9b3f023"
+  },
+  "local_verification": {
+    "release_native_tests": {"pass": 16, "fail": 0, "skip": 0},
+    "packaging_contract_tests": {"pass": 2, "fail": 0, "skip": 0},
+    "release_build": "PASS_LOCKED_OFFLINE",
+    "powershell_parse": "PASS",
+    "new_native_module_format": "PASS",
+    "native_cycles": [
+      {"cycle": "normal-close", "health": 200, "native_pid": 440, "owned_residuals": 0, "listeners": 0, "rescue": false},
+      {"cycle": "same-state-restart", "health": 200, "native_pid": 4052, "owned_residuals": 0, "listeners": 0, "rescue": false},
+      {"cycle": "forced-parent-exit", "health": 200, "native_pid": 23392, "owned_residuals": 0, "listeners": 0, "rescue": false},
+      {"cycle": "recovery-after-forced-exit", "health": 200, "native_pid": 16608, "owned_residuals": 0, "listeners": 0, "rescue": false}
+    ],
+    "actual_lifecycle_function_cycles": ["contract-normal-close", "contract-forced-parent-exit", "contract-recovery"],
+    "startup_failure_fixture": {"failure": "INVALID_PRIVATE_BOOTSTRAP_FRAME", "expected_exit_code": 101, "observed_exit_code": 101, "launcher_pid": 21916, "child_pid": 26208, "owned_node_residuals": 0, "product_listeners": 0, "rescue": false, "evidence_layer": "LOCAL_NATIVE_FAILURE_FIXTURE_NOT_PAIRING_OR_INSTALLATION_ACCEPTANCE"},
+    "native_identity_receipt": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-s61-nsis-bd4a06a-ca2ac181-7aeb-47cc-bd53-fd8db4163b2c\\job-repair-identity.json",
+    "native_lifecycle_receipt": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-s61-nsis-bd4a06a-ca2ac181-7aeb-47cc-bd53-fd8db4163b2c\\job-repair-lifecycle-receipt.json",
+    "startup_fixture_receipt": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-s61-native-startup-failure-236705bb-4a9a-48c9-98fc-8528631e109a\\startup-failure-receipt.json",
+    "affected_static_and_staging": {"node_typescript": "PASS", "browser_typescript": "PASS", "scoped_eslint": "PASS", "desktop_verify": "PASS", "generated_route_ownership_check": "PASS", "diff_whitespace": "PASS"},
+    "full_architecture": "PENDING",
+    "exact_sha_aide_veritas": "PENDING",
+    "fresh_installed_nsis": "PENDING",
+    "fresh_installed_msi": "PENDING"
+  },
+  "invariants": {
+    "physical_start_floor_gib": 6.5,
+    "commit_start_floor_gib": 5.0,
+    "model_started": false,
+    "authority_changed": false,
+    "pairing_proof_logged": false,
+    "credentials_inspected": false,
+    "foreign_processes_terminated": false,
+    "pagefile_configuration_changed": false,
+    "installed_acceptance": false,
+    "audit_truth_repairs": "STILL_ISOLATED",
+    "pr31_frozen_head": "b79d2480498e446cff36b26dd4b4faef7745726b"
+  },
+  "research": [
+    "https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects",
+    "https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs",
+    "https://learn.microsoft.com/en-us/windows/win32/procthread/terminating-a-process",
+    "https://doc.rust-lang.org/std/os/windows/io/trait.IntoRawHandle.html"
+  ]
+}

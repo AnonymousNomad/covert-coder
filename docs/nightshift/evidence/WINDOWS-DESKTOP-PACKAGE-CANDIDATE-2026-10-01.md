@@ -157,3 +157,30 @@ execution packet is `../ACTIVE-NATIVE-BOOTSTRAP-CLOSURE-2026-10-01.md`.
 - Installed NSIS/MSI, architecture/Veritas and exact-SHA CI are **pending**.
   These local native experiments do not claim installed/package/release acceptance.
   PR #31 is frozen; seven isolated truth repairs remain isolated.
+
+## Exact `bd4a06a` gate and native lifetime follow-up
+
+- Source `bd4a06a0d2176864963a0c240c9bb128a473d675`: local corrected full
+  pre-push **841/0/11 of 852**; [AIDE CI 36871320248](https://github.com/AnonymousNomad/covert-coder/actions/runs/36871320248)
+  **SUCCESS, 22/22 steps** including Veritas.
+- [Desktop 36871406341](https://github.com/AnonymousNomad/covert-coder/actions/runs/36871406341):
+  Linux/macOS passed. Windows tests/build/artifact smoke passed; installed NSIS
+  reached health but failed owned Node/listener cleanup. MSI skipped. Hosted
+  cleanup cause remains **UNKNOWN**; do not label it closed by local diagnostics.
+- Exact NSIS extracted native normal close/restart passed locally; parent-only
+  termination independently left four Node processes and all three product ports
+  after 15 seconds. Owned rescue removed them. This is a reproduced Covert
+  lifecycle defect, not acceptance of either installer. Administrative MSI
+  extraction and 7-Zip NSIS extraction are also not installation proof.
+- Local bounded Windows Job Object repair closes this measured lifetime gap:
+  native containment precedes all child startup; only kill-on-final-handle-close
+  is enabled; assignment errors fail startup explicitly. **16/16 release native
+  tests, 2/2 packaging contracts, four native cycles and three actual lifecycle
+  function cycles pass** with zero owned residuals and no rescue. Expected invalid
+  private-frame startup failure also releases its fixture children. The new
+  installed smoke requires forced parent termination and recovery, preserving
+  normal/reinstall checks and reporting safe residual birth identities.
+- Exact local native/resource identity and diagnostic receipts are in
+  `SOL61-NATIVE-OWNERSHIP-REPAIR-2026-10-01.json`. A new reviewed green checkpoint,
+  full affected gates, exact-SHA AIDE/Veritas and fresh **actual NSIS and MSI**
+  lifecycles are required. No installed/package/release acceptance is claimed.
