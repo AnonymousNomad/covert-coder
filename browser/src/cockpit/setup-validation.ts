@@ -1,5 +1,5 @@
 // Readiness belongs to the latest completed run, never to the rendered page.
-export const REQUIRED_SETUP_CHECKS = ['daemon', 'hardware', 'model registry', 'workflow runtime', 'evidence bus'] as const;
+export const REQUIRED_SETUP_CHECKS = ['daemon', 'hardware', 'model registry', 'workflow runtime', 'evidence bus', 'onboarding choices', 'setup preferences'] as const;
 export type ValidationStatus = 'NOT_RUN' | 'RUNNING' | 'PASSED' | 'FAILED' | 'UNAVAILABLE';
 export interface SetupCheck { label: string; status: 'PASSED' | 'FAILED' | 'UNAVAILABLE'; detail: string; }
 export interface SetupValidation { run: number; status: ValidationStatus; checks: SetupCheck[]; }

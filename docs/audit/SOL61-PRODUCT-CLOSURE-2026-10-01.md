@@ -37,8 +37,6 @@ Local evidence:
 These are isolated state/component/build proofs. They do not establish
 canonical convergence, live provider use, dogfood or installed acceptance.
 
-## Integration boundary
-
 ## F03 — provider status truth
 
 Canonical source maps a rejected `byokStatus()` to LOCAL_ONLY; the initial
@@ -59,6 +57,45 @@ read failure. Six transition tests and the actual topbar's browser failure
 label passed. Both TypeScript checks and scoped ESLint passed. The existing
 Connections service can itself degrade some internal read errors; this slice
 does not infer universal provider absence from that view.
+
+## F02 — persistence and provisioning truth
+
+`node scripts/setup-truth-ui.mjs --reproduce-persistence` loads the original
+`fc263fe` component from Git into an in-memory Vite module (no worktree rewrite).
+In Edge, a rejected onboarding write still advanced past approval; the final
+save control was hidden, leaving zero profile writes. This is direct bounded
+UI reproduction of the original defect, not live daemon evidence.
+
+The repair saves a validated version-2 draft through the existing approved
+file-write API, keeps approval open after failed required writes, and reads
+canonical onboarding choices before retrying so a successful choice write is
+not repeated just because the profile save failed. Required validation now
+includes recorded role/workbench choices and an exact current preference
+match. A visible completion action requires validation, saves preferences,
+calls canonical onboarding completion, then persists the completion timestamp.
+Every failure remains visible and unresolved; no exception becomes success.
+
+All eight interview-choice categories explicitly state SAVED AS PREFERENCE
+after successful persistence, or DEFERRED before that. No choice claims
+account connection, routing/consent, download, qualification, policy change,
+repository import, workflow creation or integration provisioning. Role and
+workbench are recorded onboarding preferences; no workbench installation is
+performed. Recommendations remain advisory. Multiple checkbox choices no
+longer overwrite earlier selections through a stale closure.
+
+Drafts resume after approval or at validation; historical completion timestamps
+never restore a current pass. Existing v1 profiles migrate as preferences.
+Malformed/unavailable profiles cannot establish readiness. An unavailable
+saved model recommendation is retained by identity rather than substituted.
+Late session results cannot mutate a reopened session's status/selection.
+
+Local proof: 15 actual browser scenarios passed across F01/F02/F03; five
+profile tests passed; the affected onboarding/state/profile/cloud set passed
+24/24. Both TypeScript checks, scoped ESLint and frontend build passed. One
+unused local in the new profile test initially produced a lint warning and
+was removed. Final broad architecture/Veritas CI remains pending.
+
+## Integration boundary
 
 Luna owns packaging/bootstrap closure. Apply the isolated truth commits only
 after reconciling against the then-current convergence SHA. Re-run required

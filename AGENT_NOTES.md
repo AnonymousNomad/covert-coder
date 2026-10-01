@@ -5,6 +5,13 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-01 05:42] Actor: sol61
+- Type: repair / verification
+- Status: locally verified; broad CI pending
+- Summary: F02 required writes now gate advancement/completion; saved preferences are distinguished from provisioning.
+- Details: Original fc263fe component loaded read-only from Git into an in-memory Vite module reproduced advancement after onboarding write failure and hidden final save control with zero profile writes. Repaired draft persistence, canonical choice readback, retry safety, current profile validation, visible completion, every write/complete failure, and session-scoped late results. Existing .aide/setup-session.json remains the owner; no parallel store or Authority route. Fifteen browser scenarios and five profile tests passed; affected onboarding/state/profile/cloud tests passed 24/24. Type/lint/build passed; one unused test-variable lint warning was repaired. Reopening historical completion requires fresh validation.
+- Next: broad architecture gate, coherent push/CI, then minimal capability ledger and selective historical reconciliation. No installed mission or provider claim is made.
+
 ### [2026-10-01 05:31] Actor: sol61
 - Type: repair / verification
 - Status: verified in isolation
