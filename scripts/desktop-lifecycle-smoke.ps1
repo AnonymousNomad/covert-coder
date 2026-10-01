@@ -151,8 +151,58 @@ function Stop-InstalledApp {
   if (-not $Process.HasExited) { throw "installed application process tree did not stop for PID $($Process.Id)" }
 }
 
+function Invoke-InstalledNodeProbe {
+  param([string]$NodePath, [string]$Label, [string[]]$Arguments)
+  try {
+    $probeOutput = @(& $NodePath @Arguments 2>&1)
+    $probeExitCode = $LASTEXITCODE
+  } catch {
+    $probeOutput = @($_.Exception.Message)
+    $probeExitCode = -1
+  }
+  $probeText = [string]::Join([Environment]::NewLine, [string[]]$probeOutput)
+  $probeText = [regex]::Replace($probeText, 'COVERT_PAIRING_V1\s+\S+', 'COVERT_PAIRING_V1 [redacted]')
+  if ($probeText.Length -gt 2000) { $probeText = $probeText.Substring($probeText.Length - 2000) }
+  Write-Host "desktop startup diagnostics: bundled Node probe=$Label exit=$probeExitCode"
+  if ($probeText) { Write-Host $probeText }
+  $remaining = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -ieq 'node.exe' -and $_.ExecutablePath -ieq $NodePath })
+  if ($remaining.Count) { Write-Host "desktop startup diagnostics: bundled Node probe residual PID(s)=$($remaining.ProcessId -join ',')" }
+}
+
+function Write-InstalledWindowsFailureEvents {
+  param([string]$ExecutablePath, [DateTime]$LaunchedAtUtc)
+  $executableName = Split-Path -Path $ExecutablePath -Leaf
+  try {
+    $events = @(Get-WinEvent -FilterHashtable @{
+      LogName = 'Application'
+      Id = @(1000, 1001)
+      StartTime = $LaunchedAtUtc.ToLocalTime()
+    } -MaxEvents 100 -ErrorAction Stop)
+  } catch {
+    if ($_.FullyQualifiedErrorId -match 'NoMatchingEventsFound') {
+      Write-Host 'desktop startup diagnostics: no Application Error/WER events in the launch window'
+    } else {
+      Write-Host "desktop startup diagnostics: Application Error/WER query unavailable: $($_.Exception.Message)"
+    }
+    return
+  }
+  $matchingEvents = @($events | Where-Object {
+    $_.Message -and $_.Message.IndexOf($ExecutablePath, [StringComparison]::OrdinalIgnoreCase) -ge 0
+  } | Select-Object -First 5)
+  if (-not $matchingEvents.Count) {
+    Write-Host "desktop startup diagnostics: no Application Error/WER events matched $executableName in the launch window"
+    return
+  }
+  foreach ($event in $matchingEvents) {
+    $eventMessage = [regex]::Replace([string]$event.Message, 'COVERT_PAIRING_V1\s+\S+', 'COVERT_PAIRING_V1 [redacted]')
+    if ($eventMessage.Length -gt 2500) { $eventMessage = $eventMessage.Substring($eventMessage.Length - 2500) }
+    Write-Host "desktop startup diagnostics: Application event id=$($event.Id); provider=$($event.ProviderName); at=$($event.TimeCreated.ToUniversalTime().ToString('o'))"
+    Write-Host $eventMessage
+  }
+}
+
 function Write-InstalledStartupDiagnostics {
-  param([string]$ExecutablePath)
+  param([string]$ExecutablePath, [DateTime]$LaunchedAtUtc)
   $executableDirectory = Split-Path -Path $ExecutablePath -Parent
   $candidates = @(
     [PSCustomObject]@{ Label = 'executable directory'; Root = $executableDirectory },
@@ -161,10 +211,21 @@ function Write-InstalledStartupDiagnostics {
   foreach ($candidate in $candidates) {
     $nodePath = Join-Path (Join-Path $candidate.Root 'runtime') 'node.exe'
     $launcherPath = Join-Path $candidate.Root 'stack-launcher.mjs'
+    $authorityPath = Join-Path (Join-Path $candidate.Root 'common') 'security\authority-channel.mjs'
     $logsDirectory = Join-Path $candidate.Root '.aide\logs'
     $nodeExists = Test-Path -LiteralPath $nodePath -PathType Leaf
     $launcherExists = Test-Path -LiteralPath $launcherPath -PathType Leaf
     Write-Host "desktop startup diagnostics: candidate=$($candidate.Label); root=$($candidate.Root); node=$nodeExists; launcher=$launcherExists; logs=$logsDirectory"
+    if ($nodeExists -and $launcherExists) {
+      Invoke-InstalledNodeProbe -NodePath $nodePath -Label 'version' -Arguments @('--version')
+      Invoke-InstalledNodeProbe -NodePath $nodePath -Label 'launcher syntax' -Arguments @('--check', $launcherPath)
+      if (Test-Path -LiteralPath $authorityPath -PathType Leaf) {
+        $authorityUri = [System.Uri]::new($authorityPath).AbsoluteUri
+        Invoke-InstalledNodeProbe -NodePath $nodePath -Label 'authority module import' -Arguments @('--input-type=module', '--eval', 'await import(process.argv[1])', $authorityUri)
+      } else {
+        Write-Host "desktop startup diagnostics: authority module missing at $authorityPath"
+      }
+    }
     if (-not (Test-Path -LiteralPath $logsDirectory -PathType Container)) {
       Write-Host "desktop startup diagnostics: no child log directory at $logsDirectory"
       continue
@@ -183,6 +244,7 @@ function Write-InstalledStartupDiagnostics {
       }
     }
   }
+  Write-InstalledWindowsFailureEvents -ExecutablePath $ExecutablePath -LaunchedAtUtc $LaunchedAtUtc
 }
 
 function Test-ProcessDescendsFrom {
@@ -229,6 +291,7 @@ $installed = Find-InstalledExe
 if (-not $installed) { throw "installed $productName executable was not found" }
 
 Write-Host "desktop lifecycle smoke: launching $($installed.Exe)"
+$appLaunchedAtUtc = [DateTime]::UtcNow
 $app = Start-Process -FilePath $installed.Exe -PassThru
 Write-Host 'desktop lifecycle smoke: checking daemon health'
 try {
@@ -237,7 +300,7 @@ try {
   $healthError = $_
   $cleanupError = $null
   try { Stop-InstalledApp -Process $app } catch { $cleanupError = $_ }
-  Write-InstalledStartupDiagnostics -ExecutablePath $installed.Exe
+  Write-InstalledStartupDiagnostics -ExecutablePath $installed.Exe -LaunchedAtUtc $appLaunchedAtUtc
   if ($cleanupError) {
     throw "installed daemon health failed: $($healthError.Exception.Message); owned app cleanup failed: $($cleanupError.Exception.Message)"
   }
