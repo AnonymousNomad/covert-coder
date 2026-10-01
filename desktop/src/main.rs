@@ -1,7 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc, Mutex};
 use std::thread;
@@ -12,6 +14,122 @@ mod resource_root;
 
 struct DaemonProcess(Mutex<Option<Child>>);
 struct PairingProof(Mutex<Option<(String, String)>>);
+
+const STARTUP_DIAGNOSTIC_ENV: &str = "COVERT_DESKTOP_STARTUP_DIAGNOSTIC_ID";
+const STARTUP_DIAGNOSTIC_MAX_CHARS: usize = 2048;
+
+fn startup_diagnostic_path(id: &str, process_id: u32) -> Option<PathBuf> {
+    if id.len() != 32 || !id.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    Some(std::env::temp_dir().join(format!("covert-desktop-startup-{id}-{process_id}.log")))
+}
+
+fn redact_startup_diagnostic(input: &str) -> String {
+    const MARKER: &str = "COVERT_PAIRING_V1 ";
+    let mut output = String::with_capacity(input.len());
+    let mut cursor = 0;
+    while let Some(relative_marker) = input[cursor..].find(MARKER) {
+        let marker_start = cursor + relative_marker;
+        let proof_start = marker_start + MARKER.len();
+        output.push_str(&input[cursor..proof_start]);
+        let proof_end = input[proof_start..]
+            .find(char::is_whitespace)
+            .map(|relative_end| proof_start + relative_end)
+            .unwrap_or(input.len());
+        output.push_str("[redacted]");
+        cursor = proof_end;
+    }
+    output.push_str(&input[cursor..]);
+    output
+}
+
+fn bound_startup_diagnostic(input: &str) -> String {
+    let mut characters = input.chars();
+    let mut output = characters
+        .by_ref()
+        .take(STARTUP_DIAGNOSTIC_MAX_CHARS)
+        .collect::<String>();
+    if characters.next().is_some() {
+        output.push_str(" [truncated]");
+    }
+    output
+}
+
+fn write_startup_diagnostic(path: &Path, message: &str) -> std::io::Result<()> {
+    let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+    let safe_message = bound_startup_diagnostic(&redact_startup_diagnostic(message));
+    writeln!(file, "{safe_message}")
+}
+
+fn install_startup_panic_diagnostics() {
+    let diagnostic_id = std::env::var(STARTUP_DIAGNOSTIC_ENV).ok();
+    std::env::remove_var(STARTUP_DIAGNOSTIC_ENV);
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let recorded = diagnostic_id
+            .as_deref()
+            .and_then(|id| startup_diagnostic_path(id, std::process::id()))
+            .map(|path| write_startup_diagnostic(&path, &panic_info.to_string()).is_ok())
+            .unwrap_or(false);
+        if !recorded {
+            default_hook(panic_info);
+        }
+    }));
+}
+
+#[cfg(test)]
+mod startup_diagnostic_tests {
+    use super::{
+        bound_startup_diagnostic, redact_startup_diagnostic, startup_diagnostic_path,
+        write_startup_diagnostic, STARTUP_DIAGNOSTIC_MAX_CHARS,
+    };
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn diagnostic_id_rejects_path_components() {
+        assert!(startup_diagnostic_path("0123456789abcdef0123456789abcdef", 7).is_some());
+        assert!(startup_diagnostic_path("../not-a-diagnostic-id", 7).is_none());
+    }
+
+    #[test]
+    fn panic_message_redacts_pairing_proofs_and_is_bounded() {
+        let proof = "P".repeat(43);
+        let input = format!(
+            "setup failed: COVERT_PAIRING_V1 {proof} {}",
+            "x".repeat(3000)
+        );
+        let safe = bound_startup_diagnostic(&redact_startup_diagnostic(&input));
+        assert!(!safe.contains(&proof));
+        assert!(safe.contains("COVERT_PAIRING_V1 [redacted]"));
+        assert!(safe.chars().count() <= STARTUP_DIAGNOSTIC_MAX_CHARS + " [truncated]".len());
+    }
+
+    #[test]
+    fn diagnostic_file_is_created_once_and_contains_only_redacted_text() {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock is after Unix epoch")
+            .as_nanos();
+        let id = format!("{:032x}", nanos ^ ((std::process::id() as u128) << 96));
+        let path = startup_diagnostic_path(&id, std::process::id()).expect("valid diagnostic id");
+        let proof = "S".repeat(43);
+        write_startup_diagnostic(
+            &path,
+            &format!("native startup panic: COVERT_PAIRING_V1 {proof}"),
+        )
+        .expect("create diagnostic record");
+        let contents = fs::read_to_string(&path);
+        let duplicate = write_startup_diagnostic(&path, "second write");
+        let cleanup = fs::remove_file(&path);
+        let contents = contents.expect("read diagnostic record");
+        cleanup.expect("remove temporary diagnostic record");
+        assert!(duplicate.is_err(), "diagnostic file must not be overwritten");
+        assert!(!contents.contains(&proof));
+        assert!(contents.contains("COVERT_PAIRING_V1 [redacted]"));
+    }
+}
 
 #[tauri::command]
 fn authority_pairing(window: tauri::WebviewWindow, state: tauri::State<'_, PairingProof>) -> Result<String, String> {
@@ -82,6 +200,7 @@ fn terminate_tree(child: &mut Child) {
 }
 
 fn main() {
+    install_startup_panic_diagnostics();
     tauri::Builder::default()
         .manage(DaemonProcess(Mutex::new(None)))
         .manage(PairingProof(Mutex::new(None)))

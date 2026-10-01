@@ -208,8 +208,35 @@ function Write-InstalledWindowsFailureEvents {
   }
 }
 
+function Write-InstalledNativeStartupDiagnostic {
+  param([string]$DiagnosticPath)
+  $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+  $fullPath = [System.IO.Path]::GetFullPath($DiagnosticPath)
+  $parent = [System.IO.Path]::GetDirectoryName($fullPath).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+  $leaf = [System.IO.Path]::GetFileName($fullPath)
+  if ($parent -ine $tempRoot -or $leaf -notmatch '^covert-desktop-startup-[0-9a-f]{32}-\d+\.log$') {
+    throw 'native startup diagnostic refused an unexpected temporary path'
+  }
+  if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+    Write-Host "desktop startup diagnostics: no native panic record at $fullPath"
+    return
+  }
+  $item = Get-Item -LiteralPath $fullPath -Force
+  if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.PSIsContainer) {
+    throw 'native startup diagnostic refused a reparse point or non-file'
+  }
+  $text = Get-Content -LiteralPath $fullPath -Raw -ErrorAction Stop
+  $text = [regex]::Replace($text, 'COVERT_PAIRING_V1\s+[A-Za-z0-9_-]{43}', 'COVERT_PAIRING_V1 [redacted]')
+  if ($text.Length -gt 3000) { $text = $text.Substring(0, 3000) }
+  Write-Host 'desktop startup diagnostics: native panic record (capped and pairing-redacted)'
+  Write-Host $text
+  Remove-Item -LiteralPath $fullPath -Force
+  if (Test-Path -LiteralPath $fullPath) { throw 'native startup diagnostic temporary record remained after cleanup' }
+}
+
 function Write-InstalledStartupDiagnostics {
-  param([string]$ExecutablePath, [DateTime]$LaunchedAtUtc)
+  param([string]$ExecutablePath, [DateTime]$LaunchedAtUtc, [string]$NativeDiagnosticPath)
+  Write-InstalledNativeStartupDiagnostic -DiagnosticPath $NativeDiagnosticPath
   $executableDirectory = Split-Path -Path $ExecutablePath -Parent
   $candidates = @(
     [PSCustomObject]@{ Label = 'executable directory'; Root = $executableDirectory },
@@ -496,7 +523,16 @@ if (-not $installed) { throw "installed $productName executable was not found" }
 
 Write-Host "desktop lifecycle smoke: launching $($installed.Exe)"
 $appLaunchedAtUtc = [DateTime]::UtcNow
-$app = Start-Process -FilePath $installed.Exe -PassThru
+$nativeDiagnosticId = [Guid]::NewGuid().ToString('N')
+$diagnosticEnvName = 'COVERT_DESKTOP_STARTUP_DIAGNOSTIC_ID'
+$previousDiagnosticId = [System.Environment]::GetEnvironmentVariable($diagnosticEnvName, [System.EnvironmentVariableTarget]::Process)
+try {
+  [System.Environment]::SetEnvironmentVariable($diagnosticEnvName, $nativeDiagnosticId, [System.EnvironmentVariableTarget]::Process)
+  $app = Start-Process -FilePath $installed.Exe -PassThru
+} finally {
+  [System.Environment]::SetEnvironmentVariable($diagnosticEnvName, $previousDiagnosticId, [System.EnvironmentVariableTarget]::Process)
+}
+$nativeDiagnosticPath = Join-Path ([System.IO.Path]::GetTempPath()) ("covert-desktop-startup-{0}-{1}.log" -f $nativeDiagnosticId, $app.Id)
 Write-Host 'desktop lifecycle smoke: checking daemon health'
 try {
   $health = Wait-ForDaemonHealth -Process $app -Url 'http://127.0.0.1:4777/health'
@@ -504,7 +540,7 @@ try {
   $healthError = $_
   $cleanupError = $null
   try { Stop-InstalledApp -Process $app } catch { $cleanupError = $_ }
-  Write-InstalledStartupDiagnostics -ExecutablePath $installed.Exe -LaunchedAtUtc $appLaunchedAtUtc
+  Write-InstalledStartupDiagnostics -ExecutablePath $installed.Exe -LaunchedAtUtc $appLaunchedAtUtc -NativeDiagnosticPath $nativeDiagnosticPath
   $resourceRoot = Join-Path (Split-Path -Path $installed.Exe -Parent) 'resources'
   Invoke-ExactInstalledResourceLauncherDiagnostic -ResourceRoot $resourceRoot
   if ($cleanupError) {
