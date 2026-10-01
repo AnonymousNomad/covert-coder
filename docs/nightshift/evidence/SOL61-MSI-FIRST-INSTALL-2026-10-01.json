@@ -1,0 +1,130 @@
+{
+  "schema": "covert.msi-first-install.repair.v1",
+  "actor": "sol61",
+  "branch": "nightshift/production-convergence-20260926",
+  "parent_source": "43a43b2dd2a7171185dcea82ebdb15f1590d49fe",
+  "state": "CONTROLLED_REPAIR_GREEN_COMPLETE_AND_FRESH_INSTALLED_GATES_PENDING",
+  "success_criteria": "FRESH_FIRST_INSTALL_AND_SAME_BUILD_REINSTALL_BOTH_WORK_WITH_ALL_NATIVE_HEALTH_RESTART_CRASH_RECOVERY_UNINSTALL_OWNERSHIP_CHECKS_UNCHANGED",
+  "retained_hosted_result": {
+    "run": 36913494020,
+    "windows_job": 110541697427,
+    "windows": "FAILURE",
+    "linux": "SUCCESS",
+    "macos": "SUCCESS",
+    "native_regressions": {
+      "pass": 16,
+      "fail": 0
+    },
+    "build_and_artifact_smoke": "PASS",
+    "nsis": "FULL_INSTALLED_LIFECYCLE_PASS",
+    "msi": "FAILED_EXECUTABLE_DISCOVERY_BEFORE_LAUNCH",
+    "first_failure": "installed Covert Coder executable was not found",
+    "installer_exit": "ACCEPTED_0_OR_3010_EXACT_CODE_NOT_RECORDED",
+    "original_verbose_msi_log": "NOT_UPLOADED_NOT_INFERRED",
+    "downloaded_windows_job_log": "E:\\pip_temp\\sol61-desktop-43a43b2-windows-job.log",
+    "downloaded_windows_job_log_sha256": "7ae348e1f366f11c2fb963761599f4b8f5c30c6e2e804a8ff972e0467ed61a19"
+  },
+  "artifact_identity": {
+    "id": 11189166660,
+    "server_archive_digest": "sha256:4a3fb77291b20095f7538ea8ad0c1197f3888f9058575a8787d85c1a0a12c160",
+    "download_root": "E:\\pip_temp\\covert-desktop-43a43b2-run36913494020",
+    "nsis": {
+      "file": "nsis\\Covert Coder_0.1.0_x64-setup.exe",
+      "sha256": "28d9521ebd8886cf6db022436450403f15ebbfbe02bac9e015cfebad13c14a61"
+    },
+    "msi": {
+      "file": "msi\\Covert Coder_0.1.0_x64_en-US.msi",
+      "sha256": "7e54c679f63375ec25cff495df608f95a672cd90d979c66444584ad8a1e283d0"
+    }
+  },
+  "research": {
+    "sources": [
+      "https://learn.microsoft.com/en-us/windows/win32/msi/reinstall",
+      "https://learn.microsoft.com/en-us/windows/win32/msi/reinstallmode"
+    ],
+    "verified_defect": "UPGRADE_ONLY_REINSTALL_FEATURE_SELECTION_APPLIED_TO_FIRST_INSTALL",
+    "hosted_cause_scope": "CONSISTENT_WITH_MISSING_EXECUTABLE_NO_UNAVAILABLE_VERBOSE_LOG_CONTENT_CLAIM"
+  },
+  "controlled_red": {
+    "pass": 5,
+    "fail": 1,
+    "total": 6,
+    "first_install": "FAIL_REPAIR_ONLY_FLAGS",
+    "log": "E:\\pip_temp\\sol61-msi-command-contract-red.log",
+    "log_sha256": "c56ae8fbf2c7c24e467d57308da78465038aa11a00e3bbc277a84c647e32f0a9"
+  },
+  "repair": {
+    "canonical_owner": "scripts/desktop-lifecycle-smoke.ps1 Invoke-Installer",
+    "install": "NORMAL_FEATURE_SELECTION_NO_REINSTALL_FLAGS",
+    "upgrade": "REINSTALL=ALL REINSTALLMODE=amus",
+    "uninstall": "UNCHANGED_X_OR_RESOLVED_NSIS_SILENT_UNINSTALLER",
+    "mode_validation": [
+      "install",
+      "upgrade",
+      "uninstall"
+    ],
+    "helper_window": "HIDDEN",
+    "success_codes": [
+      0,
+      3010
+    ],
+    "wait_ms": 180000,
+    "timeout_cleanup": "CAPTURED_OWNED_PROCESS_ONLY",
+    "safe_diagnostic": "INTEGER_EXIT_CODE",
+    "health_identity_ports_recovery_assertions": "UNCHANGED"
+  },
+  "controlled_green": {
+    "pass": 8,
+    "fail": 0,
+    "total": 8,
+    "canonical_function": "PARSED_AST_EXTRACTED_EXECUTED_WITH_CONTROLLED_START_PROCESS",
+    "cases": [
+      "FIRST_INSTALL",
+      "UPGRADE",
+      "UNINSTALL",
+      "SUCCESS_3010",
+      "FAILURE_1603",
+      "TIMEOUT",
+      "INVALID_MODE_NO_SPAWN",
+      "NSIS_SILENT_INSTALL_UPGRADE_UNINSTALL"
+    ],
+    "log": "E:\\pip_temp\\sol61-msi-command-contract-eight-green.log",
+    "log_sha256": "1748943ceb8f09b49216e87bd3dcb43abf1f6501d0495fddadffe3dc16bfcbae",
+    "real_msiexec_executed": false,
+    "registry_or_application_mutated": false
+  },
+  "desktop_contract_green": {
+    "tests": 3,
+    "pass": 3,
+    "fail": 0,
+    "skip": 0,
+    "cancelled": 0,
+    "duration_ms": 107.1437,
+    "log": "E:\\pip_temp\\sol61-msi-desktop-contract-green.log",
+    "log_sha256": "dca0f840bc792bb97fde33d76c179d05d5c87fb822c1df1cd633e6790efc70d0"
+  },
+  "scoped_eslint": {
+    "exit_code": 0,
+    "log": "E:\\pip_temp\\sol61-msi-scoped-lint.log"
+  },
+  "workflow_regression": "WINDOWS_ONLY_REAL_CANONICAL_HELPER_CONTRACT_BEFORE_DESKTOP_BUILD",
+  "limits": [
+    "CONTROLLED_PROCESS_BOUNDARY_IS_NOT_INSTALLED_ACCEPTANCE",
+    "PARENT_NSIS_PASS_NOT_ACCEPTANCE_FOR_NEXT_SHA",
+    "ORIGINAL_UNTRACED_FULL_FAILURE_CAUSES_REMAIN_OPEN",
+    "NO_DOWNSTREAM_PHASE_PROMOTION"
+  ],
+  "next": [
+    "COMPLETE_CANONICAL_CLEAN_EXACT_CANDIDATE_PREPUSH",
+    "EXACT_SHA_AIDE_VERITAS",
+    "FRESH_ACTUAL_NSIS_AND_MSI_FULL_INSTALLED_LIFECYCLE"
+  ],
+  "safety": {
+    "physical_ram_start_floor_gib": 6.5,
+    "commit_start_floor_gib": 5,
+    "model_started": false,
+    "pagefile_changed": false,
+    "foreign_process_terminated": false,
+    "pr31_mutated": false
+  }
+}

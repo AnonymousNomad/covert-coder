@@ -3,7 +3,7 @@
   "actor": "sol61",
   "branch": "nightshift/production-convergence-20260926",
   "parent_source": "f8af71f0642e156416308aa7e3f0c06f42f3539e",
-  "state": "FOCUSED_GREEN_FULL_GATE_AND_INSTALLED_ACCEPTANCE_PENDING",
+  "state": "FULL_WINDOWS_AND_EXACT_SHA_AIDE_GREEN_NSIS_INSTALLED_PASS_MSI_FIRST_INSTALL_REPAIR_PENDING_ORIGINAL_CAUSES_OPEN",
   "retained_provider_full_failure": {
     "tests": 860, "pass": 848, "fail": 1, "skip": 11,
     "error_class": "TimeoutError", "request_boundary": "UNKNOWN", "cause": "UNKNOWN_NOT_WAIVED",
@@ -71,5 +71,86 @@
   },
   "static_checks": {"node_typescript": "PASS", "browser_typescript": "PASS", "scoped_eslint": "PASS", "canonical_route_ownership": "PASS", "diff_whitespace": "PASS"},
   "safety": {"model_started": false, "physical_ram_start_floor_gib": 6.5, "commit_start_floor_gib": 5.0, "pagefile_changed": false, "foreign_process_terminated": false, "pr31_mutated": false},
-  "remaining": ["ORIGINAL_FULL_TIMEOUT_CAUSE", "FULL_CANONICAL_GATE_ON_CLEAN_CANDIDATE", "EXACT_SHA_AIDE_VERITAS_CI", "FRESH_INSTALLED_NSIS_MSI_LIFECYCLE", "FIGMA_OWNER_OAUTH"]
+  "post_commit_canonical_full_gate": {
+    "source": "43a43b2dd2a7171185dcea82ebdb15f1590d49fe",
+    "clean_at_start": true, "push_exit_code": 0, "remote_sha_reconfirmed": true,
+    "tests": 867, "pass": 856, "fail": 0, "skip": 11, "cancelled": 0, "duration_ms": 523412.4525,
+    "started_at": "2026-10-01T18:57:04.6773285Z", "finished_at": "2026-10-01T19:06:02.8921664Z",
+    "fixture_root": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-sol61-broker-fullgate-e58891ca296d46279de4d9e0ea4c92b6",
+    "node_version": "v26.4.0", "original_deadlines_durability_authority_admission_preserved": true,
+    "log": "E:\\pip_temp\\sol61-broker-converged-full-push.log",
+    "log_sha256": "476f3679441c9181a9b36c68979710524ac0777de784d7e14039b61c42d08d73",
+    "aide_ci_run": 36911785133, "aide_ci_initial_observed_state": "IN_PROGRESS_NOT_ACCEPTED",
+    "post_run_test_node_observation": "NONE_OBSERVED",
+    "pr31_exact_frozen_head": "b79d2480498e446cff36b26dd4b4faef7745726b",
+    "historical_cause_closure_claim": false, "release_phase_advanced": false
+  },
+  "retained_hook_trace_projection": {
+    "consumed_at": "2026-10-01T16:06:08.813Z", "execution_succeeded_at": "2026-10-01T16:07:21.573Z", "gap_ms": 72760,
+    "decision_response_recorded_at": "2026-10-01T16:06:08.813Z", "decision_server_ms": 7,
+    "source_sequence": "CONSUMED_AUDIT_PERSISTENCE_THEN_CHILD_CREATION_THEN_SUCCESS_RECORD",
+    "distinguishing_observations": "NOT_RETAINED_NO_SPAWN_DISK_DEFENDER_OR_RESOURCE_CAUSE_CLAIM",
+    "log": "E:\\pip_temp\\sol61-retained-hook-timeline.log",
+    "log_sha256": "ab9edc404204e78fdc1b400789e5bd2b4033c67438400a63eb334ed9575fb5f6"
+  },
+  "exact_sha_aide_acceptance": {
+    "source": "43a43b2dd2a7171185dcea82ebdb15f1590d49fe", "run": 36911785133,
+    "result": "SUCCESS", "workflow_steps_passed": 22, "veritas_checks_passed": 6,
+    "linux_architecture": {"tests": 867, "pass": 851, "fail": 0, "skip": 16, "cancelled": 0, "duration_ms": 146162.686619},
+    "artifact_root": "E:\\pip_temp\\covert-sol61-aide-43a43b2-run36911785133",
+    "ci_diagnostics_artifact_id": 11188520727,
+    "ci_diagnostics_server_archive_digest": "sha256:6b4982fd3041ae61a3b9d517b63f9fbf3e6199706799d738d42a68a2537c6fa8",
+    "veritas_report_sha256": "6bc296fd1974f07791ddaaba89f9eeb1966a77b1d551242f7fc23d730372602e",
+    "veritas_json_sha256": "35564a77ef109c356c48e7f8f66b986d834213fd5ba2fd3542554d2e01ea4290",
+    "arch_log_sha256": "cc96c1368a1ac6544ba286c44f81aaa1ad03ef8a5521aa8c1628f0abb56cc7b4"
+  },
+  "fresh_installed_desktop_dispatch": {
+    "source": "43a43b2dd2a7171185dcea82ebdb15f1590d49fe", "run": 36913494020,
+    "remote_sha_rechecked_before_dispatch": true, "dispatch_exit_code": 0,
+    "started_at": "2026-10-01T19:19:55.5097158Z", "finished_at": "2026-10-01T19:19:57.7213089Z",
+    "windows_job": 110541697427, "state": "IN_PROGRESS_NOT_INSTALLED_ACCEPTANCE",
+    "dispatch_record": "E:\\pip_temp\\sol61-desktop-43a43b2-dispatch.json"
+  },
+  "historical_system_event_query": {
+    "scope": "SYSTEM_LOG_METADATA_ONLY_IDS_129_153_2004_7_51_55_MAX_30_EVENTS",
+    "start": "2026-10-01T16:04:00Z", "end": "2026-10-01T16:09:00Z",
+    "selected_events_returned": 0, "absence_excludes_cause_claim": false,
+    "research": ["https://learn.microsoft.com/en-us/troubleshoot/windows-server/backup-and-storage/troubleshoot-data-corruption-and-disk-errors", "https://learn.microsoft.com/en-us/troubleshoot/windows-server/performance/troubleshoot-application-service-memory-leaks"]
+  },
+  "fresh_installed_desktop_final_result": {
+    "source": "43a43b2dd2a7171185dcea82ebdb15f1590d49fe", "run": 36913494020, "windows_job": 110541697427,
+    "linux": "SUCCESS", "macos": "SUCCESS", "windows": "FAILURE", "native_regressions_passed": 16,
+    "windows_build_artifact_smoke": "PASS",
+    "nsis": "ACTUAL_INSTALL_FIRST_HEALTH_RESTART_PARENT_FORCE_EXIT_RECOVERY_REINSTALL_UNINSTALL_OWNED_PROCESS_AND_PORT_CLEANUP_PASS",
+    "msi": "FAIL_INSTALLED_EXECUTABLE_DISCOVERY_BEFORE_LAUNCH",
+    "msi_failure": "installed Covert Coder executable was not found",
+    "msi_installer_exit": "ACCEPTED_BY_HELPER_EXACT_CODE_NOT_RECORDED",
+    "original_verbose_msi_log": "NOT_UPLOADED_NO_CONTENT_INFERRED",
+    "windows_artifact_id": 11189166660,
+    "windows_server_archive_digest": "sha256:4a3fb77291b20095f7538ea8ad0c1197f3888f9058575a8787d85c1a0a12c160",
+    "downloaded_artifact_root": "E:\\pip_temp\\covert-desktop-43a43b2-run36913494020",
+    "nsis_sha256": "28d9521ebd8886cf6db022436450403f15ebbfbe02bac9e015cfebad13c14a61",
+    "msi_sha256": "7e54c679f63375ec25cff495df608f95a672cd90d979c66444584ad8a1e283d0",
+    "repair_evidence": "docs/nightshift/evidence/SOL61-MSI-FIRST-INSTALL-2026-10-01.json",
+    "release_phase_advanced": false
+  },
+  "refined_full_causal_diagnostic": {
+    "source": "43a43b2dd2a7171185dcea82ebdb15f1590d49fe", "evidence_layer": "INSTRUMENTED_FULL_SEQUENCE_NOT_RELEASE_ACCEPTANCE",
+    "tests": 867, "pass": 856, "fail": 0, "skip": 11, "cancelled": 0, "duration_ms": 518220.6274,
+    "started_at": "2026-10-01T19:28:32.9462208Z", "finished_at": "2026-10-01T19:37:11.4458881Z",
+    "fixture_root": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-sol61-refined-full-a119ad93d4f9435b9c0742cba29c33b4",
+    "log": "E:\\pip_temp\\sol61-refined-full-boundary.log",
+    "log_sha256": "2c6c1e3723c2e3e40c28d4a0332c56c3accc97c0d8fbed821030c204d7b46134",
+    "canonical_file_order": true, "file_count": 127, "original_deadlines_durability_authority_admission_preserved": true,
+    "hook_lsp_spawned": 14, "hook_lsp_closed": 14, "hook_lsp_max_spawn_ms": 21.7419,
+    "measured_hook_lsp_io_over_50ms": 0, "observed_hook_lsp_loop_lag_over_250ms": 0, "hook_lsp_request_errors": 0,
+    "measured_provider_io_over_50ms": 0, "observed_provider_loop_lag_over_250ms": 0,
+    "provider_request_or_body_errors": 0, "provider_max_headers_ms": 2111.4246,
+    "observed_powershell_calls": 19, "observed_powershell_closed": 19, "observed_powershell_max_close_ms": 1284.2057,
+    "counts_directly_comparable_to_prior_isolated_trace": false,
+    "coverage_limits": "ALLOWLISTED_WORKERS_AND_SELECTED_SYNC_PROMISE_IO_CUSTOM_EXECFILE_CONTRACT_PRESERVED_NOT_ALL_CHILD_INVOCATIONS_OBSERVED",
+    "original_cause_reproduced": false, "original_historical_causes": "UNKNOWN_OPEN_NOT_WAIVED",
+    "product_source_changed_during_diagnostic": false, "push_attempted": false, "release_phase_advanced": false
+  },
+  "remaining": ["ORIGINAL_FULL_TIMEOUT_CAUSE", "EARLIER_INTERMITTENT_CAUSES", "FRESH_REPAIRED_MSI_AND_REPEAT_NSIS_INSTALLED_LIFECYCLE", "FIGMA_OWNER_OAUTH"]
 }

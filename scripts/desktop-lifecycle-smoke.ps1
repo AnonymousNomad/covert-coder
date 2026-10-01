@@ -493,7 +493,7 @@ function Invoke-ExactInstalledResourceLauncherDiagnostic {
 }
 
 function Invoke-Installer {
-  param([string]$Mode)
+  param([ValidateSet('install', 'upgrade', 'uninstall')][string]$Mode)
   Write-Host "desktop lifecycle smoke: invoking $Mode installer"
   if ($installerKind -eq 'msi') {
     $installerArg = '"' + $installer + '"'
@@ -502,17 +502,21 @@ function Invoke-Installer {
     $arguments = if ($Mode -eq 'uninstall') {
       @('/x', $installerArg, '/qn', '/norestart', '/L*v', $logArg)
     } else {
-      @('/i', $installerArg, '/qn', '/norestart', '/L*v', $logArg, 'REINSTALL=ALL', 'REINSTALLMODE=amus')
+      @('/i', $installerArg, '/qn', '/norestart', '/L*v', $logArg)
     }
-    $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList $arguments -PassThru
+    # REINSTALL requests only previously installed features. A fresh product
+    # must use normal install selection; same-build upgrade keeps repair flags.
+    if ($Mode -eq 'upgrade') { $arguments += @('REINSTALL=ALL', 'REINSTALLMODE=amus') }
+    $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList $arguments -PassThru -WindowStyle Hidden
   } elseif ($Mode -eq 'uninstall') {
     $uninstaller = Find-InstalledUninstaller
-    $process = Start-Process -FilePath $uninstaller -ArgumentList @('/S') -PassThru
+    $process = Start-Process -FilePath $uninstaller -ArgumentList @('/S') -PassThru -WindowStyle Hidden
   } else {
-    $process = Start-Process -FilePath $installer -ArgumentList @('/S') -PassThru
+    $process = Start-Process -FilePath $installer -ArgumentList @('/S') -PassThru -WindowStyle Hidden
   }
   if (-not $process.WaitForExit(180000)) { $process.Kill(); throw "$Mode installer exceeded the 180-second timeout" }
   if ($process.ExitCode -notin @(0, 3010)) { throw "$Mode installer failed with exit code $($process.ExitCode)" }
+  Write-Host "desktop lifecycle smoke: $Mode installer exited with code $($process.ExitCode)"
 }
 
 Write-Host "desktop lifecycle smoke: installing $installer ($installerKind)"

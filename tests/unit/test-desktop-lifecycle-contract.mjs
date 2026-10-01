@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+test('MSI repair flags are confined to explicit upgrade and hosted command regression is required', async () => {
+  const lifecycle = await readFile(new URL('../../scripts/desktop-lifecycle-smoke.ps1', import.meta.url), 'utf8');
+  const workflow = await readFile(new URL('../../.github/workflows/desktop.yml', import.meta.url), 'utf8');
+  assert.ok(lifecycle.includes("if ($Mode -eq 'upgrade') { $arguments += @('REINSTALL=ALL', 'REINSTALLMODE=amus') }"));
+  assert.doesNotMatch(lifecycle, /@\('\/i',[^\r\n]*REINSTALL=/,
+    'fresh MSI base install arguments cannot select only previously installed features');
+  assert.ok(lifecycle.includes("[ValidateSet('install', 'upgrade', 'uninstall')]"));
+  assert.ok(workflow.includes('./tests/unit/test-desktop-installer-contract.ps1 -LifecyclePath ./scripts/desktop-lifecycle-smoke.ps1'));
+});
+
 test('installed desktop smoke uses canonical public health and requires relaunch after cleanup', async () => {
   const lifecycle = await readFile(new URL('../../scripts/desktop-lifecycle-smoke.ps1', import.meta.url), 'utf8');
   assert.ok(lifecycle.includes("-Url 'http://127.0.0.1:4777/api/health'"));
