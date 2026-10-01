@@ -2,7 +2,7 @@
   "schema": "covert.external-route-latency.repair.v1",
   "branch": "nightshift/production-convergence-20260926",
   "parent_source": "144b3b6c9070842764b80e7142855c866c03c33e",
-  "state": "AFFECTED_STATIC_GREEN_E_CUMULATIVE_REPLAY_AND_CANONICAL_EXACT_SHA_GATES_PENDING",
+  "state": "BOUNDED_EXTERNAL_ROUTE_REPAIR_VERIFIED_AT_A731730_HISTORICAL_UNTRACED_GATES_OPEN",
   "original_red": {
     "total": 867,
     "pass": 855,
@@ -59,7 +59,7 @@
     "state": "CANCELLED_UNSAFE_BROAD_WINDOWS_INVOCATION_NOT_ACCEPTANCE",
     "receipt": "E:\\pip_temp\\sol61-external-projection-veritas-cancelled.json",
     "sha256": "02bfea18099de552d4c6eddb8f85105ee3d615d3ef1d18280cec41c5f591824f",
-    "actual_exact_sha_ci_veritas": "PENDING"
+    "actual_exact_sha_ci_veritas": "SUCCESS_6_OF_6_AT_A731730"
   },
   "safety": {
     "fixture_deadline_ms": 5000,
@@ -72,9 +72,144 @@
     "live_provider_qualified": false
   },
   "next": [
-    "SAME_E_FULL_SEQUENCE",
-    "COMPLETE_CANONICAL_CLEAN_PRE_PUSH",
-    "ACTUAL_EXACT_SHA_AIDE_VERITAS",
-    "RETAIN_HISTORICAL_MISSING_OBSERVATIONS"
-  ]
+    "PUBLISH_REVIEWED_COHERENT_EVIDENCE_RECEIPT_THROUGH_COMPLETE_CANONICAL_GATE",
+    "RECONCILE_RETAINED_HISTORICAL_UNTRACED_CAUSE_BOUNDARIES_BEFORE_DOWNSTREAM_PHASE",
+    "FIGMA_EDITABLE_DESIGN_REQUIRES_OWNER_OAUTH_SIGN_IN"
+  ],
+  "source": "a7317304453ee61966f4a63c7d3ffe85e6c84f54",
+  "same_e_cumulative_replay": {
+    "source": "a7317304453ee61966f4a63c7d3ffe85e6c84f54",
+    "tests": 869,
+    "pass": 858,
+    "fail": 0,
+    "skip": 11,
+    "cancelled": 0,
+    "duration_ms": 595720.6248,
+    "started_at": "2026-10-01T21:12:59.4365532Z",
+    "finished_at": "2026-10-01T21:22:55.7040957Z",
+    "fixture_root": "E:\\pip_temp\\covert-sol61-external-e-full-452bc3c59dfb44098922067208dd80f6",
+    "log": "E:\\pip_temp\\sol61-external-projection-e-full-boundary.log",
+    "log_sha256": "f3d4406042eb2b5478c2440de5ca505375ff3e6ee29fd45ad43188d1ad9b0b75",
+    "direct_timeout_sequence": 29,
+    "direct_body_completed_ms": 1782.6113,
+    "observed_body_reader_errors": 0,
+    "evidence_layer": "CAUSAL_DIAGNOSTIC_ORIGINAL_ORDER_AND_DEADLINES_NOT_INSTALLED_ACCEPTANCE"
+  },
+  "complete_canonical_push_gate": {
+    "source": "a7317304453ee61966f4a63c7d3ffe85e6c84f54",
+    "tests": 869,
+    "pass": 858,
+    "fail": 0,
+    "skip": 11,
+    "cancelled": 0,
+    "duration_ms": 444144.4537,
+    "started_at": "2026-10-01T21:23:53.0430036Z",
+    "finished_at": "2026-10-01T21:31:23.6729803Z",
+    "fixture_root": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-sol61-external-fullgate-119f34add0a24d2f8d8c97d404ca2fac",
+    "log": "E:\\pip_temp\\sol61-external-projection-full-push.log",
+    "log_sha256": "09847b509ba740679a31b916a213ba242aeea90a9df5e2e22141740a97de539f",
+    "push_exit_code": 0,
+    "clean_at_start": true,
+    "remote_sha_reconfirmed": true,
+    "instrumented": false,
+    "deadlines_durability_authority_floors_unchanged": true
+  },
+  "exact_sha_aide": {
+    "source": "a7317304453ee61966f4a63c7d3ffe85e6c84f54",
+    "run": 36929243814,
+    "job": 110594133716,
+    "result": "SUCCESS",
+    "workflow_steps_passed": 22,
+    "veritas_checks_passed": 6,
+    "linux_architecture": {
+      "tests": 869,
+      "pass": 853,
+      "fail": 0,
+      "skip": 16,
+      "cancelled": 0,
+      "duration_ms": 152147.826759
+    },
+    "artifact_root": "E:\\pip_temp\\covert-sol61-aide-a731730-run36929243814",
+    "ci_diagnostics_artifact_id": 11195697227,
+    "ci_diagnostics_archive_digest": "sha256:96d73060f18ac2c5a40be315aaa7be97cb9d5846cb51da1f7afa09b7387da4e2",
+    "job_log_sha256": "b0daabdfaf7d34867c633a66905baac15fbca45db42ca97de4adafe8d2cb0dda",
+    "veritas_json_sha256": "bbcbe2d8a4b4e592c600bc342fe857cf729504f9312364ea20dcdff6dfb1ff1d",
+    "veritas_report_sha256": "6bc296fd1974f07791ddaaba89f9eeb1966a77b1d551242f7fc23d730372602e",
+    "arch_log_sha256": "290ae9965fddb9a9e6d410cc98f7f8fbbfae9f9fc1ede85a6d512d2f79d449a1",
+    "rerun_or_cancellation": false
+  },
+  "fresh_desktop": {
+    "source": "a7317304453ee61966f4a63c7d3ffe85e6c84f54",
+    "run": 36930702318,
+    "windows_job": 110598961361,
+    "actual_run_sha_verified": true,
+    "dispatch_record": "E:\\pip_temp\\sol61-desktop-a731730-dispatch.json",
+    "state": "SUCCESS_ALL_THREE_JOBS_WINDOWS_INSTALLED_NSIS_AND_MSI",
+    "nsis": "ACTUAL_FULL_INSTALLED_LIFECYCLE_PASS",
+    "msi": "ACTUAL_FULL_INSTALLED_LIFECYCLE_PASS",
+    "parent_installed_proof_is_current_acceptance": false,
+    "native_regressions_passed": 16,
+    "installer_contracts_passed": 8,
+    "all_installed_cycles_and_owned_cleanup_passed": true,
+    "nsis_final_pass_at": "2026-10-01T21:54:23.1947761Z",
+    "msi_final_pass_at": "2026-10-01T21:55:09.6086663Z",
+    "msi_fresh_install_exit_code": 0,
+    "msi_upgrade_exit_code": 0,
+    "windows_artifact_id": 11196301379,
+    "windows_archive_digest": "sha256:40904437ddef1763ffc8c36b3076c5b2f5306fbba735775a384e7a5f097ac0b9",
+    "windows_api_projection": "E:\\pip_temp\\sol61-desktop-a731730-windows-api-projection.json",
+    "windows_api_projection_sha256": "059dd92207a45d92562d3dc893d5b6fc924b6d0487379daf5d45187ae7a17866",
+    "raw_cli_log": "EMPTY_FAILED_INSPECTION_NOT_EVIDENCE_WHOLE_RUN_WAS_RUNNING",
+    "clean_user_onboarding_accepted": false,
+    "linux": "SUCCESS_BUILD_ARTIFACT_SMOKE_ONLY",
+    "macos": "SUCCESS_BUILD_ARTIFACT_SMOKE_ONLY",
+    "completed_at": "2026-10-01T22:04:33Z",
+    "completed_raw_job_log": "E:\\pip_temp\\sol61-desktop-a731730-windows-complete-job.log",
+    "completed_raw_job_log_sha256": "b8631fe51bdb24f4330dcde25a0298712a7dfb94a99e57352df80e92eb3390e0",
+    "linux_artifact": {
+      "id": 11196109937,
+      "archive_digest": "sha256:d163d6aa4c844806b4a6beabbb039546ecba78b2713199768423db38a779b7cd",
+      "installed_acceptance": false
+    },
+    "macos_artifact": {
+      "id": 11196325281,
+      "archive_digest": "sha256:02463dcb0026aeadf0ff0734af5fceefcd7cd3643347680d5adc5b70c72ca5f0",
+      "installed_acceptance": false
+    }
+  },
+  "post_gate_host_sample": {
+    "observed_at": "2026-10-01T21:36:59.0373344Z",
+    "record": "E:\\pip_temp\\sol61-external-projection-post-push-baseline.json",
+    "sha256": "89000e22e1477b2ae9e9cc074d02e124fea3dd97e7b2992a0cbad56cbf1d4bf8",
+    "physical_free_mib": 3681,
+    "commit_free_bytes": 2319159296,
+    "commit_limit_bytes": 31041257472,
+    "associated_node_count": 0,
+    "association_is_ownership_proof": false,
+    "local_start": "NOT_REQUESTED_BELOW_FLOORS",
+    "floor_or_pagefile_or_foreign_process_mutation": false
+  },
+  "historical_limits": {
+    "original_untraced_hook_lsp_provider_causes": "UNKNOWN_OPEN_NOT_WAIVED",
+    "new_144_provider_body_timeout": "BOUNDED_CURRENT_DEFECT_REPAIRED_REGRESSION_CANONICAL_AIDE_AND_EXACT_WINDOWS_INSTALLED_PROVEN",
+    "figma": "OAUTH_OWNER_SIGN_IN_REQUIRED_NO_EDITABLE_FILE",
+    "glib_advisory": "OPEN_READ_ONLY_RESEARCH_NO_DEPENDENCY_CHANGE",
+    "next_integration_phase_advanced": false,
+    "general_release_accepted": false
+  },
+  "package_identity": {
+    "root": "E:\\pip_temp\\covert-desktop-a731730-run36930702318",
+    "source": "a7317304453ee61966f4a63c7d3ffe85e6c84f54",
+    "run": 36930702318,
+    "nsis": {
+      "file": "nsis/Covert Coder_0.1.0_x64-setup.exe",
+      "bytes": 32639347,
+      "sha256": "3553ca08fa13a119a59e692245859adb229853e5d6bcbed6b78438fc6e54886f"
+    },
+    "msi": {
+      "file": "msi/Covert Coder_0.1.0_x64_en-US.msi",
+      "bytes": 50201400,
+      "sha256": "6eb5ac7a74fa6440b4f85e7da006c3e4fb48ffdd3efe2af9316fbc39eb54e6e8"
+    }
+  }
 }

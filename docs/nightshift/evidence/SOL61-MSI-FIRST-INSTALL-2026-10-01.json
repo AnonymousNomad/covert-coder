@@ -3,7 +3,7 @@
   "actor": "sol61",
   "branch": "nightshift/production-convergence-20260926",
   "parent_source": "43a43b2dd2a7171185dcea82ebdb15f1590d49fe",
-  "state": "MSI_FIRST_INSTALL_CLOSED_AT_144B3B6_NEW_E_CUMULATIVE_PROVIDER_BODY_TIMEOUT_OPEN",
+  "state": "MSI_FIRST_INSTALL_AND_CURRENT_EXTERNAL_REPAIR_VERIFIED_AT_A731730_HISTORICAL_UNTRACED_GATES_OPEN",
   "success_criteria": "FRESH_FIRST_INSTALL_AND_SAME_BUILD_REINSTALL_BOTH_WORK_WITH_ALL_NATIVE_HEALTH_RESTART_CRASH_RECOVERY_UNINSTALL_OWNERSHIP_CHECKS_UNCHANGED",
   "retained_hosted_result": {
     "run": 36913494020,
@@ -304,5 +304,25 @@
     "E": "Win32_LogicalDiskToPartition: Disk 0 Partition 0; ST1000LX015-1U7172 SATA HDD",
     "C": "Get-Partition/Get-Disk: Disk 1; KINGSTON RBUSNS8154P3128GJ NVMe SSD",
     "limit": "DEVICE_TYPE_ALONE_NOT_CAUSE_ASSIGNMENT"
+  },
+  "current_external_route_repair": {
+    "source": "a7317304453ee61966f4a63c7d3ffe85e6c84f54",
+    "receipt": "docs/nightshift/evidence/SOL61-EXTERNAL-ROUTE-LATENCY-2026-10-01.json",
+    "controlled_cause": "FULL_MODEL_MANAGER_LOCAL_RUNTIME_CLI_CATALOG_WORK_ON_EXTERNAL_AUTHORITY_PATH",
+    "original_red_preserved": true,
+    "canonical_full": "869_TOTAL_858_PASS_0_FAIL_11_SKIP_0_CANCEL",
+    "same_e_cumulative": "869_TOTAL_858_PASS_0_FAIL_11_SKIP_0_CANCEL",
+    "exact_aide_run": 36929243814,
+    "exact_aide": "SUCCESS_22_OF_22",
+    "exact_veritas": "PASS_6_OF_6",
+    "desktop_run": 36930702318,
+    "current_installed_acceptance": "EXACT_A731730_ACTUAL_NSIS_AND_MSI_FULL_LIFECYCLE_PASS_NOT_GENERAL_RELEASE",
+    "historical_untraced_causes": "UNKNOWN_OPEN_NOT_WAIVED",
+    "release_phase_advanced": false,
+    "windows_job": 110598961361,
+    "linux": "SUCCESS_BUILD_ARTIFACT_SMOKE_ONLY",
+    "macos": "SUCCESS_BUILD_ARTIFACT_SMOKE_ONLY",
+    "desktop_result": "SUCCESS_ALL_THREE_JOBS",
+    "completed_at": "2026-10-01T22:04:33Z"
   }
 }
