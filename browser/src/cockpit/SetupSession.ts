@@ -9,6 +9,7 @@ import type { AppState, Panel } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { OnboardingUserChoicesT } from '../../../common/contracts/onboarding.ts';
 import type { HardwareRecommendResponseT } from '../../../common/contracts/hardware.ts';
+import { createSetupValidation, setupValidationReady, type SetupCheck } from './setup-validation.ts';
 
 export interface SetupSessionHandles {
   open(): void;
@@ -95,8 +96,9 @@ export function createSetupSession(
   let hardwareLine = 'not scanned yet';
   let providersLine = 'not inspected yet';
   let workflowLine = 'not inspected yet';
-  let checks: Array<{ label: string; ok: boolean; detail: string }> = [];
-  let ready = false;
+  const validation = createSetupValidation();
+  let busy = false;
+  let session = 0;
 
   function renderField(labelText: string, control: HTMLElement): HTMLElement {
     const field = el('label', 'cockpit-setup-field');
@@ -150,7 +152,8 @@ export function createSetupSession(
     stageLabel.textContent = `SETUP ${stage + 1} OF ${STAGES.length}`;
     title.textContent = STAGES[stage]!;
     body.innerHTML = '';
-    back.disabled = stage === 0;
+    back.disabled = stage === 0 || busy;
+    next.disabled = busy;
     next.hidden = stage === STAGES.length - 1;
     next.textContent = stage === 3 ? 'APPROVE AND APPLY' : stage === 2 ? 'APPROVE CONFIGURATION' : 'CONTINUE';
 
@@ -234,12 +237,18 @@ export function createSetupSession(
     } else if (stage === 10) {
       body.appendChild(el('p', 'cockpit-setup-detail', 'Validation runs real checks before anything is called ready:'));
       const list = el('div', 'cockpit-setup-plan');
-      for (const check of checks) list.appendChild(line(`${check.ok ? 'PASS' : 'INFO'} — ${check.label}`, check.detail));
+      const result = validation.snapshot();
+      for (const check of result.checks) list.appendChild(line(`${check.status} — ${check.label}`, check.detail));
       body.appendChild(list);
-      ready = checks.filter(c => c.label !== 'providers').every(c => c.ok);
-      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED' : 'CORE VALIDATION INCOMPLETE — review the checks above'));
+      const ready = setupValidationReady(result);
+      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED' : `CORE VALIDATION ${result.status} — required checks must complete successfully`));
     } else if (stage === 11) {
-      body.appendChild(el('p', 'cockpit-setup-ready', ready ? 'YOUR WORKFLOW IS READY.' : 'SETUP SAVED — SOME CHECKS REMAIN'));
+      const ready = setupValidationReady(validation.snapshot());
+      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED.' : `SETUP UNRESOLVED — VALIDATION ${validation.snapshot().status}`));
+      const rerun = el('button', 'cockpit-setup-btn', 'RERUN VALIDATION') as HTMLButtonElement;
+      rerun.type = 'button';
+      rerun.addEventListener('click', () => { validation.invalidate(); stage = 10; renderStage(); });
+      body.appendChild(rerun);
       body.appendChild(el('p', 'cockpit-setup-detail', 'Talk to Resident to begin.'));
       const actions = el('div', 'cockpit-setup-actions');
       const makeAction = (label: string, panel: Panel): HTMLElement => {
@@ -298,18 +307,23 @@ export function createSetupSession(
   }
 
   async function runValidation(): Promise<void> {
-    const results: Array<{ label: string; ok: boolean; detail: string }> = [];
+    const runId = validation.begin();
+    renderStage();
+    const results: SetupCheck[] = [];
     const attempt = async (label: string, run: () => Promise<string>) => {
-      try { results.push({ label, ok: true, detail: await run() }); }
-      catch (error) { results.push({ label, ok: false, detail: String((error as Error).message).slice(0, 90) }); }
+      try { results.push({ label, status: 'PASSED', detail: await run() }); }
+      catch { results.push({ label, status: 'UNAVAILABLE', detail: 'Check could not complete; retry when the service is available.' }); }
     };
-    await attempt('daemon', async () => (await api.health()).workspace ?? 'reachable');
+    try {
+      const health = await api.health();
+      results.push({ label: 'daemon', status: health.state === 'HEALTHY' ? 'PASSED' : health.state === 'UNKNOWN' || health.state === 'STARTING' ? 'UNAVAILABLE' : 'FAILED', detail: `Daemon ${health.state}` });
+    } catch { results.push({ label: 'daemon', status: 'UNAVAILABLE', detail: 'Daemon status unavailable' }); }
     await attempt('hardware', async () => { const p = await api.hardwareProfile(); return `${Math.round(p.totalRamBytes / 1073741824)} GB RAM`; });
     await attempt('model registry', async () => { const s = await api.modelsStatus(); return `${s.models.length} models configured`; });
     await attempt('workflow runtime', async () => { const w = await api.workflowState(); return `stage ${w.stage}`; });
     await attempt('evidence bus', async () => { const a = await api.auditRead({ limit: 5 }); return `${a.events.length} recent events`; });
     await attempt('providers', async () => { const b = await api.byokStatus(); return `${b.providers.length} configured`; });
-    checks = results;
+    validation.complete(runId, results);
   }
 
   async function finish(): Promise<void> {
@@ -325,29 +339,45 @@ export function createSetupSession(
   }
 
   async function advance(): Promise<void> {
-    if (stage === 3) await approvalApply();
-    if (stage === 10) await runValidation();
-    if (stage === 11) { await finish(); return; }
-    stage = Math.min(stage + 1, STAGES.length - 1);
-    if (stage === 4) {
-      try { const b = await api.byokStatus(); providersLine = `${b.providers.length} configured · consent ${b.consent_enabled ? 'enabled' : 'disabled'}`; } catch { providersLine = 'unavailable'; }
-    }
+    if (busy || !open) return;
+    const currentSession = session;
+    const currentStage = stage;
+    busy = true;
     renderStage();
+    try {
+      if (currentStage === 3) await approvalApply();
+      if (currentStage === 10) await runValidation();
+      if (currentStage === 11) { await finish(); return; }
+      if (!open || session !== currentSession) return;
+      stage = Math.min(currentStage + 1, STAGES.length - 1);
+      if (stage === 4) {
+        try { const b = await api.byokStatus(); providersLine = `${b.providers.length} configured · consent ${b.consent_enabled ? 'enabled' : 'disabled'}`; } catch { providersLine = 'unavailable'; }
+      }
+    } finally {
+      if (open && session === currentSession) { busy = false; renderStage(); }
+    }
   }
 
-  back.addEventListener('click', () => { if (stage > 0) { stage--; renderStage(); } });
+  back.addEventListener('click', () => { if (stage > 0 && !busy) { validation.invalidate(); stage--; renderStage(); } });
   next.addEventListener('click', () => { void advance(); });
   skip.addEventListener('click', () => close());
 
   function show(): void {
+    session++;
+    const currentSession = session;
     open = true;
+    busy = true;
+    validation.invalidate();
     root.hidden = false;
     stage = 0;
     renderStage();
-    void loadProfile().then(() => renderStage());
+    void loadProfile().then(() => { if (open && session === currentSession) { busy = false; renderStage(); } });
   }
 
   function close(): void {
+    session++;
+    validation.invalidate();
+    busy = false;
     open = false;
     root.hidden = true;
   }

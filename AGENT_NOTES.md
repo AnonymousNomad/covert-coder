@@ -5,6 +5,23 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-01 05:29] Actor: sol61
+- Type: repair / verification
+- Status: verified in isolation; integration pending
+- Summary: F01 stale-readiness defect reproduced in Edge and repaired with explicit current-run state.
+- Details: Baseline browser reproduction saw premature PASS and stale READY after failed daemon read. Regression state tests passed 8/8; affected onboarding plus state tests passed 14/14; six browser scenarios passed; both TypeScript checks, scoped ESLint and frontend build passed. Readiness requires all five distinct required check identities to pass, rejects incomplete/duplicate/stale results, and clears on navigation/rerun/reopen. Source writes and live runtime were not exercised.
+- Files: SetupSession.ts, setup-validation.ts, setup-validation-truth.test.ts, setup-truth-ui.mjs, docs/audit/SOL61-PRODUCT-CLOSURE-2026-10-01.md.
+- Next: F03 canonical provider-status truth and F02 persistence/completion repair; exact-SHA architecture/Veritas CI before handoff. Canonical and PR #31 remain untouched.
+
+Sol 6.1 isolated mission (2026-10-01 05:20): `audit/sol61-product-closure-20261001` at `E:\covert-sol61-product-closure` starts from clean canonical `fc263fe26f364b5c972be79a8ac6e651a671dcd0`. Canonical worktree remains untouched. Scope: F01 setup readiness, F03 provider truth, F02 persistence/provisioning truth, then capability ledger and historical reconciliation. Changes require integration by Luna; the Sol directive authorizes no convergence merge.
+
+### [2026-10-01 05:20] Actor: sol61
+- Type: decision / audit
+- Status: in-progress
+- Summary: Read the full Sol directive, updated RC goal, Developer's Way, frontend skill, capability-truth directive and Issue #38 before mutation.
+- Details: Source branch `nightshift/production-convergence-20260926` is clean at `fc263fe26f364b5c972be79a8ac6e651a671dcd0`; AIDE run `36846897996` passed. Isolated checkout completed. Existing Node PIDs 19724, 17188, 2368 were observed and left untouched. Source confirms empty-check `.every()` and stale readiness, failed BYOK read mapping to LOCAL_ONLY, and swallowed onboarding/profile writes. Packaging remains Luna's active blocker. No model/runtime launch or credential read occurred.
+- Next: browser reproduction, bounded repairs and regressions, coherent commits, exact-SHA CI on this branch, integration handoff through Issue #38. PR #31 remains frozen.
+
 Latest status (2026-10-01 04:54): the canonical convergence branch records this documentation checkpoint; runtime source SHA `33eeefe2a2ce3dbc429b2307d497a4f42654a712` passed exact-SHA AIDE CI run `36840528962` (22/22), while Desktop run `36840612821` again failed Windows NSIS startup with EOF before pairing bytes and a live child; MSI lifecycle was skipped. The exact run's MSI-bundled Node 22.20.0 and launcher passed a local Rust GUI-parent stdout-pipe harness, including in-memory frame validation, facade health 200, and owned cleanup. This did not exercise the exact Tauri executable or GitHub runner. Startup root cause and package acceptance remain UNKNOWN; no repair or release claim is made. PR #31 remains frozen.
 
 Previous status (2026-10-01 02:12): `nightshift/production-convergence-20260926` is pushed at `b91fa9c7f67e4a44f5c6f04ca7ea40202027c8dd`; exact-SHA AIDE CI run `36825927073` passed 22/22, while Desktop run `36825959704` again failed installed NSIS startup with exit 101 and skipped MSI. Its bundled Node version, syntax, and authority-module probes passed; there was no exact-path WER event or child log. Local WIP adds a bounded exact-installed-resource launcher reproduction. The exact resource tree extracted from the prior MSI artifact paired and reached facade health 200 three times under direct launch; each run's exact Node tree, listeners, and newly created `.aide` workspace were cleaned. Fresh post-diagnostic sample at `2026-10-01T07:09:31Z` was 7.64/6.50 GiB physical free and 8.94/5.00 GiB commit free. No unrelated process was stopped. The upcoming Windows run must reproduce from the installed NSIS root before the remaining cause can be attributed to that tree or the Tauri parent. Packaged acceptance and the NSIS/MSI lifecycle remain open. The LFM2.5 local-runtime proof remains distinct from packaged acceptance. Live provider execution remains UNKNOWN pending owner-managed auth and spend ceiling; PR #31 remains frozen.
