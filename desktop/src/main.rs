@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs::OpenOptions;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -78,11 +78,43 @@ fn install_startup_panic_diagnostics() {
     }));
 }
 
+fn validate_pairing_response(line: &str, read_result: &io::Result<usize>) -> Result<String, String> {
+    const PREFIX: &str = "COVERT_PAIRING_V1 ";
+    let read_bytes = match read_result {
+        Ok(bytes) => *bytes,
+        Err(error) => {
+            return Err(format!(
+                "invalid private bootstrap response (read_error={:?}, line_bytes={})",
+                error.kind(),
+                line.len()
+            ));
+        }
+    };
+    let candidate = line.trim();
+    let Some(proof) = candidate.strip_prefix(PREFIX) else {
+        return Err(format!(
+            "invalid private bootstrap response (read_bytes={read_bytes}, prefix_match=false, marker_present={}, utf8_bom={})",
+            line.contains(PREFIX),
+            line.starts_with('\u{feff}')
+        ));
+    };
+    let charset_valid = proof
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_');
+    if proof.len() != 43 || !charset_valid {
+        return Err(format!(
+            "invalid private bootstrap response (read_bytes={read_bytes}, prefix_match=true, proof_bytes={}, charset_valid={charset_valid})",
+            proof.len()
+        ));
+    }
+    Ok(proof.to_owned())
+}
+
 #[cfg(test)]
 mod startup_diagnostic_tests {
     use super::{
         bound_startup_diagnostic, redact_startup_diagnostic, startup_diagnostic_path,
-        write_startup_diagnostic, STARTUP_DIAGNOSTIC_MAX_CHARS,
+        validate_pairing_response, write_startup_diagnostic, STARTUP_DIAGNOSTIC_MAX_CHARS,
     };
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -129,6 +161,43 @@ mod startup_diagnostic_tests {
         assert!(!contents.contains(&proof));
         assert!(contents.contains("COVERT_PAIRING_V1 [redacted]"));
     }
+
+    #[test]
+    fn valid_private_bootstrap_frame_is_accepted_without_changing_the_proof() {
+        let proof = "A".repeat(43);
+        let line = format!("COVERT_PAIRING_V1 {proof}\r\n");
+        assert_eq!(validate_pairing_response(&line, &Ok(line.len())).as_deref(), Ok(proof.as_str()));
+    }
+
+    #[test]
+    fn invalid_private_bootstrap_frame_reports_only_safe_shape_metadata() {
+        let line = "unexpected launcher response: sensitive detail";
+        let error = validate_pairing_response(line, &Ok(line.len())).unwrap_err();
+        assert!(error.contains("prefix_match=false"));
+        assert!(error.contains("marker_present=false"));
+        assert!(!error.contains("unexpected launcher response"));
+        assert!(!error.contains("sensitive detail"));
+    }
+
+    #[test]
+    fn malformed_private_bootstrap_proof_reports_length_and_charset_only() {
+        let proof = "A".repeat(42);
+        let line = format!("COVERT_PAIRING_V1 {proof}");
+        let error = validate_pairing_response(&line, &Ok(line.len())).unwrap_err();
+        assert!(error.contains("proof_bytes=42"));
+        assert!(error.contains("charset_valid=true"));
+        assert!(!error.contains(&proof));
+    }
+
+    #[test]
+    fn byte_order_mark_is_identified_without_recording_the_pairing_proof() {
+        let proof = "A".repeat(43);
+        let line = format!("\u{feff}COVERT_PAIRING_V1 {proof}");
+        let error = validate_pairing_response(&line, &Ok(line.len())).unwrap_err();
+        assert!(error.contains("marker_present=true"));
+        assert!(error.contains("utf8_bom=true"));
+        assert!(!error.contains(&proof));
+    }
 }
 
 #[tauri::command]
@@ -147,9 +216,7 @@ fn read_pairing(child: &mut Child) -> Result<String, String> {
     thread::spawn(move || {
         let mut line = String::new();
         let result = BufReader::new(stdout).take(128).read_line(&mut line);
-        let proof = line.trim().strip_prefix("COVERT_PAIRING_V1 ").unwrap_or("");
-        let valid = result.is_ok() && proof.len() == 43 && proof.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_');
-        let _ = tx.send(if valid { Ok(proof.to_owned()) } else { Err("invalid private bootstrap response".to_string()) });
+        let _ = tx.send(validate_pairing_response(&line, &result));
     });
     rx.recv_timeout(Duration::from_secs(60)).map_err(|_| "private bootstrap timed out".to_string())?
 }
