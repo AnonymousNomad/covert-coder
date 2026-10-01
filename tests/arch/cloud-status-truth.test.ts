@@ -31,9 +31,11 @@ test('configured auth does not establish verified model availability', () => {
   const connected = { ...configured, status: 'connected' as const, routing_available: true,
     access: { ...configured.access, health: 'healthy' as const, setup_state: 'ready' as const } };
   assert.equal(deriveCloudStatus(byok, view([connected])), 'REMOTE_CONFIGURED');
-  const qualified = { ...connected, access: { ...connected.access, model_refs: [{ model_id: 'fixture:model', provider_model_id: 'model', model_support_state: 'verified' as const }] } };
+  const qualified = { ...connected, access: { ...connected.access, operator_setup_required: false, model_refs: [{ model_id: 'fixture:model', provider_model_id: 'model', model_support_state: 'verified' as const }] } };
   assert.equal(deriveCloudStatus(byok, view([qualified])), 'REMOTE_AVAILABLE');
   assert.equal(deriveCloudStatus(byok, view([{ ...qualified, routing_available: false }])), 'REMOTE_CONFIGURED');
+  assert.equal(deriveCloudStatus(byok, view([{ ...qualified, access: { ...qualified.access, execution_adapters: [] } }])), 'REMOTE_CONFIGURED');
+  assert.equal(deriveCloudStatus(byok, view([{ ...qualified, access: { ...qualified.access, operator_setup_required: true } }])), 'REMOTE_CONFIGURED');
 });
 test('missing authentication, unknown auth and observed unavailable configured route remain distinct', () => {
   const missing = { ...configured, access: { ...configured.access, authentication_configured: false,

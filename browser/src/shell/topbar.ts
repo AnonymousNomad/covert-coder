@@ -60,7 +60,7 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
       <button class="topbar-hint" type="button" disabled title="Command palette unavailable in this cockpit phase" aria-label="Command palette unavailable">
         <kbd>Ctrl</kbd><kbd>K</kbd>
       </button>
-      <button class="topbar-hint" type="button" disabled title="Terminal command palette unavailable; terminal view is read-only" aria-label="Terminal command palette unavailable">
+      <button class="topbar-hint" type="button" disabled title="Terminal shortcut is not wired; open TERMINAL for approved interactive sessions" aria-label="Terminal keyboard shortcut unavailable">
         <kbd>Ctrl</kbd><kbd>&#96;</kbd>
       </button>
     </header>

@@ -10,7 +10,8 @@ export function deriveCloudStatus(byok: ByokStatusResponseT, view: ConnectionsVi
   const remote = view.connections.filter(connection => connection.access.external_egress_required && connection.kind !== 'catalog-token');
   if (remote.some(connection => connection.routing_available && connection.status === 'connected' &&
     connection.access.authentication_configured && connection.access.health === 'healthy' &&
-    connection.access.setup_state === 'ready' && connection.access.model_refs.some(model => model.model_support_state === 'verified'))) return 'REMOTE_AVAILABLE';
+    connection.access.setup_state === 'ready' && !connection.access.operator_setup_required &&
+    connection.access.execution_adapters.length > 0 && connection.access.model_refs.some(model => model.model_support_state === 'verified'))) return 'REMOTE_AVAILABLE';
   if (remote.some(connection => connection.access.credential_source.configuration_state === 'unknown')) return 'STATUS_UNAVAILABLE';
   const configured = remote.filter(connection => connection.access.authentication_configured);
   if (configured.length > 0) {

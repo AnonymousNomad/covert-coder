@@ -8,11 +8,12 @@ import path from 'node:path';
 
 async function run() {
 const baselinePersistence = process.argv.includes('--reproduce-persistence');
+const baselineMode = baselinePersistence || process.argv.includes('--reproduce');
 const baselineId = path.resolve('browser/src/cockpit/__setup_truth_baseline__.ts').replaceAll('\\', '/');
-const baselineSource = baselinePersistence ? execFileSync('git', ['show', 'fc263fe26f364b5c972be79a8ac6e651a671dcd0:browser/src/cockpit/SetupSession.ts'], { encoding: 'utf8' }) : '';
+const baselineSource = baselineMode ? execFileSync('git', ['show', 'fc263fe26f364b5c972be79a8ac6e651a671dcd0:browser/src/cockpit/SetupSession.ts'], { encoding: 'utf8' }) : '';
 const server = await createServer({
   configFile: 'browser/vite.config.ts',
-  plugins: baselinePersistence ? [{ name: 'readonly-original-setup',
+  plugins: baselineMode ? [{ name: 'readonly-original-setup',
     resolveId(id) { if (id.endsWith('/__setup_truth_baseline__.ts')) return baselineId; },
     load(id) { if (id === baselineId) return baselineSource; },
   }] : [],
@@ -56,7 +57,7 @@ try {
       onToast: (_code, message) => state.toasts.push(message), onNavigate: () => {},
     });
     window.setup.open();
-  }, baselinePersistence);
+  }, baselineMode);
   const title = page.locator('.cockpit-setup-title');
   const next = page.locator('.cockpit-setup-primary');
   if (baselinePersistence) {
@@ -138,10 +139,13 @@ try {
       await createCloudStatusReader(async () => { throw new Error('BYOK status unavailable'); }, state => {
         topbar.setCloud(state); labels.push(host.querySelector('[data-chip-label="cloud"]').textContent);
       }).refresh();
-      return labels;
+      return { labels, terminalTitle: host.querySelector('[aria-label="Terminal keyboard shortcut unavailable"]').title };
     });
-    assert.deepEqual(cloudEvidence, ['REMOTE: CHECKING', 'REMOTE: CHECKING', 'REMOTE STATUS UNAVAILABLE']);
+    assert.deepEqual(cloudEvidence.labels, ['REMOTE: CHECKING', 'REMOTE: CHECKING', 'REMOTE STATUS UNAVAILABLE']);
     console.log('PASS UI: provider read failure renders unknown rather than LOCAL ONLY');
+    assert.match(cloudEvidence.terminalTitle, /approved interactive sessions/);
+    assert.doesNotMatch(cloudEvidence.terminalTitle, /read-only/);
+    console.log('PASS UI: terminal shortcut copy distinguishes the real interactive panel');
     async function fresh(failure) {
       await page.evaluate(value => {
         window.setup.close(); window.fixture.saved = null; window.fixture.failure = value;
