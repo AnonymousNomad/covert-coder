@@ -5,6 +5,33 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+Sol final evidence receipt (2026-10-01 06:53): code checkpoint `4e1c85f`
+passed exact-SHA AIDE CI 36856924786, all 23 steps, including 18 Chromium
+regressions and Veritas exit 0. This documentation/JSON receipt will be pushed
+as the final bounded checkpoint. Its own exact HEAD/CI outcome will be recorded
+in Issue #38, avoiding a self-referential SHA update in committed evidence.
+Canonical remains clean at `fc263fe`; integration belongs to Luna.
+
+### [2026-10-01 06:53] Actor: sol61
+- Type: checkpoint / evidence
+- Status: exact code SHA CI green; final receipt prepared
+- Summary: Closed hosted verification for the seven isolated code commits and prepared the complete integration handoff.
+- Details: Run 36856924786 completed SUCCESS on exact 4e1c85f3b1881102ff7e7e1dc37630e232e17f1a, all 23 steps passed. Captured logs show all 18 browser scenarios and Veritas exit 0; architecture, backend/static, worktree and cleanup passed. No CI rerun or gate cancellation occurred. Added bounded machine-readable verification JSON with exact code SHA, all CI step outcomes, 865/0/11 local count, all 11 skip reasons, log hashes, preserved failed reproduction/interrupted push, closure BLOCKED state and explicit non-release limits. Added full seven-commit handoff and product-decision/non-claim boundaries. Saved/loaded failure-gh-api-slurp-jq for the earlier CLI incompatibility; prior source-filename, hook, logger and session-race SOPs remain applied. Final documentation SHA cannot name itself in committed text; its exact result is durably recorded through Issue #38 after push.
+- Next: Diff/JSON validation, documentation-only commit and normal versioned push hook, then observe that exact SHA's full CI and publish the final receipt through Issue #38. Preserve Luna/canonical and frozen PR #31.
+
+Sol final code checkpoint (2026-10-01 06:45): `4e1c85f` is pushed clean with
+local/origin parity. Full repaired Windows gate passed 865/0/11 of 876 tests;
+18 browser scenarios and final type/lint/build passed. CI 36856924786 is running.
+Issue #38 comment 5930610507 records exact order and evidence boundaries.
+This local evidence refresh awaits the exact-SHA result before its final push.
+
+### [2026-10-01 06:45] Actor: sol61
+- Type: checkpoint / verification
+- Status: full local gate green; final hosted CI pending
+- Summary: Published all seven isolated commits after the repaired complete architecture gate.
+- Details: Actual versioned pre-push passed 876 total, 865 passed, zero failed/cancelled, 11 skipped in 768.811 seconds; the logger ENOENT warning did not recur. Final code HEAD/origin match 4e1c85f3b1881102ff7e7e1dc37630e232e17f1a. Eighteen actual Edge component scenarios, TypeScript/scoped ESLint/syntax/frontend build passed. Owned verification process search returned none; pre-existing Node PIDs 19724/17188/2368 and Edge 17096 remained. GitHub plugin read Issue #38 (no new corrective comment) and posted 5930610507 with exact seven-commit integration order. Review bridge not callable; no new plugin needed. Existing Dependabot #1 was inspected: desktop glib 0.18.5, moderate GHSA-wrw7-89jp-8q8g, upstream fixed 0.20.0; candidate/platform exposure unverified, no packaging dependency changed.
+- Next: Observe all exact-SHA CI gates including required Chromium regression, capture results in evidence/journal, then push the bounded documentation receipt and preserve final CI through Issue #38. No convergence merge authorized; Luna owns packaging/integration.
+
 Sol review correction (2026-10-01 06:30): foundation committed `022790e`;
 full pre-push interrupted before upload to repair a reproduced setup provider
 read race. Remote remains `4cf80d9`. Both abandoned-success/error paths now

@@ -144,6 +144,27 @@ checks and CI at that SHA; no isolated evidence can promote the release.
 
 ## Checkpoint disposition
 
+Final code checkpoint `4e1c85f3b1881102ff7e7e1dc37630e232e17f1a` is pushed
+clean with local/origin parity. The repaired full Windows versioned pre-push
+gate passed **876 total / 865 passed / 0 failed / 11 skipped** in 768.811 seconds.
+No logger write-failure warning was present. The full log is
+`E:\pip_temp\sol61-repaired-full-push.log`, SHA-256
+`7131aac3098690427c0e8300e7d30b2a93f857cd21d8667f5d5f915e1a597dde`.
+Final browser regression passed 18 scenarios; both TypeScript checks, scoped
+ESLint, syntax and frontend build passed. No matching owned verification
+process remained after completion; observed pre-existing Node and Edge process
+identities remained untouched. CI `36856924786` is pending at this entry.
+
+Issue #38 checkpoint: comment `5930610507`. The GitHub plugin was callable and
+used for review reads and this authorized checkpoint; no additional plugin was
+needed. The optional review bridge was not exposed in this session.
+
+The push reported existing moderate Dependabot alert #1. API readback and the
+lockfile confirm `desktop/Cargo.lock` has glib 0.18.5 and advisory
+GHSA-wrw7-89jp-8q8g reports a fix at 0.20.0. Candidate/platform exposure remains
+unverified. No packaging dependency change was made; this is a packaging-owner
+security-triage input, not evidence that Windows is affected.
+
 - CAPABILITIES ADDED: none canonical; F01/F02/F03 repairs, required browser
   regressions and capability-closure foundation prepared in isolation.
 - CAPABILITIES LOST: none removed by this slice; seven bounded historical
@@ -157,5 +178,75 @@ checks and CI at that SHA; no isolated evidence can promote the release.
   live route/installed mission acceptance and remaining RC gates.
 - EVIDENCE: first pushed checkpoint `4cf80d9`, full architecture 858/0/11,
   exact-SHA CI `36852046339` (22/22). Subsequent focused tests passed 27/27,
-  browser regressions 16 scenarios; type/lint/build/diff checks passed.
-  Final foundation full gate and exact-SHA CI remain pending at this entry.
+  browser regressions now 18 scenarios; type/lint/build/diff checks passed.
+  Final full gate passed 865/0/11; final exact-SHA CI is pending at this entry.
+
+## Sol integration handoff
+
+Final code CI receipt: [AIDE CI 36856924786](https://github.com/AnonymousNomad/covert-coder/actions/runs/36856924786)
+completed SUCCESS on exact `4e1c85f3b1881102ff7e7e1dc37630e232e17f1a`;
+all 23 steps passed. Captured logs confirm all 18 Chromium browser scenarios,
+Veritas exit 0, and all required gate outcomes success. No rerun was requested.
+Machine-readable bounded evidence: `SOL61-VERIFICATION-2026-10-01.json`.
+The earlier pending entries above preserve chronology; this result supersedes
+their CI status without changing their evidence scope.
+
+SOURCE: canonical `nightshift/production-convergence-20260926` at
+`fc263fe26f364b5c972be79a8ac6e651a671dcd0`.
+
+FINAL CODE: isolated `audit/sol61-product-closure-20261001` at
+`4e1c85f3b1881102ff7e7e1dc37630e232e17f1a`. The documentation receipt is a
+subsequent bounded checkpoint; its final HEAD/CI is recorded through Issue #38.
+
+REPAIRS COMPLETED IN ISOLATION: F01 completed-current-run validation; F02
+required preference writes, resumability and provisioning copy; F03 unknown
+provider state and explicit routing semantics; abandoned provider reads;
+truthful terminal shortcut copy; fixture logger cleanup ordering.
+
+REGRESSIONS ADDED: state-machine/profile/cloud/closure tests, 18 browser
+scenarios, required Chromium CI, and logger-drain teardown assertions.
+Success/failure/unavailable/stale paths are distinct; no assertion was weakened.
+
+CAPABILITIES RECOVERED: integration-ready truth semantics and a partial
+machine-readable closure gate. Historical UI capabilities have selective
+integration plans; none was restored into canonical by this lane.
+
+CAPABILITY DRIFT: Original, Matrix, terminal presentation, Model Packs,
+Developer Notes, System Advisories and Developer Specials have bounded
+historical evidence but absent/incomplete exposure at the assessed canonical
+SHA. Beskar has a separate design requirement; Resident docking is partial.
+
+COMMITS / LUNA INTEGRATION ORDER:
+
+| SHA | Stronger invariant |
+| --- | --- |
+| `e82c4ee609247466fda55a78114791b8a6308bee` | Required validation must complete in the current run. |
+| `77987bc38c8480109828e84ee2d3a80239fbc8c8` | Failed status read never implies LOCAL ONLY. |
+| `4cf80d95a71de917735be91862ae796ce5deb9ed` | Required persisted choices gate setup completion. |
+| `d084200b7756e11afacb5766ea83384edd3d84a5` | Fixture logging drains before deleting its workspace. |
+| `b9e8b0428aadd90066a6883ef4a5687f109ce108` | Remote availability requires adapter/setup evidence; browser regressions are mandatory CI. |
+| `022790e73a134b9f486a559dc311ac20c294512c` | Required capability drift and missing current evidence block the ledger gate. |
+| `4e1c85f3b1881102ff7e7e1dc37630e232e17f1a` | Abandoned provider success/error cannot overwrite a reopened dialog. |
+
+Apply only after Luna's earned packaging checkpoint and fresh reconciliation.
+Preserve both lanes' journals, then reprove the convergence SHA. See the
+selective capability integration plan for owner/path-specific recovery work.
+
+TEST EVIDENCE: commands/results and reproduction/root-cause history above;
+full architecture 865/0/11, focused tests 27/27, browser 18 scenarios,
+TypeScript/scoped ESLint/syntax/frontend build passed. Eight local skips need
+bundled GGUFs absent from this checkout; three are existing migration waivers.
+
+OPEN BLOCKERS: native packaging/bootstrap EOF at the assessed source;
+unintegrated truth repairs; incomplete closure inventory and required drift;
+real installed provider/model/Resident coding mission and recovery acceptance.
+The glib alert is a separate security-triage input with unverified platform
+exposure, not a demonstrated Windows runtime defect.
+
+PRODUCT DECISIONS NEEDED: none for these isolated repairs. Future Beskar
+identity/emblem approval, if unavailable at implementation time, belongs to
+that future capability unit; this work creates no new owner approval gate.
+
+DO NOT CLAIM: canonical repair completion, provider/model qualification,
+installed acceptance, live coding/dogfood, restored themes/MM9/docking,
+security clearance, full release-gate certification or RC readiness.

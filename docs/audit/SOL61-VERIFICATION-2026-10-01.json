@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "assessment": "ISOLATED_BOUNDED_QUALIFICATION",
+  "source": {
+    "branch": "nightshift/production-convergence-20260926",
+    "sha": "fc263fe26f364b5c972be79a8ac6e651a671dcd0"
+  },
+  "code_checkpoint": {
+    "branch": "audit/sol61-product-closure-20261001",
+    "sha": "4e1c85f3b1881102ff7e7e1dc37630e232e17f1a"
+  },
+  "environment": {
+    "local": "Windows; Node 26.4.0; headless installed Edge",
+    "ci": "ubuntu-latest; Node 26.4.0; Chromium"
+  },
+  "verification": {
+    "full_architecture": {
+      "total": 876,
+      "passed": 865,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 11,
+      "duration_ms": 768811.4532,
+      "log": "E:\\pip_temp\\sol61-repaired-full-push.log",
+      "log_sha256": "7131aac3098690427c0e8300e7d30b2a93f857cd21d8667f5d5f915e1a597dde",
+      "skipped_tests": [
+        "﹣ probeGguf reads the real bundled models metadata (1.2835ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)",
+        "﹣ GET /api/models/status lists the bundled models through the envelope (2501.525ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)",
+        "﹣ POST /api/models/ingest rejects a non-gguf path (0.2767ms) # POST /api/models/ingest remains migration-waived (ARCHITECTURE-DECISION); re-enable the validation assertions when it enrolls",
+        "﹣ POST /api/chat on an unstarted model returns NOT_READY (0.1555ms) # POST /api/chat remains migration-waived (ARCHITECTURE-DECISION); re-enable the not-ready assertion (and the endpoint-occupancy guard) when it enrolls",
+        "﹣ POST /api/chat/stream on an unstarted model emits a validated error event (0.1007ms) # POST /api/chat/stream remains migration-waived (ARCHITECTURE-DECISION); re-enable the SSE error-event assertion when it enrolls",
+        "﹣ status lists bundled manifest models with runtime flags (535.7043ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)",
+        "﹣ ingest registers a real GGUF with a device fit report (0.2743ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)",
+        "﹣ ingest is idempotent for the same file (0.1537ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)",
+        "﹣ start refuses an ingested model whose file changed after ingestion (0.2031ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)",
+        "﹣ start relocates to a free port when a foreign server squats the endpoint (0.2403ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)",
+        "﹣ start serves the ingested model for real and stop tears it down (0.3353ms) # bundled GGUF artifacts are not present in this checkout (models/*.gguf are not committed)"
+      ]
+    },
+    "focused_tests": {
+      "passed": 27,
+      "failed": 0,
+      "scope": "setup validation/profile, cloud state, closure gate, logger fixture"
+    },
+    "browser": {
+      "command": "node scripts/setup-truth-ui.mjs",
+      "scenarios_passed": 18,
+      "api_results": "CONTROLLED_FIXTURES",
+      "windows_edge": "PASS",
+      "linux_chromium": "PASS"
+    },
+    "static": {
+      "node_typescript": "PASS",
+      "browser_typescript": "PASS",
+      "scoped_eslint": "PASS",
+      "script_syntax": "PASS",
+      "frontend_build": "PASS",
+      "diff_check": "PASS"
+    },
+    "ci": {
+      "run_id": 36856924786,
+      "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/36856924786",
+      "source_sha": "4e1c85f3b1881102ff7e7e1dc37630e232e17f1a",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v7.0.1",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v7.0.0",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-python@v7.0.0",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run python -m pip install --quiet debugpy",
+          "conclusion": "success"
+        },
+        {
+          "name": "install locked dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "frontend build",
+          "conclusion": "success"
+        },
+        {
+          "name": "backend and integration tests",
+          "conclusion": "success"
+        },
+        {
+          "name": "setup and provider truth browser regressions",
+          "conclusion": "success"
+        },
+        {
+          "name": "type checks and lint",
+          "conclusion": "success"
+        },
+        {
+          "name": "architecture tests (bounded)",
+          "conclusion": "success"
+        },
+        {
+          "name": "upload arch test log",
+          "conclusion": "success"
+        },
+        {
+          "name": "veritas gates",
+          "conclusion": "success"
+        },
+        {
+          "name": "veritas report from captured gates",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@v7.0.1",
+          "conclusion": "success"
+        },
+        {
+          "name": "generated-file and worktree check",
+          "conclusion": "success"
+        },
+        {
+          "name": "fixture cleanup",
+          "conclusion": "success"
+        },
+        {
+          "name": "upload CI diagnostics",
+          "conclusion": "success"
+        },
+        {
+          "name": "required gate summary",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-python@v7.0.0",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v7.0.0",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v7.0.1",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "lifecycle": {
+      "owned_verification_process_search": "NONE_REMAINING",
+      "foreign_observed_processes": "UNTOUCHED"
+    },
+    "closure_gate": {
+      "inventory": "PARTIAL",
+      "records": 12,
+      "historical_drift": 7,
+      "release_result": "BLOCKED",
+      "schema_validation_is_release_acceptance": false
+    }
+  },
+  "failures_preserved": [
+    {
+      "name": "setup provider stale response",
+      "source_sha": "022790e73a134b9f486a559dc311ac20c294512c",
+      "result": "REPRODUCED",
+      "repair_sha": "4e1c85f3b1881102ff7e7e1dc37630e232e17f1a",
+      "log": "E:\\pip_temp\\sol61-provider-race-before.log",
+      "log_sha256": "e55c61282c6a24e6229955e2878c13b3016595fed35846342c73f004034e0bde"
+    },
+    {
+      "name": "interrupted final pre-push",
+      "result": "INCOMPLETE_NOT_PASS",
+      "log": "E:\\pip_temp\\sol61-final-push.log",
+      "remote_advanced": false
+    }
+  ],
+  "scope_limits": [
+    "NOT_CANONICAL_CONVERGENCE",
+    "NOT_LIVE_PROVIDER_OR_MODEL_QUALIFICATION",
+    "NOT_INSTALLED_ACCEPTANCE",
+    "NOT_DOGFOOD",
+    "NOT_RELEASE_ACCEPTANCE",
+    "NOT_SECURITY_CLEARANCE"
+  ],
+  "review_issue": "https://github.com/AnonymousNomad/covert-coder/issues/38#issuecomment-5930610507"
+}
