@@ -261,6 +261,205 @@ function Test-ProcessDescendsFrom {
   return $false
 }
 
+function Get-FreeDiagnosticPort {
+  $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+  try {
+    $listener.Start()
+    return [int]$listener.LocalEndpoint.Port
+  } finally {
+    $listener.Stop()
+  }
+}
+
+function Get-InstalledDiagnosticNodeTree {
+  param([int]$RootProcessId, [string]$NodePath)
+  @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.Name -ieq 'node.exe' -and
+    $_.ExecutablePath -ieq $NodePath -and
+    ([int]$_.ProcessId -eq $RootProcessId -or (Test-ProcessDescendsFrom -ProcessId ([int]$_.ProcessId) -AncestorProcessId $RootProcessId))
+  } | ForEach-Object { [int]$_.ProcessId })
+}
+
+function Write-InstalledDiagnosticLogTails {
+  param([string]$LogsDirectory)
+  foreach ($label in @('arch', 'legacy', 'facade')) {
+    foreach ($stream in @('out', 'err')) {
+      $logName = "desktop-$label-$stream.log"
+      $logPath = Join-Path $LogsDirectory $logName
+      if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { continue }
+      $lines = @(Get-Content -LiteralPath $logPath -Tail 40 -ErrorAction SilentlyContinue)
+      $text = [string]::Join([Environment]::NewLine, [string[]]$lines)
+      $text = [regex]::Replace($text, 'COVERT_PAIRING_V1\s+\S+', 'COVERT_PAIRING_V1 [redacted]')
+      if ($text.Length -gt 3000) { $text = $text.Substring($text.Length - 3000) }
+      Write-Host "desktop startup diagnostics: exact-root $logName tail (capped at 3000 characters)"
+      if ($text) { Write-Host $text }
+    }
+  }
+}
+
+function Invoke-ExactInstalledResourceLauncherDiagnostic {
+  param([string]$ResourceRoot)
+  $root = (Resolve-Path -LiteralPath $ResourceRoot -ErrorAction Stop).Path
+  $nodePath = Join-Path (Join-Path $root 'runtime') 'node.exe'
+  $launcherPath = Join-Path $root 'stack-launcher.mjs'
+  $aideDirectory = Join-Path $root '.aide'
+  if (-not (Test-Path -LiteralPath $nodePath -PathType Leaf) -or -not (Test-Path -LiteralPath $launcherPath -PathType Leaf)) {
+    Write-Host 'desktop startup diagnostics: exact-root launcher diagnostic skipped; required resource missing'
+    return
+  }
+  if (Test-Path -LiteralPath $aideDirectory) {
+    Write-Host 'desktop startup diagnostics: exact-root launcher diagnostic skipped; pre-existing .aide workspace preserved'
+    return
+  }
+
+  $baselineNodeIds = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.Name -ieq 'node.exe' -and $_.ExecutablePath -ieq $nodePath
+  } | ForEach-Object { [int]$_.ProcessId })
+  if ($baselineNodeIds.Count) {
+    Write-Host "desktop startup diagnostics: exact-root launcher diagnostic skipped; pre-existing bundled Node PID(s)=$($baselineNodeIds -join ',')"
+    return
+  }
+
+  $ports = @()
+  while ($ports.Count -lt 3) {
+    $port = Get-FreeDiagnosticPort
+    if ($ports -notcontains $port) { $ports += $port }
+  }
+  $archPort = $ports[0]
+  $legacyPort = $ports[1]
+  $facadePort = $ports[2]
+  $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+  $startInfo.FileName = $nodePath
+  $startInfo.WorkingDirectory = $root
+  $startInfo.UseShellExecute = $false
+  $startInfo.CreateNoWindow = $true
+  $startInfo.RedirectStandardOutput = $true
+  $startInfo.RedirectStandardError = $true
+  foreach ($argument in @($launcherPath, '--native-bootstrap', '--pair-origin=http://tauri.localhost')) {
+    [void]$startInfo.ArgumentList.Add($argument)
+  }
+  $startInfo.Environment['AIDE_WORKSPACE'] = $root
+  $startInfo.Environment['AIDE_MODEL_DIR'] = Join-Path $root 'models'
+  $startInfo.Environment['AIDE_ARCH_PORT'] = [string]$archPort
+  $startInfo.Environment['AIDE_LEGACY_PORT'] = [string]$legacyPort
+  $startInfo.Environment['AIDE_FACADE_PORT'] = [string]$facadePort
+  $startInfo.Environment['AIDE_LLAMA_SERVER'] = Join-Path (Join-Path $root 'runtime') 'llama-server.exe'
+
+  $process = [System.Diagnostics.Process]::new()
+  $process.StartInfo = $startInfo
+  $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+  $outcome = 'not-started'
+  $pairingFrameValid = $false
+  $healthStatus = 0
+  $timedOut = $false
+  $exitCode = $null
+  $processStarted = $false
+  $stoppedByDiagnostic = $false
+  $ownedNodeIds = @()
+  $stderrTask = $null
+  $stderrTail = ''
+
+  try {
+    if (-not $process.Start()) { throw 'process start returned false' }
+    $processStarted = $true
+    $outcome = 'waiting-for-pairing'
+    $stdoutLineTask = $process.StandardOutput.ReadLineAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    if (-not $stdoutLineTask.Wait(20000)) {
+      $timedOut = $true
+      $outcome = 'pairing-timeout'
+    } else {
+      $pairingFrame = [string]$stdoutLineTask.Result
+      $pairingFrameValid = $pairingFrame -cmatch '^COVERT_PAIRING_V1 [A-Za-z0-9_-]{43}$'
+      $pairingFrame = $null
+      if (-not $pairingFrameValid) {
+        $process.Refresh()
+        if ($process.HasExited) { $exitCode = $process.ExitCode }
+        $outcome = 'pairing-frame-invalid-or-absent'
+      } else {
+        $outcome = 'pairing-valid-waiting-for-health'
+        $healthDeadline = [DateTime]::UtcNow.AddSeconds(30)
+        do {
+          $process.Refresh()
+          if ($process.HasExited) {
+            $exitCode = $process.ExitCode
+            $outcome = 'process-exited-after-pairing'
+            break
+          }
+          try {
+            $health = Invoke-WebRequest -UseBasicParsing -SkipHttpErrorCheck -Uri "http://127.0.0.1:$facadePort/api/health" -TimeoutSec 2
+            $healthStatus = [int]$health.StatusCode
+            if ($healthStatus -eq 200) { $outcome = 'healthy'; break }
+          } catch { }
+          Start-Sleep -Milliseconds 250
+        } while ([DateTime]::UtcNow -lt $healthDeadline)
+        if ($healthStatus -ne 200 -and $outcome -eq 'pairing-valid-waiting-for-health') {
+          $timedOut = $true
+          $outcome = 'facade-health-timeout'
+        }
+      }
+    }
+  } catch {
+    $outcome = "diagnostic-exception-$($_.Exception.GetType().Name)"
+  } finally {
+    if ($processStarted) {
+      $ownedNodeIds = Get-InstalledDiagnosticNodeTree -RootProcessId $process.Id -NodePath $nodePath
+      $process.Refresh()
+      if (-not $process.HasExited) {
+        $stoppedByDiagnostic = $true
+        $treeStop = Start-Process -FilePath 'taskkill.exe' -ArgumentList @('/PID', [string]$process.Id, '/T', '/F') -PassThru -WindowStyle Hidden
+        if (-not $treeStop.WaitForExit(15000)) { throw 'exact-root diagnostic process-tree stop timed out' }
+        $process.Refresh()
+        if (-not $process.HasExited) { throw 'exact-root diagnostic launcher remained after process-tree stop' }
+      } elseif ($null -eq $exitCode) {
+        $exitCode = $process.ExitCode
+      }
+      if (-not $process.WaitForExit(15000)) { throw 'exact-root diagnostic launcher did not close redirected streams' }
+    }
+    if ($stderrTask -and $stderrTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) {
+      $stderrTail = [string]$stderrTask.Result
+      $stderrTail = [regex]::Replace($stderrTail, 'COVERT_PAIRING_V1\s+\S+', 'COVERT_PAIRING_V1 [redacted]')
+      if ($stderrTail.Length -gt 3000) { $stderrTail = $stderrTail.Substring($stderrTail.Length - 3000) }
+    }
+  }
+
+  $stopwatch.Stop()
+  $cleanupDeadline = [DateTime]::UtcNow.AddSeconds(15)
+  do {
+    $residualNodes = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+      $_.Name -ieq 'node.exe' -and $_.ExecutablePath -ieq $nodePath -and $baselineNodeIds -notcontains [int]$_.ProcessId
+    })
+    $residualListeners = @(Get-NetTCPConnection -State Listen -LocalPort $ports -ErrorAction SilentlyContinue)
+    if (-not $residualNodes.Count -and -not $residualListeners.Count) { break }
+    Start-Sleep -Milliseconds 250
+  } while ([DateTime]::UtcNow -lt $cleanupDeadline)
+  if ($residualNodes.Count -or $residualListeners.Count) {
+    throw "exact-root diagnostic cleanup incomplete; residual bundled Node PID(s)=$($residualNodes.ProcessId -join ','); listener PID(s)=$($residualListeners.OwningProcess -join ',')"
+  }
+
+  $logsDirectory = Join-Path $aideDirectory 'logs'
+  if (Test-Path -LiteralPath $logsDirectory -PathType Container) { Write-InstalledDiagnosticLogTails -LogsDirectory $logsDirectory }
+  $aideRemoved = $false
+  if (Test-Path -LiteralPath $aideDirectory) {
+    $rootFullPath = [System.IO.Path]::GetFullPath($root).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+    $aideFullPath = [System.IO.Path]::GetFullPath($aideDirectory)
+    $aideItem = Get-Item -LiteralPath $aideDirectory -Force
+    if (($aideItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      [System.IO.Path]::GetDirectoryName($aideFullPath).TrimEnd([System.IO.Path]::DirectorySeparatorChar) -ine $rootFullPath) {
+      throw 'exact-root diagnostic workspace cleanup refused an unexpected path or reparse point'
+    }
+    $nestedReparsePoints = @(Get-ChildItem -LiteralPath $aideDirectory -Force -Recurse -ErrorAction Stop | Where-Object {
+      ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+    })
+    if ($nestedReparsePoints.Count) { throw 'exact-root diagnostic workspace cleanup refused nested reparse points' }
+    Remove-Item -LiteralPath $aideFullPath -Recurse -Force
+    $aideRemoved = -not (Test-Path -LiteralPath $aideFullPath)
+  }
+  $pairingFrameValid = [bool]$pairingFrameValid
+  Write-Host "desktop startup diagnostics: exact installed-root launcher outcome=$outcome; pairing_frame_valid=$pairingFrameValid; health_status=$healthStatus; timed_out=$timedOut; natural_exit_code=$exitCode; stopped_by_diagnostic=$stoppedByDiagnostic; tree_pids=$($ownedNodeIds -join ','); tree_clean=$(-not $residualNodes.Count); listeners_clean=$(-not $residualListeners.Count); diagnostic_workspace_removed=$aideRemoved; elapsed_ms=$($stopwatch.ElapsedMilliseconds)"
+  if ($stderrTail) { Write-Host 'desktop startup diagnostics: exact-root launcher stderr tail (capped and pairing-redacted)'; Write-Host $stderrTail }
+}
+
 function Invoke-Installer {
   param([string]$Mode)
   Write-Host "desktop lifecycle smoke: invoking $Mode installer"
@@ -301,6 +500,8 @@ try {
   $cleanupError = $null
   try { Stop-InstalledApp -Process $app } catch { $cleanupError = $_ }
   Write-InstalledStartupDiagnostics -ExecutablePath $installed.Exe -LaunchedAtUtc $appLaunchedAtUtc
+  $resourceRoot = Join-Path (Split-Path -Path $installed.Exe -Parent) 'resources'
+  Invoke-ExactInstalledResourceLauncherDiagnostic -ResourceRoot $resourceRoot
   if ($cleanupError) {
     throw "installed daemon health failed: $($healthError.Exception.Message); owned app cleanup failed: $($cleanupError.Exception.Message)"
   }
