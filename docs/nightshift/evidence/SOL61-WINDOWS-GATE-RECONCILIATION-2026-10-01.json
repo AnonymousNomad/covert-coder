@@ -1,0 +1,60 @@
+{
+  "schema": "covert.windows-gate-reconciliation.v1",
+  "actor": "sol61",
+  "source_before_repair": "96a943601faa539798c2ff595897c9ae3146ae34",
+  "original_full_gate": {
+    "state": "FAILED_PUSH_BLOCKED",
+    "tests": 850, "pass": 836, "fail": 3, "skip": 11,
+    "duration_ms": 803107.4952,
+    "log": "E:\\pip_temp\\sol61-native-full-push.log",
+    "log_sha256": "f8395fb0c771c0e2ce5ecfd1e1fc94a24331beb73a59c00a94c3d65d3cba40e5",
+    "failures": ["agent command cancellation: one of two approvals observed", "hook observation request TimeoutError", "provider lifecycle request TimeoutError"]
+  },
+  "diagnostics_unchanged_deadlines": {
+    "agent": {"pass": 8, "fail": 0, "duration_ms": 34530.3848},
+    "hook_provider": {"pass": 14, "fail": 0, "duration_ms": 92586.292},
+    "verdict": "DIAGNOSTIC_ONLY_ORIGINAL_FULL_FAILURE_NOT_ERASED",
+    "failed_hook_server_request": {"path": "/api/tasks/status", "server_duration_ms": 5795, "fixture_request_deadline_ms": 5000},
+    "host_after_full_gate": {"free_physical_gib": 3.35, "available_commit_gib": 3.52, "covert_test_model_nodes_remaining": 0},
+    "pagefile_allocated_mib": {"C": 7664, "E": 2944},
+    "pagefile_used_mib": {"C": 6718, "E": 2398}
+  },
+  "controlled_storage_probe": {
+    "captured_at": "2026-10-01T13:19:34.201Z",
+    "implementation": "canonical createStateBus append, write + sync + close unchanged",
+    "events_per_drive": 20,
+    "E_total_ms": 1553, "E_max_ms": 311,
+    "C_total_ms": 121, "C_max_ms": 9,
+    "observed_E_sync_ms": [308, 282],
+    "log": "E:\\pip_temp\\sol61-audit-storage-probe.log",
+    "log_sha256": "1393931a708ee378c87dd3f79c06a4686d7766e7fa3295db5217058e6214b777",
+    "interpretation": "Durable scratch-write latency is a measured contributor; exact original transient stall attribution remains bounded by the retained server log. No pagefile/OS/user application change."
+  },
+  "safe_verification_environment_correction": {
+    "change": "Scope TEMP/TMP to a unique owned C SSD scratch root for this test process only; preserve canonical source/worktree, deadlines, fsync and assertions",
+    "affected_suites": {"tests": 33, "pass": 33, "fail": 0, "skip": 0, "duration_ms": 110024.454},
+    "log": "E:\\pip_temp\\sol61-ssd-affected-regression.log",
+    "log_sha256": "c1aae2f8c205d289ffe7171149eda3df37d0644c92eedbe7a598c78c828a4b1e",
+    "original_full_gate_closure": "PENDING_FULL_GATE_AND_EXACT_SHA_CI"
+  },
+  "additional_observed_defect": {
+    "cause": "Embedding boot verdict producer emits embed-enabled/disabled but canonical index EventHub schema rejected both",
+    "before_regression": {"pass": 2, "fail": 1},
+    "repair": "Strict existing verdict shapes added; measured positive integral dimension or nonempty disabled reason; no readiness/egress change",
+    "after_regression": {"pass": 4, "fail": 0, "skip": 0},
+    "node_typescript": "PASS", "browser_typescript": "PASS", "scoped_eslint": "PASS"
+  },
+  "full_repaired_gate": "PENDING",
+  "verification_setup_faults_resolved": [
+    "Diagnostic preload raw E:/ path rejected as unsupported ESM URL before any tests; corrected to file:/// URL using Node documentation",
+    "New fixture endpoint undefined rejected by exactOptionalPropertyTypes; canonical endpoint accepts null and the missing-endpoint fixture now uses null",
+    "Guessed browser config and route-generator names failed before running those checks; actual paths discovered, corrected typechecks/lint pass and generated check remains required"
+  ],
+  "exact_sha_aide_ci_veritas": "PENDING",
+  "actual_installed_nsis_msi": "PENDING",
+  "ui_product_fidelity": "REGISTERED_OPEN_REFERENCE_AND_RESEARCH_PACKET_ONLY",
+  "model_load_attempted": false,
+  "authority_or_admission_thresholds_changed": false,
+  "unrelated_processes_terminated": false,
+  "frozen_pr31": "b79d2480498e446cff36b26dd4b4faef7745726b"
+}

@@ -45,6 +45,14 @@ export type HybridSearchResponseT = z.infer<typeof HybridSearchResponse>;
 
 export const IndexStreamEvent = z.discriminatedUnion('type', [
   z.strictObject({
+    type: z.literal('embed-disabled'),
+    reason: z.string().min(1),
+  }),
+  z.strictObject({
+    type: z.literal('embed-enabled'),
+    dim: z.number().int().positive(),
+  }),
+  z.strictObject({
     type: z.literal('progress'),
     session_id: z.string(),
     files_done: z.number().int().nonnegative(),

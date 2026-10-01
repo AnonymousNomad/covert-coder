@@ -108,6 +108,16 @@ Covert Codex entitlement/catalog/exact-model governed dogfood.
 
 ## Reopen evidence
 
+Follow-on full-gate red at local 96a9436 is retained separately in
+`SOL61-WINDOWS-GATE-RECONCILIATION-2026-10-01.json`: 836 pass / 3 fail / 11 skip.
+Measured scratch audit-flush latency justified a task-scoped SSD fixture root;
+no fixture deadlines, durability, production source path or admission floors
+changed. A startup embedding event/schema mismatch was independently reproduced
+and repaired with strict verdict variants. Full corrected gate remains required.
+The additive Product Fidelity packet is
+`docs/nightshift/PRODUCT-FIDELITY-THEME-CLOSURE-2026-10-01.md`; it is OPEN and
+must not derail this fundamental blocker.
+
 - Historical package evidence: `WINDOWS-DESKTOP-PACKAGE-CANDIDATE-2026-10-01.md`.
 - Exact native experiment driver: `E:\pip_temp\sol61-native-artifact-probe.ps1`.
 - Exact native experiment roots: `E:\pip_temp\sol61-native-296587fb7d2d4e95b949f93bb8513344`,

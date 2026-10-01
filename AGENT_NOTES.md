@@ -5,6 +5,15 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-01 08:30] Actor: sol61
+- Type: full-gate failure / measured correction / Product Fidelity registration
+- Status: bounded repair green; full pre-push and exact-SHA/installed proof pending
+- Summary: Local candidate 96a9436 full pre-push failed 836/3/11 (850); push blocked and origin remains fc263fe. Preserved all failures and diagnosed unchanged deadlines rather than treating rerun green as acceptance.
+- Details: Standalone agent 8/8 and hook/provider 14/14 are diagnostic only. Original hook server request took 5795ms against 5000ms fixture deadline. Canonical durable audit appends measured 1553ms/20 on E versus 121ms/20 on C; E sync calls measured 308/282ms. Scope only task-owned fixture TEMP/TMP to SSD, with no deadline, durability, Authority, OS or user-process changes; affected six suites 33/33. Startup logs also exposed real index EventHub rejection of ordinary embedding boot verdicts. New regression failed before repair (2/1); strict existing producer shapes now pass 4/4, both typechecks and lint. Full corrected gate is still required.
+- Product Fidelity: Read owner UI correction fully and inspected the two direct reference attachments. Registered three distinct identities, historical dispositions, source findings, research-backed corporate proposal and telemetry-source/exit map; actual current-render reproduction, UI implementation, installed dogfood and owner visual acceptance remain OPEN. No invented gauges or rendered proof.
+- Evidence: docs/nightshift/evidence/SOL61-WINDOWS-GATE-RECONCILIATION-2026-10-01.json; docs/nightshift/PRODUCT-FIDELITY-THEME-CLOSURE-2026-10-01.md. PR #31 frozen.
+- Next: Complete the corrected full gate on the coherent candidate, push only green, then exact-SHA AIDE/Veritas and actual NSIS/MSI lifecycle. Repair any red before selective truth integration/UI/dogfood.
+
 ### [2026-10-01 07:50] Actor: sol61
 - Type: root cause / bounded repair / verification
 - Status: native bootstrap repaired locally; installed proof and full gates pending
