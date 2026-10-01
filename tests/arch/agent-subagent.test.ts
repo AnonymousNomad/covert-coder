@@ -2,7 +2,7 @@
 // Subagent dispatch surface tests (aide-subagent-dispatch skill, PR A).
 // One aggregated test() matching the runner-proven shape.
 // Note: the prior version was structurally corrupt; this is a clean rewrite.
-// Run: node --experimental-strip-types --no-warnings --test --test-force-exit tests/arch/agent-subagent.test.ts
+// Run: node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test tests/arch/agent-subagent.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type http from "node:http";
@@ -34,7 +34,14 @@ async function get<T>(_base: string, pathName: string): Promise<{ status: number
   return { status: response.status, body: (await response.json()) as Envelope<T> };
 }
 
-test("subagent dispatch: contracts + routes + integration shape (PR A)", async () => {
+test("subagent dispatch: contracts + routes + integration shape (PR A)", async (t) => {
+  const loggerFailures: string[] = [];
+  const originalError = console.error.bind(console);
+  t.mock.method(console, 'error', (...args: unknown[]) => {
+    const message = args.map(String).join(' ');
+    if (message.startsWith('[logger] write failed:')) loggerFailures.push(message);
+    originalError(...args);
+  });
   // 1. Contract: tool policy defaults deny everything except read+search.
   const policy = AgentSubagentToolPolicy.parse({});
   assert.equal(policy.allow_read, true);
@@ -80,9 +87,11 @@ test("subagent dispatch: contracts + routes + integration shape (PR A)", async (
   // 5. Spin up a real server with the 4 routes wired.
   const workspace = await fsp.mkdtemp(path.join(os.tmpdir(), "aide-subagent-arch-"));
   let httpServer: http.Server | undefined;
+  let fixtureServer: ArchServer | undefined;
   let base = "";
   try {
     const server = new ArchServer(workspace, path.join(workspace, "arch-subagent.log"));
+    fixtureServer = server;
     for (const route of routesForAgentSubagent(null)) server.route(route);
     httpServer = await server.listen(0);
     const address = httpServer.address();
@@ -142,6 +151,11 @@ test("subagent dispatch: contracts + routes + integration shape (PR A)", async (
         toClose.close(() => resolve());
       });
     }
+    // HTTP close does not drain Logger's queued mkdir/stat/append operations.
+    // Flush the retained exact owner before deleting its fixture directory.
+    fixtureServer?.logger.info('fixture cleanup drained');
+    await fixtureServer?.logger.flush();
+    if (fixtureServer) assert.match(await fsp.readFile(path.join(workspace, 'arch-subagent.log'), 'utf8'), /fixture cleanup drained/);
     for (let attempt = 0; attempt < 10; attempt++) {
       try { await fsp.rm(workspace, { recursive: true, force: true }); break; }
       catch (error) {
@@ -150,5 +164,12 @@ test("subagent dispatch: contracts + routes + integration shape (PR A)", async (
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
+    await fixtureServer?.logger.flush();
+    const stillExists = await fsp.stat(workspace).then(() => true, error => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+      throw error;
+    });
+    assert.equal(stillExists, false, 'fixture workspace must remain removed after logger drain');
+    assert.deepEqual(loggerFailures, [], 'cleanup must not leave failed queued logger writes');
   }
 });
