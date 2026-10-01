@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "AIDE Sovereign Workbench",
+  "productName": "Covert Coder",
   "version": "0.1.0",
   "identifier": "org.ferrellsyntheticintelligence.aide",
   "build": {
@@ -10,8 +10,14 @@
     "beforeBuildCommand": {"script": "npm run desktop:prepare", "cwd": ".."}
   },
   "app": {
-    "windows": [{"title": "AIDE Sovereign Workbench", "width": 1440, "height": 900, "minWidth": 900, "minHeight": 600}],
+    "windows": [{"title": "Covert Coder", "width": 1440, "height": 900, "minWidth": 900, "minHeight": 600}],
     "security": {"csp": "default-src 'self' http://127.0.0.1:4173 http://127.0.0.1:4777 http://127.0.0.1:*; connect-src 'self' http://127.0.0.1:*"}
   },
-  "bundle": {"active": true, "targets": "all", "icon": ["icons/icon.png", "icons/icon.ico"], "resources": ["resources/**/*"]}
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "useLocalToolsDir": true,
+    "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
+    "resources": ["resources/**/*"]
+  }
 }

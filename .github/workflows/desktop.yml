@@ -1,4 +1,4 @@
-name: AIDE Desktop Build
+name: Covert Desktop Build
 
 on:
   workflow_dispatch:
@@ -42,11 +42,15 @@ jobs:
       - run: npm run desktop:smoke
       - if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/desktop-lifecycle-smoke.ps1
+        run: ./scripts/desktop-lifecycle-smoke.ps1 -requestedInstallerKind nsis
+      - if: runner.os == 'Windows'
+        name: Windows MSI lifecycle smoke
+        shell: pwsh
+        run: ./scripts/desktop-lifecycle-smoke.ps1 -requestedInstallerKind msi
       - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
-          name: aide-desktop-${{ matrix.os }}-${{ matrix.target }}
+          name: covert-desktop-${{ matrix.os }}-${{ matrix.target }}
           path: desktop/target/release/bundle/**
           if-no-files-found: error
       - name: fixture cleanup

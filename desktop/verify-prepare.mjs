@@ -7,6 +7,15 @@ const root = path.resolve(desktop, '..');
 const frontend = path.join(root, 'browser', 'dist');
 const resources = path.join(desktop, 'resources');
 const config = JSON.parse(await readFile(path.join(desktop, 'tauri.conf.json'), 'utf8'));
+const expectedProductName = 'Covert Coder';
+const stableIdentifier = 'org.ferrellsyntheticintelligence.aide';
+if (config.productName !== expectedProductName) throw new Error('desktop productName must remain ' + expectedProductName);
+if (config.identifier !== stableIdentifier) {
+  throw new Error('desktop identifier changed from ' + stableIdentifier + '; review WebView data-directory migration before changing it');
+}
+if (config.app?.windows?.[0]?.title !== expectedProductName) throw new Error('desktop window title must match ' + expectedProductName);
+if (!Array.isArray(config.bundle?.icon) || config.bundle.icon.length === 0) throw new Error('desktop bundle must declare platform icon assets');
+for (const icon of config.bundle.icon) await access(path.resolve(desktop, icon));
 if (config.build?.frontendDist !== '../browser/dist') throw new Error(`Tauri frontendDist is not canonical: ${config.build?.frontendDist}`);
 
 const index = await readFile(path.join(frontend, 'index.html'), 'utf8');
@@ -52,6 +61,12 @@ if (process.env.AIDE_INCLUDE_MODEL_WEIGHTS === '1') {
 
 const llamaName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
 const hasLlama = await access(path.join(resources, 'runtime', llamaName)).then(() => true).catch(() => false);
+const engineSourceConfigured = Boolean(process.env.AIDE_ENGINE_SOURCE?.trim());
+if (engineSourceConfigured !== hasLlama) {
+  throw new Error(engineSourceConfigured
+    ? `AIDE_ENGINE_SOURCE was configured but ${llamaName} was not staged`
+    : `unexpected ${llamaName} was staged without an explicit AIDE_ENGINE_SOURCE`);
+}
 if (!hasLlama && process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') throw new Error(`desktop preparation is missing required model runtime: ${llamaName}`);
 
 console.log(`desktop resources verified (frontend: typed browser/dist; optional direct llama.cpp recovery binary: ${hasLlama ? 'staged' : 'not supplied'}; canonical Unsloth runtime: external, not checked)`);

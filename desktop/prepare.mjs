@@ -28,6 +28,24 @@ const resourceDirectories = [
 ];
 const runtimePackages = ['zod', 'ws', 'typescript', 'typescript-language-server'];
 const weightExtensions = new Set(['.gguf', '.safetensors', '.bin']);
+const llamaName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
+const engineSource = process.env.AIDE_ENGINE_SOURCE?.trim();
+const serverAllowlist = ['llama-server.exe', 'llama-server', 'llama-server-impl.dll', 'llama.dll', 'llama-common.dll', 'ggml-base.dll', 'ggml.dll', 'ggml-rpc.dll', 'ggml-rpc-server.exe', 'libomp140.x86_64.dll', 'mtmd.dll'];
+const isServerRuntimeFile = file => serverAllowlist.includes(file) || /^ggml-cpu-.+\.dll$/.test(file);
+
+let engineFiles = [];
+if (engineSource) {
+  try {
+    engineFiles = await readdir(engineSource);
+  } catch (error) {
+    throw new Error(`desktop prepare: AIDE_ENGINE_SOURCE is configured but cannot be read: ${engineSource}`, { cause: error });
+  }
+  if (!engineFiles.includes(llamaName)) {
+    throw new Error(`desktop prepare: AIDE_ENGINE_SOURCE does not contain ${llamaName}: ${engineSource}`);
+  }
+} else if (process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') {
+  throw new Error(`desktop prepare: ${llamaName} is required; set AIDE_ENGINE_SOURCE to a verified llama.cpp build`);
+}
 
 async function copyTree(source, target, { allowWeights = false } = {}) {
   await mkdir(target, { recursive: true });
@@ -93,17 +111,8 @@ if (includeWeights) {
 
 const engineTarget = path.join(resources, 'runtime');
 await mkdir(engineTarget, { recursive: true });
-const engineSource = process.env.AIDE_ENGINE_SOURCE || 'E:\\llama-cpp';
-const engineFiles = await readdir(engineSource).catch(error => {
-  if (error.code === 'ENOENT') return [];
-  throw error;
-});
-const serverAllowlist = ['llama-server.exe', 'llama-server', 'llama-server-impl.dll', 'llama.dll', 'llama-common.dll', 'ggml-base.dll', 'ggml.dll', 'ggml-rpc.dll', 'ggml-rpc-server.exe', 'libomp140.x86_64.dll', 'mtmd.dll'];
-const isServerRuntimeFile = file => serverAllowlist.includes(file) || /^ggml-cpu-.+\.dll$/.test(file);
-for (const file of engineFiles.filter(isServerRuntimeFile)) await cp(path.join(engineSource, file), path.join(engineTarget, file));
-const llamaName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-if (!(await exists(path.join(engineTarget, llamaName))) && process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') {
-  throw new Error(`desktop prepare: ${llamaName} is required; set AIDE_ENGINE_SOURCE to a verified llama.cpp build`);
+if (engineSource) {
+  for (const file of engineFiles.filter(isServerRuntimeFile)) await cp(path.join(engineSource, file), path.join(engineTarget, file));
 }
 await cp(process.execPath, path.join(engineTarget, process.platform === 'win32' ? 'node.exe' : 'node'));
 

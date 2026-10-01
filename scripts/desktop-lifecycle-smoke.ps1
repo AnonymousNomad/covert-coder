@@ -1,4 +1,21 @@
+param(
+  [ValidateSet('nsis', 'msi')]
+  [string]$requestedInstallerKind = 'nsis'
+)
+
 $ErrorActionPreference = 'Stop'
+
+$desktopConfigPath = Join-Path $PSScriptRoot '..\desktop\tauri.conf.json'
+$desktopConfig = Get-Content -LiteralPath $desktopConfigPath -Raw | ConvertFrom-Json
+$productName = [string]$desktopConfig.productName
+if (-not $productName) { throw "desktop productName is missing from $desktopConfigPath" }
+$cargoManifestPath = Join-Path $PSScriptRoot '..\desktop\Cargo.toml'
+$cargoManifest = Get-Content -LiteralPath $cargoManifestPath -Raw
+$packageSection = [regex]::Match($cargoManifest, '(?ms)^\[package\]\s*(?<body>.*?)(?=^\[|\z)')
+$packageName = [regex]::Match($packageSection.Groups['body'].Value, '(?m)^\s*name\s*=\s*"(?<name>[^"]+)"')
+if (-not $packageSection.Success -or -not $packageName.Success) { throw "desktop Cargo package name is missing from $cargoManifestPath" }
+$appExeName = "$($packageName.Groups['name'].Value).exe"
+$appExeNameRegex = '(?i)(uninstall|{0}$)' -f [regex]::Escape($appExeName)
 
 Write-Host "desktop lifecycle smoke: starting from $((Get-Location).Path); script root $PSScriptRoot"
 $bundleCandidates = @(
@@ -21,15 +38,19 @@ $msi = $bundleFiles | Where-Object { $_.Extension -ieq '.msi' } | Select-Object 
 $nsis = $bundleFiles | Where-Object {
   $_.Extension -ieq '.exe' -and
   $_.FullName -match '(?i)\\nsis\\' -and
-  $_.Name -notmatch '(?i)(uninstall|AIDE Sovereign Workbench\.exe$)'
+  $_.Name -notmatch $appExeNameRegex
 } | Select-Object -First 1
-if (-not $msi -and -not $nsis) { throw "no Windows installer found under $bundleRoot; bundle files: $($bundleFiles.Name -join ', ')" }
+if ($requestedInstallerKind -eq 'nsis') { $selectedInstaller = $nsis } else { $selectedInstaller = $msi }
+if (-not $selectedInstaller) { throw "requested $requestedInstallerKind installer not found under $bundleRoot; bundle files: $($bundleFiles.Name -join ', ')" }
 
-$installer = if ($msi) { $msi.FullName } else { $nsis.FullName }
-$installerKind = if ($msi) { 'msi' } else { 'nsis' }
-$productName = 'AIDE Sovereign Workbench'
-$appExeName = "$productName.exe"
-$installLog = Join-Path $env:TEMP 'aide-desktop-msi-install.log'
+$installer = $selectedInstaller.FullName
+$installerKind = $requestedInstallerKind
+$existingPortListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue)
+if ($existingPortListeners.Count) {
+  $existingListenerPids = $existingPortListeners.OwningProcess -join ', '
+  throw "desktop lifecycle smoke requires unused TCP port 4777; existing listener PID(s): $existingListenerPids"
+}
+$installLog = Join-Path $env:TEMP 'covert-desktop-msi-install.log'
 
 function Get-UninstallEntries {
   $roots = @(
@@ -57,7 +78,7 @@ function Find-InstalledExe {
     ${env:ProgramFiles(x86)}
   ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
   foreach ($root in $roots) {
-    foreach ($directory in @($root, (Join-Path $root $productName), (Join-Path $root 'AIDE Sovereign Workbench'))) {
+    foreach ($directory in @($root, (Join-Path $root $productName))) {
       $candidate = Join-Path $directory $appExeName
       if (Test-Path -LiteralPath $candidate) { return [PSCustomObject]@{ Exe = $candidate; Entry = ($entries | Select-Object -First 1) } }
     }
@@ -65,21 +86,55 @@ function Find-InstalledExe {
   return $null
 }
 
+function Find-InstalledUninstaller {
+  $entry = @(Get-UninstallEntries) | Select-Object -First 1
+  if (-not $entry) { throw "installed $productName uninstall entry was not found" }
+  if ($entry.InstallLocation) {
+    $candidate = Join-Path $entry.InstallLocation 'uninstall.exe'
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+  }
+  if ($entry.UninstallString) {
+    $match = [regex]::Match([string]$entry.UninstallString, '^\s*(?:"(?<quoted>[^"]+\.exe)"|(?<bare>.+?\.exe))(?:\s|$)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if ($match.Success) {
+      $candidate = if ($match.Groups['quoted'].Success) { $match.Groups['quoted'].Value } else { $match.Groups['bare'].Value }
+      if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+  }
+  throw "installed $productName uninstaller was not found in its uninstall entry"
+}
+
+function Test-ProcessDescendsFrom {
+  param([int]$ProcessId, [int]$AncestorProcessId)
+  $currentProcessId = $ProcessId
+  for ($depth = 0; $depth -lt 32; $depth++) {
+    if ($currentProcessId -eq $AncestorProcessId) { return $true }
+    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $currentProcessId" -ErrorAction SilentlyContinue
+    if (-not $processInfo) { return $false }
+    $parentProcessId = [int]$processInfo.ParentProcessId
+    if ($parentProcessId -eq 0 -or $parentProcessId -eq $currentProcessId) { return $false }
+    $currentProcessId = $parentProcessId
+  }
+  return $false
+}
+
 function Invoke-Installer {
   param([string]$Mode)
   Write-Host "desktop lifecycle smoke: invoking $Mode installer"
   if ($installerKind -eq 'msi') {
     $installerArg = '"' + $installer + '"'
-    $logArg = '"' + $installLog + '"'
+    $logPath = if ($Mode -eq 'uninstall') { Join-Path $env:TEMP 'covert-desktop-msi-uninstall.log' } else { $installLog }
+    $logArg = '"' + $logPath + '"'
     $arguments = if ($Mode -eq 'uninstall') {
       @('/x', $installerArg, '/qn', '/norestart', '/L*v', $logArg)
     } else {
       @('/i', $installerArg, '/qn', '/norestart', '/L*v', $logArg, 'REINSTALL=ALL', 'REINSTALLMODE=amus')
     }
     $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList $arguments -PassThru
+  } elseif ($Mode -eq 'uninstall') {
+    $uninstaller = Find-InstalledUninstaller
+    $process = Start-Process -FilePath $uninstaller -ArgumentList @('/S') -PassThru
   } else {
-    $arguments = if ($Mode -eq 'uninstall') { @('/S') } else { @('/S') }
-    $process = Start-Process -FilePath $installer -ArgumentList $arguments -PassThru
+    $process = Start-Process -FilePath $installer -ArgumentList @('/S') -PassThru
   }
   if (-not $process.WaitForExit(180000)) { $process.Kill(); throw "$Mode installer exceeded the 180-second timeout" }
   if ($process.ExitCode -notin @(0, 3010)) { throw "$Mode installer failed with exit code $($process.ExitCode)" }
@@ -98,8 +153,20 @@ if ($app.HasExited) { throw "installed application exited during launch with cod
 Write-Host 'desktop lifecycle smoke: checking daemon health'
 $health = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:4777/health' -TimeoutSec 15
 if ($health.StatusCode -ne 200) { throw "installed daemon health returned HTTP $($health.StatusCode)" }
+$healthListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue)
+$ownedHealthListeners = @($healthListeners | Where-Object { Test-ProcessDescendsFrom -ProcessId ([int]$_.OwningProcess) -AncestorProcessId $app.Id })
+if (-not $ownedHealthListeners.Count) { throw 'daemon health passed but TCP 4777 is not owned by the installed desktop process tree' }
+$healthListenerProcessId = [int]$ownedHealthListeners[0].OwningProcess
 if (-not $app.CloseMainWindow()) { $app.Kill() }
 if (-not $app.WaitForExit(15000)) { $app.Kill(); $app.WaitForExit() }
+$processDeadline = [DateTime]::UtcNow.AddSeconds(15)
+do {
+  $listenerProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $healthListenerProcessId" -ErrorAction SilentlyContinue
+  $portListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue)
+  if (-not $listenerProcess -and -not $portListeners.Count) { break }
+  Start-Sleep -Milliseconds 250
+} while ([DateTime]::UtcNow -lt $processDeadline)
+if ($listenerProcess -or $portListeners.Count) { throw 'installed app closed but its daemon process or TCP 4777 listener remained' }
 
 Write-Host 'desktop lifecycle smoke: same-build reinstall/upgrade probe'
 Invoke-Installer 'upgrade'
@@ -108,7 +175,7 @@ if (-not (Find-InstalledExe)) { throw 'same-build reinstall removed the installe
 $entry = @(Get-UninstallEntries) | Select-Object -First 1
 if ($entry -and $entry.PSChildName -match '^\{[0-9A-F-]+\}$' -and $installerKind -eq 'msi') {
   Write-Host 'desktop lifecycle smoke: uninstalling MSI product'
-  $uninstallLog = '"' + (Join-Path $env:TEMP 'aide-desktop-msi-uninstall.log') + '"'
+  $uninstallLog = '"' + (Join-Path $env:TEMP 'covert-desktop-msi-uninstall.log') + '"'
   $uninstall = Start-Process -FilePath 'msiexec.exe' -ArgumentList @('/x', $entry.PSChildName, '/qn', '/norestart', '/L*v', $uninstallLog) -PassThru
   if (-not $uninstall.WaitForExit(180000)) { $uninstall.Kill(); throw 'uninstall exceeded the 180-second timeout' }
   if ($uninstall.ExitCode -notin @(0, 3010)) { throw "uninstall failed with exit code $($uninstall.ExitCode)" }
@@ -118,10 +185,5 @@ if ($entry -and $entry.PSChildName -match '^\{[0-9A-F-]+\}$' -and $installerKind
 
 Start-Sleep -Seconds 2
 if (Find-InstalledExe) { throw 'installed application remains after uninstall' }
-try {
-  Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:4777/health' -TimeoutSec 3 | Out-Null
-  throw 'daemon remained reachable after desktop uninstall'
-} catch [System.Net.WebException] {
-  # Expected: the shell-owned daemon is gone after the application closes.
-}
+if (@(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue).Count) { throw 'daemon listener remained after desktop uninstall' }
 Write-Host 'desktop lifecycle smoke passed: install, launch, health, close, reinstall, uninstall, cleanup'

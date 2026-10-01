@@ -1,6 +1,7 @@
 node_modules/
 desktop/frontend/
 desktop/target/
+desktop/gen/schemas/
 models/*.gguf
 models/*.safetensors
 *.log

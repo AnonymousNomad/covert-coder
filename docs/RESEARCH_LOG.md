@@ -537,3 +537,12 @@ the result, and refuse unsupported completion claims.
 - At `c5f6a4aaf6a5c562d6b35cabe89a1a8fa54f4af4`, Windows `npm run check` exited 0 with architecture 850 total / 839 pass / 0 fail / 11 skipped. TypeScript passed; ESLint reported 0 errors and 62 warnings. Exact-SHA GitHub AIDE CI run `36801593835` passed all 22 workflow steps.
 - Post-suite measurements and process checks found free physical RAM/commit above the fixed floors, no Covert-associated Node process or checked application/model/debug listener, and no running WSL distribution. The check did not start Covert or a local model and changed no source. A comparable numeric pre-run memory/commit sample was not retained, so no leak attribution is claimed.
 - The local temp census found 67 `E:\pip_temp` directories modified during the run window. The CI cleanup helper is deliberately CI-only and broad; shared temp state was preserved. Record test/process cleanup as PASS and local temporary-fixture deletion as PARTIAL. Full evidence: `docs/nightshift/evidence/WINDOWS-CUMULATIVE-STABILITY-2026-10-01.md`.
+
+## 2026-10-01 Windows desktop package candidate
+
+- Changed Tauri display identity to Covert Coder while retaining the stable app identifier; generated PNG/ICO/ICNS from the exact approved emblem and recorded provenance.
+- Removed implicit machine-local llama.cpp staging. `AIDE_ENGINE_SOURCE` is now explicit and fail-closed; the packaged canonical Unsloth runtime and model artifacts remain external/unverified.
+- Local `desktop:verify`, Windows `desktop:build`, and `desktop:smoke` passed. Tauri's default per-user tool cache on C: caused a cross-volume NSIS rename failure for the E: worktree; project-local bundler tools corrected it.
+- MSI and NSIS outputs are nonempty, hashed in the evidence receipt, and unsigned. PowerShell lifecycle automation parses but still requires fresh-runner install/launch/health/reinstall/uninstall proof. Clean-user onboarding, packaged model setup, signing, SBOM/license/provenance, and final RC gates remain open.
+- Post-build resource sample was 8,119.7 MiB free physical RAM, 9,891.4 MiB free commit, 5,601 MiB free VRAM, and 6% GPU use. No model was started and no unrelated process was stopped.
+- Full detail: `docs/nightshift/evidence/WINDOWS-DESKTOP-PACKAGE-CANDIDATE-2026-10-01.md`.

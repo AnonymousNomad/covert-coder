@@ -1,7 +1,7 @@
 [package]
 name = "aide-sovereign-workbench"
 version = "0.1.0"
-description = "AIDE Sovereign Workbench desktop shell"
+description = "Covert Coder desktop shell"
 authors = ["Ferrell Synthetic Intelligence"]
 edition = "2021"
 
