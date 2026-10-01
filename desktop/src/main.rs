@@ -114,9 +114,11 @@ fn validate_pairing_response(line: &str, read_result: &io::Result<usize>) -> Res
 mod startup_diagnostic_tests {
     use super::{
         bound_startup_diagnostic, redact_startup_diagnostic, startup_diagnostic_path,
-        validate_pairing_response, write_startup_diagnostic, STARTUP_DIAGNOSTIC_MAX_CHARS,
+        bootstrap_child_state_metadata, validate_pairing_response, write_startup_diagnostic,
+        STARTUP_DIAGNOSTIC_MAX_CHARS,
     };
     use std::fs;
+    use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -198,6 +200,23 @@ mod startup_diagnostic_tests {
         assert!(error.contains("utf8_bom=true"));
         assert!(!error.contains(&proof));
     }
+
+    #[test]
+    fn bootstrap_failure_can_report_child_exit_code_without_child_output() {
+        let mut command = if cfg!(windows) {
+            let mut command = Command::new("cmd.exe");
+            command.args(["/d", "/c", "exit", "/b", "23"]);
+            command
+        } else {
+            let mut command = Command::new("sh");
+            command.args(["-c", "exit 23"]);
+            command
+        };
+        let mut child = command.spawn().expect("spawn short-lived child");
+        let status = child.wait().expect("wait for short-lived child");
+        assert_eq!(status.code(), Some(23));
+        assert_eq!(bootstrap_child_state_metadata(&mut child), "child_exited=true, child_exit_code=23");
+    }
 }
 
 #[tauri::command]
@@ -219,6 +238,17 @@ fn read_pairing(child: &mut Child) -> Result<String, String> {
         let _ = tx.send(validate_pairing_response(&line, &result));
     });
     rx.recv_timeout(Duration::from_secs(60)).map_err(|_| "private bootstrap timed out".to_string())?
+}
+
+fn bootstrap_child_state_metadata(child: &mut Child) -> String {
+    match child.try_wait() {
+        Ok(Some(status)) => match status.code() {
+            Some(code) => format!("child_exited=true, child_exit_code={code}"),
+            None => "child_exited=true, child_exit_code=unavailable".to_string(),
+        },
+        Ok(None) => "child_exited=false".to_string(),
+        Err(error) => format!("child_wait_error={:?}", error.kind()),
+    }
 }
 
 fn facade_ready() -> bool {
@@ -298,7 +328,11 @@ fn main() {
                     .map_err(|error| error.to_string())?;
                 let proof = match read_pairing(&mut child) {
                     Ok(proof) => proof,
-                    Err(error) => { terminate_tree(&mut child); return Err(error.into()); }
+                    Err(error) => {
+                        let child_state = bootstrap_child_state_metadata(&mut child);
+                        terminate_tree(&mut child);
+                        return Err(format!("{error} ({child_state})").into());
+                    }
                 };
                 if let Err(error) = wait_for_facade(&mut child) {
                     terminate_tree(&mut child);
