@@ -1,0 +1,75 @@
+{
+  "schema": "covert.broker-provider-regression.local.v1",
+  "actor": "sol61",
+  "branch": "nightshift/production-convergence-20260926",
+  "parent_source": "f8af71f0642e156416308aa7e3f0c06f42f3539e",
+  "state": "FOCUSED_GREEN_FULL_GATE_AND_INSTALLED_ACCEPTANCE_PENDING",
+  "retained_provider_full_failure": {
+    "tests": 860, "pass": 848, "fail": 1, "skip": 11,
+    "error_class": "TimeoutError", "request_boundary": "UNKNOWN", "cause": "UNKNOWN_NOT_WAIVED",
+    "log": "E:\\pip_temp\\sol61-lsp-converged-full-push.log",
+    "log_sha256": "1e5acd8455089735d5853af685b08e89d3d8126bce2672357a869198d446ba30"
+  },
+  "outside_product_diagnostics": {
+    "scope": "ONLY_PROVIDER_TEST_WORKER_NO_BODY_HEADER_QUERY_PROOF_TOKEN_OR_CHILD_ARGUMENT_LOGGING",
+    "node_version": "v26.4.0",
+    "node_sha256": "3193d7f751b8a07bd4acc70e81946ae9c6efdee83e07ad1c8d0e4089df7c5cef",
+    "e_fixture": {
+      "pass": 1, "fail": 0, "duration_ms": 39861.5461,
+      "slow_durable_sync_count": 21, "slow_durable_sync_max_ms": 1211.5291,
+      "max_http_response_ms": 4598.9759,
+      "request_or_body_errors": 0, "event_loop_lag_over_250ms": false,
+      "log": "E:\\pip_temp\\sol61-provider-boundary-diagnostic.log",
+      "log_sha256": "7079d80b2d7f9e15dae028fb2a62abc71b7d7c9a3ba5a4b2e011eb3e0a38bdaf"
+    },
+    "identical_ssd_fixture": {
+      "pass": 1, "fail": 0, "duration_ms": 24871.7205,
+      "durable_sync_over_50ms": false, "request_or_body_errors": 0,
+      "max_http_response_ms": 2120.5761,
+      "log": "E:\\pip_temp\\sol61-provider-ssd-comparison.log",
+      "log_sha256": "efb1e177ca7fcd8c47a1a7bc21bba98f95460d14cf014f81fed2c3cf34fc6c95"
+    },
+    "child_probe": {
+      "pass": 1, "fail": 0, "duration_ms": 23951.7323,
+      "powershell_execfile_count": 20, "powershell_close_max_ms": 1307.1034,
+      "where_lookup_count": 125, "where_close_max_ms": 511.187,
+      "source_confirmed_powershell_scope": "CONCURRENT_READ_ONLY_UNSLOTH_PORT_INSPECTION",
+      "coverage_limit": "PROMISIFIED_EXECFILE_PRESERVES_ORIGINAL_CUSTOM_CONTRACT_NOT_ALL_CHILD_INVOCATIONS_OBSERVED",
+      "log": "E:\\pip_temp\\sol61-provider-child-diagnostic.log",
+      "log_sha256": "8723324860c6a7cf34c8e78ed550df4b8651f7c826dc7f099eba5f7c30da7f2f"
+    },
+    "limits": [
+      "ISOLATED_PASSES_AND_STORAGE_DIFFERENCE_DO_NOT_IDENTIFY_ORIGINAL_FULL_TIMEOUT_CAUSE",
+      "ABORT_SIGNAL_AFTER_SUCCESS_HEADERS_ON_UNCONSUMED_RESPONSE_IS_NOT_A_REQUEST_FAILURE",
+      "NO_DEADLINE_DURABILITY_AUTHORITY_OR_ADMISSION_CHANGE"
+    ]
+  },
+  "broker_observation_repair": {
+    "demonstrated_causes": ["DUPLICATE_CONCURRENT_PROBES", "UNSHARED_REJECTION", "LATE_HEALTHY_RESULT_AFTER_SHUTDOWN"],
+    "red": {"pass": 2, "fail": 3, "duration_ms": 351.8079, "log": "E:\\pip_temp\\sol61-broker-observation-red.log", "log_sha256": "c21fb3d69e3b78dc59b3f3096b3a3d47262547d49bcd80d115834f2b2eb5b9cf"},
+    "repair": "SHARE_PENDING_READ_ONLY_OBSERVATION_KEEP_2S_TTL_GENERATION_FENCE_ONE_BOUNDED_REFRESH",
+    "mutating_and_admission_reads": "FRESH_ACTIVE_STATUS_UNCHANGED",
+    "green": {"pass": 6, "fail": 0, "skip": 0, "duration_ms": 364.9662, "log": "E:\\pip_temp\\sol61-broker-observation-six-green.log", "log_sha256": "7378d5ce3b3b4310fe2eb427e1a4769f48d1d23d52b4f96bae79954891db1ade"},
+    "evidence_layer": "CONTROLLED_CANONICAL_SERVICE_UNIT_NOT_OS_OR_MODEL_QUALIFICATION"
+  },
+  "provider_fixture_isolation": {
+    "red": {"pass": 0, "fail": 1, "synthetic_global_store_reads": 3, "log": "E:\\pip_temp\\sol61-provider-global-store-red.log", "log_sha256": "52619dbc248a7fe0ab2e7ab8dfc24d04cd240ec0fda103d9eca2bfc0ede5b626"},
+    "host_contents_read_in_canary_reproduction": false,
+    "repair": "EXISTING_CANONICAL_BYOK_SECRETSTORE_IN_EXACT_FIXTURE_WORKSPACE_KEEP_SEPARATE_PROVIDER_CREDENTIAL_OWNER",
+    "approval_response": "CONSUMED_AND_ASSERTED_BEFORE_EXECUTION",
+    "green": {"pass": 1, "fail": 0, "synthetic_global_store_reads": 0, "log": "E:\\pip_temp\\sol61-provider-global-store-green.log", "log_sha256": "9d781123b938f025ad68ec3566cc16ef60ba0039c142033437d91994c37f5ca2"}
+  },
+  "affected_focused_battery": {
+    "tests": 77, "pass": 71, "fail": 0, "skip": 6, "cancelled": 0, "duration_ms": 76556.8955,
+    "started_at": "2026-10-01T18:50:49.0999720Z", "finished_at": "2026-10-01T18:52:07.9937978Z",
+    "fixture_root": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-sol61-broker-provider-5e3c0e7f6520476e99c6b1da44f7fbe9",
+    "provider_cases": "THREE_PASS_HOST_STORE_CANARY_DIRECT_PROVIDER_AND_OPENCODE_EXACT_TARGET_RESTART_CANCELLATION_TIMEOUT_DURABLE_RECEIPTS",
+    "skip_reason": "SIX_EXISTING_REAL_GGUF_CASES_ARTIFACTS_ABSENT_FROM_CHECKOUT",
+    "log": "E:\\pip_temp\\sol61-broker-provider-focused.log",
+    "log_sha256": "be82e47f6d6bcd78e5d1dbacae2904bb5ed5333121bae5f826a91ec1a34fc504",
+    "evidence_layer": "FOCUSED_SYNTHETIC_REGRESSION_NOT_LIVE_PROVIDER_OR_MODEL_QUALIFICATION"
+  },
+  "static_checks": {"node_typescript": "PASS", "browser_typescript": "PASS", "scoped_eslint": "PASS", "canonical_route_ownership": "PASS", "diff_whitespace": "PASS"},
+  "safety": {"model_started": false, "physical_ram_start_floor_gib": 6.5, "commit_start_floor_gib": 5.0, "pagefile_changed": false, "foreign_process_terminated": false, "pr31_mutated": false},
+  "remaining": ["ORIGINAL_FULL_TIMEOUT_CAUSE", "FULL_CANONICAL_GATE_ON_CLEAN_CANDIDATE", "EXACT_SHA_AIDE_VERITAS_CI", "FRESH_INSTALLED_NSIS_MSI_LIFECYCLE", "FIGMA_OWNER_OAUTH"]
+}

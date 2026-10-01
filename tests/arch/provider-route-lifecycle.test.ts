@@ -1,15 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
+import fsSync from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes, createModelRuntime, type BuildRoutesOptions } from '../../node/src/openapi.ts';
 import { CredentialStore, type CryptService } from '../../node/src/services/credentials.ts';
+import { createSecretStore } from '../../node/src/services/secret-store.mjs';
 import { ProviderService } from '../../node/src/services/providers.ts';
 import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
-import { pairFixture } from './authority-fixture.ts';
+import { pairFixture, fixtureFailureDescription } from './authority-fixture.ts';
 import { fixtureBridge, readLog } from './opencode-bridge-fixture.ts';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -178,6 +181,14 @@ async function startStack(
     logger: arch.logger,
     modelRuntime,
     providerService,
+    byokSecretStore: createSecretStore({
+      secretsPath: path.join(workspace, '.aide', 'fixture-byok-secrets.json'),
+      protect: value => `fixture:${Buffer.from(value, 'utf8').toString('base64')}`,
+      unprotect: value => {
+        if (!value.startsWith('fixture:')) throw new Error('invalid fixture BYOK credential');
+        return Buffer.from(value.slice('fixture:'.length), 'base64').toString('utf8');
+      }
+    }),
     ...(openCodeBridge === undefined ? {} : { openCodeBridge })
   });
   for (const route of routes) arch.route(route);
@@ -217,9 +228,40 @@ async function prepareAndApprove(
 ) {
   const operation = await owner.propose(method, route, body, taskId);
   const before = await operationReceipt(owner, operation.operation_id);
-  await owner.decide(operation.operation_id, 'approve');
+  const decision = await owner.decide(operation.operation_id, 'approve');
+  const envelope = await decision.json() as { ok: boolean };
+  assert.equal(decision.status, 200, `decision ${fixtureFailureDescription(envelope)}`);
+  assert.equal(envelope.ok, true);
   return { operationId: operation.operation_id, before };
 }
+
+test('provider lifecycle fixture excludes the operator global BYOK store', async t => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-provider-global-store-'));
+  const globalPath = path.resolve(os.homedir(), '.aide', 'secrets.json');
+  const canary = 'fixture-global-store-key-never-used-on-network';
+  let hostReads = 0;
+  const readFile = fsSync.readFileSync;
+  t.mock.method(fsSync, 'readFileSync', ((...args: Parameters<typeof readFile>) => {
+    if (typeof args[0] === 'string' && path.resolve(args[0]) === globalPath) {
+      hostReads += 1;
+      return JSON.stringify({ huggingface: `plain:${canary}` });
+    }
+    return Reflect.apply(readFile, fsSync, args) as ReturnType<typeof readFile>;
+  }) as typeof readFile);
+  syncBuiltinESMExports();
+  let stack: Awaited<ReturnType<typeof startStack>> | undefined;
+  try {
+    stack = await startStack(workspace, []);
+    const manager = await stack.owner.request('/api/models/manager');
+    assert.equal(manager.status, 200);
+    const text = await manager.text();
+    assert.equal(text.includes(canary), false, 'Model Access never serializes credential material');
+    assert.equal(hostReads, 0, 'a synthetic provider fixture must not inherit the operator secret store');
+  } finally {
+    try { if (stack !== undefined) await stack.close(); }
+    finally { t.mock.restoreAll(); syncBuiltinESMExports(); await removeFixtureWorkspace(workspace); }
+  }
+});
 
 test('production provider route is governed end to end and recovers only after exact re-verification on restart', async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-provider-route-lifecycle-'));

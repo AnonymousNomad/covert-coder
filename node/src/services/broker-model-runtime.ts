@@ -34,6 +34,8 @@ export class BrokerModelRuntime extends ModelRuntime {
   private readonly qualification: LocalRuntimeQualification;
   private readonly resourceAdmission: Pick<ReturnType<typeof createResourceAdmission>, 'admitLocalRuntimeStart'>;
   private observedStatusCache: { status: RuntimeStatusResponseT; at: number } | null = null;
+  private observedStatusGeneration = 0;
+  private observedStatusInFlight: { generation: number; promise: Promise<RuntimeStatusResponseT> } | null = null;
 
   constructor(
     options: ModelRuntimeOptions,
@@ -76,12 +78,28 @@ export class BrokerModelRuntime extends ModelRuntime {
     return this.broker.status();
   }
 
-  private async observedStatus(): Promise<RuntimeStatusResponseT> {
+  private async observedStatus(allowRetry = true): Promise<RuntimeStatusResponseT> {
     const cached = this.observedStatusCache;
     if (cached !== null && Date.now() - cached.at < 2_000) return cached.status;
-    const status = await this.activeStatus();
-    this.observedStatusCache = { status, at: Date.now() };
-    return status;
+    let observation = this.observedStatusInFlight;
+    if (observation === null || observation.generation !== this.observedStatusGeneration) {
+      observation = { generation: this.observedStatusGeneration, promise: this.activeStatus() };
+      this.observedStatusInFlight = observation;
+    }
+    try {
+      const status = await observation.promise;
+      // A mutation can complete while the OS probe is pending. Do not return
+      // or cache that obsolete result. One fresh read is bounded; further
+      // concurrent mutation remains NOT_READY rather than fabricating health.
+      if (observation.generation !== this.observedStatusGeneration) {
+        if (!allowRetry) throw new ModelRuntimeError('NOT_READY', 'runtime observation changed during read');
+        return this.observedStatus(false);
+      }
+      this.observedStatusCache = { status, at: Date.now() };
+      return status;
+    } finally {
+      if (this.observedStatusInFlight === observation) this.observedStatusInFlight = null;
+    }
   }
 
   /** Read-only product observation; does not start, stop, or select a runtime. */
@@ -90,7 +108,9 @@ export class BrokerModelRuntime extends ModelRuntime {
   }
 
   private invalidateObservedStatus(): void {
+    this.observedStatusGeneration += 1;
     this.observedStatusCache = null;
+    this.observedStatusInFlight = null;
   }
 
   private failureCode(error: unknown, fallback: string): string {

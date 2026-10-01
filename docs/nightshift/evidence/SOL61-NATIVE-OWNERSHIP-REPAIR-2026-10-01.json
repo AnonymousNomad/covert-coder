@@ -103,6 +103,27 @@
     "remote_documentation_head": "1cfd448d9707d9db2a98ce7b9516d7a996358dd4",
     "histories_preserved_reconciliation": "PENDING"
   },
+  "post_reconciliation_required_gate": {
+    "source": "f8af71f0642e156416308aa7e3f0c06f42f3539e",
+    "bounded_lsp_repair_commit": "c6059c8",
+    "merged_owner_documentation_head": "d077eece5e133ba77cb821d85f3f50afba29342f",
+    "started_at": "2026-10-01T17:50:28.1540798Z",
+    "finished_at": "2026-10-01T18:02:59.8408444Z",
+    "tests": 860, "pass": 848, "fail": 1, "skip": 11, "cancelled": 0, "duration_ms": 748246.5095,
+    "failure": "production provider route is governed end to end and recovers only after exact re-verification on restart",
+    "error_class": "TimeoutError",
+    "failure_duration_ms": 37349.0148,
+    "request_boundary_and_cause": "UNKNOWN_REQUIRES_SAFE_HTTP_BODY_IO_AND_EVENT_LOOP_TRACE",
+    "hook_privacy_and_lsp_cumulative": "PASS_ORIGINAL_INTERMITTENT_CAUSES_NOT_RETROACTIVELY_PROVEN",
+    "log": "E:\\pip_temp\\sol61-lsp-converged-full-push.log",
+    "log_sha256": "1e5acd8455089735d5853af685b08e89d3d8126bce2672357a869198d446ba30",
+    "metadata": "E:\\pip_temp\\sol61-lsp-converged-full-push-metadata.json",
+    "result": "E:\\pip_temp\\sol61-lsp-converged-full-push-result.json",
+    "push_exit_code": 1, "pushed": false,
+    "exact_sha_ci": "NOT_DISPATCHED", "fresh_installed_acceptance": "NOT_RUN",
+    "failed_provider_fixture": "REMOVED_BY_EXISTING_FINALLY_NO_CAUSAL_TRACE_RETAINED"
+  },
+  "provider_broker_bounded_repair_evidence": "docs/nightshift/evidence/SOL61-BROKER-PROVIDER-REGRESSION-2026-10-01.json",
   "post_failure_diagnostics": {
     "focused": {
       "tests": 22, "pass": 22, "fail": 0, "skip": 0, "duration_ms": 31558.0664,
