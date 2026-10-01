@@ -36,6 +36,9 @@ jobs:
           targets: ${{ matrix.target }}
       - run: npm ci
       - run: npm run desktop:verify
+      - if: runner.os == 'Windows'
+        name: Windows desktop resource layout regression tests
+        run: cargo test --manifest-path desktop/Cargo.toml
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - run: npm run desktop:build

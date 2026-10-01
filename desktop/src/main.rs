@@ -8,6 +8,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tauri::Manager;
 
+mod resource_root;
+
 struct DaemonProcess(Mutex<Option<Child>>);
 struct PairingProof(Mutex<Option<(String, String)>>);
 
@@ -85,10 +87,11 @@ fn main() {
         .manage(PairingProof(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![authority_pairing])
         .setup(|app| {
-            let resource_dir = app.path().resource_dir().map_err(|error| error.to_string())?;
             let node_name = if cfg!(windows) { "node.exe" } else { "node" };
-            let node = resource_dir.join("runtime").join(node_name);
-            let launcher = resource_dir.join("stack-launcher.mjs");
+            let resource_dir = app.path().resource_dir().map_err(|error| error.to_string())?;
+            let resource_root = resource_root::resolve_resource_root(&resource_dir, node_name)?;
+            let node = resource_root.join("runtime").join(node_name);
+            let launcher = resource_root.join("stack-launcher.mjs");
             if node.exists() && launcher.exists() {
                 let origin = if cfg!(debug_assertions) { "http://127.0.0.1:5173" }
                     else if cfg!(windows) { "http://tauri.localhost" } else { "tauri://localhost" };
@@ -98,13 +101,13 @@ fn main() {
                     .arg(format!("--pair-origin={origin}"))
                     .stdin(Stdio::null())
                     .stdout(Stdio::piped())
-                    .current_dir(&resource_dir)
-                    .env("AIDE_WORKSPACE", &resource_dir)
-                    .env("AIDE_MODEL_DIR", resource_dir.join("models"))
+                    .current_dir(&resource_root)
+                    .env("AIDE_WORKSPACE", &resource_root)
+                    .env("AIDE_MODEL_DIR", resource_root.join("models"))
                     .env("AIDE_ARCH_PORT", "4778")
                     .env("AIDE_LEGACY_PORT", "4779")
                     .env("AIDE_FACADE_PORT", "4777")
-                    .env("AIDE_LLAMA_SERVER", resource_dir.join("runtime").join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" }))
+                    .env("AIDE_LLAMA_SERVER", resource_root.join("runtime").join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" }))
                     .spawn()
                     .map_err(|error| error.to_string())?;
                 let proof = match read_pairing(&mut child) {
