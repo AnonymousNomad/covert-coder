@@ -63,11 +63,19 @@ function Get-UninstallEntries {
   }
 }
 
+function Get-EntryInstallLocation {
+  param([object]$Entry)
+  $installLocation = ([string]$Entry.InstallLocation).Trim().Trim('"')
+  if (-not $installLocation) { return $null }
+  return $installLocation
+}
+
 function Find-InstalledExe {
   $entries = @(Get-UninstallEntries)
   foreach ($entry in $entries) {
-    if ($entry.InstallLocation) {
-      $candidate = Join-Path $entry.InstallLocation $appExeName
+    $installLocation = Get-EntryInstallLocation $entry
+    if ($installLocation) {
+      $candidate = Join-Path $installLocation $appExeName
       if (Test-Path -LiteralPath $candidate) { return [PSCustomObject]@{ Exe = $candidate; Entry = $entry } }
     }
   }
@@ -89,8 +97,9 @@ function Find-InstalledExe {
 function Find-InstalledUninstaller {
   $entry = @(Get-UninstallEntries) | Select-Object -First 1
   if (-not $entry) { throw "installed $productName uninstall entry was not found" }
-  if ($entry.InstallLocation) {
-    $candidate = Join-Path $entry.InstallLocation 'uninstall.exe'
+  $installLocation = Get-EntryInstallLocation $entry
+  if ($installLocation) {
+    $candidate = Join-Path $installLocation 'uninstall.exe'
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
   }
   if ($entry.UninstallString) {

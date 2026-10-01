@@ -5,7 +5,7 @@
 ## Source and environment
 
 - Repository: `E:\covert-nightshift-integration`; branch: `nightshift/production-convergence-20260926`.
-- The package change set was built from the local worktree based on parent `ca17d89862261c17bd0dfe470efeddaa11a77253`; its checkpoint commit and exact-SHA CI are pending.
+- The package change set is committed at `fc6f32cd609695092ac63259077cb62f6f4a61e0`, based on parent `ca17d89862261c17bd0dfe470efeddaa11a77253`.
 - Local host: Windows 11 Home Insider Preview. Node `v26.4.0`, npm `11.17.0`, Rust/Cargo `1.98.1`, Tauri CLI `2.11.4`.
 - The local desktop workflow uses Node 26; the repository's GitHub desktop workflow pins Node `22.20.0`. GitHub runner results are required to verify the pinned environment.
 
@@ -15,8 +15,15 @@
 - An explicitly configured nonexistent `AIDE_ENGINE_SOURCE` fails before staging with exit 1. With `AIDE_ENGINE_SOURCE` unset, desktop preparation no longer consults the machine-specific `E:\llama-cpp` path. The verifier rejects a direct server staged without explicit configuration.
 - `npm run desktop:build` — exit 0 on Windows x64; both MSI and NSIS bundles were produced. The first attempt exposed Windows error 17 while Tauri moved its NSIS tool directory from the per-user cache on C: into the project target on E:. Setting `bundle.useLocalToolsDir=true` keeps the tool cache under the project target; the subsequent build completed both bundles.
 - `npm run desktop:smoke` — exit 0. It confirmed nonempty MSI and NSIS artifacts; it does not install or launch them.
-- The PowerShell lifecycle script parsed without errors. Its installer install/launch/health/reinstall/uninstall flow was not run against the owner profile; the fresh Windows GitHub runner must execute it for both installer formats.
+- The PowerShell lifecycle script parsed without errors. Its installer install/launch/health/reinstall/uninstall flow was not run against the owner profile.
 - `node --check` passed for `desktop/prepare.mjs` and `desktop/verify-prepare.mjs`; `git diff --check` passed.
+
+## Exact-SHA hosted verification
+
+- AIDE CI run [36811932878](https://github.com/AnonymousNomad/covert-coder/actions/runs/36811932878) for `fc6f32cd609695092ac63259077cb62f6f4a61e0` passed all **22/22** steps.
+- Cross-platform desktop run [36812007534](https://github.com/AnonymousNomad/covert-coder/actions/runs/36812007534) built and artifact-smoked Linux, macOS, and Windows. Linux and macOS jobs passed. Windows package build and artifact smoke passed, then the NSIS install lifecycle failed before app launch. MSI lifecycle was skipped because the earlier NSIS step failed in the same job.
+- Root cause: the NSIS uninstall registry entry exposed `InstallLocation` with surrounding quote characters. `Find-InstalledExe` passed that value directly to `Join-Path`, which interpreted the prefix `"C` as a PowerShell drive name and stopped the smoke. No product/runtime failure was observed because the app had not yet launched.
+- Repair at the next local worktree revision: normalize quoted registry `InstallLocation` once before executable or uninstaller path composition. A focused local regression check extracted the production normalizer from the PowerShell AST and verified both quoted and bare paths with spaces. Fresh-runner rerun of NSIS and MSI lifecycle is still required.
 
 ## Local artifact hashes
 
@@ -38,4 +45,4 @@ Both installer files and the shell executable report `NotSigned` under Windows A
 
 ## Remaining gates
 
-The desktop workflow is manual and has not yet run for this change set. Its fresh Windows runner must prove NSIS and MSI install, app-owned health listener, close/process cleanup, same-build reinstall, and uninstall. Linux/macOS builds, clean-user onboarding, packaged model/runtime setup, whole-product journeys, signing, SBOM/license/provenance closure, and the final RC receipt remain open. No release-readiness or packaged-acceptance claim follows from this local build.
+The first hosted desktop workflow run exposed and localized the Windows lifecycle-script defect described above; the source repair and a new exact-SHA desktop run remain pending. Windows NSIS and MSI install, app-owned health listener, close/process cleanup, same-build reinstall, and uninstall must all pass on the fresh runner. Clean-user onboarding, packaged model/runtime setup, whole-product journeys, signing, SBOM/license/provenance closure, and the final RC receipt remain open. No release-readiness or packaged-acceptance claim follows from these builds.
