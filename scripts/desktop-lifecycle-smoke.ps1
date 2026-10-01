@@ -45,10 +45,17 @@ if (-not $selectedInstaller) { throw "requested $requestedInstallerKind installe
 
 $installer = $selectedInstaller.FullName
 $installerKind = $requestedInstallerKind
-$existingPortListeners = @(Get-NetTCPConnection -State Listen -LocalPort 4777 -ErrorAction SilentlyContinue)
+$productPorts = @(4777, 4778, 4779)
+$existingPortListeners = @(
+  foreach ($port in $productPorts) {
+    Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue
+  }
+)
 if ($existingPortListeners.Count) {
-  $existingListenerPids = $existingPortListeners.OwningProcess -join ', '
-  throw "desktop lifecycle smoke requires unused TCP port 4777; existing listener PID(s): $existingListenerPids"
+  $existingListenerDetails = ($existingPortListeners | Sort-Object LocalPort, OwningProcess -Unique | ForEach-Object {
+    "$($_.LocalPort)/$($_.OwningProcess)"
+  }) -join ', '
+  throw "desktop lifecycle smoke requires unused product ports $($productPorts -join ', '); existing port/pid entries: $existingListenerDetails"
 }
 $installLog = Join-Path $env:TEMP 'covert-desktop-msi-install.log'
 
@@ -261,16 +268,6 @@ function Test-ProcessDescendsFrom {
   return $false
 }
 
-function Get-FreeDiagnosticPort {
-  $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
-  try {
-    $listener.Start()
-    return [int]$listener.LocalEndpoint.Port
-  } finally {
-    $listener.Stop()
-  }
-}
-
 function Get-InstalledDiagnosticNodeTree {
   param([int]$RootProcessId, [string]$NodePath)
   @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
@@ -320,14 +317,22 @@ function Invoke-ExactInstalledResourceLauncherDiagnostic {
     return
   }
 
-  $ports = @()
-  while ($ports.Count -lt 3) {
-    $port = Get-FreeDiagnosticPort
-    if ($ports -notcontains $port) { $ports += $port }
+  $archPort = 4778
+  $legacyPort = 4779
+  $facadePort = 4777
+  $ports = @($archPort, $legacyPort, $facadePort)
+  $occupiedPorts = @(
+    foreach ($port in $ports) {
+      Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue
+    }
+  )
+  if ($occupiedPorts.Count) {
+    $occupiedDetails = ($occupiedPorts | Sort-Object LocalPort, OwningProcess -Unique | ForEach-Object {
+      "$($_.LocalPort)/$($_.OwningProcess)"
+    }) -join ', '
+    Write-Host "desktop startup diagnostics: exact-root fixed-port launcher diagnostic skipped; pre-existing listeners port/pid=$occupiedDetails"
+    return
   }
-  $archPort = $ports[0]
-  $legacyPort = $ports[1]
-  $facadePort = $ports[2]
   $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
   $startInfo.FileName = $nodePath
   $startInfo.WorkingDirectory = $root
