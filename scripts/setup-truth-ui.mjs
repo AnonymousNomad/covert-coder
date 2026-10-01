@@ -104,6 +104,19 @@ try {
     await goToValidation();
     assert.match(await page.locator('.cockpit-setup-body').innerText(), /NOT_RUN/);
     console.log('PASS UI: abandoned completion cannot promote reopened session');
+    const cloudEvidence = await page.evaluate(async () => {
+      const { createTopbar } = await import('/src/shell/topbar.ts');
+      const { createCloudStatusReader } = await import('/src/services/cloud-status.ts');
+      const host = document.createElement('div'); document.body.appendChild(host);
+      const topbar = createTopbar(host, {});
+      const labels = [host.querySelector('[data-chip-label="cloud"]').textContent];
+      await createCloudStatusReader(async () => { throw new Error('BYOK status unavailable'); }, state => {
+        topbar.setCloud(state); labels.push(host.querySelector('[data-chip-label="cloud"]').textContent);
+      }).refresh();
+      return labels;
+    });
+    assert.deepEqual(cloudEvidence, ['REMOTE: CHECKING', 'REMOTE: CHECKING', 'REMOTE STATUS UNAVAILABLE']);
+    console.log('PASS UI: provider read failure renders unknown rather than LOCAL ONLY');
   }
 } finally {
   await browser?.close();

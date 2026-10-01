@@ -39,6 +39,27 @@ canonical convergence, live provider use, dogfood or installed acceptance.
 
 ## Integration boundary
 
+## F03 — provider status truth
+
+Canonical source maps a rejected `byokStatus()` to LOCAL_ONLY; the initial
+store and topbar also advertise LOCAL ONLY before any read. The repair starts
+CHECKING, composes successful canonical BYOK and Connections observations,
+and displays STATUS_UNAVAILABLE on either read failure. It uses LOCAL_ONLY
+only for the explicit canonical routing preference. Consent off, missing
+authentication, configuration without verification, observed unavailable
+configured connections, and an available verified route have separate states.
+A route requires connected status, authentication, healthy runtime/provider,
+routing permission, ready setup and verified exact model support to claim
+availability. This does not certify a live mission.
+
+The reader revokes old observations before each refresh, rejects out-of-order
+results and suppresses publication after disposal. The topbar refreshes every
+30 seconds and releases the timer on pagehide; no old success is retained on
+read failure. Six transition tests and the actual topbar's browser failure
+label passed. Both TypeScript checks and scoped ESLint passed. The existing
+Connections service can itself degrade some internal read errors; this slice
+does not infer universal provider absence from that view.
+
 Luna owns packaging/bootstrap closure. Apply the isolated truth commits only
 after reconciling against the then-current convergence SHA. Re-run required
 checks and CI at that SHA; no isolated evidence can promote the release.

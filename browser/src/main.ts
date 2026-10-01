@@ -18,7 +18,7 @@ import type { DiagnosticsEventT } from '../../common/contracts/events.ts';
 import type { LspStatusEventT } from '../../common/contracts/lsp.ts';
 import type { ModelStatusResponseT } from '../../common/contracts/models.ts';
 import { modelDisplayState, modelIsActive, modelIsVerifiedReady } from '../../common/model-state.ts';
-import type { ByokStatusResponseT } from '../../common/contracts/byok.ts';
+import { createCloudStatusReader } from './services/cloud-status.ts';
 import type { ClosedLoopStatusT } from '../../common/contracts/closed-loop.ts';
 
 import { connectEvents, setSharedEvents } from './services/ws.ts';
@@ -150,7 +150,13 @@ async function boot(): Promise<void> {
 
 async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
   void refreshEngineChip(shell);
-  void refreshCloudChip(shell);
+  const cloud = createCloudStatusReader(async () => {
+    const [byok, connections] = await Promise.all([api.byokStatus(), api.connections()]);
+    return { byok, connections };
+  }, state => shell.topbar.setCloud(state));
+  void cloud.refresh();
+  const cloudTimer = window.setInterval(() => { void cloud.refresh(); }, 30000);
+  window.addEventListener('pagehide', () => { window.clearInterval(cloudTimer); cloud.dispose(); }, { once: true });
   void refreshHarnessChip(shell);
   void refreshVerificationChip(shell);
   void refreshModes(shell);
@@ -199,22 +205,6 @@ async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
     return;
   }
   shell.topbar.setEngine({ label: `${activeCount} OF ${totalCount} MODELS ACTIVE`, ready: states.some(modelIsVerifiedReady) });
-}
-
-async function refreshCloudChip(shell: CockpitHandles): Promise<void> {
-  let res: ByokStatusResponseT;
-  try { res = await api.byokStatus(); }
-  catch { shell.topbar.setCloud('LOCAL_ONLY'); return; }
-  if (!res.consent_enabled) {
-    shell.topbar.setCloud('LOCAL_ONLY');
-    return;
-  }
-  const providersWithKey = res.providers.filter(p => p.key_stored);
-  if (providersWithKey.length === 0) {
-    shell.topbar.setCloud('CREDENTIAL_MISSING');
-    return;
-  }
-  shell.topbar.setCloud('REMOTE_CONFIGURED');
 }
 
 function renderLspStatus(shell: CockpitHandles, states: Record<string, string>): void {

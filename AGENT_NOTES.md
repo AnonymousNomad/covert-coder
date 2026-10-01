@@ -5,6 +5,13 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-01 05:31] Actor: sol61
+- Type: repair / verification
+- Status: verified in isolation
+- Summary: F03 failed provider reads no longer imply local-only routing or cloud absence.
+- Details: Canonical BYOK plus Connections observations drive eight distinct states. Explicit local-only preference is the only local-only predicate; consent is separate from auth/configuration/health/model support. Polls invalidate old state; failed reads show STATUS_UNAVAILABLE; stale and disposed completions are suppressed. Six state-transition tests plus actual topbar failure rendering passed; node/browser TypeScript and scoped ESLint passed.
+- Next: repair setup persistence and honest provisioning dispositions. Final exact-SHA CI remains pending; neither F01 nor F03 is canonical yet.
+
 ### [2026-10-01 05:29] Actor: sol61
 - Type: repair / verification
 - Status: verified in isolation; integration pending
