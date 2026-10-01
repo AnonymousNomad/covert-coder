@@ -3,6 +3,7 @@ import type { ConnectionsViewResponseT } from '../../../common/contracts/connect
 
 export interface ProviderConnectionsService {
   list(): Promise<ConnectionsViewResponseT>;
+  listExternalExecution(): Promise<ConnectionsViewResponseT>;
   getPreference(): string;
   setPreference(preference: string): string;
   test(connectionId: string, providerModelId?: string): Promise<{ ok: boolean; detail: string }>;

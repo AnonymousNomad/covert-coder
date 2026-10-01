@@ -392,6 +392,100 @@ test('OpenCode exact target remains UNKNOWN until its Authority-authorized provi
   assert.equal(gatedConnection.routing_available, false, 'Local-Only revokes connection routing despite recent exact model proof');
   const gatedRoute = (await manager.snapshot()).routes.find(route => route.provider_model_id === exactRef);
   assert.equal(gatedRoute?.available, false);
+  assert.deepEqual((await manager.externalRoutes()).find(route => route.provider_model_id === exactRef), gatedRoute);
+
+  service.setPreference('local-first');
+  assert.equal((await manager.externalRoutes()).find(route => route.provider_model_id === exactRef)?.available, true);
+  const expiredAt = Date.now() + 60_001;
+  t.mock.method(Date, 'now', () => expiredAt);
+  const expiredRoute = (await manager.externalRoutes()).find(route => route.provider_model_id === exactRef);
+  assert.equal(expiredRoute?.model_support_state, 'UNKNOWN');
+  assert.equal(expiredRoute?.available, false, 'external reads do not retain expired OpenCode exact-model proof');
+});
+
+test('external route projection is passive and fresh without unrelated runtime, CLI, catalog or artifact inspection', async t => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'model-access-external-projection-'));
+  t.after(() => fs.rm(workspace, { recursive: true, force: true }));
+  const manifestPath = path.join(workspace, 'manifest.json');
+  await fs.writeFile(manifestPath, '{}');
+  let runtimeReads = 0;
+  let cliReads = 0;
+  let catalogReads = 0;
+  let configured = true;
+  let consent = true;
+  let verified = true;
+  let selectedModel = 'gpt-4o-mini';
+  const connections = createProviderConnectionsService({
+    workspace,
+    providerService: {
+      list: async () => [{ id: 'openai', name: 'OpenAI', models: ['gpt-4o-mini', 'gpt-4o'], status: configured ? 'connected' : 'not_connected', configured }],
+      modelSupportState: (_provider: string, model: string) => verified && model === 'gpt-4o-mini' ? 'verified' : 'unknown'
+    },
+    byokService: {
+      status: () => ({ providers: [], routing: { plan: { provider_id: 'openai', model_id: selectedModel }, act: 'local', utility: 'local' }, consent_enabled: consent }),
+      testProvider: async () => { throw new Error('passive reads cannot probe'); }
+    },
+    modelRuntimeStatus: async () => { runtimeReads++; return { runtime: false, models: [] }; },
+    secretStore: {
+      setKey: () => undefined, deleteKey: () => true,
+      getKey: () => { throw new Error('passive reads cannot access secrets'); },
+      listProviderIds: () => { catalogReads++; return []; }
+    },
+    findExecutable: async () => { cliReads++; return null; }
+  });
+  const manager = createModelManagerView({
+    workspace, manifestPath, connectionsService: connections,
+    modelRuntime: {
+      list: () => { runtimeReads++; return []; },
+      status: async () => { runtimeReads++; return { runtime: false, models: [] }; }
+    },
+    runtimeStatus: async () => { runtimeReads++; return { health: 'NOT_INSTALLED' }; }
+  });
+  const routes = await manager.externalRoutes();
+  assert.deepEqual([runtimeReads, cliReads, catalogReads], [0, 0, 0]);
+  assert.ok(routes.every(route => route.execution_adapter_id === 'direct-http'));
+  const exact = routes.find(route => route.provider_model_id === 'gpt-4o-mini');
+  assert.equal(exact?.available, true);
+  assert.deepEqual(exact?.selected_roles, ['PLANNING']);
+  assert.equal(routes.find(route => route.provider_model_id === 'gpt-4o')?.available, false);
+  assert.deepEqual(routes, (await manager.snapshot()).routes.filter(route => route.execution_adapter_id === 'direct-http'));
+  assert.ok(runtimeReads > 0 && cliReads > 0 && catalogReads > 0, 'operator snapshot retains complete observation');
+  runtimeReads = cliReads = catalogReads = 0;
+
+  verified = false;
+  assert.equal((await manager.externalRoutes()).find(route => route.id === exact?.id)?.model_support_state, 'UNKNOWN');
+  verified = true;
+  configured = false;
+  assert.equal((await manager.externalRoutes()).find(route => route.id === exact?.id)?.configured, false);
+  assert.equal((await manager.externalRoutes()).find(route => route.id === exact?.id)?.available, false);
+  configured = true;
+  consent = false;
+  assert.equal((await manager.externalRoutes()).find(route => route.id === exact?.id)?.available, false);
+  consent = true;
+  connections.setPreference('local-only');
+  assert.equal((await manager.externalRoutes()).find(route => route.id === exact?.id)?.available, false);
+  connections.setPreference('local-first');
+  selectedModel = 'gpt-4o';
+  assert.deepEqual((await manager.externalRoutes()).find(route => route.id === exact?.id)?.selected_roles, []);
+  await fs.writeFile(manifestPath, '{invalid-local-manifest');
+  assert.equal((await manager.externalRoutes()).find(route => route.id === exact?.id)?.available, true);
+  assert.deepEqual([runtimeReads, cliReads, catalogReads], [0, 0, 0], 'each external resolution stays fresh without unrelated inspection');
+  await assert.rejects(manager.snapshot(), SyntaxError, 'full local artifact validation is preserved');
+});
+
+test('external route projection fails closed on unavailable or malformed connection truth', async () => {
+  const manager = createModelManagerView({
+    workspace: '.', manifestPath: 'not-read',
+    modelRuntime: { list: () => { throw new Error('not needed'); }, status: async () => { throw new Error('not needed'); } },
+    connectionsService: { list: async () => { throw new Error('unavailable'); } }
+  });
+  assert.deepEqual(await manager.externalRoutes(), []);
+  const malformed = createModelManagerView({
+    workspace: '.', manifestPath: 'not-read',
+    modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) },
+    connectionsService: { list: async () => ({ connections: [{}] }) as any }
+  });
+  await assert.rejects(malformed.externalRoutes());
 });
 
 test('one OpenCode Go catalog exposes multiple models without granting exact route support', async t => {

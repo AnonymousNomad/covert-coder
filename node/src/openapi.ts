@@ -714,7 +714,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     connectionsService,
     ...(modelRuntime instanceof BrokerModelRuntime ? { runtimeStatus: () => modelRuntime.runtimeStatusSnapshot() } : {})
   });
-  modelProviderRouteSnapshot = async () => (await modelManagerView.snapshot()).routes;
+  modelProviderRouteSnapshot = () => modelManagerView.externalRoutes();
   const huggingfaceAuthorization =
     options.modelHubAuthorization ??
     (async () => {

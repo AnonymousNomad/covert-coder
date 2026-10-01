@@ -8,6 +8,14 @@ test, and an honest result. This is the project memory for architecture work.
 **This is the Way:** research, decide, implement surgically, test live, record
 the result, and refuse unsupported completion claims.
 
+## 2026-10-01 — External provider execution snapshot latency
+
+- Observed failure: unchanged 144b3b6 E: cumulative diagnostic failed the direct-provider timeout stream body (855/1/11 of 867). Headers arrived at 4716.3287ms, text-reader TimeoutError at 5013.2446ms under the original 5000ms fixture signal. A preceding durable sync took 2132.9499ms. Original red log and historical unknowns are preserved.
+- Source cause addressed: exact external target preparation and dispatch revalidation invoked the complete Model Manager snapshot, including unrelated local runtime/artifact/CLI inspection. Controlled integration canary failed with six local-runtime status reads during one external request. These observations establish an avoidable dependency; they do not assign every storage delay or old untraced failure to it.
+- Decision: the existing Provider Connections owner supplies a fresh passive external execution view. Model Manager maps it through the SAME connection-to-route function used by its full operator snapshot. Direct HTTP and managed OpenCode identity, credential-source, consent/Local-Only, support expiry and selected roles remain fresh. Full local discovery/qualification and admission owners are preserved. No routing cache, extra registry or deadline/durability waiver.
+- Primary references: [Fetch abort semantics](https://fetch.spec.whatwg.org/#abort-fetch) abort response bodies after headers; [Node 26.4 FileHandle.sync](https://nodejs.org/download/release/v26.4.0/docs/api/fs.html#filehandlesync) requests device synchronization. A received HTTP200 is not completed streaming acceptance.
+- Regression scope: zero local-status reads for governed external preparation/execution, parity with the complete view, fresh credential/consent/Local-Only revocation, sibling isolation, OpenCode proof expiry, passive reads and malformed/unavailable truth fail closed. Retain original timeout/cancel/restart and durable terminal evidence assertions. Require same E: full sequence plus complete canonical clean pre-push and exact-SHA CI before closure/publication; standalone green is insufficient.
+
 ## 2026-09-26 — V1 C2-02 Atomic Persistence
 
 - Research basis: the frozen V1 matrix identifies session.json and

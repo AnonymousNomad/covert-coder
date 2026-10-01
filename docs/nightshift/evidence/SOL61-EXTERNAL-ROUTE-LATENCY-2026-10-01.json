@@ -1,0 +1,80 @@
+{
+  "schema": "covert.external-route-latency.repair.v1",
+  "branch": "nightshift/production-convergence-20260926",
+  "parent_source": "144b3b6c9070842764b80e7142855c866c03c33e",
+  "state": "AFFECTED_STATIC_GREEN_E_CUMULATIVE_REPLAY_AND_CANONICAL_EXACT_SHA_GATES_PENDING",
+  "original_red": {
+    "total": 867,
+    "pass": 855,
+    "fail": 1,
+    "skip": 11,
+    "cancelled": 0,
+    "duration_ms": 760042.8627,
+    "log": "E:\\pip_temp\\sol61-msi-e-full-boundary.log",
+    "log_sha256": "d3f229a0cd4f679a30a9f0af3b5808fb8f5640728491b2cd3daeb85786affc6d",
+    "headers_ms": 4716.3287,
+    "body_error_ms": 5013.2446,
+    "preceding_sync_ms": 2132.9499
+  },
+  "controlled_red": {
+    "pass": 0,
+    "fail": 1,
+    "unrelated_runtime_reads": 6,
+    "log": "E:\\pip_temp\\sol61-external-projection-controlled-red.log",
+    "sha256": "dff012013fa1a34f844a01c1dd9e775a5ef4f825e35c536d72b972d9a127709d"
+  },
+  "repair": [
+    "EXISTING_CONNECTION_OWNER_FRESH_EXTERNAL_PROJECTION",
+    "SAME_MODEL_MANAGER_ROUTE_MAPPING",
+    "NO_LOCAL_RUNTIME_ARTIFACT_CLI_CATALOG_DEPENDENCY_FOR_EXTERNAL_DISPATCH",
+    "LOCAL_FULL_VIEW_AND_ADMISSION_UNCHANGED"
+  ],
+  "affected_e_green": {
+    "total": 90,
+    "pass": 90,
+    "fail": 0,
+    "skip": 0,
+    "cancelled": 0,
+    "duration_ms": 54221.7495,
+    "log": "E:\\pip_temp\\sol61-external-projection-affected-green.log",
+    "sha256": "cc20f0daf5512d7b4e3d37c01e8bcc4ead550398f8a967dc9195d06375dd0251",
+    "layer": "CONTROLLED_REGRESSION_NOT_LIVE_PROVIDER_QUALIFICATION"
+  },
+  "model_access_green": {
+    "pass": 14,
+    "fail": 0,
+    "duration_ms": 1035.7698,
+    "sha256": "3429acbc3cbf5bff0c0a1be3e980c6c7bc7be7bf0e698d820255f71642cd6cb8"
+  },
+  "static": {
+    "node_typecheck": 0,
+    "browser_typecheck": 0,
+    "scoped_eslint": 0,
+    "log": "E:\\pip_temp\\sol61-external-projection-static-repaired.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fixture_backend_null_failure": "REPAIRED_OMITTED_ABSENT_FIELD_CONTRACT_UNCHANGED"
+  },
+  "route_ownership_regeneration": "TRACKED_ARTIFACTS_UNCHANGED",
+  "local_veritas": {
+    "state": "CANCELLED_UNSAFE_BROAD_WINDOWS_INVOCATION_NOT_ACCEPTANCE",
+    "receipt": "E:\\pip_temp\\sol61-external-projection-veritas-cancelled.json",
+    "sha256": "02bfea18099de552d4c6eddb8f85105ee3d615d3ef1d18280cec41c5f591824f",
+    "actual_exact_sha_ci_veritas": "PENDING"
+  },
+  "safety": {
+    "fixture_deadline_ms": 5000,
+    "provider_timeout_ms": 500,
+    "durable_authority_unchanged": true,
+    "admission_floors_unchanged": true,
+    "model_started": false,
+    "foreign_terminated": false,
+    "pr31": "FROZEN",
+    "live_provider_qualified": false
+  },
+  "next": [
+    "SAME_E_FULL_SEQUENCE",
+    "COMPLETE_CANONICAL_CLEAN_PRE_PUSH",
+    "ACTUAL_EXACT_SHA_AIDE_VERITAS",
+    "RETAIN_HISTORICAL_MISSING_OBSERVATIONS"
+  ]
+}

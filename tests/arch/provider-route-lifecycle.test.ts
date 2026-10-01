@@ -202,6 +202,7 @@ async function startStack(
     httpServer,
     base,
     owner,
+    modelRuntime,
     async close() {
       httpServer.closeAllConnections();
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
@@ -263,7 +264,7 @@ test('provider lifecycle fixture excludes the operator global BYOK store', async
   }
 });
 
-test('production provider route is governed end to end and recovers only after exact re-verification on restart', async () => {
+test('production provider route is governed end to end and recovers only after exact re-verification on restart', async t => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-provider-route-lifecycle-'));
   const transportStates: TransportState[] = [];
   let stack: Awaited<ReturnType<typeof startStack>> | undefined;
@@ -299,6 +300,14 @@ test('production provider route is governed end to end and recovers only after e
     assert.equal(exactRoute.available, true);
     assert.equal(exactRoute.health, 'HEALTHY');
 
+    let externalRuntimeStatusReads = 0;
+    const runtime = stack.modelRuntime;
+    const originalStatus = runtime.status.bind(runtime);
+    t.mock.method(runtime, 'status', () => {
+      externalRuntimeStatusReads++;
+      return originalStatus();
+    });
+
     const oneShotBody = {
       modelId: CHAT_MODEL_ID,
       messages: [{ role: 'user' as const, content: 'one shot path' }],
@@ -318,6 +327,7 @@ test('production provider route is governed end to end and recovers only after e
     const oneShotAfter = await operationReceipt(owner, oneShot.operationId);
     assert.equal(oneShotAfter.state, 'succeeded');
     assertExactTarget(receiptTarget(oneShotAfter));
+    assert.equal(externalRuntimeStatusReads, 0, 'external preparation and execution do not inspect unrelated local runtimes');
 
     const streamBody = { modelId: CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'stream path' }] };
     const streamed = await prepareAndApprove(owner, 'POST', '/api/chat/stream', streamBody, 'provider-lifecycle-stream');
@@ -400,6 +410,7 @@ test('production provider route is governed end to end and recovers only after e
     assert.ok(durableSuccess, 'stream completion has a durable Authority evidence row');
     assert.equal(durableSuccess.digest, (streamAfter as { digest: unknown }).digest);
     assert.ok(!JSON.stringify(auditEvents).includes(PROVIDER_KEY), 'durable Authority evidence contains no provider credential');
+    assert.equal(externalRuntimeStatusReads, 0, 'external success, failure, timeout and cancellation never inspect local runtime status');
 
     await stack.close();
     stack = undefined;

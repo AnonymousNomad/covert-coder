@@ -401,7 +401,17 @@ export function createProviderConnectionsService(options) {
       subscriptionConnections(),
       catalogConnection()
     ]);
-    const all = [...subscription, ...api, local, catalog];
+    return connectionView([...subscription, ...api, local, catalog]);
+  }
+
+  // External dispatch needs fresh provider/consent/model-support truth, but
+  // neither a local-runtime probe nor unrelated CLI/catalog presence checks.
+  // apiConnections owns both direct HTTP and managed OpenCode projections.
+  async function listExternalExecution() {
+    return connectionView(await apiConnections());
+  }
+
+  function connectionView(all) {
     const parts = [];
     if (all.some((entry) => entry.kind === 'api-key' && entry.status === 'connected')) parts.push('api-keys');
     if (all.some((entry) => entry.kind === 'subscription' && entry.status === 'connected')) parts.push('subscription');
@@ -591,6 +601,7 @@ export function createProviderConnectionsService(options) {
 
   return Object.freeze({
     list,
+    listExternalExecution,
     getPreference,
     setPreference,
     discoverOpenCodeModels,

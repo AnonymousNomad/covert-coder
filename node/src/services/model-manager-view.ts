@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { ConnectionsViewResponse, type ConnectionsViewResponseT, type ProviderConnectionT } from '../../../common/contracts/connections.ts';
 import {
   ModelManagerResponse,
+  ModelProviderRoute,
   type ModelAccessIdentityT,
   type ModelArtifactSourceT,
   type ModelCredentialSourceT,
@@ -44,7 +45,10 @@ export interface ModelManagerViewOptions {
   workspace: string;
   manifestPath: string;
   modelRuntime: Pick<ModelRuntime, 'list' | 'status'>;
-  connectionsService: { list(): Promise<ConnectionsViewResponseT> };
+  connectionsService: {
+    list(): Promise<ConnectionsViewResponseT>;
+    listExternalExecution?(): Promise<ConnectionsViewResponseT>;
+  };
   runtimeStatus?: () => Promise<RuntimeObservation | null>;
 }
 
@@ -210,8 +214,64 @@ function buildAdapters(connections: ConnectionsViewResponseT, runtime: ModelMana
   ];
 }
 
-export function createModelManagerView(options: ModelManagerViewOptions): { snapshot(): Promise<ModelManagerResponseT> } {
-  return Object.freeze({ snapshot: async () => {
+function connectionView(raw: unknown): ConnectionsViewResponseT {
+  return ConnectionsViewResponse.parse(raw ?? {
+    consensus: 'none',
+    routed_roles: { plan: 'local', act: 'local', utility: 'local' },
+    preference: 'local-first',
+    connections: []
+  });
+}
+
+// One route mapping serves the full operator view and fresh execution reads.
+// Local eligibility additionally requires artifact/runtime qualification.
+function connectionRoute(
+  connections: ConnectionsViewResponseT,
+  connection: ProviderConnectionT,
+  reference: ProviderConnectionT['access']['model_refs'][number],
+  adapter: ProviderConnectionT['access']['execution_adapters'][number],
+  qualifiedLocal: boolean
+): ModelProviderRouteT {
+  const credential = credentialSource(connection);
+  const routeId = 'route:' + connection.id + ':' + reference.provider_model_id + ':' + adapter;
+  return ModelProviderRoute.parse({
+    id: safeText(routeId, 'route:unknown').replace(/[^A-Za-z0-9:._/-]/g, '-'),
+    model_id: reference.model_id,
+    provider_id: connection.provider_id,
+    connection_id: connection.id,
+    provider_model_id: reference.provider_model_id,
+    credential_source_id: credential.id,
+    execution_adapter_id: adapter,
+    model_support_state: reference.model_support_state === 'verified' ? 'VERIFIED'
+      : reference.model_support_state === 'unsupported' ? 'UNSUPPORTED' : 'UNKNOWN',
+    configured: connection.access.authentication_configured || connection.access.credential_source.configuration_state === 'not_required',
+    health: mapHealth(connection.access.health),
+    available: reference.model_support_state === 'verified' && connection.routing_available &&
+      (connection.kind !== 'local-runtime' || qualifiedLocal),
+    external_egress_required: connection.access.external_egress_required,
+    operator_setup_required: connection.access.operator_setup_required,
+    setup_state: mapSetup(connection.access.setup_state),
+    selected_roles: selectedRoles(connections, connection, reference.provider_model_id)
+  });
+}
+
+export function createModelManagerView(options: ModelManagerViewOptions): {
+  snapshot(): Promise<ModelManagerResponseT>;
+  externalRoutes(): Promise<ModelProviderRouteT[]>;
+} {
+  return Object.freeze({
+    externalRoutes: async () => {
+      const raw = await (options.connectionsService.listExternalExecution
+        ? options.connectionsService.listExternalExecution()
+        : options.connectionsService.list()).catch(() => null);
+      const connections = connectionView(raw);
+      return connections.connections.filter(connection => connection.kind !== 'local-runtime').flatMap(connection =>
+        connection.access.execution_adapters.flatMap(adapter =>
+          connection.access.model_refs.map(reference => connectionRoute(connections, connection, reference, adapter, false))
+        )
+      );
+    },
+    snapshot: async () => {
     const [manifestText, runtimeView, connectionsRaw, runtimeObservation] = await Promise.all([
       fs.readFile(options.manifestPath, 'utf8').catch(() => null),
       options.modelRuntime.status().catch(() => ({ runtime: false, models: [] })),
@@ -219,13 +279,7 @@ export function createModelManagerView(options: ModelManagerViewOptions): { snap
       options.runtimeStatus ? options.runtimeStatus().catch(() => null) : Promise.resolve(null)
     ]);
     const manifest = manifestText ? record(JSON.parse(manifestText)) : {};
-    const connectionFallback = ConnectionsViewResponse.parse({
-      consensus: 'none',
-      routed_roles: { plan: 'local', act: 'local', utility: 'local' },
-      preference: 'local-first',
-      connections: []
-    });
-    const connections = connectionsRaw ? ConnectionsViewResponse.parse(connectionsRaw) : connectionFallback;
+    const connections = connectionView(connectionsRaw);
     const runtimeHealth = runtimeObservation?.health ?? (runtimeView.runtime ? 'UNKNOWN' : 'NOT_INSTALLED');
     const runtime = {
       canonical_runtime_id: 'unsloth' as const,
@@ -376,27 +430,8 @@ export function createModelManagerView(options: ModelManagerViewOptions): { snap
               execution_selected_roles: []
             });
           }
-          const routeId = 'route:' + connection.id + ':' + reference.provider_model_id + ':' + adapter;
-          const modelSupportState = reference.model_support_state === 'verified' ? 'VERIFIED'
-            : reference.model_support_state === 'unsupported' ? 'UNSUPPORTED' : 'UNKNOWN';
-          const route: ModelProviderRouteT = {
-            id: safeText(routeId, 'route:unknown').replace(/[^A-Za-z0-9:._/-]/g, '-'),
-            model_id: reference.model_id,
-            provider_id: connection.provider_id,
-            connection_id: connection.id,
-            provider_model_id: reference.provider_model_id,
-            credential_source_id: credential.id,
-            execution_adapter_id: adapter,
-            model_support_state: modelSupportState,
-            configured: connection.access.authentication_configured || connection.access.credential_source.configuration_state === 'not_required',
-            health: mapHealth(connection.access.health),
-            available: reference.model_support_state === 'verified' && connection.routing_available &&
-              (connection.kind !== 'local-runtime' || identityById.get(reference.model_id)?.qualification.state === 'QUALIFIED'),
-            external_egress_required: connection.access.external_egress_required,
-            operator_setup_required: connection.access.operator_setup_required,
-            setup_state: mapSetup(connection.access.setup_state),
-            selected_roles: selectedRoles(connections, connection, reference.provider_model_id)
-          };
+          const route = connectionRoute(connections, connection, reference, adapter,
+            identityById.get(reference.model_id)?.qualification.state === 'QUALIFIED');
           routes.push(route);
           const model = modelById.get(reference.model_id);
           if (model) model.execution_selected_roles = [...new Set([...model.execution_selected_roles, ...route.selected_roles])];
