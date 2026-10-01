@@ -42,14 +42,15 @@ test('Windows Unsloth discovery prefers the managed CLI wrapper and quotes its f
     String.raw`C:\Program Files\Unsloth Studio\bin\unsloth.exe`,
     wrapper
   ], 'win32'), wrapper);
-  const launch = buildUnslothCliInvocation(wrapper, ['studio', 'run', '-H', '127.0.0.1', '-p', '18888', '--api-only', '--start-api-key-marker'], 'win32');
+  const launch = buildUnslothCliInvocation(wrapper, ['studio', 'run', '--model', String.raw`C:\models with spaces\candidate.gguf`, '-H', '127.0.0.1', '-p', '18888', '--api-only', '--start-api-key-marker'], 'win32');
   assert.equal(launch.command, 'cmd.exe');
   assert.deepEqual(launch.args, [
     '/d', '/v:off', '/s', '/c',
-    String.raw`""C:\Program Files\Unsloth Studio\bin\unsloth.cmd" studio run -H 127.0.0.1 -p 18888 --api-only --start-api-key-marker"`
+    String.raw`""C:\Program Files\Unsloth Studio\bin\unsloth.cmd" "studio" "run" "--model" "C:\models with spaces\candidate.gguf" "-H" "127.0.0.1" "-p" "18888" "--api-only" "--start-api-key-marker""`
   ]);
   assert.equal(launch.windowsVerbatimArguments, true);
   assert.throws(() => buildUnslothCliInvocation(wrapper, ['studio', '& whoami'], 'win32'), /not safe/);
+  assert.throws(() => buildUnslothCliInvocation(wrapper, ['studio', '--model', String.raw`C:\models\%USERPROFILE%\candidate.gguf`], 'win32'), /not safe/);
 });
 
 test('non-Windows Unsloth discovery keeps its native CLI without a command shell', () => {
@@ -536,11 +537,7 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
           authenticatedCalls.push(new Headers(init?.headers).get('Authorization') ?? '');
         }
         if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
-        if (pathname === '/api/inference/load') {
-          unknownPortReads = 1;
-          unknownTreeReads = 1;
-          return jsonResponse({ completed: true });
-        }
+        if (pathname === '/api/inference/load') return jsonResponse({ completed: true });
         if (pathname === '/api/inference/unload') return jsonResponse({ completed: true });
         if (pathname === '/v1/chat/completions') {
           chatRequests++;
@@ -562,24 +559,33 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
         assert.equal(options.env?.UNSLOTH_API_ONLY, '1');
         assert.equal(options.env?._UNSLOTH_CLOUDFLARE_INTENT, 'disabled');
         portState = 'LISTENING';
-        queueMicrotask(() => stdout.end(`startup output is discarded\nUNSLOTH_START_API_KEY: ${generatedApiKey}\n`));
+        const modelArgIndex = args.indexOf('--model');
+        assert.notEqual(modelArgIndex, -1, 'owned startup supplies the selected artifact to the model-bearing CLI command');
+        const modelPath = args[modelArgIndex + 1];
+        queueMicrotask(() => stdout.end(`startup output is discarded\nUNSLOTH_START_API_KEY: ${generatedApiKey}\n  Model loaded: ${modelPath}\n`));
         return fakeChild;
       }) as never,
       credentialStore: { get: async () => { configuredCredentialReads++; return undefined; } },
       startupTimeoutMs: 1000,
       now: () => FIXED_TIME
     });
-    const loaded = await adapter.load({ modelId: 'owned-model', modelPath: artifact });
+    const loaded = await adapter.load({ modelId: 'owned-model', modelPath: artifact, contextTokens: 4096, loadIn4Bit: false });
     assert.match(loaded.artifact_sha256 ?? '', /^[a-f0-9]{64}$/);
     assert.deepEqual(launchArgs.slice(0, 2), ['studio', 'run'], 'the owned server uses the installed CLI run command before its options');
+    assert.equal(launchArgs[launchArgs.indexOf('--model') + 1], artifact);
+    assert.equal(launchArgs[launchArgs.indexOf('--max-seq-length') + 1], '4096');
+    assert.ok(launchArgs.includes('--no-load-in-4bit'));
     assert.ok(launchArgs.includes('--api-only'));
     assert.ok(launchArgs.includes('--start-api-key-marker'));
     assert.ok(!launchArgs.includes('--disable-tools'));
+    assert.equal(authenticatedCalls.length, 0, 'the CLI startup load is not raced with a second Covert load request');
     assert.equal(configuredCredentialReads, 0, 'owned runtime bootstrap uses its private key channel, not credential storage');
     assert.equal(JSON.stringify(await adapter.status()).includes(generatedApiKey), false, 'the captured API key is never exposed by runtime status');
     assert.equal((await adapter.status()).ownership, 'COVERT_OWNED');
     assert.equal((await adapter.status()).pid, 50002, 'status reports the listener PID, not only the CLI parent PID');
 
+    unknownPortReads = 1;
+    unknownTreeReads = 1;
     const recovered = await adapter.infer({ modelId: 'owned-model', messages: [{ role: 'user', content: 'ping' }], temperature: 0 });
     assert.equal(recovered.text, 'alive', 'transient port and ancestry uncertainty is retried before endpoint access');
     assert.equal(chatRequests, 1);
@@ -600,14 +606,125 @@ test('Covert-owned Unsloth listener re-proves transient ownership and remains sh
     await adapter.shutdown();
     assert.deepEqual(authenticatedCalls, [
       `Bearer ${generatedApiKey}`,
-      `Bearer ${generatedApiKey}`,
       `Bearer ${generatedApiKey}`
-    ], 'load, unload, and shutdown authenticate with the captured child key');
+    ], 'unload and shutdown authenticate with the captured child key after CLI-confirmed startup load');
     assert.equal(gracefulShutdownRequests, 1);
     assert.equal(launcherKillCalls, 0, 'graceful API shutdown should exit without terminating even the launcher');
     assert.equal((await adapter.status()).health, 'STOPPED');
     assert.equal((await adapter.status()).last_error, null, 'operator-requested clean shutdown is not recorded as an unexpected exit');
     assert.ok(requests > 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('owned Unsloth startup rejects a CLI load confirmation for a different artifact and reaps the owned tree', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-startup-model-mismatch-'));
+  const artifact = path.join(dir, 'requested.gguf');
+  await writeFile(artifact, 'requested fixture');
+  let portState: 'FREE' | 'LISTENING' = 'FREE';
+  let processCleanups = 0;
+  let authenticatedRequests = 0;
+  const stdout = new PassThrough();
+  const fakeChild = Object.assign(new EventEmitter(), {
+    pid: 50501,
+    exitCode: null as number | null,
+    kill: () => true,
+    stdout
+  });
+  try {
+    const adapter = new UnslothRuntimeAdapter({
+      workspace: dir,
+      cliPath: path.join(dir, 'unsloth.exe'),
+      findExecutable: async () => path.join(dir, 'unsloth.exe'),
+      discoverVersion: async () => '2026.9.11',
+      inspectPort: async () => portState === 'FREE' ? { state: 'FREE' } : { state: 'LISTENING', pid: 50502 },
+      processTreeContains: async (rootPid, targetPid) => rootPid === 50501 && targetPid === 50502,
+      terminateOwnedProcess: async child => {
+        processCleanups++;
+        portState = 'FREE';
+        (child as unknown as typeof fakeChild).exitCode = 0;
+        child.emit('exit', 0, null);
+      },
+      fetcher: async input => {
+        const pathname = new URL(String(input)).pathname;
+        if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+        authenticatedRequests++;
+        return jsonResponse({}, 401);
+      },
+      spawnProcess: (() => {
+        portState = 'LISTENING';
+        queueMicrotask(() => stdout.end('UNSLOTH_START_API_KEY: sk-unsloth-mismatch-fixture-token\n  Model loaded: other.gguf\n'));
+        return fakeChild;
+      }) as never,
+      startupTimeoutMs: 1000
+    });
+
+    await assert.rejects(
+      () => adapter.load({ modelId: 'requested-model', modelPath: artifact }),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'MODEL_IDENTITY_MISMATCH'
+    );
+    assert.equal(authenticatedRequests, 0, 'a mismatched startup confirmation never reaches model APIs');
+    assert.equal(processCleanups, 1, 'the mismatched Covert-owned runtime is gracefully reaped');
+    assert.equal((await adapter.status()).loaded_model, null, 'a mismatched runtime is never surfaced as loaded');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('owned Unsloth startup shuts down when the requested artifact changes during load verification', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-unsloth-startup-artifact-change-'));
+  const artifact = path.join(dir, 'requested.gguf');
+  await writeFile(artifact, 'original fixture');
+  let portState: 'FREE' | 'LISTENING' = 'FREE';
+  let shutdownRequests = 0;
+  const stdout = new PassThrough();
+  const fakeChild = Object.assign(new EventEmitter(), {
+    pid: 50601,
+    exitCode: null as number | null,
+    kill: () => true,
+    stdout
+  });
+  try {
+    const adapter = new UnslothRuntimeAdapter({
+      workspace: dir,
+      cliPath: path.join(dir, 'unsloth.exe'),
+      findExecutable: async () => path.join(dir, 'unsloth.exe'),
+      discoverVersion: async () => '2026.9.11',
+      inspectPort: async () => portState === 'FREE' ? { state: 'FREE' } : { state: 'LISTENING', pid: 50602 },
+      processTreeContains: async (rootPid, targetPid) => rootPid === 50601 && targetPid === 50602,
+      fetcher: async input => {
+        const pathname = new URL(String(input)).pathname;
+        if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
+        if (pathname === '/api/shutdown') {
+          shutdownRequests++;
+          portState = 'FREE';
+          fakeChild.exitCode = 0;
+          fakeChild.emit('exit', 0, null);
+          return jsonResponse({ scheduled: true });
+        }
+        return jsonResponse({});
+      },
+      spawnProcess: (() => {
+        portState = 'LISTENING';
+        queueMicrotask(async () => {
+          await writeFile(artifact, 'changed fixture');
+          stdout.end(`UNSLOTH_START_API_KEY: sk-unsloth-changed-artifact-fixture-token\n  Model loaded: ${artifact}\n`);
+        });
+        return fakeChild;
+      }) as never,
+      startupTimeoutMs: 1000
+    });
+
+    await assert.rejects(
+      () => adapter.load({ modelId: 'requested-model', modelPath: artifact }),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'ARTIFACT_CHANGED_DURING_LOAD'
+    );
+    assert.equal(shutdownRequests, 1, 'the owned server is gracefully stopped when its artifact hash changes');
+    assert.equal(portState, 'FREE');
+    const status = RuntimeStatusResponse.parse(await adapter.status());
+    assert.equal(status.health, 'STOPPED');
+    assert.equal(status.loaded_model, null);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -744,12 +861,11 @@ test('unexpected owned launcher exit is exposed as a sanitized runtime error', a
       fetcher: async input => {
         const pathname = new URL(String(input)).pathname;
         if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
-        if (pathname === '/api/inference/load') return jsonResponse({ completed: true });
         return jsonResponse({});
       },
       spawnProcess: (() => {
         portState = 'LISTENING';
-        queueMicrotask(() => stdout.end('UNSLOTH_START_API_KEY: sk-unsloth-unexpected-exit-fixture-token\n'));
+        queueMicrotask(() => stdout.end(`UNSLOTH_START_API_KEY: sk-unsloth-unexpected-exit-fixture-token\n  Model loaded: ${artifact}\n`));
         return fakeChild;
       }) as never,
       startupTimeoutMs: 1000,
@@ -796,7 +912,6 @@ test('rejected graceful shutdown leaves the owned runtime untouched', async () =
       fetcher: async input => {
         const pathname = new URL(String(input)).pathname;
         if (pathname === '/api/health') return jsonResponse({ service: 'Unsloth UI Backend' });
-        if (pathname === '/api/inference/load') return jsonResponse({ completed: true });
         if (pathname === '/api/shutdown') {
           shutdownRequests++;
           return jsonResponse({ detail: 'owner approval required' }, 403);
@@ -805,7 +920,7 @@ test('rejected graceful shutdown leaves the owned runtime untouched', async () =
       },
       spawnProcess: (() => {
         portState = 'LISTENING';
-        queueMicrotask(() => stdout.end('UNSLOTH_START_API_KEY: sk-unsloth-rejected-shutdown-fixture-token\n'));
+        queueMicrotask(() => stdout.end(`UNSLOTH_START_API_KEY: sk-unsloth-rejected-shutdown-fixture-token\n  Model loaded: ${artifact}\n`));
         return child;
       }) as never,
       startupTimeoutMs: 1000,

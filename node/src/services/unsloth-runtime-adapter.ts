@@ -26,6 +26,7 @@ import {
 const STUDIO_SERVICE_MARKER = 'Unsloth UI Backend';
 const DEFAULT_PORT = 18_888;
 const DEFAULT_START_TIMEOUT_MS = 20_000;
+const DEFAULT_MODEL_LOAD_TIMEOUT_MS = 30 * 60_000;
 const OWNERSHIP_PROBE_ATTEMPTS = 3;
 const OWNERSHIP_PROBE_RETRY_MS = 100;
 const OWNERSHIP_DIAGNOSTIC_CODES = new Set([
@@ -155,12 +156,18 @@ export function selectUnslothExecutable(candidates: string[], platform: NodeJS.P
 
 export function buildUnslothCliInvocation(executable: string, args: string[], platform: NodeJS.Platform = process.platform): CliInvocation {
   if (platform === 'win32' && path.extname(executable).toLowerCase() === '.cmd') {
-    if (/["%\r\n]/u.test(executable) || args.some(argument => !/^[A-Za-z0-9_.:-]+$/u.test(argument))) {
+    const unsafeCmdText = /["%&|<>^!\r\n]/u;
+    if (unsafeCmdText.test(executable) || args.some(argument => unsafeCmdText.test(argument))) {
       throw new RuntimeAdapterError('INVALID_CLI_INVOCATION', 'Unsloth wrapper path or argument is not safe for the Windows command shell');
     }
+    const escapeCmdArg = (argument: string): string => {
+      const escaped = argument.replace(/(\\*)"/gu, '$1$1\\"').replace(/(\\*)$/u, '$1$1');
+      return `"${escaped}"`;
+    };
+    const line = [path.win32.normalize(executable), ...args].map(escapeCmdArg).join(' ');
     return {
       command: 'cmd.exe',
-      args: ['/d', '/v:off', '/s', '/c', `""${path.win32.normalize(executable)}" ${args.join(' ')}"`],
+      args: ['/d', '/v:off', '/s', '/c', `"${line}"`],
       windowsVerbatimArguments: true
     };
   }
@@ -667,51 +674,65 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     const absolutePath = path.resolve(request.modelPath);
     const stat = await import('node:fs/promises').then(fs => fs.stat(absolutePath)).catch(() => null);
     if (stat === null || !stat.isFile()) throw new RuntimeAdapterError('ARTIFACT_UNAVAILABLE', 'the requested local model artifact is unavailable');
-    if (!this.externallyManaged && this.processHandle === null) await this.startOwnedServer();
-    if (await this.health() !== 'HEALTHY') throw new RuntimeAdapterError('UNSLOTH_UNHEALTHY', 'Unsloth did not become healthy; the model was not loaded');
     const artifactHashBeforeLoad = await sha256(absolutePath);
-    const payload: Record<string, unknown> = {
-      model_path: absolutePath,
-      max_seq_length: request.contextTokens ?? 2048,
-      // Unsloth can inherit same-model llama-server extras when this field is
-      // omitted. Explicit null clears a stale --chat-template-file and lets
-      // the model/runtime's own template-selection rules apply.
-      chat_template_override: null
-    };
-    if (request.loadIn4Bit !== undefined) payload.load_in_4bit = request.loadIn4Bit;
-    // A reload can change the profile even for the same artifact. Do not leave
-    // the prior model or its defaults looking current if this load fails.
-    this.loadedModel = null;
-    this.loadedPath = null;
-    this.generationDefaults = null;
-    const response = await this.fetchNoRedirect('/api/inference/load', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30 * 60_000)
-    }, true);
-    const body = await this.readLifecycleResponse(response, 'load');
-    if (body && typeof body === 'object' && '_deferred_error' in body) {
-      throw new RuntimeAdapterError('MODEL_LOAD_FAILED', 'Unsloth reported a deferred model-load failure');
-    }
-    const artifactHash = await sha256(absolutePath);
-    if (artifactHash !== artifactHashBeforeLoad) {
+    const loadedByStartup = !this.externallyManaged && this.processHandle === null;
+    if (loadedByStartup) await this.startOwnedServer(absolutePath, request);
+    try {
+      if (await this.health() !== 'HEALTHY') throw new RuntimeAdapterError('UNSLOTH_UNHEALTHY', 'Unsloth did not become healthy; the model was not loaded');
+      // A reload can change the profile even for the same artifact. Do not leave
+      // the prior model or its defaults looking current if this load fails.
       this.loadedModel = null;
       this.loadedPath = null;
-      throw new RuntimeAdapterError('ARTIFACT_CHANGED_DURING_LOAD', 'the model artifact changed while Unsloth loaded it; runtime identity is unqualified');
+      this.generationDefaults = null;
+      if (!loadedByStartup) {
+        const payload: Record<string, unknown> = {
+          model_path: absolutePath,
+          max_seq_length: request.contextTokens ?? 2048,
+          // Unsloth can inherit same-model llama-server extras when this field is
+          // omitted. Explicit null clears a stale --chat-template-file and lets
+          // the model/runtime's own template-selection rules apply.
+          chat_template_override: null
+        };
+        if (request.loadIn4Bit !== undefined) payload.load_in_4bit = request.loadIn4Bit;
+        const response = await this.fetchNoRedirect('/api/inference/load', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(DEFAULT_MODEL_LOAD_TIMEOUT_MS)
+        }, true);
+        const body = await this.readLifecycleResponse(response, 'load');
+        if (body && typeof body === 'object' && '_deferred_error' in body) {
+          throw new RuntimeAdapterError('MODEL_LOAD_FAILED', 'Unsloth reported a deferred model-load failure');
+        }
+      }
+      const artifactHash = await sha256(absolutePath);
+      if (artifactHash !== artifactHashBeforeLoad) {
+        this.loadedModel = null;
+        this.loadedPath = null;
+        throw new RuntimeAdapterError('ARTIFACT_CHANGED_DURING_LOAD', 'the model artifact changed while Unsloth loaded it; runtime identity is unqualified');
+      }
+      const identity: RuntimeModelIdentityT = {
+        model_id: request.modelId,
+        display_name: request.displayName ?? path.basename(absolutePath),
+        artifact_name: path.basename(absolutePath),
+        artifact_sha256: artifactHash,
+        identity_evidence: 'REQUESTED_ARTIFACT'
+      };
+      this.loadedPath = absolutePath;
+      this.loadedModel = identity;
+      this.generationDefaults = request.generationDefaults === undefined ? null : { ...request.generationDefaults };
+      this.lastError = null;
+      return identity;
+    } catch (error) {
+      if (loadedByStartup && this.processHandle !== null) {
+        try {
+          await this.shutdown();
+        } catch {
+          throw new RuntimeAdapterError('STARTUP_CLEANUP_FAILED', 'Covert could not confirm shutdown after its startup load failed verification');
+        }
+      }
+      throw error;
     }
-    const identity: RuntimeModelIdentityT = {
-      model_id: request.modelId,
-      display_name: request.displayName ?? path.basename(absolutePath),
-      artifact_name: path.basename(absolutePath),
-      artifact_sha256: artifactHash,
-      identity_evidence: 'REQUESTED_ARTIFACT'
-    };
-    this.loadedPath = absolutePath;
-    this.loadedModel = identity;
-    this.generationDefaults = request.generationDefaults === undefined ? null : { ...request.generationDefaults };
-    this.lastError = null;
-    return identity;
   }
 
   private async readLifecycleResponse(response: Response, action: string): Promise<Record<string, unknown> | null> {
@@ -1032,7 +1053,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     }
   }
 
-  private async startOwnedServer(): Promise<void> {
+  private async startOwnedServer(absoluteModelPath: string, request: RuntimeLoadRequest): Promise<void> {
     this.cliPath ??= await this.findExecutable();
     if (this.cliPath === null) throw new RuntimeAdapterError('NOT_INSTALLED', 'Unsloth CLI was not found; install Unsloth externally and restart Covert');
     const cliPath = this.cliPath;
@@ -1054,16 +1075,23 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     }
     env.UNSLOTH_API_ONLY = '1';
     env._UNSLOTH_CLOUDFLARE_INTENT = 'disabled';
-    const invocation = buildUnslothCliInvocation(cliPath, ['studio', 'run', '-H', '127.0.0.1', '-p', String(port), '--api-only', '--start-api-key-marker']);
+    const invocation = buildUnslothCliInvocation(cliPath, [
+      'studio', 'run', '--model', absoluteModelPath,
+      '--max-seq-length', String(request.contextTokens ?? 2048),
+      request.loadIn4Bit === false ? '--no-load-in-4bit' : '--load-in-4bit',
+      '-H', '127.0.0.1', '-p', String(port), '--api-only', '--start-api-key-marker'
+    ]);
     let stderrRemainder = '';
     let startupFailureCode: UnslothStartupFailureCode | null = null;
     let startupDiagnosticsActive = true;
+    let startupLoadConfirmed = false;
+    let startupLoadMismatch = false;
     const child = this.spawnProcess(invocation.command, invocation.args, {
       cwd: this.workspace,
       env,
-      // Stdout is only the private API-key marker channel. Stderr is consumed
-      // in memory and reduced to allowlisted diagnostic codes; raw output is
-      // never forwarded or persisted.
+      // Stdout is parsed in memory for the private API-key marker and exact
+      // successful model-load identity; every other line is discarded. Stderr
+      // is reduced to allowlisted diagnostic codes and never forwarded.
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
       detached: process.platform !== 'win32',
@@ -1080,6 +1108,11 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
         if (line.length > 512) continue;
         const match = /^UNSLOTH_START_API_KEY:\s*(sk-unsloth-[A-Za-z0-9_-]{16,256})\s*$/u.exec(line);
         if (match?.[1] !== undefined) this.ownedApiKey = match[1];
+        const loadedPrefix = '  Model loaded: ';
+        if (line.startsWith(loadedPrefix)) {
+          startupLoadConfirmed = line.slice(loadedPrefix.length) === absoluteModelPath;
+          startupLoadMismatch = !startupLoadConfirmed;
+        }
       }
     });
     child.stdout?.on('error', () => { this.ownedApiKey = null; });
@@ -1113,6 +1146,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
     });
     try {
       const deadline = Date.now() + this.startupTimeoutMs;
+      let serverReady = false;
       while (Date.now() < deadline && child.exitCode === null) {
         const listener = await this.inspectPort(port);
         if (listener.state === 'LISTENING') {
@@ -1131,10 +1165,8 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
               if (this.ownedApiKey === null) {
                 throw new RuntimeAdapterError('AUTH_KEY_CAPTURE_FAILED', 'Covert-owned Unsloth did not emit its private API-key startup marker');
               }
-              startupDiagnosticsActive = false;
-              startupFailureCode = null;
-              stderrRemainder = '';
-              return;
+              serverReady = true;
+              break;
             }
           } else {
             this.ownership = relation === false ? 'FOREIGN' : 'UNKNOWN';
@@ -1148,16 +1180,37 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
         }
         await new Promise(resolve => setTimeout(resolve, 250));
       }
+      if (serverReady) {
+        const loadDeadline = Date.now() + DEFAULT_MODEL_LOAD_TIMEOUT_MS;
+        while (Date.now() < loadDeadline && child.exitCode === null) {
+          if (startupLoadMismatch) {
+            throw new RuntimeAdapterError('MODEL_IDENTITY_MISMATCH', 'Unsloth startup completed a load for a different model identity; runtime readiness was withheld');
+          }
+          if (startupLoadConfirmed) {
+            if (this.processHandle !== child || !(await this.verifyOwnedListener()) || this.ownership !== 'COVERT_OWNED') {
+              throw new RuntimeAdapterError('OWNERSHIP_UNVERIFIED', 'Unsloth model load completed but its Covert-owned listener could not be re-proven');
+            }
+            startupDiagnosticsActive = false;
+            startupFailureCode = null;
+            stderrRemainder = '';
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+      }
       if (child.exitCode !== null) {
         const classified = startupFailureCode ?? classifyUnslothStartupFailure(stderrRemainder);
-        const code = classified ?? 'UNSLOTH_START_FAILED';
+        const code = classified ?? (serverReady ? 'MODEL_LOAD_UNCONFIRMED' : 'UNSLOTH_START_FAILED');
         const message = classified
           ? 'Covert-owned Unsloth startup failed (' + classified + ')'
-          : 'Covert-owned Unsloth process exited before becoming healthy (code=' + child.exitCode + ')';
+          : serverReady
+            ? 'Covert-owned Unsloth process exited before confirming the requested model load'
+            : 'Covert-owned Unsloth process exited before becoming healthy (code=' + child.exitCode + ')';
         this.recordOwnershipError(code, message);
         stderrRemainder = '';
         throw new RuntimeAdapterError(code, message);
       }
+      if (serverReady) throw new RuntimeAdapterError('MODEL_LOAD_TIMEOUT', 'Covert-owned Unsloth did not confirm the requested model load before the load deadline');
       throw new RuntimeAdapterError('UNSLOTH_START_TIMEOUT', 'Covert-owned Unsloth did not become healthy before the startup deadline');
     } catch (error) {
       await this.cleanupFailedStart(child);
