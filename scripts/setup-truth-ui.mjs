@@ -51,7 +51,14 @@ try {
       modelsStatus: async () => { check('registry'); return { models: [] }; },
       workflowState: async () => { check('workflow'); return { stage: 'DISCOVERY' }; },
       auditRead: async () => { check('audit'); return { events: [] }; },
-      byokStatus: async () => { check('providers'); return { consent_enabled: false, providers: [] }; },
+      byokStatus: async () => {
+        state.byokCalls = (state.byokCalls ?? 0) + 1;
+        if (state.byokCalls === state.holdByokCall) return await new Promise((resolve, reject) => {
+          const rejectRead = state.rejectHeldByok;
+          window.releaseByok = () => { if (rejectRead) reject(new Error('abandoned read failed')); else resolve({ consent_enabled: true, providers: [] }); };
+        });
+        check('providers'); return { consent_enabled: false, providers: [] };
+      },
     });
     window.setup = createSetupSession(document.getElementById('host'), {}, {
       onToast: (_code, message) => state.toasts.push(message), onNavigate: () => {},
@@ -151,6 +158,8 @@ try {
         window.setup.close(); window.fixture.saved = null; window.fixture.failure = value;
         window.fixture.choices = {}; window.fixture.completed = 0; window.fixture.writes = [];
         window.fixture.writeAttempts = 0; window.fixture.failAtWrite = 0;
+        window.fixture.byokCalls = 0; window.fixture.holdByokCall = 0; window.fixture.rejectHeldByok = false;
+        delete window.releaseByok;
         window.setup.open();
       }, failure);
       await page.waitForFunction(() => !document.querySelector('.cockpit-setup-primary').disabled);
@@ -215,6 +224,23 @@ try {
     await page.waitForFunction(() => !document.querySelector('.cockpit-setup-primary').disabled);
     assert.deepEqual(await page.evaluate(() => JSON.parse(window.fixture.saved).answers.providers), ['OpenAI / compatible', 'Anthropic / Claude']);
     console.log('PASS UI: multiple provider preferences persist without losing earlier selections');
+    for (const rejectRead of [false, true]) {
+      await fresh('');
+      await page.evaluate(value => { window.fixture.holdByokCall = 2; window.fixture.rejectHeldByok = value; }, rejectRead);
+      for (let i = 0; i < 4; i++) await next.click();
+      await page.waitForFunction(() => typeof window.releaseByok === 'function');
+      await page.evaluate(() => { window.abandonedByok = window.releaseByok; });
+      await fresh('');
+      for (let i = 0; i < 4; i++) await next.click();
+      await page.waitForFunction(() => !document.querySelector('.cockpit-setup-primary').disabled);
+      assert.match(await page.locator('.cockpit-setup-body').innerText(), /consent disabled/);
+      await page.evaluate(async () => { window.abandonedByok(); await new Promise(resolve => setTimeout(resolve, 0)); });
+      await next.click();
+      await page.locator('.cockpit-setup-controls').getByRole('button', { name: 'BACK', exact: true }).click();
+      assert.match(await page.locator('.cockpit-setup-body').innerText(), /consent disabled/);
+      assert.doesNotMatch(await page.locator('.cockpit-setup-body').innerText(), /consent enabled|Providers: unavailable/);
+      console.log(`PASS UI: abandoned provider ${rejectRead ? 'failure' : 'success'} cannot overwrite reopened setup observations`);
+    }
   }
 } finally {
   await browser?.close();

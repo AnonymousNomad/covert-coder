@@ -127,6 +127,17 @@ plan. No themes, docking, Model Packs or advisory runtime was implemented.
 
 ## Integration boundary
 
+Final review at `022790e` found a remaining provider refresh race in
+`advance()`: stage-four BYOK success/error assignments were not guarded after
+the await. A controlled delayed response reproduced old consent enabled
+overwriting the reopened session's consent disabled status. The full pre-push
+was deliberately stopped before upload; its exact owned tree was verified dead
+and origin remained `4cf80d9`. That interrupted run is not a full-gate pass.
+The repair guards both post-await branches by open/session identity. Eighteen
+browser scenarios now pass, including abandoned success and rejected reads.
+The failed reproduction log remains at `E:\pip_temp\sol61-provider-race-before.log`;
+the researched procedure is `failure-setup-session-provider-race`.
+
 Luna owns packaging/bootstrap closure. Apply the isolated truth commits only
 after reconciling against the then-current convergence SHA. Re-run required
 checks and CI at that SHA; no isolated evidence can promote the release.

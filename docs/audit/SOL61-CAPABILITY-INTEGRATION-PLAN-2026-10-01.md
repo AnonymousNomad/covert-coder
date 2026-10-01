@@ -11,7 +11,8 @@ actual convergence SHA before applying any slice.
 2. Apply `e82c4ee` (F01), `77987bc` (F03), then `4cf80d9` (F02) in order.
 3. Apply `d084200` (fixture logger drain), then `b9e8b04` (required browser CI,
    additional remote adapter/setup predicates and truthful terminal copy).
-4. Apply the additive capability-ledger/gate commit.
+4. Apply `022790e` (additive capability-ledger/gate), then the subsequent
+   setup provider-read session guard and its success/failure browser regression.
 5. Resolve journal/evidence conflicts by retaining both lanes' history. Keep
    current runtime, Model Access, Authority, Admission and packaging contracts.
 6. Run the actual browser regression, type/lint/build, affected architecture

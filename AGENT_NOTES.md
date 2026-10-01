@@ -5,6 +5,19 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+Sol review correction (2026-10-01 06:30): foundation committed `022790e`;
+full pre-push interrupted before upload to repair a reproduced setup provider
+read race. Remote remains `4cf80d9`. Both abandoned-success/error paths now
+preserve reopened observations; 18 browser scenarios pass. Final full gate
+and exact-SHA CI must run again on the repaired candidate.
+
+### [2026-10-01 06:30] Actor: sol61
+- Type: bug / repair / verification
+- Status: focused browser proof passed; final gates pending
+- Summary: Closed the remaining stage-four provider async session race instead of uploading known incomplete truth coverage.
+- Details: Review found post-await assignments lacking open/session guards. The new deterministic held-read test failed on 022790e with old consent enabled overwriting new consent disabled. Stopped only the identity-verified push process tree (all recorded descendants absent afterward), preserved the interrupted log, and confirmed remote stayed 4cf80d9. Loaded new failure-setup-session-provider-race SOP; guarded both success and catch. Eighteen browser scenarios passed, including late success and rejection. A guessed glob source search failed non-mutating; reloaded failure-assumed-source-filename, and inspected the known contract, which requires literal true for completion. Canonical and PR #31 untouched.
+- Next: Finish static/build proof, commit guard and evidence, rerun full versioned pre-push, verify hosted exact-SHA browser/architecture/Veritas, then issue integration handoff.
+
 Sol final verification preparation (2026-10-01 06:22): isolated HEAD `b9e8b04`
 contains five coherent truth/fixture commits. The additive closure foundation
 and integration evidence are ready for a separate commit and final full gate.

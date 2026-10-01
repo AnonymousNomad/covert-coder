@@ -417,7 +417,14 @@ export function createSetupSession(
       if (!open || session !== currentSession) return;
       stage = Math.min(currentStage + 1, STAGES.length - 1);
       if (stage === 4) {
-        try { const b = await api.byokStatus(); providersLine = `${b.providers.length} configured · consent ${b.consent_enabled ? 'enabled' : 'disabled'}`; } catch { providersLine = 'unavailable'; }
+        try {
+          const b = await api.byokStatus();
+          if (!open || session !== currentSession) return;
+          providersLine = `${b.providers.length} configured · consent ${b.consent_enabled ? 'enabled' : 'disabled'}`;
+        } catch {
+          if (!open || session !== currentSession) return;
+          providersLine = 'unavailable';
+        }
       }
     } finally {
       if (open && session === currentSession) { busy = false; renderStage(); }
