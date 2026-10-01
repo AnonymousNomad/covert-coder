@@ -6,6 +6,24 @@ import { TaskService } from '../../node/src/services/task-service.mjs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { TaskEventT } from '../../common/contracts/tasks.ts';
+import { ERROR_CODES, type ErrorCode } from '../../common/errors.ts';
+
+// Positive fixture failures must identify the boundary without printing paired
+// tokens, operation handles, bodies, arbitrary errors or persistence contents.
+export function fixtureFailureDescription(envelope: unknown): string {
+  const record = envelope && typeof envelope === 'object' ? envelope as Record<string, unknown> : {};
+  const error = record.error && typeof record.error === 'object' ? record.error as Record<string, unknown> : {};
+  const code = typeof error.code === 'string' && ERROR_CODES.includes(error.code as ErrorCode) ? error.code : 'UNKNOWN';
+  const message = typeof error.message === 'string' && error.message.length <= 4096 ? error.message.toLowerCase() : '';
+  const reasons: Array<[string, string]> = [
+    ['authorization audit', 'AUDIT_PERSISTENCE'], ['outcome persistence', 'AUDIT_PERSISTENCE'],
+    ['operation expired', 'EXPIRED'], ['operation revoked', 'REVOKED'],
+    ['environment changed', 'ENVIRONMENT_CHANGED'], ['operation changed', 'OPERATION_CHANGED'],
+    ['approval required', 'APPROVAL_REQUIRED'], ['not approved', 'APPROVAL_REQUIRED'],
+    ['capacity reached', 'CAPACITY'], ['not ready', 'RUNTIME_READINESS'], ['not running', 'RUNTIME_READINESS']
+  ];
+  return JSON.stringify({ error_code: code, reason_family: reasons.find(([needle]) => message.includes(needle))?.[1] ?? 'UNKNOWN' });
+}
 
 // Direct-service fixtures still pair and explicitly approve each exact action.
 // No universal credential, fake actor, or production bypass is involved.
@@ -121,7 +139,7 @@ export async function pairFixture(arch: ArchServer, base: string, origin = 'http
     body: JSON.stringify({ proof }), signal: AbortSignal.timeout(FIXTURE_TIMEOUT_MS)
   });
   const paired = await exchange.json() as { ok: boolean; data: { token: string; actor_id: string } };
-  assert.equal(exchange.status, 200);
+  assert.equal(exchange.status, 200, `pair ${fixtureFailureDescription(paired)}`);
   assert.equal(paired.ok, true);
   assert.equal(typeof paired.data.token, 'string');
   const headers = { Authorization: `Bearer ${paired.data.token}`, Origin: origin, 'Content-Type': 'application/json', 'X-AIDE-API-Format': 'envelope-v1' };
@@ -133,7 +151,7 @@ export async function pairFixture(arch: ArchServer, base: string, origin = 'http
   async function propose(method: string, pathname: string, body: unknown, taskId: string) {
     const response = await request('/api/authority/prepare', { method: 'POST', body: JSON.stringify({ method, path: pathname, body, task_id: taskId }) });
     const envelope = await response.json() as { ok: boolean; data: { operation_id: string; state: string } };
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, `prepare ${fixtureFailureDescription(envelope)}`);
     assert.equal(envelope.ok, true);
     return envelope.data;
   }
@@ -144,8 +162,8 @@ export async function pairFixture(arch: ArchServer, base: string, origin = 'http
     const operation = await propose(method, pathname, body, taskId);
     assert.equal(operation.state, 'pending');
     const decision = await decide(operation.operation_id, 'approve');
-    assert.equal(decision.status, 200);
     const envelope = await decision.json() as { ok: boolean };
+    assert.equal(decision.status, 200, `decision ${fixtureFailureDescription(envelope)}`);
     assert.equal(envelope.ok, true);
     return { 'X-AIDE-Operation': operation.operation_id, 'X-AIDE-Task': taskId };
   }

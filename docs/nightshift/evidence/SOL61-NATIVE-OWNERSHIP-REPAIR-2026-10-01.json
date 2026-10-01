@@ -78,5 +78,136 @@
     "https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs",
     "https://learn.microsoft.com/en-us/windows/win32/procthread/terminating-a-process",
     "https://doc.rust-lang.org/std/os/windows/io/trait.IntoRawHandle.html"
-  ]
+  ],
+  "post_commit_required_gate": {
+    "source": "4710774fa02e7cc11d0808c471d4154de4d81b00",
+    "started_at": "2026-10-01T16:01:26.0824155Z",
+    "finished_at": "2026-10-01T16:14:32.9248123Z",
+    "verdict": "FAIL_PUSH_BLOCKED",
+    "tests": 852, "pass": 837, "fail": 4, "skip": 11, "cancelled": 0,
+    "duration_ms": 775575.6648,
+    "unchanged_deadlines_and_authority": true,
+    "task_only_ssd_fixtures": true,
+    "log": "E:\\pip_temp\\sol61-native-job-full-push.log",
+    "log_sha256": "41f3fff1eb7e7b0278bd2a0042ffd0648674fbc91468c1b3e22006a4d9fd6cb8",
+    "failures": [
+      "hook privacy task exit event missing",
+      "LSP completion returned 409 instead of 200",
+      "LSP stop prepare returned 409 instead of 200",
+      "LSP status lacked running event; emitted error/stopped"
+    ],
+    "causes": "UNDER_INVESTIGATION_NOT_CLOSED_BY_FOCUSED_RERUN",
+    "repair_pushed": false,
+    "new_exact_sha_ci": "NOT_DISPATCHED",
+    "fresh_installed_acceptance": "NOT_RUN",
+    "remote_documentation_head": "1cfd448d9707d9db2a98ce7b9516d7a996358dd4",
+    "histories_preserved_reconciliation": "PENDING"
+  },
+  "post_failure_diagnostics": {
+    "focused": {
+      "tests": 22, "pass": 22, "fail": 0, "skip": 0, "duration_ms": 31558.0664,
+      "evidence_layer": "INSTRUMENTED_FOCUSED_DIAGNOSTIC_NOT_FULL_ACCEPTANCE",
+      "log": "E:\\pip_temp\\sol61-gate-boundary-diagnostic.log",
+      "result": "E:\\pip_temp\\sol61-gate-boundary-diagnostic-result.json",
+      "unchanged_deadlines_and_authority": true
+    },
+    "harness_preload_failure": {
+      "cause": "Windows absolute drive path passed to ESM --import instead of file URL",
+      "test_bodies_ran": false,
+      "preserved_log": "E:\\pip_temp\\sol61-gate-boundary-diagnostic-loader-failure.log",
+      "correction": "file:///E:/pip_temp/... with syntax and preload checks",
+      "product_code_changed": false
+    },
+    "retained_hook_audit": {
+      "command_consumed_at": "2026-10-01T16:06:08.813Z",
+      "command_execution_succeeded_at": "2026-10-01T16:07:21.573Z",
+      "boundary_gap_ms": 72760,
+      "cause": "UNKNOWN_REQUIRES_SPAWN_IO_AND_EVENT_LOOP_MEASUREMENTS",
+      "task_cache_configured": false
+    },
+    "cumulative": {
+      "suite_count": 64,
+      "status": "PASS_DIAGNOSTIC_ONLY",
+      "tests": 422, "pass": 421, "fail": 0, "skip": 1, "duration_ms": 503458.0787,
+      "observed_children": 13, "observed_exits": 13, "max_spawn_ms": 16.2249,
+      "slow_io_observed": false, "event_loop_lag_over_250ms_observed": false,
+      "log_sha256": "fd327e90428598882e32adf06d4baf4e421b1b0035aacbbbe727de1502b6c8db",
+      "evidence_layer": "INSTRUMENTED_CUMULATIVE_DIAGNOSTIC_NOT_FULL_ACCEPTANCE",
+      "log": "E:\\pip_temp\\sol61-cumulative-boundary-diagnostic.log",
+      "metadata": "E:\\pip_temp\\sol61-cumulative-boundary-metadata.json",
+      "scope": "ONLY_HOOK_AND_LSP_WORKERS_IN_CANONICAL_CUMULATIVE_SEQUENCE",
+      "product_code_changed": false
+    },
+    "identical_executable_placement": {
+      "sha256": "3193d7f751b8a07bd4acc70e81946ae9c6efdee83e07ad1c8d0e4089df7c5cef",
+      "samples": 6, "pass": 6,
+      "verdict": "STALL_NOT_REPRODUCED_NO_STORAGE_CAUSE_CLAIM",
+      "result": "E:\\pip_temp\\sol61-identical-node-placement-result.json"
+    },
+    "lsp_status_lifecycle": {
+      "controlled_real_predecessor_stop_omission": {
+        "pass": 1, "fail": 1, "duration_ms": 27001.8696,
+        "cause": "STATUS_TEST_ASSUMED_PREDECESSOR_STOP_SUCCEEDED_IDEMPOTENT_START_EMITS_NO_TRANSITION",
+        "log": "E:\\pip_temp\\sol61-lsp-status-coupling-repro.log",
+        "log_sha256": "29498e17aac25dd0e0ba776e0512fec2a1eca67834dd86c1979e47f9de80033b"
+      },
+      "service_unit_red": {
+        "pass": 1, "fail": 3, "duration_ms": 5728.1268,
+        "causes": ["intentional graceful exit published false error", "signal exit re-signaled because only exitCode checked", "unconfirmed kill published stopped"],
+        "log": "E:\\pip_temp\\sol61-lsp-lifecycle-red.log",
+        "log_sha256": "1bbaf3b436b5ff95c5ccc9beec97c3dab9d6aa5494a025d27616fc178265d052",
+        "evidence_layer": "CONTROLLED_SERVICE_UNIT_NOT_RUNTIME_QUALIFICATION"
+      },
+      "repair": "RETAIN_EXACT_CHILD_THROUGH_CLOSE_CONFIRM_CLEANUP_SUPPRESS_ONLY_EXPECTED_EXIT_ERROR_REVOKE_READINESS_ON_FAILURE_BLOCK_OVERLAP",
+      "status_contract": "OWN_STOP_PRECONDITION_TWO_REAL_RESTART_CYCLES_NO_FALSE_ERROR",
+      "focused": {
+        "pass": 29, "fail": 0, "skip": 0, "duration_ms": 30606.3098,
+        "log": "E:\\pip_temp\\sol61-boundary-repair-checks.log",
+        "log_sha256": "80b20c1a9fe217554c1955c1462fb5d32a842ed0fc68769ee36da35d6f3dd6b8",
+        "node_typescript": "PASS", "browser_typescript": "PASS", "scoped_eslint": "PASS", "ownership_check": "PASS"
+      },
+      "final_lifecycle_units": {
+        "pass": 6, "fail": 0, "skip": 0, "duration_ms": 10640.6504,
+        "log": "E:\\pip_temp\\sol61-lsp-final-unit.log",
+        "log_sha256": "90b4d7b8ea2a88d4604d1a6f787d7c1db94be16f23fa01d4dd72e87edcba234b",
+        "evidence_layer": "CONTROLLED_SERVICE_UNIT_NOT_RUNTIME_QUALIFICATION",
+        "exit_without_stdio_close": "REJECTS_FALSE_STOPPED_AND_REPLACEMENT_NO_DEPARTED_CHILD_SIGNAL",
+        "node_typescript": "PASS", "scoped_eslint": "PASS"
+      },
+      "controlled_real_predecessor_stop_omission_after_repair": {
+        "pass": 2, "fail": 0, "skip": 0, "duration_ms": 4604.2458,
+        "log": "E:\\pip_temp\\sol61-lsp-status-coupling-green.log",
+        "log_sha256": "84fae579c8f17db8fe4ff3b8e910d20193f1d0823bf5b58312ee9209a7567d0f",
+        "status_restart_cycles": 2,
+        "evidence_layer": "REAL_LSP_CONTROLLED_SUBSET_NOT_FULL_ACCEPTANCE"
+      },
+      "full_gate": "PENDING",
+      "original_hook_and_http_409_causes": "UNKNOWN_NOT_WAIVED"
+    },
+    "documentation_reconciliation_preflight": {
+      "remote_head": "d077eece5e133ba77cb821d85f3f50afba29342f",
+      "commits_since_shared_parent": 5,
+      "scope": "FOUR_ADDITIVE_OWNER_DIRECTIVE_DOCUMENTS_NO_PRODUCT_SOURCE",
+      "new_directives_read_completely": ["SOL_POCKETPAL_TOOLNEURON_PRODUCT_REFERENCE_DIRECTIVE.md", "SOL_RESIDENT_CANONICAL_ACCEPTANCE_NEXT_PRIORITY.md"],
+      "merge_status": "PENDING_CLEAN_LOCAL_REPAIR_COMMIT",
+      "pr31_exact_frozen_head_reconfirmed": "b79d2480498e446cff36b26dd4b4faef7745726b"
+    },
+    "full_gate_fixture_preflight": {
+      "c_free_bytes": 495890432,
+      "e_free_bytes": 133102911488,
+      "next_fixture_base": "E:\\pip_temp",
+      "same_disk_guard_bytes": 1073741824,
+      "reason": "INSUFFICIENT_C_DISK_GUARD_USE_AVAILABLE_OWNED_SCRATCH_PRESERVE_FAILURE_EVIDENCE",
+      "model_start_floors_changed": false,
+      "environment_caused_original_failure_claim": false
+    },
+    "later_foreign_runtime_observation": {
+      "pid": 25100, "birth_utc": "2026-10-01T16:52:03.7644280Z",
+      "owner": "AES_LEDGERPRO_OUTSIDE_CANONICAL_WORKTREE_NO_COVERT_LEASE_ESTABLISHED",
+      "private_memory_mib": 2425.7,
+      "sample_free_physical_kib": 3110608, "sample_free_commit_kib": 1982980,
+      "terminated": false,
+      "original_failure_cause_claim": false
+    }
+  }
 }

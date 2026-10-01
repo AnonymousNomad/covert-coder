@@ -20,7 +20,7 @@ import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes, createLspManager } from '../../node/src/openapi.ts';
 import { LspManager } from '../../node/src/services/lsp.ts';
 import { lspDiagnosticsToMarkers } from '../../node/src/routes/lsp.ts';
-import { pairFixture } from './authority-fixture.ts';
+import { pairFixture, fixtureFailureDescription } from './authority-fixture.ts';
 import { LspStartResponse } from '../../common/contracts/lsp.ts';
 import { EventEnvelope } from '../../common/contracts/events.ts';
 
@@ -298,16 +298,16 @@ test('enrolled feature reads work against an open document (no document-route en
   await manager.didOpen(FEATURE_URI, 'typescript', FEATURE);
 
   const completion = await post<{ items: { label: string; kind?: number }[] }>('/api/lsp/completion', { uri: FEATURE_URI, position: { line: 1, character: 18 } });
-  assert.equal(completion.status, 200);
+  assert.equal(completion.status, 200, `completion ${fixtureFailureDescription(completion.body)}`);
   assert.ok(completion.body.data?.items.some(item => item.label === 'alpha'), `expected alpha, got: ${completion.body.data?.items.map(item => item.label).join(', ')}`);
   assert.ok(completion.body.data?.items.some(item => item.label === 'beta'), 'expected beta in completion items');
 
   const hover = await post<{ contents: string }>('/api/lsp/hover', { uri: FEATURE_URI, position: { line: 1, character: 15 } });
-  assert.equal(hover.status, 200);
+  assert.equal(hover.status, 200, `hover ${fixtureFailureDescription(hover.body)}`);
   assert.ok(hover.body.data?.contents.includes('alpha'), `expected hover to mention alpha, got: ${hover.body.data?.contents}`);
 
   const definition = await post<{ locations: { uri: string; range: { start: { line: number; character: number } } }[] }>('/api/lsp/definition', { uri: FEATURE_URI, position: { line: 3, character: 14 } });
-  assert.equal(definition.status, 200);
+  assert.equal(definition.status, 200, `definition ${fixtureFailureDescription(definition.body)}`);
   const location = definition.body.data?.locations[0];
   assert.ok(location, 'expected at least one definition location');
   assert.equal(location.uri, FEATURE_URI, 'definition uri must be remapped to the original client uri');
@@ -349,6 +349,9 @@ test('lsp status changes are published on the lsp-status channel', async t => {
     t.skip(roundtripSkipReason);
     return;
   }
+  // Own the transition precondition even if the previous stop test failed or
+  // was excluded. Idempotent start of an already-running server emits no event.
+  await manager.stopAll();
   const socket = await subscribeWs(['lsp-status']);
   try {
     const statuses: { languageId: string; status: string }[] = [];
@@ -358,22 +361,25 @@ test('lsp status changes are published on the lsp-status channel', async t => {
       statuses.push(parsed.data.data as { languageId: string; status: string });
     });
 
-    const started = await manager.start('typescript');
-    assert.equal(started, 'running');
-    await manager.stop('typescript');
+    for (let cycle = 1; cycle <= 2; cycle++) {
+      const started = await manager.start('typescript');
+      assert.equal(started, 'running');
+      await manager.stop('typescript');
 
-    const startedAt = Date.now();
-    const poll = (): Promise<void> => new Promise((resolve, reject) => {
-      const check = (): void => {
-        const hasRunning = statuses.some(entry => entry.languageId === 'typescript' && entry.status === 'running');
-        const hasStopped = statuses.some(entry => entry.languageId === 'typescript' && entry.status === 'stopped');
-        if (hasRunning && hasStopped) return resolve();
-        if (Date.now() - startedAt > 15000) return reject(new Error(`timed out waiting for lsp-status events, got: ${JSON.stringify(statuses)}`));
-        setTimeout(check, 25);
-      };
-      check();
-    });
-    await poll();
+      const startedAt = Date.now();
+      const poll = (): Promise<void> => new Promise((resolve, reject) => {
+        const check = (): void => {
+          const running = statuses.filter(entry => entry.languageId === 'typescript' && entry.status === 'running').length;
+          const stopped = statuses.filter(entry => entry.languageId === 'typescript' && entry.status === 'stopped').length;
+          if (running >= cycle && stopped >= cycle) return resolve();
+          if (Date.now() - startedAt > 15000) return reject(new Error(`timed out waiting for lsp-status events, got: ${JSON.stringify(statuses)}`));
+          setTimeout(check, 25);
+        };
+        check();
+      });
+      await poll();
+    }
+    assert.equal(statuses.some(entry => entry.status === 'error'), false, 'successful restart cycles never publish a false error');
   } finally {
     socket.close();
   }

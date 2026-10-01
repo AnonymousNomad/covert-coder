@@ -76,6 +76,8 @@ export class LspManager {
   private readonly openDocuments = new Map<string, string>();
   private readonly uriMap = new Map<string, string>();
   private readonly ready = new Set<string>();
+  private readonly closedChildren = new WeakSet<ChildProcess>();
+  private readonly stopping = new Map<string, ChildProcess | undefined>();
   private readonly nextId: () => number;
 
   constructor(options: LspManagerOptions) {
@@ -106,8 +108,10 @@ export class LspManager {
   }
 
   async start(languageId: string): Promise<LspServerStateT> {
+    if (this.stopping.has(languageId)) throw new Error('language server is stopping');
     const current = this.states.get(languageId);
     if (current === 'running' || current === 'starting') return current;
+    if (this.children.has(languageId)) throw new Error('owned language server cleanup is unconfirmed');
     if (!LANGUAGES.some(language => language.languageId === languageId)) {
       throw new Error(`language server is not allowlisted: ${languageId}`);
     }
@@ -130,7 +134,7 @@ export class LspManager {
     child.stderr?.on('data', chunk => this.logger?.warn('lsp server stderr', { languageId, line: String(chunk).slice(0, 400) }));
     child.once('exit', (code, signal) => {
       this.logger?.warn('lsp server exited', { languageId, code, signal });
-      this.children.delete(languageId);
+      if (this.children.get(languageId) !== child) return;
       this.decoders.delete(languageId);
       this.ready.delete(languageId);
       for (const key of [...this.pending.keys()]) {
@@ -142,7 +146,11 @@ export class LspManager {
         }
         this.pending.delete(key);
       }
-      if (this.states.get(languageId) !== 'stopped') this.setState(languageId, 'error');
+      if (this.stopping.get(languageId) !== child && this.states.get(languageId) !== 'stopped') this.setState(languageId, 'error');
+    });
+    child.once('close', () => {
+      this.closedChildren.add(child);
+      if (this.children.get(languageId) === child) this.children.delete(languageId);
     });
     child.once('error', error => {
       this.logger?.warn('lsp server spawn error', { languageId, message: error.message });
@@ -285,29 +293,47 @@ export class LspManager {
 
   async stop(languageId: string): Promise<void> {
     if (!this.children.has(languageId) && !this.ready.has(languageId)) return;
-    try {
-      await this.request(languageId, 'shutdown', null, 2000);
-    } catch {
-      // server may already be gone; exit + kill below
-    }
-    try {
-      this.notify(languageId, 'exit', {});
-    } catch {
-      // ignore
-    }
+    if (this.stopping.has(languageId)) throw new Error('language server is already stopping');
+    // Keep the exact handle before shutdown can emit exit/close. Neither an
+    // accepted kill nor exitCode alone proves that process and stdio are closed.
     const child = this.children.get(languageId);
-    if (child) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      if (child.exitCode === null) child.kill('SIGTERM');
-      await Promise.race([
-        new Promise<void>(resolve => child.once('exit', () => resolve())),
-        new Promise<void>(resolve => setTimeout(resolve, 2000))
-      ]);
-      if (child.exitCode === null) child.kill('SIGKILL');
+    this.stopping.set(languageId, child);
+    try {
+      try { await this.request(languageId, 'shutdown', null, 2000); }
+      catch { /* server may already be gone; retained cleanup still runs */ }
+      try { this.notify(languageId, 'exit', {}); }
+      catch { /* no protocol response can waive exit confirmation */ }
+      if (child && !await this.waitForClose(child, 500)) {
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+        if (!await this.waitForClose(child, 2000)) {
+          if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+          if (!await this.waitForClose(child, 2000)) throw new Error('owned language server exit unconfirmed');
+        }
+      }
+      this.ready.delete(languageId);
+      this.setState(languageId, 'stopped');
+      this.logger?.info('lsp server stopped', { languageId });
+    } catch (error) {
+      this.ready.delete(languageId);
+      this.setState(languageId, 'error');
+      throw error;
+    } finally {
+      this.stopping.delete(languageId);
     }
-    this.ready.delete(languageId);
-    this.setState(languageId, 'stopped');
-    this.logger?.info('lsp server stopped', { languageId });
+  }
+
+  private waitForClose(child: ChildProcess, timeoutMs: number): Promise<boolean> {
+    if (this.closedChildren.has(child)) return Promise.resolve(true);
+    return new Promise(resolve => {
+      const finish = (closed: boolean): void => {
+        clearTimeout(timer);
+        child.removeListener('close', onClose);
+        resolve(closed);
+      };
+      const onClose = (): void => finish(true);
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      child.once('close', onClose);
+    });
   }
 
   async stopAll(): Promise<void> {

@@ -383,13 +383,16 @@ test('EventHub task payload does not expose actor handle or authority material',
     const payloads: Array<{ channel: string; data: { event?: string; job_id?: string; authority_state?: { phase?: string; state?: string; operation_id?: string | null } } }> = [];
     ws.on('message', raw => { payloads.push(JSON.parse(raw.toString()) as typeof payloads[number]); });
     const waitPayload = async (predicate: (p: typeof payloads[number]) => boolean, timeoutMs = 5000) => {
+      const startedAt = performance.now();
       const deadline = Date.now() + timeoutMs;
       while (Date.now() < deadline) {
         const found = payloads.find(predicate);
         if (found) return found;
         await new Promise(r => setTimeout(r, 50));
       }
-      throw new Error('task payload not found');
+      const events = ['authority', 'started', 'output', 'problems', 'exit'];
+      const observed = Object.fromEntries(events.map(event => [event, payloads.filter(p => p.data.event === event).length]));
+      throw new Error(`task payload not found ${JSON.stringify({ elapsed_ms: Math.round(performance.now() - startedAt), socket_state: ws.readyState, observed })}`);
     };
 
     try {
