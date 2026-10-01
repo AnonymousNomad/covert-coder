@@ -1,5 +1,530 @@
 {
   "ledger_version": "1.0",
+  "closure": {
+    "schema_version": 1,
+    "assessed_source": {
+      "branch": "nightshift/production-convergence-20260926",
+      "source_sha": "fc263fe26f364b5c972be79a8ac6e651a671dcd0"
+    },
+    "coverage": "PARTIAL",
+    "coverage_note": "Seeded from reproduced F01-F03 and inspected theme/MM9/Resident evidence. The older 38-row wiring audit is retained unchanged as historical evidence. Remaining RC capabilities require current-SHA disposition; no release acceptance is implied.",
+    "records": [
+      {
+        "id": "setup.readiness",
+        "name": "Current-run setup readiness",
+        "area": "setup",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "audit/sol61-product-closure-20261001",
+          "source_sha": "e82c4ee609247466fda55a78114791b8a6308bee"
+        },
+        "historical_qualification": null,
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/audit/SOL61-PRODUCT-CLOSURE-2026-10-01.md"
+        ],
+        "implementation_paths": [
+          "browser/src/cockpit/SetupSession.ts",
+          "browser/src/cockpit/setup-validation.ts"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Launch → Setup → Validation → Results",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "tests/arch/setup-validation-truth.test.ts",
+          "scripts/setup-truth-ui.mjs"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Integration/requalification pending; this scheduling disposition does not waive release requirements.",
+        "release_evidence": null
+      },
+      {
+        "id": "setup.persistence",
+        "name": "Durable preferences and truthful provisioning",
+        "area": "setup",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "audit/sol61-product-closure-20261001",
+          "source_sha": "4cf80d95a71de917735be91862ae796ce5deb9ed"
+        },
+        "historical_qualification": null,
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/audit/SOL61-PRODUCT-CLOSURE-2026-10-01.md"
+        ],
+        "implementation_paths": [
+          "browser/src/cockpit/SetupSession.ts",
+          "browser/src/cockpit/setup-profile.ts"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Setup → approval → saved draft → validation → completion → reopen",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "tests/arch/setup-profile-truth.test.ts",
+          "scripts/setup-truth-ui.mjs"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Integration/requalification pending; this scheduling disposition does not waive release requirements.",
+        "release_evidence": null
+      },
+      {
+        "id": "providers.status-truth",
+        "name": "Provider status without false Local Only",
+        "area": "model-access",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "audit/sol61-product-closure-20261001",
+          "source_sha": "77987bc38c8480109828e84ee2d3a80239fbc8c8"
+        },
+        "historical_qualification": null,
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/audit/SOL61-PRODUCT-CLOSURE-2026-10-01.md"
+        ],
+        "implementation_paths": [
+          "browser/src/services/cloud-status.ts",
+          "browser/src/shell/topbar.ts"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Launch → status chip → failed read → recover",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [
+          "Canonical Connections",
+          "BYOK"
+        ],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "tests/arch/cloud-status-truth.test.ts",
+          "scripts/setup-truth-ui.mjs"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Integration/requalification pending; this scheduling disposition does not waive release requirements.",
+        "release_evidence": null
+      },
+      {
+        "id": "themes.original",
+        "name": "Original / Colorful theme selection",
+        "area": "appearance",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "feat/v1-theme-system",
+          "source_sha": "1e0d069a3a50e4bb539f37e120494b0ab697d179"
+        },
+        "historical_qualification": {
+          "source_sha": "1e0d069a3a50e4bb539f37e120494b0ab697d179",
+          "evidence": "docs/v1/ui/COVERT-V1-THEME-SYSTEM.json",
+          "scope": "BOUNDED_ORIGIN_ONLY"
+        },
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/v1/ui/COVERT-V1-THEME-SYSTEM.json"
+        ],
+        "implementation_paths": [
+          "browser/src/cockpit/cockpit.css"
+        ],
+        "candidate_presence": "PARTIAL",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Settings → Appearance → Original → editor/terminal/Resident",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "scripts/theme-acceptance.mjs"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Colorful cockpit exists; the historical first-class theme selection system is not in the active shell. Port semantics onto current shell and requalify.",
+        "release_evidence": null
+      },
+      {
+        "id": "themes.matrix",
+        "name": "Matrix theme and governed adaptive motion",
+        "area": "appearance",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "feat/v1-theme-system",
+          "source_sha": "1e0d069a3a50e4bb539f37e120494b0ab697d179"
+        },
+        "historical_qualification": {
+          "source_sha": "1e0d069a3a50e4bb539f37e120494b0ab697d179",
+          "evidence": "docs/v1/ui/COVERT-V1-THEME-SYSTEM.json",
+          "scope": "BOUNDED_ORIGIN_ONLY"
+        },
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/v1/ui/COVERT-V1-THEME-SYSTEM.json"
+        ],
+        "implementation_paths": [
+          "browser/src/themes/themes.css"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Appearance → Matrix → motion/reduced-motion → real state changes",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "scripts/theme-acceptance.mjs"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Integration/requalification pending; this scheduling disposition does not waive release requirements.",
+        "release_evidence": null
+      },
+      {
+        "id": "themes.beskar",
+        "name": "Beskar dark-emerald workstation identity",
+        "area": "appearance",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "DESIGNED",
+        "origin": {
+          "branch": "nightshift/production-convergence-20260926",
+          "source_sha": "fc263fe26f364b5c972be79a8ac6e651a671dcd0"
+        },
+        "historical_qualification": null,
+        "qualification_scope": "NONE",
+        "qualification_evidence": [],
+        "implementation_paths": [],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Appearance → Beskar → all major surfaces",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Historical Developer graphite is reference material only. Beskar implementation and approved emblem evidence have not been established.",
+        "release_evidence": null
+      },
+      {
+        "id": "terminal.presentation",
+        "name": "Session-local Parrot-inspired terminal presentation",
+        "area": "terminal",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "feat/v1-theme-system",
+          "source_sha": "1e0d069a3a50e4bb539f37e120494b0ab697d179"
+        },
+        "historical_qualification": {
+          "source_sha": "1e0d069a3a50e4bb539f37e120494b0ab697d179",
+          "evidence": "docs/v1/ui/COVERT-V1-THEME-SYSTEM.json",
+          "scope": "BOUNDED_ORIGIN_ONLY"
+        },
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/v1/ui/COVERT-V1-THEME-SYSTEM.json"
+        ],
+        "implementation_paths": [
+          "browser/src/panels/terminal.ts"
+        ],
+        "candidate_presence": "PARTIAL",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Terminal → approved PTY → prompt → input → stop/restart",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [
+          "Canonical PTY sessions"
+        ],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "scripts/theme-acceptance.mjs"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Current approved PTY is preserved; historical prompt/palette semantics require a selective port. Never change the global shell profile.",
+        "release_evidence": null
+      },
+      {
+        "id": "resident.docking",
+        "name": "Persistent Resident beside editor and terminal",
+        "area": "resident",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "IMPLEMENTED",
+        "origin": {
+          "branch": "nightshift/production-convergence-20260926",
+          "source_sha": "fc263fe26f364b5c972be79a8ac6e651a671dcd0"
+        },
+        "historical_qualification": null,
+        "qualification_scope": "NONE",
+        "qualification_evidence": [],
+        "implementation_paths": [
+          "browser/src/cockpit/CockpitShell.ts",
+          "browser/src/cockpit/ResidentCore.ts",
+          "browser/src/shell/resident-dock.ts"
+        ],
+        "candidate_presence": "PARTIAL",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Editor/Terminal ↔ Resident show/hide/resize → restart",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [
+          "Resident",
+          "Context Control"
+        ],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Active cockpit hides the command/Resident stage when editor is selected. Legacy dock source is not active conversation integration or product acceptance.",
+        "release_evidence": null
+      },
+      {
+        "id": "models.model-packs",
+        "name": "Model Packs",
+        "area": "model-access",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "feat/model-manager",
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4"
+        },
+        "historical_qualification": {
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4",
+          "evidence": "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md",
+          "scope": "BOUNDED_ORIGIN_ONLY"
+        },
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md"
+        ],
+        "implementation_paths": [
+          "browser/src/panels/models.ts"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Models → Model Packs",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [
+          "Model Access",
+          "Model Manager",
+          "Runtime Broker",
+          "Model Passport"
+        ],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "tests/arch/model-manager-selection.test.ts",
+          "tests/e2e/model-manager/model-manager.spec.ts"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Historical MM9 bounded tests are origin evidence only. Reimplement presentation/projection through current model/source/artifact/qualification/route contracts; do not import the old registry/router.",
+        "release_evidence": null
+      },
+      {
+        "id": "models.developer-notes",
+        "name": "Developer Notes",
+        "area": "model-access",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "feat/model-manager",
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4"
+        },
+        "historical_qualification": {
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4",
+          "evidence": "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md",
+          "scope": "BOUNDED_ORIGIN_ONLY"
+        },
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md"
+        ],
+        "implementation_paths": [
+          "browser/src/panels/models.ts"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Models → Developer Notes",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [
+          "Model Access",
+          "Model Manager",
+          "Runtime Broker",
+          "Model Passport"
+        ],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "tests/arch/model-manager-selection.test.ts",
+          "tests/e2e/model-manager/model-manager.spec.ts"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Historical MM9 bounded tests are origin evidence only. Reimplement presentation/projection through current model/source/artifact/qualification/route contracts; do not import the old registry/router.",
+        "release_evidence": null
+      },
+      {
+        "id": "models.system-advisories",
+        "name": "System Advisories",
+        "area": "model-access",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "feat/model-manager",
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4"
+        },
+        "historical_qualification": {
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4",
+          "evidence": "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md",
+          "scope": "BOUNDED_ORIGIN_ONLY"
+        },
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md"
+        ],
+        "implementation_paths": [
+          "browser/src/panels/models.ts"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Models → System Advisories",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [
+          "Model Access",
+          "Model Manager",
+          "Runtime Broker",
+          "Model Passport"
+        ],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "tests/arch/model-manager-selection.test.ts",
+          "tests/e2e/model-manager/model-manager.spec.ts"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Historical MM9 bounded tests are origin evidence only. Reimplement presentation/projection through current model/source/artifact/qualification/route contracts; do not import the old registry/router.",
+        "release_evidence": null
+      },
+      {
+        "id": "models.developer-specials",
+        "name": "Developer Specials",
+        "area": "model-access",
+        "release_required": true,
+        "requirement": "Owner RC goal and Sol 6.1 product-closure directive, 2026-10-01",
+        "lifecycle": "QUALIFIED",
+        "origin": {
+          "branch": "feat/model-manager",
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4"
+        },
+        "historical_qualification": {
+          "source_sha": "376acd0fb0b5d1431a1df2273e60a1d3351545b4",
+          "evidence": "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md",
+          "scope": "BOUNDED_ORIGIN_ONLY"
+        },
+        "qualification_scope": "ORIGIN_ONLY",
+        "qualification_evidence": [
+          "docs/model-manager/MODEL-MANAGER-CHECKPOINT-LEDGER.md"
+        ],
+        "implementation_paths": [
+          "browser/src/panels/models.ts"
+        ],
+        "candidate_presence": "ABSENT",
+        "operator_exposure": "NOT_EXPOSED",
+        "operator_path": "Models → Developer Specials",
+        "authority_dependencies": [
+          "Execution Authority"
+        ],
+        "runtime_dependencies": [
+          "Model Access",
+          "Model Manager",
+          "Runtime Broker",
+          "Model Passport"
+        ],
+        "persistence_required": true,
+        "restart_required": true,
+        "failure_contract": "Failure remains explicit and cannot establish readiness.",
+        "unknown_contract": "Unknown/unavailable cannot become a positive capability claim.",
+        "tests": [
+          "tests/arch/model-manager-selection.test.ts",
+          "tests/e2e/model-manager/model-manager.spec.ts"
+        ],
+        "dogfood_evidence": [],
+        "disposition": "DEFERRED",
+        "disposition_reason": "Historical MM9 bounded tests are origin evidence only. Reimplement presentation/projection through current model/source/artifact/qualification/route contracts; do not import the old registry/router.",
+        "release_evidence": null
+      }
+    ]
+  },
   "generated_at": "2026-09-22T07:10:00Z",
   "generated_by": "opencode/deepseek-v4.1-flash — wiring-audit lane",
   "production_ref": {

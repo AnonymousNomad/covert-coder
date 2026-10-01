@@ -5,6 +5,34 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+Sol final verification preparation (2026-10-01 06:22): isolated HEAD `b9e8b04`
+contains five coherent truth/fixture commits. The additive closure foundation
+and integration evidence are ready for a separate commit and final full gate.
+First external checkpoint remains `4cf80d9` with exact-SHA CI 22/22 green.
+Canonical was refreshed clean at `fc263fe`; no merge or product release claim.
+
+### [2026-10-01 06:22] Actor: sol61
+- Type: checkpoint / audit
+- Status: final verification pending
+- Summary: Reapplied Developer's Way, pre-push and journal SOPs after compaction; preserved the lane boundary.
+- Details: F01/F02/F03, fixture logger drain and browser/route predicate followups are committed in five bounded slices. The final closure extension retains historical ledger data and blocks seven drift rows. Focused verification was 27/27 plus 16 browser scenarios, type/lint/build and diff checks. Corrected the integration plan to name d084200 then b9e8b04. An Issue API query combined unsupported gh --slurp/--jq flags; corrected by parsing slurped JSON in PowerShell, without repository mutation or repeating the failing command. No relevant older memory facts were used. Canonical remains untouched and PR #31 frozen.
+- Next: Commit foundation after diff review, push only the isolated branch through its absolute versioned full gate, observe exact-SHA CI including browser regressions, then report the exact integration handoff through Issue #38.
+
+Sol checkpoint (2026-10-01 06:09): isolated truth repairs pushed clean at
+`4cf80d95a71de917735be91862ae796ce5deb9ed`; exact-SHA AIDE CI `36852046339`
+passed 22/22 steps. Local full architecture passed 858/869 with 11 identified
+skips and no failed assertions. Current isolated WIP adds required browser CI,
+fixture logger drain, stricter remote-route availability, truthful terminal
+copy, and the additive 12-row closure ledger/gate plus integration plans.
+Canonical remains clean at fc263fe and PR #31 untouched; no release acceptance.
+
+### [2026-10-01 06:09] Actor: sol61
+- Type: checkpoint / repair / audit
+- Status: first truth checkpoint CI green; final foundation WIP locally verified
+- Summary: Published F01/F02/F03 and added regression/closure infrastructure using current owners.
+- Details: Original relative hook resolution failed before upload; loaded failure-git-relative-hook-worktree and used the exact absolute checkout hook with full battery enabled. Push passed 858/0/11 and local/origin parity; CI 36852046339 passed all 22 steps. Issue #38 comment 5929909869 records the boundary. A logger cleanup warning was preserved and root-caused to pending writes racing fixture deletion; the retained owner's flush API now drains before deletion and asserts no late error/recreated directory. Loaded the new failure-fixture-logger-drain SOP. Provider availability adds adapter/setup predicates; terminal copy distinguishes real PTY from unwired shortcut. Browser regression now has a required CI step. Closure schema/gate tests pass 7/7 and deliberately block the partial 12-row ledger with seven historical drift findings. Historical theme/MM9 evidence remains bounded origin-only; no old branch merged.
+- Next: review final diff, re-run required focused/static/build checks, commit coherent slices, full gate/push and exact-SHA CI; hand off integration to Luna without touching canonical packaging.
+
 ### [2026-10-01 05:42] Actor: sol61
 - Type: repair / verification
 - Status: locally verified; broad CI pending
