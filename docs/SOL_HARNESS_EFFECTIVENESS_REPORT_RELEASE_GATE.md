@@ -229,3 +229,37 @@ A benchmark is measurement.
 A report is interpretation of preserved measurement.
 
 Do not merge these concepts into one score.
+
+
+## Harness Synchronization relationship
+
+This release gate is part of the Harness Synchronization design, not a separate reporting subsystem.
+
+Harness Synchronization must provide the controlled apparatus that keeps baseline and treatment runs comparable and makes their evidence trustworthy. The synchronized apparatus must own or stamp:
+
+- disposable/isolated workspace identity;
+- exact task fixture revision;
+- allowed-path policy;
+- hidden evaluator/test identity and exact test count;
+- model artifact identity and hash;
+- runtime identity/version and runtime lease/lock state;
+- scaffold/harness version;
+- context/config/sampling settings;
+- authority/tool-policy configuration;
+- resource snapshot;
+- run ordering/seeds/repeats;
+- patch validation and final-tree capture;
+- raw responses/results;
+- evaluator outcomes;
+- immutable evidence artifact IDs.
+
+The report generator consumes those synchronized run artifacts. It must not reconstruct missing state after the fact.
+
+A synchronized comparison is invalid if one arm changes any material variable that the other arm did not, unless that variable is the declared intervention under test. Any such mismatch must be surfaced in the report as a comparability failure rather than hidden inside an aggregate score.
+
+The intended flow is:
+
+`Harness Sync apparatus -> paired/multi-arm execution -> hidden evaluator -> immutable evidence -> guided report -> public/professional evidence package`
+
+This preserves the original Harness Sync purpose: prove what changed, why the comparison is fair, and whether Covert actually improved the outcome rather than merely changing the environment.
+
