@@ -1,0 +1,71 @@
+{
+  "generatedDecisionSha256": "da3b9602ed20273d7709a71259ef91098998719b193d794959277676057a6200",
+  "liveQualification": false,
+  "change": "two api.ts bounded caller line references only:278->279,289->290",
+  "failedHead": "e74b8c7f38fefed6004fec2e6a0bcfa0507d3fc9",
+  "failedFullGate": {
+    "durationMs": 476760.9521,
+    "total": 897,
+    "passed": 885,
+    "failed": 1,
+    "cancelled": 0,
+    "skipped": 11
+  },
+  "recordedAt": "2026-10-02T02:53:54.5930518Z",
+  "schema": "covert.resident.publication-gate-repair.v1",
+  "architecture": {
+    "routes": 239,
+    "unchangedWaivers": 20,
+    "unclassified": 0,
+    "conflicts": 0
+  },
+  "frozenReproductionHashes": {
+    "md": "e21af1f58f5ea23ecea2320fd9bf017923dd77c6017084b435b5e47e73aee406",
+    "json": "ac3b2fcf8e141265fc17d62e824f2a8a357124e089926cc3f700ee0a14648f33"
+  },
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\resident-checkpoint-push.log",
+      "sha256": "2b0d80d1d5916632138f9ba908f455975a1e7ab794183cf986d1b748dcaf1f85"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\resident-checkpoint-push-metadata.json",
+      "sha256": "1541ce537ab93b9b192cc5a120399c968570351ce203c709289cb557dd678af7"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\resident-checkpoint-push-result.json",
+      "sha256": "52b9817ba30d23609ec6036776c4e10e8383d686ea9e2bce485e0009b36f2d10"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\resident-c1-generate.log",
+      "sha256": "76ca0cd9f95d7a208afb2296ede216012d2ac9454fe02d8884ad1f72267b7dfc"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\resident-c1-check.log",
+      "sha256": "137cbd157a526db77d7328f6a37f3ff9bea5617b141c6a101b8ded48fe872c0e"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\resident-c1-route-gates.log",
+      "sha256": "4368f45226876cb686fc126ee96339fdb049efba8ee0b17bfcc0008b0eb91da4"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\C1-02-decisions-before-e74.json",
+      "sha256": "622f0a24ebf276935936100f96da62f8dfd0ec21914804e9e52121167297d0f2"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\C1-02-decisions-before-e74.md",
+      "sha256": "5b659c3e96af8d14d9da05427eeea1e64cda3620a23a0ddd842ec5d67f072d9a"
+    }
+  ],
+  "releaseAcceptance": false,
+  "state": "FOCUSED_REPAIR_PASS_FULL_RECOVERY_PUBLICATION_AND_EXACT_SHA_CI_PENDING",
+  "focusedRoutes": {
+    "passed": 6,
+    "total": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "branch": "nightshift/production-convergence-20260926",
+  "generator": "PASS",
+  "remoteUnchanged": "6ca400381ad8a0fdcdece12e0cac4bb62d91b5c8"
+}
