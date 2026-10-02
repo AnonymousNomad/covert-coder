@@ -171,10 +171,24 @@ try {
   assert.deepEqual(byokStatus.body.data.providers, [], 'no provider configured by denied writes');
   assert.equal(byokStatus.body.data.routing.plan, 'local', 'no routing altered by denied writes');
 
-  // PHASE 9: unapproved agent start is rejected at the authority edge
-  const agentDenied = await stack.json('facade', 'POST', '/api/agent/start', { body: { task: 'Improve note.md', mode: 'act', chat_source: 'provider' } });
+  // PHASE 9: selection validation and exact operation approval are distinct.
+  // Describing a registered local target does not start or qualify a runtime.
+  const missingWorker = await stack.json('facade', 'POST', '/api/agent/start', { body: { task: 'Improve note.md', mode: 'act' } });
+  assert.equal(missingWorker.status, 409);
+  assert.equal(missingWorker.body.error?.code, 'NOT_READY');
+  assert.match(missingWorker.body.error?.message ?? '', /exact worker is required/);
+  const modelId = models.body.data.models[0]?.id;
+  assert.equal(typeof modelId, 'string', 'canonical model catalog supplies an exact target for the approval test');
+  const agentDenied = await stack.json('facade', 'POST', '/api/agent/start', { body: {
+    task: 'Improve note.md', mode: 'act', chat_source: 'local',
+    worker: { worker: `local:${modelId}`, provider: 'local', model: modelId, role: 'act' }
+  } });
   assert.equal(agentDenied.status, 409, 'agent start requires an approved exact operation');
+  assert.equal(agentDenied.body.error?.code, 'NOT_READY');
   assert.equal(agentDenied.body.error?.detail?.reason, 'APPROVAL_REQUIRED');
+  const agentSessions = await stack.json('facade', 'GET', '/api/agent/sessions');
+  assert.equal(agentSessions.status, 200);
+  assert.deepEqual(agentSessions.body.data.sessions, [], 'selection and unapproved starts create no agent sessions');
 
   // PHASE 10: session (approved exact write, read round-trip)
   const sessionSave = await stack.approveJson({ adapter: 'ts', method: 'PUT', path: '/api/session', body: { active_file: 'note.md', open_files: ['note.md', 'README.md'], panel: 'terminal' } });

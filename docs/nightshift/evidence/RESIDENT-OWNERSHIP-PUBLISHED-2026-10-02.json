@@ -1,0 +1,54 @@
+{
+  "schema": "covert.resident-ownership.published-acceptance.v1",
+  "head": "6ade0bc9b323255c26b8a68098c3f4e2ab3827f8",
+  "branch": "nightshift/production-convergence-20260926",
+  "recordedAt": "2026-10-02T03:59:28.761Z",
+  "state": "PUBLISHED_EXACT_SHA_CI_SUCCESS",
+  "windowsFullPush": {
+    "total": 897,
+    "passed": 886,
+    "failed": 0,
+    "skipped": 11,
+    "cancelled": 0,
+    "durationMs": 462753.9133
+  },
+  "ci": {
+    "run": 36958735614,
+    "steps": 23,
+    "conclusion": "success",
+    "architecture": {
+      "total": 897,
+      "passed": 881,
+      "failed": 0,
+      "skipped": 16
+    },
+    "controlledChromiumResident": 17,
+    "controlledChromiumSetupProvider": 18,
+    "veritasChecks": 6
+  },
+  "artifacts": [
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-recovered-push.log",
+      "sha256": "2e0b35dbf253c741684b4ce48cd96b5b1597bd54870036c5c07c3e4debf07ed2"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-recovered-push-metadata.json",
+      "sha256": "e7d9d2473431bf953728ecdb8f2ef87a2cf00fd684db6dcc4352169be6ecda4b"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-recovered-push-result.json",
+      "sha256": "90820c045a99fa0dfe9f0dcc830146f7296247eca6b7bcdc1146ccf52a3e4bb3"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ci-36958735614-completed.json",
+      "sha256": "33ede1202b4fb8125ea6c94a45b8f7337bf4fed53d389c1902e7fb891df816a6"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ci-36958735614.log",
+      "sha256": "d3843b5b673353f1950e8c22bd9d4c00ce8dacb8e2e2c28f7f90a1b1113fffa8"
+    }
+  ],
+  "releaseAcceptance": false,
+  "liveModelOrProviderQualification": false,
+  "historicalFailureRetained": "e74b8c7f38fefed6004fec2e6a0bcfa0507d3fc9"
+}

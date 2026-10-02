@@ -8,7 +8,7 @@ export const OPERATION_POLICY = Object.freeze({
   'terminal.read': 'read', 'terminal.run': 'execute',
   'terminal.session.start': 'execute', 'terminal.session.stop': 'execute',
   'desktop.read': 'read', 'desktop.action': 'execute', 'desktop.panic': 'revoke',
-  'desktop.grants': 'permission', 'agent.start': 'execute', 'agent.read': 'read',
+  'desktop.grants': 'permission', 'agent.start': 'execute', 'agent.start.external': 'external', 'agent.read': 'read',
   'agent.tool': 'execute', 'agent.decision': 'permission', 'agent.cancel': 'revoke',
   'checkpoint.snapshot': 'write', 'checkpoint.restore': 'write',
   'cache.mutate': 'write',
@@ -57,7 +57,8 @@ const HTTP_POLICY = new Map([
   ['POST /api/desktop/grants', 'desktop.grants'], ['POST /api/desktop/panic', 'desktop.panic'],
   ['POST /api/desktop/pending', 'capability.write'], ['GET /api/desktop/pending', 'desktop.read'],
   ['GET /api/desktop/pending/verdict', 'desktop.read'], ['POST /api/desktop/pending/resolve', 'authority.grant'],
-  ['POST /api/agent/start', 'agent.start'], ['POST /api/agent/decision', 'agent.decision'],
+  // Agent start describes its exact worker before selecting local/external risk.
+  ['POST /api/agent/decision', 'agent.decision'],
   ['POST /api/agent/cancel', 'agent.cancel'], ['POST /api/agent/tool', 'agent.tool'], ['GET /api/agent/status', 'agent.read'],
   ['GET /api/agent/sessions', 'agent.read'],
   ['GET /api/audit/events', 'capability.read'], ['GET /api/audit/session', 'capability.read'],

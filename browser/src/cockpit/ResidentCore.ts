@@ -8,6 +8,7 @@ import type { Store } from '../store/store.ts';
 import type { AppState, ResidentTaskProjection } from '../store/state.ts';
 import { api, call, ApiError } from '../services/api.ts';
 import { createChatPanel } from '../chat/chat.ts';
+import { residentWorkerForSelection } from './resident-worker-selection.ts';
 import { createOperatorIdentity, type OperatorIdentityHandles, type OperatorPresenceState } from './OperatorIdentity.ts';
 import {
   AgentDecisionRequest,
@@ -101,7 +102,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
 
   const quickActions = el('div', 'cockpit-resident-quick');
   quickActions.appendChild(el('h2', 'cockpit-resident-section-title', 'QUICK ACTIONS'));
-  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'GOVERNED TASKS · one owned task at a time. Exact project worker routing remains unverified.'));
+  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'GOVERNED TASKS · one owned task at a time. Project ACT worker comes from Model Access; dispatch requires exact target approval.'));
   const actionsRow = el('div', 'cockpit-resident-actions');
   for (const action of QUICK_ACTIONS) {
     const btn = document.createElement('button');
@@ -144,10 +145,12 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   let epoch = 0;
   let pollTimer: number | null = null;
   let pollController: AbortController | null = null;
+  let selectionController: AbortController | null = null;
   if (projection !== undefined) {
     projection = { ...projection, presentationOwner,
-      phase: projection.phase === 'starting' ? 'unknown' : projection.phase,
-      message: projection.phase === 'starting' ? 'Start outcome unknown · recover the same request before starting another task.' : projection.message };
+      phase: projection.phase === 'selecting' ? 'not_started' : projection.phase === 'starting' ? 'unknown' : projection.phase,
+      message: projection.phase === 'selecting' ? 'Model selection interrupted before dispatch. Start a new task when ready.'
+        : projection.phase === 'starting' ? 'Start outcome unknown · recover the same request before starting another task.' : projection.message };
     store.set(state => ({ ...state, residentTask: projection! }));
   }
 
@@ -183,6 +186,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     for (const button of actionsRow.querySelectorAll<HTMLButtonElement>('button')) button.disabled = blocked;
     agentStatusMount.innerHTML = '';
     const status = projection?.status ?? null;
+    if (projection?.request.worker) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `REQUESTED WORKER · ${projection.request.worker.worker}`));
     if (projection?.message) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', projection.message));
     function action(label: string, run: () => Promise<void>, ariaLabel?: string): void {
       const button = document.createElement('button');
@@ -303,10 +307,32 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   async function startAgent(task: string): Promise<void> {
     const trimmed = task.trim();
     if (!ownsPresentation() || blocksStart() || trimmed.length === 0) return;
-    const parsed = AgentStartRequest.safeParse({ task: trimmed, mode: 'act', chat_source: 'local', client_request_id: crypto.randomUUID() });
+    const parsed = AgentStartRequest.safeParse({ task: trimmed, mode: 'act', client_request_id: crypto.randomUUID() });
     if (!parsed.success) { opts.onToast?.('BAD_REQUEST', 'Task must contain 1–8000 characters.'); return; }
-    save({ presentationOwner, request: parsed.data, phase: 'unknown', sessionId: null, status: null, message: null });
-    await recoverStart();
+    const ticket = ++epoch;
+    const controller = new AbortController();
+    selectionController = controller;
+    const deadline = window.setTimeout(() => controller.abort(), 10000);
+    busy = true;
+    save({ presentationOwner, request: parsed.data, phase: 'selecting', sessionId: null, status: null, message: 'Reading the exact project worker from Model Access…' });
+    paintAgentStatus();
+    try {
+      const view = await api.modelManager(controller.signal);
+      if (!ownsPresentation(ticket)) return;
+      const worker = residentWorkerForSelection(view);
+      const request = AgentStartRequest.parse({ ...parsed.data, worker, chat_source: worker.provider === 'local' ? 'local' : 'provider' });
+      busy = false;
+      save({ ...projection!, request, phase: 'unknown', message: null });
+      await recoverStart();
+    } catch (error) {
+      if (!ownsPresentation(ticket)) return;
+      busy = false;
+      save({ ...projection!, phase: 'not_started', message: `Worker selection unavailable before dispatch · ${String((error as Error).message ?? error).slice(0, 220)}` });
+      paintAgentStatus();
+    } finally {
+      window.clearTimeout(deadline);
+      if (selectionController === controller) selectionController = null;
+    }
   }
 
   composer.addEventListener('submit', event => {
@@ -457,6 +483,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     refresh,
     dispose() {
       alive = false;
+      selectionController?.abort();
       stopAgentPolling();
       window.clearInterval(interval);
       chatPanel.dispose();

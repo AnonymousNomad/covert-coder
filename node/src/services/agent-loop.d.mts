@@ -3,6 +3,7 @@ import type { AuditTrailService } from './audit-trail.mjs';
 import type { PublishResult } from '../events.ts';
 import type { ExecutionAuthority, ExecutionHandle } from './execution-authority.mjs';
 import type { createCheckpointService } from './agent-checkpoints.mjs';
+import type { ChatAuthorityTargetBinding } from './model-router.ts';
 
 export function requiresToolApproval(workspace: string, tool: { name: string; readOnly?: boolean }, args: Record<string, string>): boolean;
 
@@ -12,7 +13,7 @@ export declare class AgentSessionError extends Error {
 }
 
 export interface AgentLoopService {
-  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null; handoffContext?: string | null }): Promise<{ session_id: string }>;
+  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null, opts?: { execution?: ExecutionHandle | undefined; executionTarget?: Readonly<ChatAuthorityTargetBinding>; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null; handoffContext?: string | null }): Promise<{ session_id: string }>;
   decide(sessionId: string, approvalId: string, decision: 'approve' | 'reject' | 'abort', execution?: ExecutionHandle): Promise<{ ok: boolean }>;
   cancel(sessionId: string, execution?: ExecutionHandle): Promise<{ ok: boolean; state: AgentStatusResponseT['state'] }>;
   status(sessionId: string): AgentStatusResponseT;

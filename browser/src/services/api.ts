@@ -341,8 +341,8 @@ export const api = {
   modelsStatus(): Promise<ModelStatusResponseT> {
     return call('/api/models/status', { schema: ModelStatusResponse });
   },
-  modelManager(): Promise<ModelManagerResponseT> {
-    return call('/api/models/manager', { schema: ModelManagerResponse });
+  modelManager(signal?: AbortSignal): Promise<ModelManagerResponseT> {
+    return call('/api/models/manager', { schema: ModelManagerResponse, ...(signal !== undefined ? { signal } : {}) });
   },
   modelProfileSave(request: ModelProfileRequestT): Promise<ModelProfileResponseT> {
     const body = ModelProfileRequest.safeParse(request);

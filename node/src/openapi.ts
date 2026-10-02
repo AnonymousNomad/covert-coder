@@ -961,6 +961,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // this route only reports.
     ...routesForClosedLoop(workspace),
     ...routesForAgent(agentLoop, {
+      ...(options.agentChatFn === undefined ? { exactWorker: {
+        workspace, router: modelRouter,
+        effectiveContext: (target: import('./services/model-router.ts').ResolvedChatAuthorityTarget) =>
+          target.binding.execution_class === 'LOCAL' ? modelRuntime.getEffectiveContext(target.binding.model_id) : target.route.contextLength
+      } } : {}),
       resolveProviderChatFn: role => {
         // Local-Only is a workspace-wide routing constraint and preserves the
         // local agent path even when no external-provider consent is configured.

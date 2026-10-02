@@ -8,7 +8,7 @@ import type { AgentStartRequestT, AgentStatusResponseT } from '../../../common/c
 export interface ResidentTaskProjection {
   presentationOwner: string;
   request: AgentStartRequestT;
-  phase: 'starting' | 'unknown' | 'session' | 'not_started';
+  phase: 'selecting' | 'starting' | 'unknown' | 'session' | 'not_started';
   sessionId: string | null;
   status: AgentStatusResponseT | null;
   message: string | null;

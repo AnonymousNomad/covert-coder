@@ -1095,7 +1095,27 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       // Queueing must not introduce a caller-mutation window after approval.
       const request = structuredClone(options.request ?? { task, mode });
       const executionOptions = { ...options };
-      const context = authority.assertExecution(options.execution, 'agent.start', request);
+      const executionTarget = options.executionTarget === undefined ? null : structuredClone(options.executionTarget);
+      const operationKind = executionTarget?.execution_class === 'EXTERNAL' ? 'agent.start.external' : 'agent.start';
+      const context = authority.assertExecution(options.execution, operationKind, request);
+      const approvedTarget = context.operation.args?.agent_target ?? null;
+      if (JSON.stringify(stable(executionTarget)) !== JSON.stringify(stable(approvedTarget)) ||
+          (executionTarget !== null && !['LOCAL', 'EXTERNAL'].includes(executionTarget.execution_class))) {
+        throw new AuthorityError('FORBIDDEN', 'agent execution target binding mismatch');
+      }
+      if (executionTarget !== null) {
+        const external = executionTarget.execution_class === 'EXTERNAL';
+        const worker = request.worker;
+        const roleMatches = worker?.role === mode || (mode === 'plan' ? worker?.role === 'planner' : worker?.role === 'coder' || worker?.role === 'reviewer');
+        if (!worker || worker.worker !== executionTarget.route_id ||
+            worker.provider !== (external ? executionTarget.provider_id : 'local') ||
+            worker.model !== (external ? executionTarget.provider_model : executionTarget.model_id) || !roleMatches ||
+            (request.role !== undefined && request.role !== worker.role) ||
+            (request.chat_source !== undefined && request.chat_source !== (external ? 'provider' : 'local'))) {
+          throw new AuthorityError('FORBIDDEN', 'agent worker descriptor binding mismatch');
+        }
+      }
+      executionOptions.executionTarget = executionTarget;
       if (request.task !== task || (request.mode ?? 'act') !== mode || context.operation.workspace !== rootAbs) {
         throw new AuthorityError('FORBIDDEN', 'agent start binding mismatch');
       }
@@ -1104,8 +1124,8 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       if (key !== undefined && (typeof key !== 'string' || !/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/i.test(key))) {
         throw new AuthorityError('BAD_REQUEST', 'invalid agent start correlation ID');
       }
-      authority.claimExecution(options.execution, 'agent.start', request);
-      const fingerprint = createHash('sha256').update(JSON.stringify(stable({ ...request, ...(key === undefined ? {} : { client_request_id: key }) }))).digest('hex');
+      authority.claimExecution(options.execution, operationKind, request);
+      const fingerprint = createHash('sha256').update(JSON.stringify(stable({ request: { ...request, ...(key === undefined ? {} : { client_request_id: key }) }, executionTarget }))).digest('hex');
       const prior = key === undefined ? null : starts.get(key);
       if (prior) {
         if (prior.owner !== context.owner) throw new AuthorityError('FORBIDDEN', 'agent start recovery owner mismatch');

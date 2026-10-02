@@ -69,6 +69,8 @@ try {
       Object.assign(api, {
         routes: async () => ({ routes: [] }), chatHistory: async () => ({ conversations: [] }),
         connections: async () => ({ routed_roles: { plan: 'local', act: 'local' } }),
+        modelManager: async () => ({ connections: { routed_roles: { plan: 'local', act: 'local', utility: 'local' }, preference: 'local-first' },
+          runtime: { selected_model_id: 'controlled-local-model', health: 'HEALTHY' } }),
         fit: async () => ({ usedApprox: 0, budget: 8192, dropped: 0, truncatedSystem: false, messages: [] }),
         residentSummary: async () => { throw new Error('fixture unavailable'); }, residentContext: async () => { throw new Error('fixture unavailable'); },
         residentPush: async () => { throw new Error('fixture unavailable'); }, residentDecisions: async () => { throw new Error('fixture unavailable'); },
@@ -165,6 +167,50 @@ try {
   await fresh(); fixture.startMode = 'refuse'; await start(); await waitText('Start refused before dispatch');
   assert.equal(await send.isEnabled(), true); assert.equal(fixture.ids.size, 0);
   pass('only correlated explicit pre-dispatch refusal allows a fresh start');
+
+  await fresh();
+  await page.evaluate(async () => {
+    const { api } = await import('/src/services/api.ts');
+    api.modelManager = async () => ({ connections: { routed_roles: { act: { provider_id: 'opencode', model_id: 'opencode-go/controlled-exact-model' } }, preference: 'local-first' },
+      runtime: { selected_model_id: null, health: 'STOPPED' } });
+  });
+  await start(); await waitText('RUNNING');
+  assert.deepEqual(fixture.starts[0].worker, { worker: 'cloud:opencode:opencode-go/controlled-exact-model', provider: 'opencode', model: 'opencode-go/controlled-exact-model', role: 'act' });
+  assert.equal(fixture.starts[0].chat_source, 'provider');
+  assert.match(await mount.innerText(), /REQUESTED WORKER.*cloud:opencode:opencode-go\/controlled-exact-model/);
+  pass('project ACT external worker is sent and displayed as an exact requested target');
+
+  await fresh();
+  await page.evaluate(async () => {
+    const { api } = await import('/src/services/api.ts');
+    api.modelManager = async () => ({ connections: { routed_roles: { act: 'local' }, preference: 'local-first' }, runtime: { selected_model_id: null, health: 'UNKNOWN' } });
+  });
+  await start(); await waitText('Worker selection unavailable before dispatch');
+  assert.equal(fixture.starts.length, 0); assert.equal(await send.isEnabled(), true);
+  pass('unavailable exact local selection sends no task and permits correction');
+
+  await fresh();
+  await page.evaluate(async () => {
+    const { api } = await import('/src/services/api.ts');
+    api.modelManager = async () => ({ connections: { routed_roles: { act: { provider_id: 'opencode', model_id: 'opencode-go/controlled-exact-model' } }, preference: 'local-only' },
+      runtime: { selected_model_id: 'controlled-local-model', health: 'HEALTHY' } });
+  });
+  await start(); await waitText('Local-Only');
+  assert.equal(fixture.starts.length, 0); assert.equal(await send.isEnabled(), true);
+  pass('Local-Only does not silently replace an explicitly selected external worker');
+
+  await fresh();
+  await page.evaluate(async () => {
+    const { api } = await import('/src/services/api.ts');
+    api.modelManager = () => new Promise(resolve => { window.selectionResolve = resolve; });
+  });
+  await start(); await waitText('Reading the exact project worker');
+  assert.equal(fixture.starts.length, 0); assert.equal(await send.isDisabled(), true); assert.equal(await quick.isDisabled(), true);
+  await remount(); await waitText('Model selection interrupted before dispatch');
+  await page.evaluate(() => window.selectionResolve({ connections: { routed_roles: { act: 'local' }, preference: 'local-first' }, runtime: { selected_model_id: 'controlled-local-model', health: 'HEALTHY' } }));
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+  assert.equal(fixture.starts.length, 0); assert.equal(await send.isEnabled(), true);
+  pass('disposed pending selection cannot dispatch or overwrite a replacement mount');
   await page.evaluate(() => window.residentProbe.dispose());
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ classification: 'ACTUAL_COMPONENT_CONTROLLED_API', cases: cases.length, passed: cases.length, liveModelOrProvider: false, wholeAppRestart: false, processPid: process.pid, fixturePort: address.port }));

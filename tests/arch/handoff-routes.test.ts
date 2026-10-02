@@ -53,7 +53,12 @@ before(async () => {
   await fs.writeFile(path.join(workspace, 'README.md'), '# demo\n\nhello line\n', 'utf8');
   server = new ArchServer(workspace, path.join(workspace, 'arch-h1.log'));
   const { buildRoutes } = await import('../../node/src/openapi.ts');
-  const routes = await buildRoutes(workspace, 'test', { authority: server.authority, events: server.events });
+  const routes = await buildRoutes(workspace, 'test', {
+    authority: server.authority, events: server.events,
+    // This fixture proves approved transcript scanning, not model execution.
+    // Keep inference deterministic through the existing internal test seam.
+    agentChatFn: async () => '<attempt_completion><result>controlled transcript fixture</result></attempt_completion>'
+  });
   for (const route of routes) server.route(route);
   httpServer = await server.listen(0);
   const address = httpServer.address();

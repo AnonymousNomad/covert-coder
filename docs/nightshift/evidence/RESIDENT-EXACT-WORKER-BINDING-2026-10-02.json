@@ -1,0 +1,249 @@
+{
+  "schema": "covert.agent-worker-binding.local-evidence.v1",
+  "recordedAt": "2026-10-02T03:59:28.891Z",
+  "sourceParent": "6ade0bc9b323255c26b8a68098c3f4e2ab3827f8",
+  "branch": "nightshift/production-convergence-20260926",
+  "state": "LOCAL_VERIFIED_PENDING_FULL_PUBLICATION_GATE_AND_EXACT_SHA_CI",
+  "affected": {
+    "total": 105,
+    "passed": 105,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "bindingCases": 11,
+  "actualControlledEdge": {
+    "resident": 21,
+    "setupProvider": 18,
+    "remainingOwnedBrowserChildren": 0
+  },
+  "architecture": {
+    "routes": 239,
+    "central": 135,
+    "descriptor": 79,
+    "conflicts": 0,
+    "unclassified": 0,
+    "unchangedWaivers": 20,
+    "focusedRouteTests": 6
+  },
+  "veritas": {
+    "passed": true,
+    "checks": {
+      "path-boundary": true,
+      "secret-scan": true,
+      "manifest-validation": true,
+      "compile": true,
+      "tests": true,
+      "git-diff": true
+    }
+  },
+  "static": {
+    "nodeTypes": "PASS",
+    "browserTypes": "PASS",
+    "scopedLint": "PASS",
+    "frontendBuild": "PASS"
+  },
+  "failures": [
+    "Initial exact-target contract baseline:3 failures, retained.",
+    "Initial new HTTP fixture:5 pass/2 fail from mistaken403 status assumptions; canonical409 envelopes verified and assertions corrected.",
+    "Handoff consume failure baseline:actual done with1 model call after failed consumption; repair now error with0 model calls. Original timeout and refined direct-state repro retained.",
+    "First local Veritas failed compile architecture908/896/1/11 and P0 acceptance: legacy fixtures omitted exact selection. Transcript-only fixture now explicitly injects the existing controlled callback; P0 keeps original APPROVAL_REQUIRED assertion on an exact catalog target plus missing-selection refusal/zero sessions. Focused7/7 and supervised P0 pass; unchanged whole Veritas rerun retained separately."
+  ],
+  "scope": [
+    "Production Resident sends exact project ACT selection from canonical Model Access, not a hardcoded local task.",
+    "Authority binds exact worker request/target revision with target-derived local execute or external risk. Router revalidates each dispatch; no role fallback.",
+    "Service validates approved target and requested descriptor; correlated key includes target binding.",
+    "Selection is abortable and owned; disposed selection cannot dispatch. Local-Only never substitutes an external selection.",
+    "Handoff consumption must persist before dispatch; caller cancellation is preserved."
+  ],
+  "boundaries": [
+    "Controlled tests and component APIs are not live qualification or fresh-user acceptance.",
+    "Existing internally injected scripted agent fixtures retain their callback seam; it is not provider/model support evidence.",
+    "Production starts without an exact worker are refused; unsupported/unverified adapters are not silently replaced.",
+    "Recovery after target/config changes remains fail-closed; no fresh uncorrelated retry is invented.",
+    "UI shows requested worker, not a fabricated actual-model receipt. Full Resident provenance/acceptance remains open.",
+    "Next controlled canonical Router/Journal probe confirms fitting changes system context while sealed admission preserves the pre-fit hash; no served-context digest exists in current model events. This is controlled observation only, not actual provider/model/Authority integration.",
+    "Admission floors unchanged; no local model starts, foreign kills, model collection edits or OS changes.",
+    "Visuals paused; Lab and locked references preserved; PR31 frozen."
+  ],
+  "sourceHashes": [
+    {
+      "path": "browser/src/cockpit/ResidentCore.ts",
+      "sha256": "afd57b3ade5bd7c14bc44b763303f1dd244d15f0a5f713a14112d26c92ee5ba2"
+    },
+    {
+      "path": "browser/src/cockpit/resident-worker-selection.ts",
+      "sha256": "dcab429731860346c3ea9a25078b28db6716b257e0e0a2cc26d08c90bc0835e1"
+    },
+    {
+      "path": "browser/src/services/api.ts",
+      "sha256": "c015af025eefe4624158475c5ca3582ca0604d7dc8a7e7c9e0442a464307cf3c"
+    },
+    {
+      "path": "browser/src/store/state.ts",
+      "sha256": "2b7070d7f5bdb2ce4668ca256ece4df04479a5d96dfc933ef20be06dbcc70fa8"
+    },
+    {
+      "path": "common/security/operation-policy.mjs",
+      "sha256": "838c1f168702f5b61d80f1f2ca464aef99139ef4b2d10a9b9114155974e580e1"
+    },
+    {
+      "path": "node/src/openapi.ts",
+      "sha256": "9cee49744f2327ed990fbc34ce314160229e636225dc81ca29c32b05955c8090"
+    },
+    {
+      "path": "node/src/routes/agent.ts",
+      "sha256": "94416debac513f5a8aff9f1d3808bbd5148e6dc59d2aa38046ee3704e6f0fd76"
+    },
+    {
+      "path": "node/src/services/agent-loop.mjs",
+      "sha256": "51f0c3dbb321abf34317cdaf6b83c63f4d9d6104b7fa49e96acd276eb2a1e6dd"
+    },
+    {
+      "path": "node/src/services/agent-loop.d.mts",
+      "sha256": "e0f217e41eef32852dc7fef360382dc6c7b641e89211532c6fa1dad6a77b068e"
+    },
+    {
+      "path": "tests/arch/agent-worker-binding.test.ts",
+      "sha256": "bece48e514d2b89ec467bbab415d68fd7c0bb1fa2c248f1c96e9466c4e8ad5c1"
+    },
+    {
+      "path": "scripts/resident-ownership-ui.mjs",
+      "sha256": "2ab0c2912eec9b27bf14f798523f14c45210b97ba3a5fc7af2ec3c3df3e7d416"
+    },
+    {
+      "path": "tests/arch/handoff-routes.test.ts",
+      "sha256": "e567821e08b5b61392cd1d12ef0e1d07b3c8ea0f0cd3191406425741f62b5c12"
+    },
+    {
+      "path": "scripts/acceptance-p0.mjs",
+      "sha256": "d7285cb4dd503bc798f10d6143a363158926cf7295edb98f93f91cbd5b1315b2"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-worker-binding-reproduction.log",
+      "sha256": "036a25bb1688d4bcfd3ff795363561c67530e8fca75f40fbd10fee8f36bf1276"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-baseline.log",
+      "sha256": "66a956c91ed096b8f03e2c9f83271e4c3c712335d0957ffe9e1267bc9067018b"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-descriptor-repair.log",
+      "sha256": "f980d6b8bb0a48d8d1438382132fa4939717e6a584537b1a04c4267aaa308cbb"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-integration-v1.log",
+      "sha256": "e81bb4627624a6af0b89c1dc71feb78372fb48c8628c409ced4952846272c96b"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-integration-v2.log",
+      "sha256": "d4616d20780ed71c600b83a3bf37932cc1cc784d8b6220cff9d45ede2d63527a"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-affected-v1.log",
+      "sha256": "71c33344ac192dc91b9fa1584758533e93d1a17567f521dc1cdec77ad7fafb30"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-handoff-consume-baseline.log",
+      "sha256": "e620bb4d9b925353383b45d552f46ced11b3693dd9960695922cc9b04e1a77ba"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-handoff-consume-baseline-v2.log",
+      "sha256": "a7b99f4043f8fd3a087b05befb2b0d5db9eaba5b0531758d26205303463def25"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-affected-final.log",
+      "sha256": "785b99b1662750de28ee8debdb660457866ae53f6745d6a7e43e01c92b925ece"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-browser-types-v1.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-node-types-final-v2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-static-lint-v1.log",
+      "sha256": "31c79b7f824a6c93f13f2451e70f3a74cff28c3da9fa743ff4e82b2b12c9f43c"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-lint-final-v2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-frontend-build.log",
+      "sha256": "3322576c9516d662b914900b899bb229d76b5aedf309a18de6ba6f20ab842774"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-route-gates.log",
+      "sha256": "7b451e6dcd418d458bba0734639242e29b92d13b2cec2c9c8330aac49edd7b50"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-c1-generation.log",
+      "sha256": "76ca0cd9f95d7a208afb2296ede216012d2ac9454fe02d8884ad1f72267b7dfc"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-c1-check.log",
+      "sha256": "137cbd157a526db77d7328f6a37f3ff9bea5617b141c6a101b8ded48fe872c0e"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-worker-binding-ui-v1.log",
+      "sha256": "ce9752def19f7894d8519a773bb83ed0d5484ccb38777adbdd30104a6e667096"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-worker-binding-ui-v1.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-worker-binding-ui-owned-result-v1.json",
+      "sha256": "0f88c113cca123ae6f6c65ac24bccae4b1c815bd6022b8fbd594352534b9e7f3"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-setup-regression.log",
+      "sha256": "5b29600245868503a817de163beb5c6e80124101942972a36566162b1e98ab31"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-veritas.json",
+      "sha256": "593b29f298405771331e8967d8578e54cd638a1ca0c4572f08b59db31e5f4c8a"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-veritas.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-veritas-v2.json",
+      "sha256": "1affec8bf311098aaa5d3208c4ea673f11fa38aa95a7daa45ce4e77017b9ce19"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-veritas-v2.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-handoff-fixture-repair.log",
+      "sha256": "0705b70f6fae1f4a56f93b462106a31adfcb0f4aec6b6d071bc9733cd1e3b903"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/agent-worker-binding-p0-fixture-repair.log",
+      "sha256": "c5585a40ff53840d5ddd9bbeb3c46370ddb8749016cb0497eee0d97124dd468f"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-served-context-reproduction.log",
+      "sha256": "f05cb46e22b08c75552e3112d3e38fedd7465362a3791253243ce44fca2a4503"
+    }
+  ],
+  "frozenReproductionHashes": [
+    {
+      "path": "E:/covert-nightshift-integration/docs/v1/routes/C1-02-ROUTE-DRIFT.json",
+      "sha256": "ac3b2fcf8e141265fc17d62e824f2a8a357124e089926cc3f700ee0a14648f33"
+    },
+    {
+      "path": "E:/covert-nightshift-integration/docs/v1/routes/C1-02-ROUTE-DRIFT.md",
+      "sha256": "e21af1f58f5ea23ecea2320fd9bf017923dd77c6017084b435b5e47e73aee406"
+    }
+  ],
+  "releaseAcceptance": false,
+  "liveQualification": false
+}

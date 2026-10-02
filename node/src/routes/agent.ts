@@ -17,9 +17,10 @@ import {
   AgentSubagentStatus,
   AgentSubagentStatusQuery,
   type AgentSubagentSpawnRequestT,
-  type AgentSubagentStatusT
+  type AgentSubagentStatusT,
+  type AgentStartRequestT
 } from '../../../common/contracts/agent.ts';
-import { RouterError } from '../services/model-router.ts';
+import { RouterError, ChatTargetChangedError, type ModelRouter, type ResolvedChatAuthorityTarget } from '../services/model-router.ts';
 import { AuthorityError } from '../services/execution-authority.mjs';
 import type { AgentLoopService as CanonicalAgentLoop } from '../services/agent-loop.mjs';
 import type { ErrorCode } from '../../../common/errors.ts';
@@ -31,6 +32,7 @@ type AgentLoopService = {
   cancel: CanonicalAgentLoop['cancel'];
   status(sessionId: string): unknown;
   list(): unknown[];
+  readonly rootAbs: string;
 };
 
 // Subagent dispatch service (aide-subagent-dispatch skill, PR A wiring).
@@ -46,6 +48,7 @@ type AgentSubagentService = {
 function toRouteError(error: unknown): RouteError {
   if (error instanceof AuthorityError) return new RouteError(error.code as ErrorCode, error.message, error.detail);
   if (error instanceof RouteError) return error;
+  if (error instanceof ChatTargetChangedError) return new RouteError('CONFLICT', error.message);
   if (error instanceof RouterError) return new RouteError('NOT_READY', error.message);
   const code = (error as { code?: string })?.code;
   const message = String((error as Error)?.message ?? error).slice(0, 500);
@@ -67,6 +70,13 @@ function wrap(handler: (ctx: RouteContext) => Promise<unknown> | unknown): (ctx:
 }
 
 export function routesForAgent(service: AgentLoopService, options: {
+  // Production supplies the canonical router. Controlled injected loops may
+  // retain the legacy callback seam; that seam is not model qualification.
+  exactWorker?: {
+    workspace: string;
+    router: Pick<ModelRouter, 'resolveAuthorityTarget' | 'chatStreamResolvedTarget'>;
+    effectiveContext?: (target: ResolvedChatAuthorityTarget) => number | null;
+  };
   resolveProviderChatFn?: (role: 'plan' | 'act') => ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
   // Live worker-switch wiring (Wave 3/4 reconciliation): governed handoff
   // reception + the exact destination chat functions used for binding and
@@ -94,11 +104,49 @@ export function routesForAgent(service: AgentLoopService, options: {
   // collaborator finding that the micro tier never reached the live loop.
   resolveEffectiveContext?: () => Promise<number | null>;
 } = {}): Route[] {
+  const targets = new WeakMap<RouteContext, ResolvedChatAuthorityTarget>();
+  const describeOperation: NonNullable<Route['describeOperation']> = async (context, taskId) => {
+    const request = context.body as AgentStartRequestT;
+    if (!options.exactWorker) {
+      return { workspace: service.rootAbs, taskId, kind: 'agent.start', args: { route: 'POST /api/agent/start', body: request } };
+    }
+    const worker = request.worker;
+    if (!worker) throw new RouteError('NOT_READY', 'an exact worker is required; select a configured model in Model Access');
+    const resolution = await options.exactWorker.router.resolveAuthorityTarget(worker.worker);
+    if (resolution.status !== 'RESOLVED') throw new RouteError('NOT_READY', `exact agent worker is unresolved (${resolution.reason})`);
+    const target = resolution.target;
+    const binding = target.binding;
+    const external = binding.execution_class === 'EXTERNAL';
+    if (!external && binding.execution_class !== 'LOCAL') throw new RouteError('FORBIDDEN', 'agent target has no registered execution class');
+    const mode = request.mode ?? 'act';
+    const roleMatches = worker.role === mode || (mode === 'plan' ? worker.role === 'planner' : worker.role === 'coder' || worker.role === 'reviewer');
+    if (worker.worker !== binding.route_id || worker.provider !== (external ? binding.provider_id : 'local') ||
+        worker.model !== (external ? binding.provider_model : binding.model_id) || !roleMatches ||
+        (request.role !== undefined && request.role !== worker.role) ||
+        (request.chat_source !== undefined && request.chat_source !== (external ? 'provider' : 'local'))) {
+      throw new RouteError('FORBIDDEN', 'requested worker does not match the exact resolved agent target');
+    }
+    targets.set(context, target);
+    return { workspace: options.exactWorker.workspace, taskId, kind: external ? 'agent.start.external' : 'agent.start',
+      args: { route: 'POST /api/agent/start', body: request, agent_target: binding } };
+  };
   return [
-    { method: 'POST', path: '/api/agent/start', body: AgentStartRequest, response: AgentStartResponse, handler: wrap(async ({ body, execution }) => {
-      const request = body as { task: string; mode?: 'plan' | 'act'; chat_source?: 'local' | 'provider'; architectEditor?: boolean; expertAdvisory?: boolean; role?: string };
+    { method: 'POST', path: '/api/agent/start', body: AgentStartRequest, response: AgentStartResponse, describeOperation, handler: wrap(async context => {
+      const { body, execution } = context;
+      const request = body as AgentStartRequestT;
+      const target = targets.get(context);
       let chatFnOverride: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | undefined;
-      if (request.chat_source === 'provider') {
+      if (options.exactWorker) {
+        if (execution === undefined || target === undefined) throw new RouteError('FORBIDDEN', 'Authority-resolved agent target is required');
+        const router = options.exactWorker.router;
+        chatFnOverride = async (messages, signal) => {
+          const result = await router.chatStreamResolvedTarget(target,
+            messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })),
+            () => undefined, signal ?? new AbortController().signal);
+          if (result.modelId !== target.binding.route_id) throw new RouteError('CONFLICT', 'agent dispatch returned a different model identity');
+          return result.text;
+        };
+      } else if (request.chat_source === 'provider') {
         if (!options.resolveProviderChatFn) throw new RouteError('NOT_READY', 'no provider resolver wired');
         const role = request.mode === 'plan' ? 'plan' as const : 'act' as const;
         let resolved: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
@@ -131,7 +179,9 @@ export function routesForAgent(service: AgentLoopService, options: {
           throw new RouteError(code === 'NOT_FOUND' ? 'NOT_FOUND' : 'CONFLICT', String((error as Error).message).slice(0, 300));
         }
         let actual: WorkerDescriptorT;
-        if (request.chat_source === 'provider') {
+        if (target !== undefined) {
+          actual = request.worker!;
+        } else if (request.chat_source === 'provider') {
           const target = options.providerTargetFor ? options.providerTargetFor(role) : null;
           if (target === null) throw new RouteError('NOT_READY', 'no provider route is configured for this role');
           actual = { worker: `cloud:${target.provider}:${target.model}`, provider: target.provider, model: target.model, role };
@@ -160,7 +210,7 @@ export function routesForAgent(service: AgentLoopService, options: {
         } catch (error) {
           throw new RouteError('CONFLICT', String((error as Error).message).slice(0, 300));
         }
-        if (request.chat_source !== 'provider') {
+        if (target === undefined && request.chat_source !== 'provider') {
           if (!options.resolveLocalChatFn) throw new RouteError('NOT_READY', 'no local chat resolver wired');
           try {
             chatFnOverride = await options.resolveLocalChatFn();
@@ -171,12 +221,14 @@ export function routesForAgent(service: AgentLoopService, options: {
         const inner = chatFnOverride ?? null;
         if (inner !== null) {
           let consumed = false;
-          chatFnOverride = async messages => {
+          chatFnOverride = async (messages, signal) => {
+            signal?.throwIfAborted();
             if (!consumed) {
+              await wh.consume(handoffId);
               consumed = true;
-              await wh.consume(handoffId).catch(() => undefined);
             }
-            return inner(messages);
+            signal?.throwIfAborted();
+            return inner(messages, signal);
           };
         }
       }
@@ -226,13 +278,15 @@ export function routesForAgent(service: AgentLoopService, options: {
       }
       return service.start(request.task, request.mode ?? 'act', chatFnOverride, {
         execution, request: body,
+        ...(target !== undefined ? { executionTarget: target.binding } : {}),
         architectEditor: request.architectEditor === true,
         // Role projection: an explicit role drives role-aware context
         // retrieval; otherwise the mode default applies (plan->planner,
         // act->coder) inside the loop.
         ...((body as { role?: string }).role !== undefined ? { role: String((body as { role?: string }).role) } : {}),
         ...(handoffContext !== undefined ? { handoffContext } : {}),
-        ...(options.resolveEffectiveContext ? { effectiveContextTokens: (await options.resolveEffectiveContext()) ?? null } : {})
+        ...(target !== undefined ? { effectiveContextTokens: options.exactWorker?.effectiveContext?.(target) ?? target.route.contextLength }
+          : options.resolveEffectiveContext ? { effectiveContextTokens: (await options.resolveEffectiveContext()) ?? null } : {})
       });
     }) },
     { method: 'POST', path: '/api/agent/decision', body: AgentDecisionRequest, response: AgentDecisionResponse, handler: wrap(async ({ body, execution }) => {
