@@ -1,6 +1,7 @@
 // Resident Adaptive Setup Session — interview → configuration plan → approval
-// → provisioning over the REAL systems (onboarding, hardware, models, BYOK,
-// workflow). Nothing is applied before the explicit approval step; every
+// → approved preference persistence and inspection of existing systems.
+// Account connection, model setup and execution policy remain explicit actions.
+// Nothing is written before the explicit approval step; every
 // mutation is an approved operation. No duplicate stores, no alternate
 // authority path. The reusable profile persists to <workspace>/.aide/setup-session.json.
 
@@ -9,23 +10,13 @@ import type { AppState, Panel } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { OnboardingUserChoicesT } from '../../../common/contracts/onboarding.ts';
 import type { HardwareRecommendResponseT } from '../../../common/contracts/hardware.ts';
+import { createSetupValidation, setupValidationReady, type SetupCheck } from './setup-validation.ts';
+import { SetupProfile, parseSetupProfile, setupPreferenceSignature, setupChoiceDispositions, type Answers } from './setup-profile.ts';
 
 export interface SetupSessionHandles {
   open(): void;
   close(): void;
   isOpen(): boolean;
-}
-
-interface Answers {
-  workType: string;
-  secondaryWork: string;
-  mode: 'LOCAL_FIRST' | 'HYBRID' | 'CLOUD';
-  providers: string[];
-  projectLocations: string;
-  localModelUse: string;
-  approvalStrictness: string;
-  integrations: string[];
-  importantWorkflows: string;
 }
 
 interface Recommendation { role: string; modelId: string; name: string; quant: string; fileBytes: number; contextTokens: number; fit: string; onDisk: boolean; }
@@ -86,7 +77,7 @@ export function createSetupSession(
   root.appendChild(card);
   host.appendChild(root);
 
-  const STAGES = ['WELCOME', 'INTERVIEW', 'CONFIGURATION PLAN', 'APPROVAL', 'PROVIDERS / SECRETS', 'HARDWARE SCAN', 'MODEL RECOMMENDATIONS', 'MODEL SETUP', 'WORKFLOW / SKILLS', 'INTEGRATIONS', 'VALIDATION', 'WORKSPACE READY'];
+  const STAGES = ['WELCOME', 'INTERVIEW', 'CONFIGURATION PLAN', 'APPROVAL', 'PROVIDERS / SECRETS', 'HARDWARE SCAN', 'MODEL RECOMMENDATIONS', 'MODEL SETUP', 'WORKFLOW / SKILLS', 'INTEGRATIONS', 'VALIDATION', 'SETUP RESULTS'];
   let stage = 0;
   let open = false;
   let answers: Answers = { ...DEFAULT_ANSWERS };
@@ -95,8 +86,16 @@ export function createSetupSession(
   let hardwareLine = 'not scanned yet';
   let providersLine = 'not inspected yet';
   let workflowLine = 'not inspected yet';
-  let checks: Array<{ label: string; ok: boolean; detail: string }> = [];
-  let ready = false;
+  const validation = createSetupValidation();
+  let busy = false;
+  let session = 0;
+  let savedSignature: string | null = null;
+  let savedModelId: string | null = null;
+  let setupError = '';
+  let completion: 'NOT_RUN' | 'PASSED' | 'FAILED' = 'NOT_RUN';
+
+  function preferenceSignature(): string { return setupPreferenceSignature(answers, selected?.modelId ?? savedModelId); }
+  function preferencesSaved(): boolean { return savedSignature === preferenceSignature(); }
 
   function renderField(labelText: string, control: HTMLElement): HTMLElement {
     const field = el('label', 'cockpit-setup-field');
@@ -120,15 +119,17 @@ export function createSetupSession(
 
   function multiSelect(values: string[], options: string[], onChange: (values: string[]) => void): HTMLElement {
     const group = el('div', 'cockpit-setup-multi');
+    let selection = [...values];
     for (const option of options) {
       const label = el('label', 'cockpit-setup-check');
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.checked = values.includes(option);
       input.addEventListener('change', () => {
-        const set = new Set(values);
+        const set = new Set(selection);
         if (input.checked) set.add(option); else set.delete(option);
-        onChange([...set]);
+        selection = [...set];
+        onChange(selection);
       });
       label.append(input, el('span', '', option));
       group.appendChild(label);
@@ -150,12 +151,15 @@ export function createSetupSession(
     stageLabel.textContent = `SETUP ${stage + 1} OF ${STAGES.length}`;
     title.textContent = STAGES[stage]!;
     body.innerHTML = '';
-    back.disabled = stage === 0;
-    next.hidden = stage === STAGES.length - 1;
-    next.textContent = stage === 3 ? 'APPROVE AND APPLY' : stage === 2 ? 'APPROVE CONFIGURATION' : 'CONTINUE';
+    back.disabled = stage === 0 || busy;
+    next.disabled = busy;
+    next.hidden = stage === STAGES.length - 1 && completion === 'PASSED';
+    if (stage === 11) next.disabled = busy || !setupValidationReady(validation.snapshot());
+    next.textContent = stage === 11 ? 'SAVE AND COMPLETE SETUP' : stage === 3 ? 'APPROVE AND SAVE' : stage === 2 ? 'REVIEW APPROVAL' : stage === 10 ? 'RUN VALIDATION' : 'CONTINUE';
+    if (setupError) body.appendChild(el('p', 'cockpit-setup-note', setupError));
 
     if (stage === 0) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'This is not a tutorial. It is adaptive provisioning: your answers become a concrete configuration plan, you approve it, and Covert applies it to the real systems on this machine. Nothing is applied before your approval.'));
+      body.appendChild(el('p', 'cockpit-setup-detail', 'This session records your workflow preferences and inspects existing services after approval. Provider connections, model download/qualification, routing, consent, integrations and execution policy require their own explicit setup actions.'));
       body.appendChild(el('p', 'cockpit-setup-detail', 'Every write crosses the same evaluation gate as the rest of the product. Secrets stay in the OS-backed credential store; models stay in the existing registry.'));
     } else if (stage === 1) {
       body.appendChild(renderField('Primary work', select(answers.workType, WORK_TYPES, v => { answers.workType = v; })));
@@ -183,13 +187,16 @@ export function createSetupSession(
       plan.appendChild(line('MODE', answers.mode.replace('_', '-').toLowerCase()));
       plan.appendChild(line('MODEL USE', answers.localModelUse));
       plan.appendChild(line('EXECUTION POLICY', answers.approvalStrictness));
-      plan.appendChild(line('PROVIDERS', answers.providers.length > 0 ? answers.providers.join(', ') : 'local only'));
+      plan.appendChild(line('PROVIDERS', answers.providers.length > 0 ? answers.providers.join(', ') : 'none recorded'));
       plan.appendChild(line('INTEGRATIONS', answers.integrations.length > 0 ? answers.integrations.join(', ') : 'none selected'));
       plan.appendChild(line('PROJECTS', answers.projectLocations.trim() !== '' ? answers.projectLocations : 'current workspace'));
       if (answers.importantWorkflows.trim() !== '') plan.appendChild(line('RECURRING', answers.importantWorkflows));
       body.appendChild(plan);
+      for (const disposition of setupChoiceDispositions(preferencesSaved())) {
+        body.appendChild(line(`${disposition.choice} — ${disposition.status}`, disposition.detail));
+      }
     } else if (stage === 3) {
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Approval applies the plan: onboarding choices are recorded, hardware is scanned, and model recommendations are calculated. Mutations use the same approved-operation path you will see for every action in Covert.'));
+      body.appendChild(el('p', 'cockpit-setup-detail', 'Approval records role/workbench choices and saves interview preferences, then inspects hardware, providers and workflows. This does not provision accounts, models, projects or integrations. Failed required writes keep this step open for retry.'));
       body.appendChild(el('p', 'cockpit-setup-detail', 'Secrets are never part of this plan and never enter the record; provider credentials are configured separately under SETTINGS → SECURITY.'));
       if (answers.approvalStrictness !== STRICTNESS[0]) body.appendChild(el('p', 'cockpit-setup-note', 'BALANCED and RELAXED policies are planned; today every operation is approved (STRICT).'));
     } else if (stage === 4) {
@@ -225,7 +232,7 @@ export function createSetupSession(
     } else if (stage === 8) {
       body.appendChild(line('WORKFLOW PROFILE', planName()));
       body.appendChild(el('p', 'cockpit-setup-detail', `Workflow runtime: ${workflowLine}`));
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Skills: the in-loop loader selects relevant skills automatically per task; no manual packaging is required here.'));
+      body.appendChild(el('p', 'cockpit-setup-detail', 'Recurring workflow and skill preferences are recorded only. This interview does not create or enable a workflow or skill.'));
     } else if (stage === 9) {
       body.appendChild(el('p', 'cockpit-setup-detail', 'Integrations are verified against their real surfaces:'));
       body.appendChild(el('div', 'cockpit-setup-plan')).appendChild(line('TELEGRAM', 'configurable — status surface available; connect under SETTINGS when a bot token exists'));
@@ -234,12 +241,21 @@ export function createSetupSession(
     } else if (stage === 10) {
       body.appendChild(el('p', 'cockpit-setup-detail', 'Validation runs real checks before anything is called ready:'));
       const list = el('div', 'cockpit-setup-plan');
-      for (const check of checks) list.appendChild(line(`${check.ok ? 'PASS' : 'INFO'} — ${check.label}`, check.detail));
+      const result = validation.snapshot();
+      for (const check of result.checks) list.appendChild(line(`${check.status} — ${check.label}`, check.detail));
       body.appendChild(list);
-      ready = checks.filter(c => c.label !== 'providers').every(c => c.ok);
-      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED' : 'CORE VALIDATION INCOMPLETE — review the checks above'));
+      const ready = setupValidationReady(result);
+      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED' : `CORE VALIDATION ${result.status} — required checks must complete successfully`));
     } else if (stage === 11) {
-      body.appendChild(el('p', 'cockpit-setup-ready', ready ? 'YOUR WORKFLOW IS READY.' : 'SETUP SAVED — SOME CHECKS REMAIN'));
+      const ready = setupValidationReady(validation.snapshot());
+      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED.' : `SETUP UNRESOLVED — VALIDATION ${validation.snapshot().status}`));
+      body.appendChild(el('p', completion === 'PASSED' ? 'cockpit-setup-ready' : 'cockpit-setup-note', completion === 'PASSED' ? 'SETUP PREFERENCES SAVED AND COMPLETION RECORDED.' : `SETUP COMPLETION ${completion === 'FAILED' ? 'UNRESOLVED' : 'NOT RUN'}.`));
+      body.appendChild(el('p', 'cockpit-setup-detail', 'Core checks do not qualify a model or prove a usable execution route. Open MODELS to configure and verify the route you want to use.'));
+      for (const disposition of setupChoiceDispositions(preferencesSaved())) body.appendChild(line(`${disposition.choice} — ${disposition.status}`, disposition.detail));
+      const rerun = el('button', 'cockpit-setup-btn', 'RERUN VALIDATION') as HTMLButtonElement;
+      rerun.type = 'button';
+      rerun.addEventListener('click', () => { if (busy) return; validation.invalidate(); completion = 'NOT_RUN'; setupError = ''; stage = 10; renderStage(); });
+      body.appendChild(rerun);
       body.appendChild(el('p', 'cockpit-setup-detail', 'Talk to Resident to begin.'));
       const actions = el('div', 'cockpit-setup-actions');
       const makeAction = (label: string, panel: Panel): HTMLElement => {
@@ -253,101 +269,198 @@ export function createSetupSession(
     }
   }
 
-  async function loadProfile(): Promise<void> {
+  async function loadProfile(currentSession: number): Promise<void> {
     try {
       const file = await api.fileRead('.aide/setup-session.json');
+      if (!open || session !== currentSession) return;
       if (typeof file.content === 'string' && file.content.trim() !== '') {
-        const parsed = JSON.parse(file.content) as { answers?: Partial<Answers> };
-        if (parsed.answers) answers = { ...DEFAULT_ANSWERS, ...parsed.answers };
+        const parsed = parseSetupProfile(file.content);
+        if (!parsed) { setupError = 'Saved setup preferences could not be validated. Review and save a new plan.'; return; }
+        answers = parsed.answers;
+        savedModelId = parsed.selectedModelId;
+        savedSignature = preferenceSignature();
+        // A persisted completion timestamp is historical, never current READY.
+        stage = Math.min(parsed.stage, 10);
         return;
       }
-    } catch { /* first run: defaults */ }
-    answers = { ...DEFAULT_ANSWERS };
+    } catch { if (open && session === currentSession) setupError = 'Saved setup status unavailable; no previous completion is assumed.'; }
   }
 
-  async function approvalApply(): Promise<void> {
+  function onboardingChoices(): Pick<OnboardingUserChoicesT, 'role' | 'workbench'> {
+    const roleMap: Record<string, OnboardingUserChoicesT['role']> = { Research: 'researcher', 'Security & Audit': 'other', Documentation: 'other', 'Creative & Interface': 'other' };
+    const workbench: OnboardingUserChoicesT['workbench'] = answers.workType === 'Model Training' || answers.workType === 'Research' ? 'sovereign-pipeline' : answers.workType === 'Security & Audit' ? 'sovereign-architect' : 'sovereign-coder';
+    return { role: roleMap[answers.workType] ?? 'developer', workbench };
+  }
+
+  async function saveProfile(resumeStage: number, currentSession: number, completedAt: string | null = null): Promise<boolean> {
+    if (!open || session !== currentSession) return false;
     try {
-      const roleMap: Record<string, OnboardingUserChoicesT['role']> = { Research: 'researcher', 'Security & Audit': 'other', Documentation: 'other', 'Creative & Interface': 'other' };
-      const workbench: OnboardingUserChoicesT['workbench'] = answers.workType === 'Model Training' || answers.workType === 'Research' ? 'sovereign-pipeline' : answers.workType === 'Security & Audit' ? 'sovereign-architect' : 'sovereign-coder';
-      await api.onboardingNext({ role: roleMap[answers.workType] ?? 'developer', workbench });
-      opts.onToast('BAD_REQUEST', 'Setup plan approved and recorded.');
-    } catch (error) {
-      opts.onToast('BAD_REQUEST', `Onboarding step needs approval or failed (${String((error as Error).message).slice(0, 80)}); continuing with local plan.`);
+      const profile = SetupProfile.parse({ version: 2, answers, planName: planName(), selectedModelId: selected?.modelId ?? savedModelId, stage: resumeStage, completedAt });
+      await api.fileWrite('.aide/setup-session.json', JSON.stringify(profile, null, 2));
+      if (!open || session !== currentSession) return false;
+      savedModelId = profile.selectedModelId;
+      savedSignature = setupPreferenceSignature(profile.answers, profile.selectedModelId);
+      return true;
+    } catch {
+      if (open && session === currentSession) {
+        savedSignature = null;
+        validation.invalidate();
+        setupError = 'SETUP SAVE FAILED — preferences/completion are unresolved. Retry the approved write.';
+      }
+      return false;
     }
+  }
+
+  async function approvalApply(currentSession: number): Promise<boolean> {
+    try {
+      const choices = onboardingChoices();
+      let state = await api.onboardingState();
+      if (!open || session !== currentSession) return false;
+      // A profile-save retry must not advance the canonical walkthrough twice.
+      if (state.user_choices.role !== choices.role || state.user_choices.workbench !== choices.workbench) {
+        state = (await api.onboardingNext(choices)).state;
+      }
+      if (state.user_choices.role !== choices.role || state.user_choices.workbench !== choices.workbench) throw new Error('choices not recorded');
+    } catch {
+      if (open && session === currentSession) setupError = 'ONBOARDING CHOICES UNRESOLVED — approval/write did not complete. Retry before continuing.';
+      return false;
+    }
+
+    if (!await saveProfile(4, currentSession)) return false;
 
     try {
       const profile = await api.hardwareProfile();
+      if (!open || session !== currentSession) return false;
       hardwareLine = `${Math.round(profile.totalRamBytes / 1073741824)} GB RAM · ${profile.logicalCpus} CPUs · ${profile.freeRamBytes >= 2147483648 ? Math.round(profile.freeRamBytes / 1073741824) + ' GB free' : Math.round(profile.freeRamBytes / 1048576) + ' MB free'}`;
-    } catch { hardwareLine = 'unavailable (probe failed)'; }
+    } catch { if (!open || session !== currentSession) return false; hardwareLine = 'unavailable (probe failed)'; }
 
     try {
       const recommend = await api.hardwareRecommend() as HardwareRecommendResponseT;
+      if (!open || session !== currentSession) return false;
       recommendations = recommend.recommendations.map(r => ({ role: r.role, modelId: r.modelId, name: r.name, quant: r.quant, fileBytes: r.fileBytes, contextTokens: r.contextTokens, fit: r.fit, onDisk: r.onDisk }));
-      selected = recommendations.find(r => r.onDisk) ?? recommendations[0] ?? null;
-    } catch { recommendations = []; }
+      selected = savedModelId ? recommendations.find(r => r.modelId === savedModelId) ?? null : recommendations.find(r => r.onDisk) ?? recommendations[0] ?? null;
+    } catch { if (!open || session !== currentSession) return false; recommendations = []; }
 
     try {
       const status = await api.byokStatus();
+      if (!open || session !== currentSession) return false;
       providersLine = `${status.providers.length} configured · consent ${status.consent_enabled ? 'enabled' : 'disabled'}`;
-    } catch { providersLine = 'unavailable'; }
+    } catch { if (!open || session !== currentSession) return false; providersLine = 'unavailable'; }
 
     try {
       const state = await api.workflowState();
+      if (!open || session !== currentSession) return false;
       workflowLine = `stage ${state.stage} (governed runtime reachable)`;
-    } catch { workflowLine = 'unavailable'; }
+    } catch { if (!open || session !== currentSession) return false; workflowLine = 'unavailable'; }
+    return true;
   }
 
   async function runValidation(): Promise<void> {
-    const results: Array<{ label: string; ok: boolean; detail: string }> = [];
+    const runId = validation.begin();
+    renderStage();
+    const results: SetupCheck[] = [];
     const attempt = async (label: string, run: () => Promise<string>) => {
-      try { results.push({ label, ok: true, detail: await run() }); }
-      catch (error) { results.push({ label, ok: false, detail: String((error as Error).message).slice(0, 90) }); }
+      try { results.push({ label, status: 'PASSED', detail: await run() }); }
+      catch { results.push({ label, status: 'UNAVAILABLE', detail: 'Check could not complete; retry when the service is available.' }); }
     };
-    await attempt('daemon', async () => (await api.health()).workspace ?? 'reachable');
+    try {
+      const health = await api.health();
+      results.push({ label: 'daemon', status: health.state === 'HEALTHY' ? 'PASSED' : health.state === 'UNKNOWN' || health.state === 'STARTING' ? 'UNAVAILABLE' : 'FAILED', detail: `Daemon ${health.state}` });
+    } catch { results.push({ label: 'daemon', status: 'UNAVAILABLE', detail: 'Daemon status unavailable' }); }
     await attempt('hardware', async () => { const p = await api.hardwareProfile(); return `${Math.round(p.totalRamBytes / 1073741824)} GB RAM`; });
     await attempt('model registry', async () => { const s = await api.modelsStatus(); return `${s.models.length} models configured`; });
     await attempt('workflow runtime', async () => { const w = await api.workflowState(); return `stage ${w.stage}`; });
     await attempt('evidence bus', async () => { const a = await api.auditRead({ limit: 5 }); return `${a.events.length} recent events`; });
     await attempt('providers', async () => { const b = await api.byokStatus(); return `${b.providers.length} configured`; });
-    checks = results;
+    const choices = onboardingChoices();
+    try {
+      const state = await api.onboardingState();
+      const matched = state.user_choices.role === choices.role && state.user_choices.workbench === choices.workbench;
+      results.push({ label: 'onboarding choices', status: matched ? 'PASSED' : 'FAILED', detail: matched ? 'Role/workbench preferences recorded' : 'Required choices not recorded' });
+    } catch { results.push({ label: 'onboarding choices', status: 'UNAVAILABLE', detail: 'Recorded choice status unavailable' }); }
+    try {
+      const file = await api.fileRead('.aide/setup-session.json');
+      const profile = file.content ? parseSetupProfile(file.content) : null;
+      const matched = profile !== null && setupPreferenceSignature(profile.answers, profile.selectedModelId) === preferenceSignature();
+      if (matched && validation.snapshot().run === runId) savedSignature = preferenceSignature();
+      results.push({ label: 'setup preferences', status: matched ? 'PASSED' : 'FAILED', detail: matched ? 'Current preferences persisted' : 'Current preferences missing or mismatched' });
+    } catch { results.push({ label: 'setup preferences', status: 'UNAVAILABLE', detail: 'Persisted preferences unavailable' }); }
+    validation.complete(runId, results);
   }
 
-  async function finish(): Promise<void> {
-    const payload = JSON.stringify({ version: 1, answers, planName: planName(), selectedModelId: selected?.modelId ?? null, completedAt: new Date().toISOString() }, null, 2);
+  async function finish(currentSession: number): Promise<void> {
+    if (!setupValidationReady(validation.snapshot())) return;
+    if (!await saveProfile(10, currentSession)) { if (open && session === currentSession) completion = 'FAILED'; return; }
     try {
-      await api.fileWrite('.aide/setup-session.json', payload);
-      opts.onToast('BAD_REQUEST', 'Workflow profile saved to .aide/setup-session.json.');
-    } catch (error) {
-      opts.onToast('BAD_REQUEST', `Profile save needs approval or failed (${String((error as Error).message).slice(0, 70)}).`);
+      await api.onboardingComplete();
+      if (!open || session !== currentSession) return;
+    } catch {
+      if (open && session === currentSession) { completion = 'FAILED'; validation.invalidate(); setupError = 'SETUP COMPLETION FAILED — preferences remain saved; retry validation and completion.'; }
+      return;
     }
-    try { await api.onboardingComplete(); } catch { /* completion remains reopenable */ }
-    close();
+    if (!await saveProfile(10, currentSession, new Date().toISOString())) { if (open && session === currentSession) completion = 'FAILED'; return; }
+    completion = 'PASSED';
   }
 
   async function advance(): Promise<void> {
-    if (stage === 3) await approvalApply();
-    if (stage === 10) await runValidation();
-    if (stage === 11) { await finish(); return; }
-    stage = Math.min(stage + 1, STAGES.length - 1);
-    if (stage === 4) {
-      try { const b = await api.byokStatus(); providersLine = `${b.providers.length} configured · consent ${b.consent_enabled ? 'enabled' : 'disabled'}`; } catch { providersLine = 'unavailable'; }
-    }
+    if (busy || !open) return;
+    const currentSession = session;
+    const currentStage = stage;
+    busy = true;
+    setupError = '';
     renderStage();
+    try {
+      if (currentStage === 3 && !await approvalApply(currentSession)) return;
+      if (currentStage === 9 && !await saveProfile(10, currentSession)) return;
+      if (currentStage === 10) await runValidation();
+      if (currentStage === 11) { await finish(currentSession); return; }
+      if (!open || session !== currentSession) return;
+      stage = Math.min(currentStage + 1, STAGES.length - 1);
+      if (stage === 4) {
+        try {
+          const b = await api.byokStatus();
+          if (!open || session !== currentSession) return;
+          providersLine = `${b.providers.length} configured · consent ${b.consent_enabled ? 'enabled' : 'disabled'}`;
+        } catch {
+          if (!open || session !== currentSession) return;
+          providersLine = 'unavailable';
+        }
+      }
+    } finally {
+      if (open && session === currentSession) { busy = false; renderStage(); }
+    }
   }
 
-  back.addEventListener('click', () => { if (stage > 0) { stage--; renderStage(); } });
+  back.addEventListener('click', () => { if (stage > 0 && !busy) { validation.invalidate(); completion = 'NOT_RUN'; setupError = ''; stage--; renderStage(); } });
   next.addEventListener('click', () => { void advance(); });
   skip.addEventListener('click', () => close());
 
   function show(): void {
+    session++;
+    const currentSession = session;
     open = true;
+    busy = true;
+    validation.invalidate();
+    completion = 'NOT_RUN';
+    setupError = '';
+    answers = { ...DEFAULT_ANSWERS, providers: [], integrations: [] };
+    selected = null;
+    recommendations = [];
+    hardwareLine = 'not scanned yet';
+    providersLine = 'not inspected yet';
+    workflowLine = 'not inspected yet';
+    savedModelId = null;
+    savedSignature = null;
     root.hidden = false;
     stage = 0;
     renderStage();
-    void loadProfile().then(() => renderStage());
+    void loadProfile(currentSession).then(() => { if (open && session === currentSession) { busy = false; renderStage(); } });
   }
 
   function close(): void {
+    session++;
+    validation.invalidate();
+    busy = false;
     open = false;
     root.hidden = true;
   }

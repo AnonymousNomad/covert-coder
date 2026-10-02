@@ -41,6 +41,13 @@ jobs:
         if: always() && steps.install.outcome == 'success'
         timeout-minutes: 25
         run: node scripts/ci-run-all.mjs
+      - name: setup and provider truth browser regressions
+        id: product_truth_ui
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 5
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/setup-truth-ui.mjs
       - name: type checks and lint
         id: static
         if: always() && steps.install.outcome == 'success'
@@ -129,25 +136,26 @@ jobs:
           INSTALL: ${{ steps.install.outcome }}
           FRONTEND: ${{ steps.frontend.outcome }}
           BACKEND_TESTS: ${{ steps.backend_tests.outcome }}
+          PRODUCT_TRUTH_UI: ${{ steps.product_truth_ui.outcome }}
           STATIC: ${{ steps.static.outcome }}
           ARCHITECTURE: ${{ steps.architecture.outcome }}
           VERITAS: ${{ steps.veritas.outcome }}
           WORKTREE: ${{ steps.worktree.outcome }}
           CLEANUP: ${{ steps.cleanup.outcome }}
         run: |
-          printf 'AIDE CI gates: install=%s frontend=%s backend_tests=%s static=%s architecture=%s veritas=%s worktree=%s cleanup=%s\n' \
-            "$INSTALL" "$FRONTEND" "$BACKEND_TESTS" "$STATIC" "$ARCHITECTURE" "$VERITAS" "$WORKTREE" "$CLEANUP"
+          printf 'AIDE CI gates: install=%s frontend=%s backend_tests=%s product_truth_ui=%s static=%s architecture=%s veritas=%s worktree=%s cleanup=%s\n' \
+            "$INSTALL" "$FRONTEND" "$BACKEND_TESTS" "$PRODUCT_TRUTH_UI" "$STATIC" "$ARCHITECTURE" "$VERITAS" "$WORKTREE" "$CLEANUP"
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
             {
               echo '## AIDE CI required gates'
               echo
               echo '| Gate | Outcome |'
               echo '| --- | --- |'
-              printf '| install | %s |\n| frontend | %s |\n| backend tests | %s |\n| TypeScript + ESLint | %s |\n| architecture | %s |\n| Veritas | %s |\n| worktree | %s |\n| cleanup | %s |\n' \
-                "$INSTALL" "$FRONTEND" "$BACKEND_TESTS" "$STATIC" "$ARCHITECTURE" "$VERITAS" "$WORKTREE" "$CLEANUP"
+              printf '| install | %s |\n| frontend | %s |\n| backend tests | %s |\n| product truth browser | %s |\n| TypeScript + ESLint | %s |\n| architecture | %s |\n| Veritas | %s |\n| worktree | %s |\n| cleanup | %s |\n' \
+                "$INSTALL" "$FRONTEND" "$BACKEND_TESTS" "$PRODUCT_TRUTH_UI" "$STATIC" "$ARCHITECTURE" "$VERITAS" "$WORKTREE" "$CLEANUP"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "$INSTALL" != 'success' ] || [ "$FRONTEND" != 'success' ] || [ "$BACKEND_TESTS" != 'success' ] || [ "$STATIC" != 'success' ] || [ "$ARCHITECTURE" != 'success' ] || [ "$VERITAS" != 'success' ] || [ "$WORKTREE" != 'success' ] || [ "$CLEANUP" != 'success' ]; then
+          if [ "$INSTALL" != 'success' ] || [ "$FRONTEND" != 'success' ] || [ "$BACKEND_TESTS" != 'success' ] || [ "$PRODUCT_TRUTH_UI" != 'success' ] || [ "$STATIC" != 'success' ] || [ "$ARCHITECTURE" != 'success' ] || [ "$VERITAS" != 'success' ] || [ "$WORKTREE" != 'success' ] || [ "$CLEANUP" != 'success' ]; then
             echo "::error::CI_GATE_FAILURE: one or more required gates failed; see the gate summary and ci-diagnostics artifact."
             exit 1
           fi

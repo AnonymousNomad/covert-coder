@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "metrics": [
+    {
+      "id": "cpu",
+      "label": "CPU",
+      "source": "direct OS/system API preferred",
+      "refresh_ms": 1000,
+      "display": "utilization %, optional process contribution",
+      "required": true
+    },
+    {
+      "id": "ram",
+      "label": "Physical RAM",
+      "source": "OS memory API",
+      "refresh_ms": 1000,
+      "display": "used / available / total + pressure",
+      "required": true
+    },
+    {
+      "id": "commit",
+      "label": "Windows Commit",
+      "source": "Windows performance/system memory source",
+      "refresh_ms": 1000,
+      "display": "committed / limit + pressure",
+      "required": true
+    },
+    {
+      "id": "gpu",
+      "label": "GPU",
+      "source": "NVIDIA/adapter telemetry when available",
+      "refresh_ms": 1500,
+      "display": "device identity + utilization",
+      "required": false
+    },
+    {
+      "id": "vram",
+      "label": "VRAM",
+      "source": "GPU telemetry",
+      "refresh_ms": 1500,
+      "display": "used / free / total",
+      "required": false
+    },
+    {
+      "id": "disk",
+      "label": "Storage",
+      "source": "filesystem/system API",
+      "refresh_ms": 5000,
+      "display": "free / total for relevant drive",
+      "required": true
+    },
+    {
+      "id": "runtime",
+      "label": "Local AI runtime",
+      "source": "canonical runtime broker/model manager",
+      "refresh_ms": "event-driven + 2000 fallback",
+      "display": "runtime + exact model + health/state",
+      "required": true
+    },
+    {
+      "id": "context",
+      "label": "Context budget",
+      "source": "provider/runtime only when exposed truthfully",
+      "refresh_ms": "per request/event",
+      "display": "used / limit / remaining",
+      "required": false
+    },
+    {
+      "id": "provider",
+      "label": "Provider/network",
+      "source": "canonical Model Access/provider state",
+      "refresh_ms": "event-driven",
+      "display": "local/offline/remote configured/authenticated/available/unknown",
+      "required": true
+    }
+  ],
+  "truth_rules": [
+    "Missing value is UNKNOWN or UNAVAILABLE, never 0.",
+    "Every metric carries sampled_at and freshness.",
+    "Design Lab fixtures are visibly marked DESIGN FIXTURE / MOCK DATA.",
+    "No production sparkline unless backed by real sampled history.",
+    "Do not poll Windows performance counters faster than 1 Hz unless using a different documented source appropriate for higher-frequency collection."
+  ]
+}

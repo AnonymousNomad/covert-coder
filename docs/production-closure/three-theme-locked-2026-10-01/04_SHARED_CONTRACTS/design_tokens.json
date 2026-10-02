@@ -1,0 +1,40 @@
+{
+  "corporate": {
+    "core_black": "#080F14",
+    "steel_gunmetal": "#1A1F26",
+    "credo_graphite": "#2A3038",
+    "focus_verdant": "#00E0A4",
+    "intel_violet": "#7C3AED",
+    "link_cyan": "#38B0F8",
+    "alert_rose": "#FF4D8D",
+    "warn_amber": "#F59E0B",
+    "heading_font": "Rajdhani",
+    "ui_font": "Inter",
+    "code_font": "JetBrains Mono"
+  },
+  "matrix": {
+    "background": "#050B07",
+    "panel_dark": "#09110C",
+    "panel_mid": "#0E1711",
+    "matrix_green": "#2BFF88",
+    "border_green": "#1CFF8A",
+    "secondary_green": "#0FD46D",
+    "info_cyan": "#3EF3FF",
+    "warn_amber": "#F5B642",
+    "error_red": "#FF4D4F",
+    "ui_font": "Inter",
+    "code_font": "JetBrains Mono"
+  },
+  "original": {
+    "background": "#0A0F1A",
+    "panel": "#12182A",
+    "purple": "#7C3AED",
+    "cyan": "#22D3EE",
+    "green": "#19E6A7",
+    "magenta": "#FF4FD8",
+    "blue": "#38BDF8",
+    "amber": "#FFB547",
+    "ui_font": "Inter",
+    "code_font": "JetBrains Mono"
+  }
+}

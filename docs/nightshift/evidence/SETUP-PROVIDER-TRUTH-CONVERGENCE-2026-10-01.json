@@ -1,0 +1,166 @@
+{
+  "schema": "covert.setup-provider-truth-convergence.v1",
+  "source_parent": "3e6c89b7830a992952e543987cd8e3b8b2470e29",
+  "branch": "nightshift/production-convergence-20260926",
+  "source_files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "da0e66393db88441750b49469cd542b85a262f54a8667cd0d444223eb19e3ac3"
+    },
+    {
+      "path": "browser/src/cockpit/SetupSession.ts",
+      "sha256": "8002d455646fdb505765ba26efe474c64c41c68bbd65541c0f196cbe6c641ddb"
+    },
+    {
+      "path": "browser/src/cockpit/setup-profile.ts",
+      "sha256": "fc35bbbad066ae04a24488e4310912564c64e546777392f3bfe7f91d9f3f5a21"
+    },
+    {
+      "path": "browser/src/cockpit/setup-validation.ts",
+      "sha256": "669759596afa1b29e2d6e2c174c4537d94d408c7c8edf3dc9e00632f9f805746"
+    },
+    {
+      "path": "browser/src/services/cloud-status.ts",
+      "sha256": "f2fcb622fd730a4150b44af8ec627ac99da180d164b8ff8111bd5c9fd9ade75e"
+    },
+    {
+      "path": "browser/src/main.ts",
+      "sha256": "1003f0dffa4401b3abb9c4c555d7fd2cf81cefda5f0493fafbf3131f461f1336"
+    },
+    {
+      "path": "browser/src/shell/topbar.ts",
+      "sha256": "45f8eb966fb8a07ef8983fd9741f3c5621c3ba0538a750d93de9a6fec96a5710"
+    },
+    {
+      "path": "browser/src/store/state.ts",
+      "sha256": "4245b65aa953cde253d2cc4c530e460072db481841b87336bf7fc9f2c4ba4bcd"
+    },
+    {
+      "path": "tests/arch/agent-subagent.test.ts",
+      "sha256": "d20cbe8297f654ae2fed72f4f642a5d1fa3979fbb1cc8cd011dcb344b35cddd8"
+    },
+    {
+      "path": "tests/arch/cloud-status-truth.test.ts",
+      "sha256": "0b970075be698b80b75460737ec6e9d500d5466331e729bae51833c7a404c60f"
+    },
+    {
+      "path": "tests/arch/setup-profile-truth.test.ts",
+      "sha256": "c8dff3c810aee1385e5f14f9f307d443c5cbafc425d452c888ee5acbfee3922f"
+    },
+    {
+      "path": "tests/arch/setup-validation-truth.test.ts",
+      "sha256": "a33880e13113f10a5f31e26a1c8b4e425385c0b18a3cc6935a5da6cc69620478"
+    },
+    {
+      "path": "scripts/setup-truth-ui.mjs",
+      "sha256": "78e13791bf1ecd27cb08aedf10b8b9eb47d3e30fe6a71fab46d70c8c6e5ef25d"
+    }
+  ],
+  "canonical_reproduction": {
+    "actual_canonical_component": true,
+    "stale_ready_after_required_failure": true,
+    "premature_ready": true,
+    "controlled_api": true
+  },
+  "browser": {
+    "failed": 0,
+    "layer": "actual Edge component with controlled APIs",
+    "passed": 18
+  },
+  "focused_arch": {
+    "skipped": 0,
+    "tests": 26,
+    "failed": 0,
+    "cancelled": 0,
+    "passed": 26
+  },
+  "static": {
+    "frontend_build": "PASS",
+    "node_types": "PASS",
+    "browser_types": "PASS",
+    "scoped_lint": "PASS",
+    "syntax": "PASS"
+  },
+  "broader_gate": {
+    "initial_e_fixture": "FAILED_THEN_BOUNDED_STOP",
+    "admission_floors_changed": false,
+    "isolated_integrity": {
+      "skipped": 0,
+      "tests": 29,
+      "failed": 0,
+      "cancelled": 0,
+      "passed": 29
+    },
+    "deadlines_changed": false,
+    "authority_changed": false,
+    "ssd_revalidation": "PASS",
+    "full_arch": {
+      "tests": 888,
+      "passed": 877,
+      "failed": 0,
+      "skipped": 11,
+      "cancelled": 0,
+      "duration_ms": 991232.8221,
+      "log_sha256": "7deb7cd28441572260e1f549a75daba2bafe9b2301d8d425f8e42a40ff05d039",
+      "fixture": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-truth-fullgate-84b6362eb51f48e1a744e9ecaa0cc63e"
+    }
+  },
+  "host": {
+    "e_failure_exact_cause": "NOT_FULLY_PROVEN",
+    "later_resource_change": "EXTERNAL_OBSERVATION_NO_AGENT_CLEANUP_OR_PAGEFILE_CHANGE",
+    "c_reported_zero_free_during_initial_gate": true,
+    "durable_flush_probe": {
+      "c_median_ms": 5.2252,
+      "e_max_ms": 2321.1901,
+      "e_median_ms": 201.95645
+    }
+  },
+  "visual": {
+    "status": "PAUSED_LOCKED_SPEC",
+    "lab": "PRESERVED_UNTRACKED_REJECTED_WIP",
+    "archive_sha256": "1f2cfdc29d558c4a5eda2178793b458447450b555ec89c5838926bac79ee63ef",
+    "manifest_files_verified": 33
+  },
+  "logs": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\F01-current-3e6c89b-reproduction.log",
+      "sha256": "42f41e01240adcf7418bc64d571819709a7d60fbcb8093f72b07ce0639973fbb"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\focused-arch.log",
+      "sha256": "4584986a52010a0d35a16b966711000d93d8491baffd79170fde8612d6cc8c47"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\truth-browser-after-integration.log",
+      "sha256": "5b29600245868503a817de163beb5c6e80124101942972a36566162b1e98ab31"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\truth-browser-convergence.log",
+      "sha256": "4d0eacceef7e7162802d6bd24a216c4ece02d9fc526625ac0628f06b33e3352d"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\full-arch.log",
+      "sha256": "f06618a212c045c1521b9eddf0f73896ca2583c2eee1914a69560ad4b24d1864"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\integrity-isolated.log",
+      "sha256": "145bbd27d2d9ebeb790e26dc0f6e6f77fe218a7774f745c6699b49b5a86b940f"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\durable-location-probe.json",
+      "sha256": "4b4d352d19979c0fc4d2285c114345057652b3c5f72391eafe86bce57aa4a63a"
+    }
+  ],
+  "ci": "NOT_PUSHED_PENDING",
+  "pr31": "FROZEN",
+  "release_acceptance": false,
+  "remaining": [
+    "live provider/model role qualification",
+    "clean-user installed journey",
+    "Resident mission/restart receipt",
+    "memory/Ghost/watchdog product path",
+    "historical untraced causes",
+    "GLib advisory",
+    "later owner visual lock"
+  ]
+}

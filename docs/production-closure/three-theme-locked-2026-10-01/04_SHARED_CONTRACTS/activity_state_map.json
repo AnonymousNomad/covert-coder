@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "states": [
+    {
+      "id": "IDLE",
+      "meaning": "ready, no active operation",
+      "semantic_color": "neutral/theme accent",
+      "motion_level": 0
+    },
+    {
+      "id": "PLANNING",
+      "meaning": "planning/discovery/analysis",
+      "semantic_color": "cyan/blue",
+      "motion_level": 1
+    },
+    {
+      "id": "REASONING",
+      "meaning": "model/reviewer reasoning",
+      "semantic_color": "violet/magenta",
+      "motion_level": 1
+    },
+    {
+      "id": "EXECUTING",
+      "meaning": "tool/action/runtime execution",
+      "semantic_color": "green",
+      "motion_level": 2
+    },
+    {
+      "id": "COMPILING",
+      "meaning": "build/compile",
+      "semantic_color": "green-cyan",
+      "motion_level": 3
+    },
+    {
+      "id": "TESTING",
+      "meaning": "tests running",
+      "semantic_color": "green-cyan",
+      "motion_level": 3
+    },
+    {
+      "id": "VERIFYING",
+      "meaning": "verification/evidence gates",
+      "semantic_color": "green with cyan edge",
+      "motion_level": 2
+    },
+    {
+      "id": "DEBUGGING",
+      "meaning": "debug/diagnosis",
+      "semantic_color": "amber",
+      "motion_level": 2
+    },
+    {
+      "id": "WAITING_INPUT",
+      "meaning": "needs user input/approval",
+      "semantic_color": "amber",
+      "motion_level": 1
+    },
+    {
+      "id": "RECOVERING",
+      "meaning": "bounded watchdog/self-heal recovery",
+      "semantic_color": "amber-to-green",
+      "motion_level": 2
+    },
+    {
+      "id": "STALE",
+      "meaning": "no trustworthy progress heartbeat within threshold",
+      "semantic_color": "amber + explicit STALE label",
+      "motion_level": 0
+    },
+    {
+      "id": "BLOCKED",
+      "meaning": "hard blocker",
+      "semantic_color": "red",
+      "motion_level": 0
+    },
+    {
+      "id": "FAILED",
+      "meaning": "failed operation",
+      "semantic_color": "red",
+      "motion_level": 0
+    },
+    {
+      "id": "COMPLETE",
+      "meaning": "verified completion/terminal success",
+      "semantic_color": "green confirmation then idle",
+      "motion_level": 1
+    }
+  ],
+  "truth_rules": [
+    "Visual motion is a projection of canonical workflow/liveness state, never the source of truth.",
+    "A running animation must stop or enter STALE when heartbeat/progress freshness is lost.",
+    "FAILED/BLOCKED are static or minimal-motion states; never keep 'working' motion running.",
+    "WAITING_INPUT must not look like active compilation/execution.",
+    "Critical state must include icon/text, not color alone."
+  ]
+}

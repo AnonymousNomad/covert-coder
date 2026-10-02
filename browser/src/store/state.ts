@@ -36,10 +36,8 @@ export type VerificationState = 'UNVERIFIED' | 'VERIFIED' | 'DEGRADED' | 'FAILED
 
 export type HarnessState = 'STANDBY' | 'ENABLED' | 'ON';
 
-export type NetworkState =
-  | 'LOCAL_ONLY'
-  | 'CREDENTIAL_MISSING'
-  | 'REMOTE_CONFIGURED';
+export type { NetworkState } from '../services/cloud-status.ts';
+import type { NetworkState } from '../services/cloud-status.ts';
 
 export interface TopbarState {
   engineLabel: string;
@@ -81,6 +79,6 @@ export const INITIAL_STATE: AppState = {
     engineReady: false,
     verification: 'UNVERIFIED',
     harness: 'STANDBY',
-    cloud: 'LOCAL_ONLY'
+    cloud: 'CHECKING'
   }
 };

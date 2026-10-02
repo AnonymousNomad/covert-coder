@@ -53,14 +53,14 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
         </button>
         <button class="topbar-chip" data-chip="cloud" type="button" title="Network / BYOK configuration state" aria-label="Network state">
           <span class="topbar-chip-dot" data-chip-dot="cloud"></span>
-          <span data-chip-label="cloud">LOCAL ONLY</span>
+          <span data-chip-label="cloud">REMOTE: CHECKING</span>
         </button>
       </nav>
       <span class="topbar-spacer"></span>
       <button class="topbar-hint" type="button" disabled title="Command palette unavailable in this cockpit phase" aria-label="Command palette unavailable">
         <kbd>Ctrl</kbd><kbd>K</kbd>
       </button>
-      <button class="topbar-hint" type="button" disabled title="Terminal command palette unavailable; terminal view is read-only" aria-label="Terminal command palette unavailable">
+      <button class="topbar-hint" type="button" disabled title="Terminal shortcut is not wired; open TERMINAL for approved interactive sessions" aria-label="Terminal keyboard shortcut unavailable">
         <kbd>Ctrl</kbd><kbd>&#96;</kbd>
       </button>
     </header>
@@ -102,12 +102,17 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
 
   function setCloud(state: NetworkState): void {
     const labelMap: Record<NetworkState, string> = {
-      LOCAL_ONLY: 'LOCAL ONLY',
-      CREDENTIAL_MISSING: 'CREDENTIAL MISSING',
-      REMOTE_CONFIGURED: 'REMOTE CONFIGURED'
+      CHECKING: 'REMOTE: CHECKING',
+      STATUS_UNAVAILABLE: 'REMOTE STATUS UNAVAILABLE',
+      LOCAL_ONLY: 'ROUTING: LOCAL ONLY (POLICY)',
+      CONSENT_DISABLED: 'REMOTE CONSENT OFF',
+      CREDENTIAL_MISSING: 'REMOTE AUTH REQUIRED',
+      REMOTE_CONFIGURED: 'REMOTE CONFIGURED / UNVERIFIED',
+      REMOTE_AVAILABLE: 'VERIFIED REMOTE ROUTE AVAILABLE',
+      REMOTE_UNAVAILABLE: 'CONFIGURED REMOTE UNAVAILABLE'
     };
     cloud.label.textContent = labelMap[state];
-    setDataState(cloud.root, state === 'CREDENTIAL_MISSING' ? 'warn' : null);
+    setDataState(cloud.root, state === 'REMOTE_AVAILABLE' ? 'ok' : state === 'CREDENTIAL_MISSING' || state === 'STATUS_UNAVAILABLE' || state === 'REMOTE_UNAVAILABLE' ? 'warn' : null);
   }
 
   function setModes(modes: TopbarMode): void {

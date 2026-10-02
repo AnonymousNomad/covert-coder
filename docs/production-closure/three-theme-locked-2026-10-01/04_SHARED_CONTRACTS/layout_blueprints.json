@@ -1,0 +1,81 @@
+{
+  "baseline_canvas": "1600x900",
+  "corporate": {
+    "topbar_px": 54,
+    "statusbar_px": 24,
+    "columns": {
+      "activity_rail_px": 76,
+      "project_pane_px": 248,
+      "center": "flex",
+      "right_intelligence_px": 344
+    },
+    "center": {
+      "editor_min_height_px": 470,
+      "bottom_execution_default_px": 236
+    },
+    "right_stack": [
+      {
+        "name": "activity_figure",
+        "height_px": 150
+      },
+      {
+        "name": "resident_chat",
+        "height_px": 350
+      },
+      {
+        "name": "model_runtime",
+        "height_px": 120
+      },
+      {
+        "name": "telemetry",
+        "height_px": 196
+      }
+    ],
+    "notes": "Right stack may scroll only after preserving minimum chat height. Telemetry stays bottom-right."
+  },
+  "matrix": {
+    "topbar_px": 48,
+    "metrics_strip_px": 82,
+    "statusbar_px": 24,
+    "columns": {
+      "activity_rail_px": 82,
+      "mission_project_pane_px": 228,
+      "center": "flex",
+      "right_resident_px": 320
+    },
+    "center": {
+      "editor": "flex",
+      "bottom_execution_default_px": 230
+    },
+    "background": "binary rain spans shell behind opaque/sem-transparent work panels"
+  },
+  "original": {
+    "header_px": 72,
+    "statusbar_px": 24,
+    "columns": {
+      "nav_px": 180,
+      "art_identity_px": 170,
+      "center": "flex",
+      "right_stack_px": 310
+    },
+    "center": {
+      "mode_tabs_px": 42,
+      "resident_chat_default_px": 350,
+      "bottom_workspace_default_px": 310
+    },
+    "right_stack": [
+      {
+        "name": "model_lineup",
+        "height_px": 250
+      },
+      {
+        "name": "system_resources",
+        "height_px": 210
+      },
+      {
+        "name": "recent_activity",
+        "height_px": 260
+      }
+    ]
+  }
+}

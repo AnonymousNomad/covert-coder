@@ -1,0 +1,21 @@
+# OWNER NON-NEGOTIABLES
+
+- No generic dashboard.
+- No "same UI, different CSS colors."
+- No flat repeated card grid as the primary composition.
+- No missing Resident chat surface.
+- No fake production telemetry.
+- No motion that continues pretending work is happening when the system is stalled.
+- No theme may silently change model, provider, Authority, verification or execution semantics.
+- Main panes must resize and persist.
+- Activity/liveness visuals are functional product language, not decoration.
+- Unknown telemetry remains UNKNOWN. Unavailable remains UNAVAILABLE.
+- Editor/work surface remains primary.
+- Resident is genuinely docked beside work, not isolated in a separate dashboard.
+- Terminal/output/evidence is a first-class resizable execution pane.
+- Controls may glow, but illumination must encode real state and remain restrained enough for long sessions.
+- Corporate is the professional default.
+- Matrix is a separate mission/cyber experience.
+- Original/Colorful is the expressive Covert identity.
+- Use original Covert-safe artwork. Do not copy recognizable franchise marks, helmets, typography, slogans or trade dress.
+- Do not call visual work complete without owner review of actual browser captures.
