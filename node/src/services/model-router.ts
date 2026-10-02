@@ -5,13 +5,15 @@ import { BUILTIN_PROVIDERS, type ProviderDefinition } from './providers.ts';
 import { fitHistory, estimateTokens } from './history-fit.ts';
 import type { ChatMessageT } from '../../../common/contracts/chat.ts';
 import type { RouteFallbackT, RouteStatusT } from '../../../common/contracts/routing.ts';
-import { ModelDispatchInputObservation, type ModelDispatchInputObservationT } from '../../../common/contracts/routing.ts';
+import { ModelDispatchInputObservation, type ModelDispatchInputObservationT, type ModelAdapterRequestInputObservationT } from '../../../common/contracts/routing.ts';
 import type { ModelProviderRouteT } from '../../../common/contracts/model-access.ts';
+import type { AdapterRequestInputOptions } from './model-request-input.ts';
 
 export type RouteFailureReason = 'down' | 'busy' | 'unsupported' | 'context_overflow';
 
 export interface ModelDispatchObserverOptions {
   onDispatchInput?: ((observation: Readonly<ModelDispatchInputObservationT>) => Promise<void>) | undefined;
+  onAdapterRequestInput?: ((observation: Readonly<ModelAdapterRequestInputObservationT>) => Promise<void>) | undefined;
 }
 
 export class RouterError extends Error {
@@ -479,10 +481,23 @@ export class ModelRouter {
     return snapshot;
   }
 
+  private adapterInputOptions(target: ResolvedChatAuthorityTarget, observer: ModelDispatchObserverOptions['onAdapterRequestInput'], signal?: AbortSignal): AdapterRequestInputOptions {
+    if (observer === undefined) return {};
+    return { adapterInput: Object.freeze({ route_id: target.binding.route_id, target_revision: target.binding.target_revision,
+      onRequestInput: async observation => {
+        signal?.throwIfAborted();
+        await observer(observation);
+        signal?.throwIfAborted();
+        await this.currentBoundRoute(target);
+        signal?.throwIfAborted();
+      }
+    }) };
+  }
+
   async chatResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], options: ModelDispatchObserverOptions & { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined; signal?: AbortSignal | undefined } = {}): Promise<RouteChatResult> {
     const route = await this.currentBoundRoute(target);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
-    const chatOptions = normalizeOptions(options);
+    const chatOptions = { ...normalizeOptions(options), ...this.adapterInputOptions(target, options.onAdapterRequestInput, options.signal) };
     const dispatchMessages = await this.observeDispatchInput(target, messages.length, fit, overflowTrimmed, options);
     const result: { text: string; modelId: string; tokens?: number; timingMs: number } = route.providerType === 'local'
       ? await this.runtime.chat(route.id.slice('local:'.length), dispatchMessages, chatOptions)
@@ -505,7 +520,7 @@ export class ModelRouter {
   async chatStreamResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], onDelta: (delta: string) => void, signal: AbortSignal, options: ModelDispatchObserverOptions & { maxTokens?: number | undefined } = {}): Promise<RouteChatResult> {
     const route = await this.currentBoundRoute(target);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
-    const chatOptions = normalizeOptions({ ...options, signal });
+    const chatOptions = { ...normalizeOptions({ ...options, signal }), ...this.adapterInputOptions(target, options.onAdapterRequestInput, signal) };
     const dispatchMessages = await this.observeDispatchInput(target, messages.length, fit, overflowTrimmed, { ...options, signal });
     let result: { text: string; modelId: string; tokens?: number; timingMs: number };
     if (route.providerType === 'local') {

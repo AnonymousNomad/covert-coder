@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { CredentialStore } from './credentials.ts';
 import { scrubKey } from './credentials.ts';
 import type { ProviderConnectRequestT, ProviderInfoT } from '../../../common/contracts/providers.ts';
+import { observeAdapterRequestInput, type AdapterRequestInputOptions } from './model-request-input.ts';
 
 export interface ProviderDefinition {
   id: string;
@@ -296,7 +297,7 @@ export class ProviderService {
     providerId: string,
     model: string,
     messages: Array<{ role: string; content: string }>,
-    options: { maxTokens?: number; temperature?: number; signal?: AbortSignal } = {}
+    options: AdapterRequestInputOptions & { maxTokens?: number; temperature?: number; signal?: AbortSignal } = {}
   ): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
     this.assertExternalEgressAllowed();
     const provider = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
@@ -326,6 +327,10 @@ export class ProviderService {
           messages: conversation
         };
         if (systemParts.length > 0) body.system = systemParts.join('\n');
+        const serialized = JSON.stringify(body);
+        await observeAdapterRequestInput(serialized, { adapter: 'provider-service', protocol: 'anthropic-messages',
+          requested_model: model, request_index: 1, stream: false }, options, signal);
+        this.assertExternalEgressAllowed();
         response = await this.fetchFn(`${baseUrl}/messages`, {
           method: 'POST',
           headers: {
@@ -333,22 +338,22 @@ export class ProviderService {
             'x-api-key': key,
             'anthropic-version': '2023-06-01'
           },
-          body: JSON.stringify(body),
+          body: serialized,
           signal
         });
       } else {
+        const serialized = JSON.stringify({ model, messages, temperature: options.temperature ?? 0.2,
+          max_tokens: Math.min(options.maxTokens ?? 512, 8192) });
+        await observeAdapterRequestInput(serialized, { adapter: 'provider-service', protocol: 'openai-chat-completions',
+          requested_model: model, request_index: 1, stream: false }, options, signal);
+        this.assertExternalEgressAllowed();
         response = await this.fetchFn(`${baseUrl}/chat/completions`, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
             authorization: `Bearer ${key}`
           },
-          body: JSON.stringify({
-            model,
-            messages,
-            temperature: options.temperature ?? 0.2,
-            max_tokens: Math.min(options.maxTokens ?? 512, 8192)
-          }),
+          body: serialized,
           signal
         });
       }
@@ -392,7 +397,7 @@ export class ProviderService {
     model: string,
     messages: Array<{ role: string; content: string }>,
     onDelta: (delta: string) => void,
-    options: { maxTokens?: number; temperature?: number; signal?: AbortSignal } = {}
+    options: AdapterRequestInputOptions & { maxTokens?: number; temperature?: number; signal?: AbortSignal } = {}
   ): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
     this.assertExternalEgressAllowed();
     const provider = BUILTIN_PROVIDERS.find(entry => entry.id === providerId);
@@ -425,6 +430,10 @@ export class ProviderService {
           stream: true
         };
         if (systemParts.length > 0) body.system = systemParts.join('\n');
+        const serialized = JSON.stringify(body);
+        await observeAdapterRequestInput(serialized, { adapter: 'provider-service', protocol: 'anthropic-messages',
+          requested_model: model, request_index: 1, stream: true }, options, signal);
+        this.assertExternalEgressAllowed();
         response = await this.fetchFn(`${baseUrl}/messages`, {
           method: 'POST',
           headers: {
@@ -432,23 +441,22 @@ export class ProviderService {
             'x-api-key': key,
             'anthropic-version': '2023-06-01'
           },
-          body: JSON.stringify(body),
+          body: serialized,
           signal
         });
       } else {
+        const serialized = JSON.stringify({ model, messages, temperature: options.temperature ?? 0.2,
+          max_tokens: Math.min(options.maxTokens ?? 512, 8192), stream: true });
+        await observeAdapterRequestInput(serialized, { adapter: 'provider-service', protocol: 'openai-chat-completions',
+          requested_model: model, request_index: 1, stream: true }, options, signal);
+        this.assertExternalEgressAllowed();
         response = await this.fetchFn(`${baseUrl}/chat/completions`, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
             authorization: `Bearer ${key}`
           },
-          body: JSON.stringify({
-            model,
-            messages,
-            temperature: options.temperature ?? 0.2,
-            max_tokens: Math.min(options.maxTokens ?? 512, 8192),
-            stream: true
-          }),
+          body: serialized,
           signal
         });
       }

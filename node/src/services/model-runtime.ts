@@ -9,6 +9,7 @@ import { probeHardware, type HardwareInfo } from './hardware.ts';
 import { estimateTokens } from './history-fit.ts';
 import { atomicWriteJson, withFileMutationLock } from './atomic-json.ts';
 import type { ModelFitReportT } from '../../../common/contracts/models.ts';
+import { observeAdapterRequestInput, type AdapterRequestInputOptions } from './model-request-input.ts';
 
 export class ModelRuntimeError extends Error {
   readonly code: 'NOT_READY' | 'CONFLICT' | 'CHILD_FAILED' | 'BAD_REQUEST';
@@ -818,7 +819,7 @@ export class ModelRuntime {
     return kept;
   }
 
-  async chat(id: string, messages: Array<{ role: string; content: string }>, options: { maxTokens?: number; temperature?: number; timeoutMs?: number; signal?: AbortSignal } = {}): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
+  async chat(id: string, messages: Array<{ role: string; content: string }>, options: AdapterRequestInputOptions & { maxTokens?: number; temperature?: number; timeoutMs?: number; signal?: AbortSignal } = {}): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('CHILD_FAILED', 'model is not allowlisted');
     if (!this.processes.has(id)) {
@@ -830,20 +831,23 @@ export class ModelRuntime {
     const warmed = await this.warmup(id);
     if (!warmed) throw new ModelRuntimeError('NOT_READY', 'model still warming up; try again in a few seconds');
     const started = Date.now();
-    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>): Promise<Response> =>
-      fetch(`${model.endpoint}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    let requestIndex = 0;
+    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>): Promise<Response> => {
+      const serialized = JSON.stringify({
           model: model.model,
           messages: payloadMessages,
           temperature: options.temperature ?? 0.2,
           max_tokens: Math.min(options.maxTokens ?? 512, 512)
-        }),
-        signal: options.signal !== undefined
-          ? AbortSignal.any([options.signal, AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))])
-          : AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))
       });
+      const signal = options.signal !== undefined
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))])
+        : AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000));
+      await observeAdapterRequestInput(serialized, { adapter: 'local-model-runtime', protocol: 'openai-chat-completions',
+        requested_model: model.model, request_index: ++requestIndex, stream: false }, options, signal);
+      return fetch(`${model.endpoint}/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: serialized, signal
+      });
+    };
     let response = await attemptRequest(messages);
     if (response.status === 400) {
       // Overflow rescue: the engine rejected the prompt (llama.cpp returns
@@ -854,10 +858,14 @@ export class ModelRuntime {
       const refit = this.refitForOverflow(id, messages, reserve);
       if (refit !== null && refit.length < messages.length) {
         this.logger?.warn('completion overflowed served context; retrying with refit history', { id, messages: messages.length, refit: refit.length });
+        await response.body?.cancel().catch(() => {});
         response = await attemptRequest(refit);
       }
     }
-    if (!response.ok) throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);
+    }
     const payload = await response.json().catch(() => {
       throw new ModelRuntimeError('CHILD_FAILED', 'local runtime returned non-JSON');
     }) as { choices?: Array<{ message?: { content?: string } }>; usage?: { completion_tokens?: number } };
@@ -873,7 +881,7 @@ export class ModelRuntime {
     messages: Array<{ role: string; content: string }>,
     onDelta: (delta: string) => void,
     signal: AbortSignal,
-    options: { maxTokens?: number; temperature?: number } = {}
+    options: AdapterRequestInputOptions & { maxTokens?: number; temperature?: number } = {}
   ): Promise<void> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('CHILD_FAILED', 'model is not allowlisted');
@@ -884,19 +892,21 @@ export class ModelRuntime {
     }
     const warmed = await this.warmup(id);
     if (!warmed) throw new ModelRuntimeError('NOT_READY', 'model still warming up; try again in a few seconds');
-    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>): Promise<Response> =>
-      fetch(`${model.endpoint}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    let requestIndex = 0;
+    const attemptRequest = async (payloadMessages: Array<{ role: string; content: string }>): Promise<Response> => {
+      const serialized = JSON.stringify({
           model: model.model,
           messages: payloadMessages,
           temperature: options.temperature ?? 0.2,
           max_tokens: Math.min(options.maxTokens ?? 512, 512),
           stream: true
-        }),
-        signal
       });
+      await observeAdapterRequestInput(serialized, { adapter: 'local-model-runtime', protocol: 'openai-chat-completions',
+        requested_model: model.model, request_index: ++requestIndex, stream: true }, options, signal);
+      return fetch(`${model.endpoint}/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: serialized, signal
+      });
+    };
     let response = await attemptRequest(messages);
     if (response.status === 400) {
       // Overflow rescue (same semantics as chat()): refit to the effective
@@ -906,10 +916,14 @@ export class ModelRuntime {
       const refit = this.refitForOverflow(id, messages, reserve);
       if (refit !== null && refit.length < messages.length) {
         this.logger?.warn('stream overflowed served context; retrying with refit history', { id, messages: messages.length, refit: refit.length });
+        await response.body?.cancel().catch(() => {});
         response = await attemptRequest(refit);
       }
     }
-    if (!response.ok || response.body === null) throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);
+    if (!response.ok || response.body === null) {
+      await response.body?.cancel().catch(() => {});
+      throw new ModelRuntimeError('CHILD_FAILED', `local runtime returned HTTP ${response.status}`);
+    }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';

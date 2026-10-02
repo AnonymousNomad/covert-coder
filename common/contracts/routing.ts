@@ -97,3 +97,18 @@ export const ModelDispatchInputObservation = z.strictObject({
   completion_reserve_tokens: z.number().int().nonnegative()
 });
 export type ModelDispatchInputObservationT = z.infer<typeof ModelDispatchInputObservation>;
+
+// Prepared mission HTTP body, not proof of server receipt or observed model.
+export const ModelAdapterRequestInputObservation = z.strictObject({
+  scope: z.literal('ADAPTER_REQUEST_INPUT'),
+  adapter: z.enum(['local-model-runtime', 'provider-service']),
+  protocol: z.enum(['openai-chat-completions', 'anthropic-messages']),
+  route_id: z.string().min(1).max(1000),
+  target_revision: z.string().regex(/^[a-f0-9]{64}$/),
+  requested_model: z.string().min(1).max(1000),
+  request_index: z.number().int().positive(),
+  body_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  body_bytes: z.number().int().positive(),
+  stream: z.boolean()
+});
+export type ModelAdapterRequestInputObservationT = z.infer<typeof ModelAdapterRequestInputObservation>;

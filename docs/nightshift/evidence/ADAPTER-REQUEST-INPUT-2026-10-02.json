@@ -1,0 +1,257 @@
+{
+  "recorded_at": "2026-10-02T06:57:22.911Z",
+  "status": "LOCAL_VERIFIED_PUBLICATION_AND_EXACT_SHA_CI_PENDING",
+  "branch": "nightshift/production-convergence-20260926",
+  "parent_head": "f51513a6736505c23ca1638f5d5b59aa023b1444",
+  "capability": "Prepared per-attempt Runtime/Provider request input through canonical Router and AgentLoop/AttemptJournal",
+  "observation_scope": "ADAPTER_REQUEST_INPUT",
+  "evidence_layer": "Actual canonical services, HTTP Authority and controlled Runtime HTTP/Provider fetch; no live model/provider qualification",
+  "lifecycle": {
+    "implemented": true,
+    "controlled_regressions_qualified": true,
+    "published": false,
+    "dogfooded": false,
+    "release_accepted": false
+  },
+  "root_cause": "Router input cannot identify independently serialized Runtime HTTP400 retries or Anthropic protocol framing; no adapter observation reached the existing Journal.",
+  "repair": [
+    "Strict scalar schema records exact route/revision, requested model, protocol, request index, stream, SHA256 and UTF8 bytes without body/headers",
+    "Owners serialize once, await observation, then send the same string; every retry has its own receipt",
+    "Existing Router/AgentLoop enforce cancellation, Authority actor and exact target after persistence; Provider rechecks egress",
+    "Optional observer absent leaves legacy cancellation semantics intact; observed pre-cancellation refuses callback and fetch",
+    "Runtime disposes refused HTTP400/error response bodies before retry/error"
+  ],
+  "original_red": {
+    "independent_probe": "0observations vs8 requests",
+    "direct_adapter_cases": "0pass/18fail",
+    "governed_fixture": "32pass/5fail due to imported HTTP namespace shadowing",
+    "affected": "210total/209pass/1fail: optional helper changed callback-less Provider cancellation"
+  },
+  "verified": {
+    "affected": {
+      "tests": 212,
+      "pass": 212,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "new_adapter_cases": 20,
+    "new_governed_adapter_cases": 5,
+    "focused_provider_and_input": {
+      "tests": 58,
+      "pass": 58,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "complete_veritas": {
+      "passed": true,
+      "checks": {
+        "path-boundary": true,
+        "secret-scan": true,
+        "manifest-validation": true,
+        "compile": true,
+        "tests": true,
+        "git-diff": true
+      },
+      "architecture": {
+        "tests": 958,
+        "pass": 947,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 11
+      },
+      "original_npm_test": true
+    },
+    "node_types": true,
+    "browser_types": true,
+    "scoped_lint": true,
+    "contracts": true,
+    "c1_generator_check": true,
+    "same_serialized_bytes": true,
+    "distinct_retry_inputs": true,
+    "journal_recovery": true,
+    "immutable_admission": true,
+    "zero_late_mission_request_on_evidence_failure_cancel_actor_or_target_revocation": true
+  },
+  "capabilities_added": [
+    "Durable prepared adapter request bytes evidence through existing attempt correlation"
+  ],
+  "capabilities_lost": "None observed in212 affected cases and complete gates; no whole historical disposition audit",
+  "product_truth_open": [
+    "OpenCode prepared managed task input",
+    "Response-observed model identity",
+    "Server receipt/tokenizer truth",
+    "Selected context/skill survival and drop explanations",
+    "Whole Resident18, live provider/model role qualification, fresh-user/dogfood/RC"
+  ],
+  "capabilities_still_isolated": "Visual implementation intentionally paused; preserved rejected Lab is not acceptance",
+  "dogfood_findings": "Controlled fixtures only; no live model/provider dogfood this unit",
+  "release_blockers": [
+    "Host below unchanged local-model admission floors",
+    "Historical unexplained gate timeouts",
+    "Default-branch moderate Dependabot alert",
+    "Open live Resident/onboarding/packaging/dogfood acceptance"
+  ],
+  "safeguards": [
+    "No raw prompts/keys/headers persisted by the new observation",
+    "No weakened tests, Authority, deadlines or floors",
+    "No actual model start, foreign process stop or model/OS/pagefile changes",
+    "Visual package/references/Lab preserved and PR31 frozen"
+  ],
+  "next": "Unchanged full publication hook and exact-SHA CI, then managed OpenCode input through its existing adapter",
+  "sourceHashes": [
+    {
+      "file": "common/contracts/attempt.ts",
+      "bytes": 7353,
+      "sha256": "773ae2ca0ba1c4b71f4a0d7d70186a583ef409b73c00801871c32494d6feeb4b"
+    },
+    {
+      "file": "common/contracts/routing.ts",
+      "bytes": 3967,
+      "sha256": "d4b8985d27bb32b49dbf83b779d60cac495d29a5c4c3c0838c9fc286b56d5c0c"
+    },
+    {
+      "file": "node/src/services/agent-loop.mjs",
+      "bytes": 67731,
+      "sha256": "615f34812cdfb556f675e61b7bb40fdf4fe6255e4a2fa3424165c3f105e9bebf"
+    },
+    {
+      "file": "node/src/services/model-router.ts",
+      "bytes": 37186,
+      "sha256": "b5a166e8ba187e3ea17a22ed6afd0d3492ebdcb8fd13527b6ef259bfc29f0043"
+    },
+    {
+      "file": "node/src/services/model-runtime.ts",
+      "bytes": 62494,
+      "sha256": "a48f0885c302e8a3bccc88c74804f214f0ce8c41a4f80183269d3f763899d1f4"
+    },
+    {
+      "file": "node/src/services/providers.ts",
+      "bytes": 26689,
+      "sha256": "b545ab54e17a9dc68e8e3463856c43e1d509301c8f71b9c2a70e8bcaccbdbd0f"
+    },
+    {
+      "file": "node/src/services/model-request-input.ts",
+      "bytes": 1471,
+      "sha256": "124dbf42da0b173abbc139bebb1851ee7486c605931bfae6630948836e77c673"
+    },
+    {
+      "file": "tests/arch/model-dispatch-observation.test.ts",
+      "bytes": 23701,
+      "sha256": "34e393ba585c88c33805a5383f7cf5749a41efd1ddf5d792749620cb5988b71f"
+    },
+    {
+      "file": "tests/arch/adapter-request-input.test.ts",
+      "bytes": 13064,
+      "sha256": "164d7c52261a42423134aa16150309edbaeb1b11255e0cba156fbc9aebb9cb9a"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-baseline-reproduction.log",
+      "bytes": 2888,
+      "sha256": "79e6b466e1f0406e69804c559a096ff45be1266f3d80ec72318625eae1afd650"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-baseline-repaired.log",
+      "bytes": 2340,
+      "sha256": "4bcc77e92773f481c7ffe342edb80de673cd64b2af3e60a12eae7260898357dc"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-regression-baseline.log",
+      "bytes": 14155,
+      "sha256": "ad29b516fb988178943397c13a04b494b6b01502c6f489f9844b60f135a6cfcf"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-regression-repaired-v1.log",
+      "bytes": 1714,
+      "sha256": "22a7cda975b5f1207fdf3c93922d0cadad9ffa0ecd30a703a2fbbd0f8f7e6ba8"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-governed-v1.log",
+      "bytes": 6889,
+      "sha256": "44bc7b4e8595b955ac9fd0728a4e2cd30bcc92eb849792d9de66ca175d42c32d"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-governed-v2.log",
+      "bytes": 3670,
+      "sha256": "8b84cca0802e3fffe1b35ac223a3dbcc1b0c5d845c672d8ddf8520836f84647d"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-affected-v1.log",
+      "bytes": 25872,
+      "sha256": "d2c4653075ae103cf1d10907b1f32e63292929b27319db2af2fdbfa5c1bc8ed8"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-cancellation-repaired-v1.log",
+      "bytes": 5386,
+      "sha256": "9fe4e4aee22b341e222f0faf71ad131c1a8a00afba18a8c220f89a49d60488d1"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-affected-v2.log",
+      "bytes": 25271,
+      "sha256": "fcd753606fbc17da7d751a7353375eeead11120bed642bdd53e29097a11fc643"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-node-types-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-browser-types-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-lint-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-c1-final.log",
+      "bytes": 57,
+      "sha256": "137cbd157a526db77d7328f6a37f3ff9bea5617b141c6a101b8ded48fe872c0e"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-contracts-final.log",
+      "bytes": 103,
+      "sha256": "76da50a245ee3d7df8611d09e6e0ab95e901d26086477bad868daac5eb8503b5"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-source-before-veritas.json",
+      "bytes": 1303,
+      "sha256": "5516e681ee1a1b005c841be6ca2f0c7812a763783a1200a12dad87957fca03c1"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-veritas.json",
+      "bytes": 26227,
+      "sha256": "4452b5293e6b95803e8d2a6d641d195db4efce2f67f410c5697de08f807988ca"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-veritas.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-veritas-metadata.json",
+      "bytes": 261,
+      "sha256": "5f90bbbf88dce002f9fc4d682b711c572ef5f9b39f2ffc1aab56f660f0686f0a"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-veritas-result.json",
+      "bytes": 238,
+      "sha256": "334d4d453581a8697215f509dd350ab6bd65ab9579e4ae35d9f3b421878772ec"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-resource-active.json",
+      "bytes": 392,
+      "sha256": "6aae5eaef3fada2995e7bfa2feca07f1bbc54b2fbbc2d78e8186033089749f23"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-resource-after-veritas.json",
+      "bytes": 270,
+      "sha256": "149c9824a626d0ab493a22c34d477a8c6f6380cbb4e4589859cfe6f06980c227"
+    }
+  ]
+}

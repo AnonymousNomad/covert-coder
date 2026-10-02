@@ -1,0 +1,85 @@
+{
+  "status": "PUBLISHED_EXACT_SHA_AIDE_CI_SUCCESS",
+  "branch": "nightshift/production-convergence-20260926",
+  "head": "f51513a6736505c23ca1638f5d5b59aa023b1444",
+  "ci": {
+    "id": 36971389714,
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/36971389714",
+    "successful_steps": 23,
+    "architecture": {
+      "tests": 933,
+      "skipped": 16,
+      "pass": 917,
+      "fail": 0,
+      "cancelled": 0
+    },
+    "veritas": "6/6 true",
+    "actual_chromium_controlled_resident": {
+      "passed": 21,
+      "cases": 21
+    },
+    "setup_provider_browser_step": "PASS"
+  },
+  "windows_full_push_gate": {
+    "tests": 933,
+    "skipped": 11,
+    "cancelled": 0,
+    "fail": 0,
+    "duration_ms": 451629.5936,
+    "pass": 922
+  },
+  "capability_lifecycle": {
+    "dogfooded": false,
+    "converged": true,
+    "qualified_scope": "CONTROLLED_HTTP_AUTHORITY_ROUTER_RUNTIME_JOURNAL",
+    "capability": "Router dispatch input through canonical exact-worker AgentLoop and AttemptJournal",
+    "implemented": true,
+    "live_model_acceptance": "UNVERIFIED",
+    "release_accepted": false
+  },
+  "capabilities_added": [
+    "Durable content-free post-fit Router input before inference; immutable assembled admission retained"
+  ],
+  "capabilities_lost": "None observed in174 affected regressions and complete gates; not a whole historical capability audit",
+  "capabilities_still_isolated": "Visual implementation intentionally paused; whole historical disposition audit remains open",
+  "product_truth_open": [
+    "Adapter per-attempt request input",
+    "OpenCode managed task input",
+    "Response-observed model identity",
+    "Selected context/skill survival and explanation",
+    "Whole Resident18/live/fresh-user/dogfood/RC"
+  ],
+  "dogfood_findings": "Controlled fixtures; no live model/provider dogfood this unit",
+  "release_blockers": [
+    "Host below unchanged local-model floors",
+    "Historical unexplained gate timeouts",
+    "Default-branch moderate Dependabot alert",
+    "Open fresh-user/Resident/dogfood/RC qualification"
+  ],
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-ci-36971389714-completed.json",
+      "sha256": "a7458894259615e0159daccc7efb826b4d23d842a265e39e6eb4eafb46605289"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-ci-36971389714-completed.log",
+      "sha256": "c6a0a045abacf0afeaa905f4e0ab115431f301aac0554df7801b5a0b93e18465"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-push.log",
+      "sha256": "ee00b5a0c0b48cdf528fa8f885b99e98ab39844d5da3ea059d92b94052a7dc7e"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-push-result.json",
+      "sha256": "babc15299bb6f7c9f07a48fba7709f616861dd5c6b8570d97cd5e67df461c156"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-publication-boundaries.json",
+      "sha256": "0c092d0c34a7e4686e2bfa6cae3c024ecdd1060ee1fe6bfd8636c8b0e902ae55"
+    }
+  ],
+  "issue38_result_comment": 5946589738,
+  "visuals": "PAUSED; locked package/references and untracked Design Lab preserved",
+  "pr31": "FROZEN at b79d2480498e446cff36b26dd4b4faef7745726b",
+  "next": "Per-attempt prepared request observations through existing Runtime/Provider owners; OpenCode managed prompt scoped separately"
+}

@@ -17,6 +17,7 @@ import { WorkerHandoffEnvelope } from '../../common/contracts/worker-handoff.ts'
 import { AgentStartRequest } from '../../common/contracts/agent.ts';
 import { ModelDispatchInputObservation } from '../../common/contracts/routing.ts';
 import { randomUUID } from 'node:crypto';
+import nodeHttp from 'node:http';
 
 const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
 type Scalar = string | number | boolean | null;
@@ -32,7 +33,7 @@ function eventData(observation: unknown): Record<string, Scalar> {
 
 // Actual Runtime manifest/budget, Router and Journal. Inference is controlled;
 // no model process, real endpoint, provider, Authority or qualification here.
-async function fixture(t: TestContext, contextTokens = 1024) {
+async function fixture(t: TestContext, contextTokens = 1024, modelAlias = 'controlled.gguf') {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-dispatch-observation-'));
   t.after(async () => {
     assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));
@@ -42,7 +43,7 @@ async function fixture(t: TestContext, contextTokens = 1024) {
   const manifestPath = path.join(root, 'manifest.json');
   const id = 'controlled-observation';
   await fs.writeFile(manifestPath, JSON.stringify({ models: [{ id, context_tokens: contextTokens,
-    endpoint: 'http://127.0.0.1:1/v1', model: 'controlled.gguf', roles: ['chat'],
+    endpoint: 'http://127.0.0.1:1/v1', model: modelAlias, roles: ['chat'],
     artifact_uri: 'local://controlled.gguf', file: path.join(root, 'controlled.gguf') }] }));
   const runtime = new ModelRuntime({ workspace: root, manifestPath, ingestedPath: path.join(root, 'ingested.json'), modelDir: root });
   await runtime.load({ sweepLegacyEngines: false });
@@ -195,8 +196,8 @@ async function eventually(probe: () => boolean) {
 
 // Actual HTTP Authority, exact-worker route, AgentLoop, Router, Runtime budget
 // and append-only Journal. Only inference/advisory/handoff content is controlled.
-async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure' | 'cancel' | 'revoke' = 'pass') {
-  const f = await fixture(t, 16384);
+async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure' | 'cancel' | 'revoke' | 'target-change' = 'pass', stage: 'router' | 'adapter' = 'router') {
+  const f = await fixture(t, 16384, stage === 'adapter' ? 'controlled-observation' : 'controlled.gguf');
   const server = new ArchServer(f.root, path.join(f.root, 'arch.log'));
   const journal = createAttemptJournal({ workspace: f.root });
   const record = journal.recordEvent.bind(journal);
@@ -213,7 +214,8 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
   const loop = createAgentLoop({ workspace: f.root, authority: server.authority, attemptJournal: journal,
     chatFn: async () => { throw new Error('legacy fallback forbidden'); } });
   journal.recordEvent = async (attemptId, event, data, source) => {
-    if (event !== 'MODEL_INPUT_PREPARED') return record(attemptId, event, data, source);
+    const selectedEvent = stage === 'adapter' ? 'MODEL_ADAPTER_INPUT_PREPARED' : 'MODEL_INPUT_PREPARED';
+    if (event !== selectedEvent) return record(attemptId, event, data, source);
     if (boundary === 'write-failure') throw new Error('controlled governed observation persistence failure');
     const result = await record(attemptId, event, data, source);
     admissionAtDispatch = await fs.readFile(path.join(journal.attemptsDir, attemptId + '.json'), 'utf8');
@@ -229,9 +231,41 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
       const credential = owner.headers.Authorization.slice('Bearer '.length);
       server.authority.control.revoke(server.authority.authenticate(credential, owner.headers.Origin));
     }
+    if (boundary === 'target-change') f.runtime.list()[0]!.endpoint = 'http://127.0.0.1:1/v1';
     return result;
   };
-  f.runtime.chatStream = async (_id, messages, onDelta, signal) => {
+  const inferenceBodies: string[] = [];
+  let engineError: unknown;
+  if (stage === 'adapter') {
+    // Actual Runtime HTTP serialization/health/warmup with a controlled engine.
+    // No model process or canonical Model Manager start qualification here.
+    const engine = nodeHttp.createServer((req, res) => {
+      let body = ''; req.on('data', chunk => { body += chunk.toString('utf8'); });
+      req.on('end', () => { void (async () => {
+        res.setHeader('content-type', 'application/json');
+        if (req.url === '/v1/models') { res.end(JSON.stringify({ data: [{ id: 'controlled-observation' }] })); return; }
+        if (req.url === '/props') { res.end(JSON.stringify({ default_generation_settings: { n_ctx: 16384 } })); return; }
+        if (req.url !== '/v1/chat/completions') { res.statusCode = 404; res.end('{}'); return; }
+        const payload = JSON.parse(body) as { messages: Array<{ role: string; content: string }>; stream?: boolean };
+        const mission = payload.messages.some(message => message.content === 'PRIVATE GOVERNED FIXTURE TASK');
+        if (mission) {
+          const rows = (await fs.readFile(journal.journalPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { event: string });
+          assert.ok(rows.some(row => row.event === 'MODEL_ADAPTER_INPUT_PREPARED'), 'adapter receipt must be durable before mission HTTP arrival');
+          inferenceBodies.push(body); f.seen.push(structuredClone(payload.messages));
+        }
+        const text = '<attempt_completion><result>controlled HTTP complete</result></attempt_completion>';
+        if (payload.stream) {
+          res.setHeader('content-type', 'text/event-stream');
+          res.end('data: ' + JSON.stringify({ choices: [{ delta: { content: text } }] }) + '\n\ndata: [DONE]\n\n');
+        } else res.end(JSON.stringify({ choices: [{ message: { content: 'controlled warmup' } }] }));
+      })().catch(error => { engineError = error; res.statusCode = 500; res.end('{}'); }); });
+    });
+    await new Promise<void>(resolve => engine.listen(0, '127.0.0.1', resolve));
+    t.after(async () => { engine.closeAllConnections(); await new Promise<void>(resolve => engine.close(() => resolve())); });
+    const engineAddress = engine.address(); assert.ok(engineAddress && typeof engineAddress === 'object');
+    f.runtime.list()[0]!.endpoint = `http://127.0.0.1:${engineAddress.port}/v1`;
+    f.runtime.chatStream = ModelRuntime.prototype.chatStream.bind(f.runtime);
+  } else f.runtime.chatStream = async (_id, messages, onDelta, signal) => {
     signal.throwIfAborted();
     const rows = (await fs.readFile(journal.journalPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { event: string });
     assert.ok(rows.some(row => row.event === 'MODEL_INPUT_PREPARED'), 'receipt must already be durable before inference');
@@ -273,7 +307,8 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
   await eventually(() => ['done', 'error', 'aborted'].includes(loop.status(started.data.session_id).state));
   await cancellation;
   if (cancellationError !== undefined) throw cancellationError;
-  return { ...f, loop, journal, sessionId: started.data.session_id, consumes, admissionAtDispatch };
+  if (engineError !== undefined) throw engineError;
+  return { ...f, loop, journal, sessionId: started.data.session_id, consumes, admissionAtDispatch, inferenceBodies };
 }
 
 test('governed exact-worker/handoff/expert path durably records fitted input before inference and recovers it', async t => {
@@ -300,6 +335,37 @@ test('governed exact-worker/handoff/expert path durably records fitted input bef
 for (const boundary of ['write-failure', 'cancel', 'revoke'] as const) {
   test(`governed ${boundary} at dispatch evidence boundary permits no inference`, async t => {
     const f = await governedFixture(t, boundary);
+    assert.equal(f.seen.length, 0);
+    assert.equal(f.loop.status(f.sessionId).state, boundary === 'cancel' ? 'aborted' : 'error');
+  });
+}
+
+test('governed real Runtime HTTP input is durably journaled before arrival and recovered under the same attempt', async t => {
+  const f = await governedFixture(t, 'pass', 'adapter');
+  assert.equal(f.loop.status(f.sessionId).state, 'done');
+  assert.equal(f.inferenceBodies.length, 1);
+  const recovered = createAttemptJournal({ workspace: f.root }); await recovered.recover();
+  const admission = JSON.parse(f.admissionAtDispatch!) as { attempt_id: string };
+  const detail = await recovered.get(admission.attempt_id); assert.ok(detail);
+  const router = detail.events.find(event => event.event === 'MODEL_INPUT_PREPARED'); assert.ok(router);
+  const adapter = detail.events.filter(event => event.event === 'MODEL_ADAPTER_INPUT_PREPARED');
+  assert.equal(adapter.length, 1);
+  assert.equal(adapter[0]!.source, 'local-model-runtime');
+  assert.equal(adapter[0]!.data.body_sha256, digest(f.inferenceBodies[0]!));
+  assert.equal(adapter[0]!.data.body_bytes, Buffer.byteLength(f.inferenceBodies[0]!, 'utf8'));
+  assert.equal(adapter[0]!.data.route_id, router.data.route_id);
+  assert.equal(adapter[0]!.data.target_revision, router.data.target_revision);
+  assert.equal(adapter[0]!.data.session_id, f.sessionId);
+  assert.equal(adapter[0]!.data.iteration, 1);
+  assert.equal(adapter[0]!.data.request_index, 1);
+  assert.equal(JSON.stringify(adapter).includes('PRIVATE'), false);
+  assert.equal(await fs.readFile(path.join(f.journal.attemptsDir, admission.attempt_id + '.json'), 'utf8'), f.admissionAtDispatch);
+});
+
+for (const boundary of ['write-failure', 'cancel', 'revoke', 'target-change'] as const) {
+  test(`governed ${boundary} at adapter evidence boundary permits health/warmup and zero mission POST`, async t => {
+    const f = await governedFixture(t, boundary, 'adapter');
+    assert.equal(f.inferenceBodies.length, 0);
     assert.equal(f.seen.length, 0);
     assert.equal(f.loop.status(f.sessionId).state, boundary === 'cancel' ? 'aborted' : 'error');
   });
