@@ -238,7 +238,7 @@ async function throwResponseError(res: Response): Promise<never> {
   throw new ApiError('BAD_RESPONSE', `daemon returned invalid error envelope status ${res.status}`);
 }
 
-export async function call<T>(path: string, opts: { query?: unknown; body?: unknown; method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; schema: ZodType<T> }): Promise<T> {
+export async function call<T>(path: string, opts: { query?: unknown; body?: unknown; method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; schema: ZodType<T>; signal?: AbortSignal }): Promise<T> {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries((opts.query ?? {}) as Record<string, unknown>)) {
     if (value !== undefined) params.append(key, String(value));
@@ -250,6 +250,7 @@ export async function call<T>(path: string, opts: { query?: unknown; body?: unkn
     headers: { 'content-type': 'application/json' }
   };
   if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
+  if (opts.signal !== undefined) init.signal = opts.signal;
   const res = await apiFetch(url, init);
   let env: unknown;
   try {

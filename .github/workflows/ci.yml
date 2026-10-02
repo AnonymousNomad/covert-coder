@@ -41,13 +41,14 @@ jobs:
         if: always() && steps.install.outcome == 'success'
         timeout-minutes: 25
         run: node scripts/ci-run-all.mjs
-      - name: setup and provider truth browser regressions
+      - name: setup, provider and Resident ownership browser regressions
         id: product_truth_ui
         if: always() && steps.install.outcome == 'success'
         timeout-minutes: 5
         run: |
           npx playwright install --with-deps chromium
           node scripts/setup-truth-ui.mjs
+          node scripts/resident-ownership-ui.mjs
       - name: type checks and lint
         id: static
         if: always() && steps.install.outcome == 'success'

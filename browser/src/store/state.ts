@@ -1,6 +1,18 @@
 import type { HealthResponseT } from '../../../common/contracts/health.ts';
 import type { WorkspaceListResponseT } from '../../../common/contracts/workspace.ts';
 import type { SessionFileT } from '../../../common/contracts/session.ts';
+import type { AgentStartRequestT, AgentStatusResponseT } from '../../../common/contracts/agent.ts';
+
+// Presentation ownership only, in existing app RAM. No authority credential,
+// durable memory or cross-daemon restart guarantee is represented here.
+export interface ResidentTaskProjection {
+  presentationOwner: string;
+  request: AgentStartRequestT;
+  phase: 'starting' | 'unknown' | 'session' | 'not_started';
+  sessionId: string | null;
+  status: AgentStatusResponseT | null;
+  message: string | null;
+}
 
 export type Activity = 'editor' | 'learn' | 'map' | 'exp' | 'run';
 
@@ -60,6 +72,7 @@ export interface AppState {
   dockOpen: boolean;
   bottomStripOpen: boolean;
   topbar: TopbarState;
+  residentTask?: ResidentTaskProjection;
 }
 
 export const INITIAL_STATE: AppState = {

@@ -1,0 +1,106 @@
+{
+  "schema": "covert.resident-ownership.final-local-evidence.v1",
+  "recordedAt": "2026-10-02T02:41:03.695Z",
+  "sourceParent": "6ca400381ad8a0fdcdece12e0cac4bb62d91b5c8",
+  "branch": "nightshift/production-convergence-20260926",
+  "state": "LOCAL_VERIFIED_PENDING_FULL_PUBLICATION_GATE_AND_EXACT_SHA_CI",
+  "priorReceipt": {
+    "path": "docs/nightshift/evidence/RESIDENT-TASK-OWNERSHIP-2026-10-02.json",
+    "sha256": "0f9c560b709a786f163b9aac46bfd2122146af0e7623f7a27ab899b153594b7c",
+    "retained": true
+  },
+  "sourceHashes": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "b7706303986c43c787841e80c57d92f06814217eceaa59281ef2359d43550bae"
+    },
+    {
+      "path": "browser/src/cockpit/ResidentCore.ts",
+      "sha256": "f3baadb679ea3f55a7e068fb3e043ca43f514446df2e80796a2715cb8b5902e1"
+    },
+    {
+      "path": "browser/src/services/api.ts",
+      "sha256": "5241fe0d06955200b5b98ad84cd4dedb858c5a4ae0ded6e0816c2ef953900941"
+    },
+    {
+      "path": "browser/src/store/state.ts",
+      "sha256": "941462432cf74be75a656c13026a6fdb8711439dfb6c17d3c787220ffd55a4b7"
+    },
+    {
+      "path": "common/contracts/agent.ts",
+      "sha256": "cb03d38bed85683b5011aa678582e63f6047b108d75b3a2db0c7d241617fef8d"
+    },
+    {
+      "path": "node/src/services/agent-loop.mjs",
+      "sha256": "c37856f148f3a969df8ae9b5b33965c8554689e851d15fed013a60661ebda135"
+    },
+    {
+      "path": "scripts/resident-ownership-ui.mjs",
+      "sha256": "e04f141daa6b7bc8c4c6ae50b3bfe0d69325fbbcd205be68e121004b1b3a9657"
+    },
+    {
+      "path": "tests/arch/agent-task-ownership.test.ts",
+      "sha256": "9f13f62aaea5ef65ab85a0f73cb0c7e6951b62a048ab0d80279b8c5d55fb1423"
+    },
+    {
+      "path": "common/openapi.json",
+      "sha256": "5497452a6b23392bbcab7ddb1abaaaaeb855cbad8f2aed117ec27770602b6d54"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-request-snapshot-baseline.log",
+      "sha256": "9a9352358995aad4c94d12c2795e8b49e7e9fd9f46f3cdc94058578bc47022b6"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-affected-final.log",
+      "sha256": "3e3c13e445a7b11cd79713cc54588a72d466f9f176f01e7d2ab285e7bf75e039"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-final-node-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-final-browser-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-final-scoped-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-contracts-generation.log",
+      "sha256": "76da50a245ee3d7df8611d09e6e0ab95e901d26086477bad868daac5eb8503b5"
+    }
+  ],
+  "followup": "Review reproduced a repair-introduced mutable-request microtask race. The approved body is now structured-cloned before assert/claim and options captured before queued admission. The mutable variant was never committed or published.",
+  "affected": {
+    "total": 54,
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "ownershipCases": 9,
+  "unchangedFrontendEvidence": {
+    "controlledEdgeResident": "17/17",
+    "controlledEdgeSetupProvider": "18/18",
+    "sourceHashesUnchanged": true
+  },
+  "static": {
+    "nodeTypes": "PASS",
+    "browserTypes": "PASS",
+    "scopedLint": "PASS",
+    "serviceSyntax": "PASS"
+  },
+  "boundaries": [
+    "Root serialization is one canonical AgentLoop, not global worker/adapter qualification.",
+    "Same-owner correlation is this daemon lifetime, bounded to 1024 records with no silent eviction.",
+    "RAM-only Resident projection survives component remount, not full app/daemon restart.",
+    "Exact project provider/model task routing is still OPEN; this repair does not silently claim it.",
+    "No live provider/local model, full fresh-user journey, dogfood or RC acceptance.",
+    "No admission floor, Authority, durability or test deadline weakened.",
+    "Visual work paused; locked pack/reference files and untracked Lab preserved; PR31 frozen."
+  ],
+  "next": "Pass actual original full publication hook, exact-SHA CI; then bind Resident tasks to canonical Model Access targets and approved execution/egress identity without fallback."
+}

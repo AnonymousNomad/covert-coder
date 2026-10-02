@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseToolCalls, AgentParseError } from './agent-parser.mjs';
@@ -248,6 +248,19 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
   const registry = new Map(tools.map(tool => [tool.name, tool]));
   const toolSchemas = Object.fromEntries(tools.map(tool => [tool.name, tool.params]));
   const sessions = new Map();
+  // One root task owns this loop until its runner and delegated actor settle.
+  // Correlation records live for this daemon lifetime. Never evict a key and
+  // accidentally turn an old recovery request into another dispatch.
+  const starts = new Map();
+  let activeStart = null;
+  const stable = value => Array.isArray(value) ? value.map(stable)
+    : value && typeof value === 'object'
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
+
+  function releaseStart(reservation) {
+    if (reservation.actor !== null) authority.control.revoke(reservation.actor);
+    if (activeStart === reservation) activeStart = null;
+  }
 
   function emit(event) {
     try {
@@ -946,16 +959,9 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     session.transcript = [system, ...rest.slice(keepFrom)];
   }
 
-  return {
-    async start(task, mode = 'act', chatFnOverride = null, options = {}) {
-      if (!authority) throw new AuthorityError('FORBIDDEN', 'agent execution authority required');
-      const request = options.request ?? { task, mode };
-      const context = authority.assertExecution(options.execution, 'agent.start', request);
-      if (request.task !== task || (request.mode ?? 'act') !== mode || context.operation.workspace !== rootAbs) {
-        throw new AuthorityError('FORBIDDEN', 'agent start binding mismatch');
-      }
-      authority.claimExecution(options.execution, 'agent.start', request);
+  async function startOnce(task, mode, chatFnOverride, options, request, context, reservation) {
       const actor = authority.control.delegate(context.owner, 'agent', ['agent.tool', 'checkpoint.snapshot']);
+      reservation.actor = actor;
       const session = {
         actor, owner: context.owner,
         id: randomUUID(),
@@ -1057,6 +1063,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         }
       }
       sessions.set(session.id, session);
+      reservation.session = session;
       // Audit trail: session started (the first trajectory event; the loop
       // is fail-closed so the emit may no-op until the closed-loop wiring).
       auditSafe.emitAgentStart({
@@ -1065,10 +1072,65 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         task: session.task,
         chatSource: 'agent-loop'
       });
-      const runner = runSession(session);
+      const runner = runSession(session).finally(() => {
+        // A cleanup failure keeps the admission slot occupied; a terminal
+        // presentation must not authorize overlapping work after failed cleanup.
+        try { releaseStart(reservation); }
+        catch (error) {
+          session.evidenceErrors.push(`actor cleanup: ${String(error?.message ?? error).slice(0, 500)}`);
+          session.verification.state = 'errored';
+          session.verification.passed = false;
+          session.verification.errors = [...session.evidenceErrors];
+          throw error;
+        }
+      });
       session.runner = runner;
       void runner.catch(() => {});
       return { session_id: session.id };
+  }
+
+  return {
+    async start(task, mode = 'act', chatFnOverride = null, options = {}) {
+      if (!authority) throw new AuthorityError('FORBIDDEN', 'agent execution authority required');
+      // Queueing must not introduce a caller-mutation window after approval.
+      const request = structuredClone(options.request ?? { task, mode });
+      const executionOptions = { ...options };
+      const context = authority.assertExecution(options.execution, 'agent.start', request);
+      if (request.task !== task || (request.mode ?? 'act') !== mode || context.operation.workspace !== rootAbs) {
+        throw new AuthorityError('FORBIDDEN', 'agent start binding mismatch');
+      }
+      const rawKey = request.client_request_id;
+      const key = typeof rawKey === 'string' ? rawKey.toLowerCase() : rawKey;
+      if (key !== undefined && (typeof key !== 'string' || !/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/i.test(key))) {
+        throw new AuthorityError('BAD_REQUEST', 'invalid agent start correlation ID');
+      }
+      authority.claimExecution(options.execution, 'agent.start', request);
+      const fingerprint = createHash('sha256').update(JSON.stringify(stable({ ...request, ...(key === undefined ? {} : { client_request_id: key }) }))).digest('hex');
+      const prior = key === undefined ? null : starts.get(key);
+      if (prior) {
+        if (prior.owner !== context.owner) throw new AuthorityError('FORBIDDEN', 'agent start recovery owner mismatch');
+        if (prior.fingerprint !== fingerprint) throw new AuthorityError('CONFLICT', 'agent start recovery request changed');
+        return prior.result;
+      }
+      const refusal = message => new AuthorityError('CONFLICT', message, { start_outcome: 'not_started', request_id: rawKey ?? null });
+      if (starts.size >= 1024) throw refusal('agent start correlation capacity reached; daemon recovery required');
+      if (activeStart !== null) {
+        const result = Promise.reject(refusal('another root agent task still owns this workspace loop'));
+        if (key !== undefined) starts.set(key, { owner: context.owner, fingerprint, result });
+        return result;
+      }
+      const reservation = { actor: null, session: null };
+      activeStart = reservation; // synchronous, before delegation/admission awaits
+      const result = Promise.resolve().then(() => startOnce(task, mode, chatFnOverride, executionOptions, request, context, reservation)).catch(error => {
+        if (reservation.session === null) {
+          try { releaseStart(reservation); }
+          catch { /* Keep the slot closed if delegated authority cannot be released. */ }
+          throw new AuthorityError(error?.code ?? 'FORBIDDEN', String(error?.message ?? error).slice(0, 500), { start_outcome: 'not_started', request_id: rawKey ?? null });
+        }
+        throw error;
+      });
+      if (key !== undefined) starts.set(key, { owner: context.owner, fingerprint, result });
+      return result;
     },
     async cancel(sessionId, execution) {
       if (!authority) throw new AuthorityError('FORBIDDEN', 'agent execution authority required');
@@ -1093,10 +1155,13 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         resolve('abort');
       }
       if (session.runner) {
-        await Promise.race([
-          session.runner.catch(() => {}),
-          new Promise(resolveWait => setTimeout(resolveWait, 5000))
-        ]);
+        let waitTimer;
+        try {
+          await Promise.race([
+            session.runner.catch(() => {}),
+            new Promise(resolveWait => { waitTimer = setTimeout(resolveWait, 5000); })
+          ]);
+        } finally { clearTimeout(waitTimer); }
       }
       return { ok: true, state: session.state };
     },

@@ -5,8 +5,8 @@
 // truth. Every unavailable endpoint remains independently visible.
 
 import type { Store } from '../store/store.ts';
-import type { AppState } from '../store/state.ts';
-import { api, call } from '../services/api.ts';
+import type { AppState, ResidentTaskProjection } from '../store/state.ts';
+import { api, call, ApiError } from '../services/api.ts';
 import { createChatPanel } from '../chat/chat.ts';
 import { createOperatorIdentity, type OperatorIdentityHandles, type OperatorPresenceState } from './OperatorIdentity.ts';
 import {
@@ -62,7 +62,7 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
   return node;
 }
 
-export function createResidentCore(parent: HTMLElement, _store: Store<AppState>, opts: ResidentCoreOptions = {}): ResidentCoreHandles {
+export function createResidentCore(parent: HTMLElement, store: Store<AppState>, opts: ResidentCoreOptions = {}): ResidentCoreHandles {
   parent.innerHTML = '';
   const root = el('div', 'cockpit-resident');
 
@@ -81,7 +81,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   titleRow.appendChild(presence);
   titleRow.appendChild(stateBadge);
   header.appendChild(titleRow);
-  header.appendChild(el('p', 'cockpit-resident-subtitle', 'Your development partner \u2014 read-only projection. Agent routes exist, but this surface does not grant execution authority.'));
+  header.appendChild(el('p', 'cockpit-resident-subtitle', 'Workspace advice and governed tasks · execution requires operator approval through Authority.'));
   root.appendChild(header);
 
   const residentWorkspace = el('div', 'cockpit-resident-workspace');
@@ -101,7 +101,7 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
 
   const quickActions = el('div', 'cockpit-resident-quick');
   quickActions.appendChild(el('h2', 'cockpit-resident-section-title', 'QUICK ACTIONS'));
-  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'ADVISORY ONLY \u00b7 actions are visible for the approved cockpit language but are not connected to a lawful Resident composer path.'));
+  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'GOVERNED TASKS · one owned task at a time. Exact project worker routing remains unverified.'));
   const actionsRow = el('div', 'cockpit-resident-actions');
   for (const action of QUICK_ACTIONS) {
     const btn = document.createElement('button');
@@ -138,28 +138,69 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
   const chatPanel = createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
 
   let alive = true;
-  let activeSessionId: string | null = null;
-  let activeStatus: AgentStatusResponseT | null = null;
+  const presentationOwner = crypto.randomUUID();
+  let projection: ResidentTaskProjection | undefined = store.get().residentTask;
+  let busy = false;
+  let epoch = 0;
   let pollTimer: number | null = null;
+  let pollController: AbortController | null = null;
+  if (projection !== undefined) {
+    projection = { ...projection, presentationOwner,
+      phase: projection.phase === 'starting' ? 'unknown' : projection.phase,
+      message: projection.phase === 'starting' ? 'Start outcome unknown · recover the same request before starting another task.' : projection.message };
+    store.set(state => ({ ...state, residentTask: projection! }));
+  }
+
+  function ownsPresentation(ticket = epoch): boolean {
+    return alive && ticket === epoch && (projection === undefined || store.get().residentTask?.presentationOwner === presentationOwner);
+  }
+
+  function save(next: ResidentTaskProjection): void {
+    projection = next;
+    store.set(state => ({ ...state, residentTask: next }));
+  }
+
+  function terminal(status: AgentStatusResponseT | null): boolean {
+    return status !== null && ['done', 'error', 'aborted'].includes(status.state);
+  }
+
+  function blocksStart(): boolean {
+    return busy || (projection !== undefined && projection.phase !== 'not_started'
+      && !(projection.phase === 'session' && projection.message === null && terminal(projection.status)));
+  }
 
   function stopAgentPolling(): void {
     if (pollTimer !== null) window.clearTimeout(pollTimer);
     pollTimer = null;
+    pollController?.abort();
+    pollController = null;
   }
 
-  function paintAgentStatus(status: AgentStatusResponseT | null, message?: string): void {
+  function paintAgentStatus(): void {
+    const blocked = !ownsPresentation() || blocksStart();
+    sendBtn.disabled = blocked;
+    input.disabled = blocked;
+    for (const button of actionsRow.querySelectorAll<HTMLButtonElement>('button')) button.disabled = blocked;
     agentStatusMount.innerHTML = '';
-    if (message !== undefined) {
-      agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', message));
-      return;
+    const status = projection?.status ?? null;
+    if (projection?.message) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', projection.message));
+    function action(label: string, run: () => Promise<void>, ariaLabel?: string): void {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'cockpit-resident-action'; button.textContent = label;
+      button.disabled = busy || !ownsPresentation();
+      if (ariaLabel !== undefined) button.setAttribute('aria-label', ariaLabel);
+      button.addEventListener('click', () => { void run(); });
+      agentStatusMount.appendChild(button);
     }
+    if (projection?.phase === 'unknown') action('RECOVER START RESULT', recoverStart);
+    if (projection?.sessionId && !busy) action('REFRESH TASK STATUS', pollAgent);
     if (status === null) {
-      agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', 'No governed Resident task is running.'));
-      return;
-    }
+      if (projection === undefined) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', 'No governed Resident task is running.'));
+      else if (projection.sessionId !== null) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `SESSION ${projection.sessionId} · STATUS UNKNOWN`));
+    } else {
     agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `SESSION ${status.session_id} · ${status.state.toUpperCase()} · ${status.mode.toUpperCase()}`));
     if (status.error !== null) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `Agent error · ${status.error}`));
-    if (status.pending_approval !== null) {
+    if (status.pending_approval !== null && projection?.message === null) {
       const approval = status.pending_approval;
       agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `OPERATOR DECISION REQUIRED · ${approval.tool}`));
       const actions = el('div', 'cockpit-resident-actions');
@@ -168,86 +209,104 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
         button.type = 'button';
         button.className = 'cockpit-resident-action';
         button.textContent = decision === 'approve' ? 'APPROVE ONCE' : 'REJECT';
-        button.addEventListener('click', () => { void decideAgent(approval.approval_id, decision); });
+        button.disabled = busy || !ownsPresentation();
+        button.addEventListener('click', () => { void decideAgent(status.session_id, approval.approval_id, decision); });
         actions.appendChild(button);
       }
       agentStatusMount.appendChild(actions);
     }
-    if (status.state === 'running' || status.state === 'awaiting_approval') {
-      const cancelActions = el('div', 'cockpit-resident-actions');
-      const cancel = document.createElement('button');
-      cancel.type = 'button';
-      cancel.className = 'cockpit-resident-action';
-      cancel.textContent = 'STOP TASK';
-      cancel.setAttribute('aria-label', 'Stop the running governed Resident task');
-      cancel.addEventListener('click', () => { void cancelAgent(); });
-      cancelActions.appendChild(cancel);
-      agentStatusMount.appendChild(cancelActions);
-    }
     if (status.verification !== undefined) {
       agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `VERIFICATION · ${status.verification.state.toUpperCase()} · EXECUTION ${status.verification.execution.toUpperCase()}`));
+    }
+    }
+    if (projection?.sessionId && (!terminal(status) || projection.message !== null)) {
+      const id = projection.sessionId;
+      action('STOP TASK', () => cancelAgent(id), 'Stop the running governed Resident task');
     }
   }
 
   async function pollAgent(): Promise<void> {
-    if (!alive || activeSessionId === null) return;
+    if (!ownsPresentation() || busy || projection?.sessionId == null) return;
+    stopAgentPolling();
+    const id = projection.sessionId;
+    const ticket = ++epoch;
+    pollController = new AbortController();
+    const signal = AbortSignal.any([pollController.signal, AbortSignal.timeout(10000)]);
     try {
-      const query = AgentStatusQuery.parse({ id: activeSessionId });
-      activeStatus = await call('/api/agent/status', { query, schema: AgentStatusResponse });
-      paintAgentStatus(activeStatus);
-      if (activeStatus.state === 'running' || activeStatus.state === 'awaiting_approval') {
+      const query = AgentStatusQuery.parse({ id });
+      const status = await call('/api/agent/status', { query, schema: AgentStatusResponse, signal });
+      if (!ownsPresentation(ticket) || projection.sessionId !== id) return;
+      if (status.session_id !== id || (status.pending_approval !== null && status.pending_approval.session_id !== id)) throw new Error('task response identity mismatch');
+      save({ ...projection, status, message: null });
+      if (!terminal(status)) {
         pollTimer = window.setTimeout(() => { void pollAgent(); }, 1000);
-      } else {
-        pollTimer = null;
       }
     } catch (error) {
-      paintAgentStatus(null, `Resident task status unavailable · ${String((error as Error).message ?? error).slice(0, 180)}`);
-      pollTimer = null;
+      if (ownsPresentation(ticket)) save({ ...projection, message: `Resident task status unavailable · ${String((error as Error).message ?? error).slice(0, 180)}` });
+    } finally {
+      if (ownsPresentation(ticket)) { pollController = null; paintAgentStatus(); }
     }
   }
 
-  async function decideAgent(approvalId: string, decision: 'approve' | 'reject'): Promise<void> {
-    if (activeSessionId === null) return;
+  async function taskAction(id: string, run: () => Promise<unknown>, label: string): Promise<void> {
+    if (!ownsPresentation() || busy || projection?.sessionId !== id) return;
+    stopAgentPolling();
+    const ticket = ++epoch;
+    busy = true;
+    paintAgentStatus();
     try {
-      const body = AgentDecisionRequest.parse({ session_id: activeSessionId, approval_id: approvalId, decision });
-      await call('/api/agent/decision', { method: 'POST', body, schema: AgentDecisionResponse });
-      await pollAgent();
+      await run();
+      if (!ownsPresentation(ticket) || projection.sessionId !== id) return;
+      busy = false;
+      await pollAgent(); // Cancellation acknowledgement alone never proves stop.
     } catch (error) {
-      paintAgentStatus(activeStatus, `Resident decision failed · ${String((error as Error).message ?? error).slice(0, 180)}`);
+      if (ownsPresentation(ticket)) {
+        busy = false;
+        save({ ...projection, message: `${label} failed · ${String((error as Error).message ?? error).slice(0, 180)}` });
+        paintAgentStatus();
+      }
     }
   }
 
-  async function cancelAgent(): Promise<void> {
-    if (activeSessionId === null) return;
+  async function decideAgent(id: string, approvalId: string, decision: 'approve' | 'reject'): Promise<void> {
+    await taskAction(id, () => call('/api/agent/decision', { method: 'POST', body: AgentDecisionRequest.parse({ session_id: id, approval_id: approvalId, decision }), schema: AgentDecisionResponse }), 'Resident decision');
+  }
+
+  async function cancelAgent(id: string): Promise<void> {
+    await taskAction(id, () => call('/api/agent/cancel', { method: 'POST', body: AgentCancelRequest.parse({ session_id: id }), schema: AgentCancelResponse }), 'Resident cancellation');
+  }
+
+  async function recoverStart(): Promise<void> {
+    if (!ownsPresentation() || busy || projection?.phase !== 'unknown') return;
+    stopAgentPolling();
+    const ticket = ++epoch;
+    const request = projection.request;
+    busy = true;
+    save({ ...projection, phase: 'starting', message: 'Preparing or recovering the same governed task · operator approval may be requested…' });
+    paintAgentStatus();
     try {
-      const body = AgentCancelRequest.parse({ session_id: activeSessionId });
-      await call('/api/agent/cancel', { method: 'POST', body, schema: AgentCancelResponse });
+      const started = await call('/api/agent/start', { method: 'POST', body: request, schema: AgentStartResponse });
+      if (!ownsPresentation(ticket)) return;
+      save({ ...projection, phase: 'session', sessionId: started.session_id, status: null, message: null });
+      busy = false;
       await pollAgent();
     } catch (error) {
-      paintAgentStatus(activeStatus, `Resident cancellation failed · ${String((error as Error).message ?? error).slice(0, 180)}`);
+      if (!ownsPresentation(ticket)) return;
+      const detail = error instanceof ApiError ? error.detail as { start_outcome?: unknown; request_id?: unknown } | undefined : undefined;
+      const notStarted = detail?.start_outcome === 'not_started' && detail.request_id === request.client_request_id;
+      busy = false;
+      save({ ...projection, phase: notStarted ? 'not_started' : 'unknown', message: `${notStarted ? 'Start refused before dispatch' : 'Start outcome unknown · recover the same request'} · ${String((error as Error).message ?? error).slice(0, 180)}` });
+      paintAgentStatus();
     }
   }
 
   async function startAgent(task: string): Promise<void> {
     const trimmed = task.trim();
-    if (!alive || trimmed.length === 0) return;
-    stopAgentPolling();
-    activeSessionId = null;
-    activeStatus = null;
-    sendBtn.disabled = true;
-    input.disabled = true;
-    paintAgentStatus(null, 'Preparing governed Resident task · operator approval may be requested…');
-    try {
-      const body = AgentStartRequest.parse({ task: trimmed, mode: 'act', chat_source: 'local' });
-      const started = await call('/api/agent/start', { method: 'POST', body, schema: AgentStartResponse });
-      activeSessionId = started.session_id;
-      await pollAgent();
-    } catch (error) {
-      paintAgentStatus(null, `Resident task was not started · ${String((error as Error).message ?? error).slice(0, 180)}`);
-    } finally {
-      sendBtn.disabled = false;
-      input.disabled = false;
-    }
+    if (!ownsPresentation() || blocksStart() || trimmed.length === 0) return;
+    const parsed = AgentStartRequest.safeParse({ task: trimmed, mode: 'act', chat_source: 'local', client_request_id: crypto.randomUUID() });
+    if (!parsed.success) { opts.onToast?.('BAD_REQUEST', 'Task must contain 1–8000 characters.'); return; }
+    save({ presentationOwner, request: parsed.data, phase: 'unknown', sessionId: null, status: null, message: null });
+    await recoverStart();
   }
 
   composer.addEventListener('submit', event => {
@@ -266,6 +325,8 @@ export function createResidentCore(parent: HTMLElement, _store: Store<AppState>,
     quickButton.setAttribute('aria-label', `${label}; starts a governed Resident task`);
     quickButton.addEventListener('click', () => { void startAgent(`${label} for the current workspace.`); });
   }
+  paintAgentStatus();
+  if (projection?.phase === 'session') void pollAgent();
 
   async function loadSummary(): Promise<ResidentSummaryResponseT['summary'] | null> {
     try { return (await api.residentSummary()).summary; }

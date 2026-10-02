@@ -1,0 +1,212 @@
+{
+  "schema": "covert.resident-ownership.evidence.v1",
+  "recordedAt": "2026-10-02T02:35:17.827Z",
+  "branch": "nightshift/production-convergence-20260926",
+  "sourceParent": "6ca400381ad8a0fdcdece12e0cac4bb62d91b5c8",
+  "state": "LOCAL_VERIFIED_PENDING_FULL_PUBLICATION_GATE_AND_EXACT_SHA_CI",
+  "sourceHashes": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "b7706303986c43c787841e80c57d92f06814217eceaa59281ef2359d43550bae"
+    },
+    {
+      "path": "browser/src/cockpit/ResidentCore.ts",
+      "sha256": "f3baadb679ea3f55a7e068fb3e043ca43f514446df2e80796a2715cb8b5902e1"
+    },
+    {
+      "path": "browser/src/services/api.ts",
+      "sha256": "5241fe0d06955200b5b98ad84cd4dedb858c5a4ae0ded6e0816c2ef953900941"
+    },
+    {
+      "path": "browser/src/store/state.ts",
+      "sha256": "941462432cf74be75a656c13026a6fdb8711439dfb6c17d3c787220ffd55a4b7"
+    },
+    {
+      "path": "common/contracts/agent.ts",
+      "sha256": "cb03d38bed85683b5011aa678582e63f6047b108d75b3a2db0c7d241617fef8d"
+    },
+    {
+      "path": "node/src/services/agent-loop.mjs",
+      "sha256": "9119c027bf9599a8148284049cb1ad8540bb18a9b4279797e630f305460cc57b"
+    },
+    {
+      "path": "scripts/resident-ownership-ui.mjs",
+      "sha256": "e04f141daa6b7bc8c4c6ae50b3bfe0d69325fbbcd205be68e121004b1b3a9657"
+    },
+    {
+      "path": "tests/arch/agent-task-ownership.test.ts",
+      "sha256": "f9f4f6ee4a7e56a776803635dcc365556c8800cccd4828a4fd91fd4b956560a6"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-task-reproduction-v2.log",
+      "sha256": "ad9c2e7c18c758e3a37f091b1f54af1af008bc50486ee98747e6fa733f97f1f6"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-baseline.log",
+      "sha256": "c7522db00eb7081de6cf95ae2a4d403270e49551ddac3f2244937fe84d29ce93"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-repair-v1.log",
+      "sha256": "a7b39073c3a26dd18a81b988234e8ba547a7b7a885d1aa705753ad754d8e0f8a"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-ui-v1.log",
+      "sha256": "367932a68b4e2bb69ac83f9bfa9c2c4f0b46c3c28de333d2bd128fbf20cea407"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-ui-v2.log",
+      "sha256": "a7a424a55746e3215474f2e35ff64f63deeae6c0f240acf292859c14be0402e3"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-ui-final.log",
+      "sha256": "40bf02b352c4e097937a0f696d9e1151741bf762bbdbdae25e34e6c46b21f4f7"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-ui-final.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-ui-owned-result.json",
+      "sha256": "36a3abcf225efb95739ab36ec76024a2511d0a7b86142e4ca48fb923e28b9aaf"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-ui-cleanup-confirmation.json",
+      "sha256": "12fc84896d5df85c6fa9ae26ad4251ede61b9e2bf7d465aaa232512ee26a955e"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-affected-v1.log",
+      "sha256": "2da49411be826a6a75b5b144bc9b963983b3f2317e55bad73396d3c228a2d490"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-affected-v2.log",
+      "sha256": "9a071dd906ed2fbd69d7efc756fd78bfb4ba7e349c13b368ec38578a1d56be60"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-ownership-final.log",
+      "sha256": "43687859f09aef75cb68842162022ad8de8d18874d3310f0e0a21d7eab13a3fa"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-node-types.log",
+      "sha256": "c82ea088ef3b71bbbb1d2ebd15358fa61d49be599db6f0b00ac5eec9f9dc657a"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-node-types-v2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-browser-types-v2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-scoped-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-frontend-build-v2.log",
+      "sha256": "97ac14d9606482bd57fee05ffc1f3f064b28ff8a85513fb3206bb8a70b9debaf"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/resident-setup-regression.log",
+      "sha256": "5b29600245868503a817de163beb5c6e80124101942972a36566162b1e98ab31"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/ci-36952518136.log",
+      "sha256": "ae82d36811716df7cd2620275b4fc844f00f9025fc0caa303eed52b23d2b2189"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/desktop-36953529727.log",
+      "sha256": "9e2a0ba4e6928ff7f60e129e9b7e9aac98e100890a856e52a32cb54ab8f204ba"
+    },
+    {
+      "path": "E:/covert-tooling/functional-release-20261001/desktop-6ca-completed-v2.json",
+      "sha256": "2e7122373f2e9bcf1a7b54f7df50acd06aa55ce9108ff9012f2bfb0e8e644d83"
+    }
+  ],
+  "results": {
+    "affectedAgentTests": {
+      "total": 53,
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0
+    },
+    "finalOwnershipTests": {
+      "total": 8,
+      "passed": 8,
+      "failed": 0
+    },
+    "actualEdgeControlledApi": {
+      "total": 17,
+      "passed": 17
+    },
+    "retainedSetupProviderBrowser": {
+      "total": 18,
+      "passed": 18
+    },
+    "nodeTypes": "PASS",
+    "browserTypes": "PASS",
+    "scopedLint": "PASS",
+    "syntax": "PASS",
+    "frontendBuild": "PASS_WITH_EXISTING_BUNDLE_SIZE_WARNING",
+    "ownedBrowserChildrenObserved": 11,
+    "observedRootAndChildIdsAbsent": [
+      6832,
+      14924,
+      4468,
+      18848,
+      11324,
+      24896,
+      17108,
+      17344,
+      7636,
+      25128,
+      11500,
+      1012
+    ],
+    "remainingOwnedCount": 0
+  },
+  "publishedParent": {
+    "aideCi": {
+      "run": 36952518136,
+      "exactSha": "6ca400381ad8a0fdcdece12e0cac4bb62d91b5c8",
+      "conclusion": "success",
+      "steps": 23,
+      "browserCases": 18,
+      "architecture": {
+        "total": 888,
+        "passed": 872,
+        "failed": 0,
+        "skipped": 16
+      },
+      "veritas": "6/6 true"
+    },
+    "desktop": {
+      "run": 36953529727,
+      "exactSha": "6ca400381ad8a0fdcdece12e0cac4bb62d91b5c8",
+      "conclusion": "success",
+      "jobs": 3,
+      "windows": "NSIS and MSI lifecycle incl forced parent exit recovery and owned cleanup",
+      "linuxMac": "build and artifact smoke only"
+    }
+  },
+  "retainedFailures": [
+    "Original three ownership regressions fail at parent SHA before repair.",
+    "First browser ownership fixture timed out after five cases because held start mode was not reset; fixture repaired, original deadline retained.",
+    "Partial-journal fixture TypeScript rejection observed in tool output; full unexpected-method guard supplied.",
+    "Later uppercase UUID fixture TypeScript rejection retained in resident-node-types.log; request typed to actual string wire contract.",
+    "Initial Desktop metadata inspection used unsupported artifacts field; preserved empty receipt separately, no workflow redispatch.",
+    "Original browser cleanup receipt empty property serialized null; independent absence confirmation retained.",
+    "Historical full push gate timeout cause remains UNKNOWN/OPEN; older receipt not erased."
+  ],
+  "boundaries": [
+    "Root serialization is one canonical AgentLoop, not global worker/adapter qualification.",
+    "Same-owner correlation is this daemon lifetime, bounded to 1024 records with no silent eviction.",
+    "RAM-only Resident projection survives component remount, not full app/daemon restart.",
+    "Exact project provider/model task routing is still OPEN; this repair does not silently claim it.",
+    "No live provider/local model, full fresh-user journey, dogfood or RC acceptance.",
+    "No admission floor, Authority, durability or test deadline weakened.",
+    "Visual work paused; locked pack/reference files and untracked Lab preserved; PR31 frozen."
+  ],
+  "next": "Pass actual original full publication hook, exact-SHA CI; then bind Resident tasks to canonical Model Access targets and approved execution/egress identity without fallback."
+}
