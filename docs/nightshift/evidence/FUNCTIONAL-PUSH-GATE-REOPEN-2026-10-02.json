@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "source_sha": "e949c18a3f1b349f6212c29db6884e4f88d5c4bc",
+  "original_push_gate": {
+    "exit": 1, "tests": 888, "passed": 875, "failed": 2, "skipped": 11, "cancelled": 0,
+    "duration_ms": 936625.6612,
+    "log_sha256": "803b334facb85b4839c8e95caad89c2d4bcc069908370e39b1d6b342bd1c2c4d",
+    "remote_after": "3e6c89b7830a992952e543987cd8e3b8b2470e29",
+    "failures": ["exercise-routes: correct submission / learner state TimeoutError", "hook-executor: deferred approval TimeoutError"]
+  },
+  "diagnostic_launcher_failure": { "cause": "ERR_UNSUPPORTED_ESM_URL_SCHEME", "test_bodies_executed": false, "retained": true },
+  "isolated_instrumented": {
+    "passed": 16, "failed": 0, "skipped": 0, "cancelled": 0, "duration_ms": 22310.0207,
+    "log_sha256": "cede8cedf687f58ff1b8591458c0dde8911857d68d43ca6b82476336911289d1",
+    "trace_sha256": "d7a539221330197d348a8694b75435cc5e82ec84aa8962c1053fa7887c62ed81"
+  },
+  "full_instrumented": {
+    "tests": 888, "passed": 877, "failed": 0, "skipped": 11, "cancelled": 0, "duration_ms": 523427.7703,
+    "log_sha256": "e4f3c939137411e97572290e3ae7a1e1abb2a5c0cf66b22e7d97c321e7200024",
+    "trace_sha256": "019927aaabd6a423fd0923257d2a9b84c30d399dc609a4c3deefb6119c2c6a73",
+    "publication_gate": false,
+    "affected_flush_max_ms": 29.4559,
+    "whole_battery_event_loop_delay_max_ms": 10359.930879,
+    "event_loop_delay_attributed_to_original_failure": false
+  },
+  "cause": "UNKNOWN_OPEN",
+  "deadlines_changed": false,
+  "authority_or_durability_changed": false,
+  "floors_changed": false,
+  "foreign_processes_stopped": false,
+  "visual_implementation": "PAUSED_SPEC_AND_LAB_PRESERVED",
+  "source_published": false,
+  "ci": "NOT_PUSHED_PENDING",
+  "unmodified_publication_gate": "PENDING",
+  "pr31": "FROZEN",
+  "release_acceptance": false
+}
