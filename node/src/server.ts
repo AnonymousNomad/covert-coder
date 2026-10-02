@@ -368,8 +368,14 @@ export class ArchServer {
         process.exit(1);
       }, 5000).unref();
     };
-    process.once('SIGINT', () => shutdown('SIGINT'));
-    process.once('SIGTERM', () => shutdown('SIGTERM'));
+    const onSigint = () => shutdown('SIGINT');
+    const onSigterm = () => shutdown('SIGTERM');
+    process.once('SIGINT', onSigint);
+    process.once('SIGTERM', onSigterm);
+    server.once('close', () => {
+      process.off('SIGINT', onSigint);
+      process.off('SIGTERM', onSigterm);
+    });
   }
 
   private async runShutdownHooks(): Promise<void> {

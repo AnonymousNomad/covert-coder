@@ -70,6 +70,12 @@ const server = http.createServer((request, response) => {
                 ? 'timeout'
                 : 'success'
         : mode;
+      const firstDelta = activeMode === 'agent-completion'
+        ? '<attempt_completion><result>controlled '
+        : activeMode === 'cancel' || activeMode === 'timeout' ? 'first' : 'streamed ';
+      const answerDelta = activeMode === 'agent-completion'
+        ? 'OpenCode completion</result></attempt_completion>'
+        : 'answer';
       response.writeHead(204);
       response.end();
       setTimeout(() => {
@@ -93,11 +99,11 @@ const server = http.createServer((request, response) => {
           messageID: 'msg_fixture',
           partID: 'prt_fixture',
           field: 'text',
-          delta: activeMode === 'cancel' || activeMode === 'timeout' ? 'first' : 'streamed '
+          delta: firstDelta
         });
         if (activeMode !== 'cancel' && activeMode !== 'timeout') {
           emit('message.part.delta', {
-            sessionID: 'ses_fixture', messageID: 'msg_fixture', partID: 'prt_fixture', field: 'text', delta: 'answer'
+            sessionID: 'ses_fixture', messageID: 'msg_fixture', partID: 'prt_fixture', field: 'text', delta: answerDelta
           });
           emit('session.idle', { sessionID: 'ses_fixture' });
         }
@@ -107,7 +113,9 @@ const server = http.createServer((request, response) => {
   }
 
   if (url.pathname === '/session/ses_fixture/message' && request.method === 'GET') {
-    const text = activeMode === 'cancel' ? 'first' : 'streamed answer';
+    const text = activeMode === 'agent-completion'
+      ? '<attempt_completion><result>controlled OpenCode completion</result></attempt_completion>'
+      : activeMode === 'cancel' ? 'first' : 'streamed answer';
     return send(response, 200, [{
       info: {
         id: 'msg_fixture',

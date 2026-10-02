@@ -169,12 +169,13 @@ export async function launchSupervisedStack({ workspace, env = {}, origin = 'htt
     return result.body;
   }
 
-  async function approve({ adapter, method, path: pathname, body, baseName = 'facade', taskId }) {
+  async function approve({ adapter, method, path: pathname, body, baseName = 'facade', taskId, requestTimeoutMs }) {
     const operation = await prepare({ adapter, method, path: pathname, body, taskId });
     await decide(operation.operation_id);
     return request(baseName, method, pathname, {
       body,
-      headers: { 'X-AIDE-Operation': operation.operation_id, 'X-AIDE-Task': operation.task_id }
+      headers: { 'X-AIDE-Operation': operation.operation_id, 'X-AIDE-Task': operation.task_id },
+      ...(requestTimeoutMs !== undefined ? { signal: AbortSignal.timeout(requestTimeoutMs) } : {})
     });
   }
 

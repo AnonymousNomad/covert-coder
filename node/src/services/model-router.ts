@@ -170,7 +170,7 @@ const OPENCODE_GO_ORIGIN = `https://${OPENCODE_GO_EGRESS_HOST}`;
 export interface OpenCodeModelRouterAdapter {
   workspace: string;
   assertExternalEgressAllowed: () => void;
-  runTaskStream(options: {
+  runTaskStream(options: AdapterRequestInputOptions & {
     workspace: string;
     prompt: string;
     providerID: string;
@@ -489,6 +489,7 @@ export class ModelRouter {
         await observer(observation);
         signal?.throwIfAborted();
         await this.currentBoundRoute(target);
+        if (target.binding.execution_adapter_id === 'opencode') this.openCode?.assertExternalEgressAllowed();
         signal?.throwIfAborted();
       }
     }) };
@@ -502,7 +503,7 @@ export class ModelRouter {
     const result: { text: string; modelId: string; tokens?: number; timingMs: number } = route.providerType === 'local'
       ? await this.runtime.chat(route.id.slice('local:'.length), dispatchMessages, chatOptions)
       : target.binding.execution_adapter_id === 'opencode'
-        ? await this.runOpenCode(target, dispatchMessages, undefined, chatOptions.signal, chatOptions.timeoutMs)
+        ? await this.runOpenCode(target, dispatchMessages, undefined, chatOptions.signal, chatOptions.timeoutMs, chatOptions)
         : await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, dispatchMessages, chatOptions);
     const out: RouteChatResult = {
       text: result.text,
@@ -534,7 +535,7 @@ export class ModelRouter {
       result = { text, modelId, timingMs: Date.now() - started };
     } else {
       result = target.binding.execution_adapter_id === 'opencode'
-        ? await this.runOpenCode(target, dispatchMessages, onDelta, signal)
+        ? await this.runOpenCode(target, dispatchMessages, onDelta, signal, undefined, chatOptions)
         : await this.providers.chatStream(target.binding.provider_id!, target.binding.provider_model!, dispatchMessages, onDelta, chatOptions);
     }
     const out: RouteChatResult = {
@@ -555,7 +556,8 @@ export class ModelRouter {
     messages: ChatMessageT[],
     onDelta?: (delta: string) => void,
     signal?: AbortSignal,
-    timeoutMs?: number
+    timeoutMs?: number,
+    input: AdapterRequestInputOptions = {}
   ): Promise<{ text: string; modelId: string; timingMs: number }> {
     if (this.openCode === null) throw new RouterError('unsupported', 'OpenCode route has no managed stream adapter');
     if (target.binding.execution_adapter_id !== 'opencode' || target.binding.provider_id !== OPENCODE_PROVIDER_ID) {
@@ -571,6 +573,7 @@ export class ModelRouter {
       prompt: messages.map(message => `${message.role.toUpperCase()}: ${message.content}`).join('\n\n'),
       providerID,
       modelID,
+      ...(input.adapterInput !== undefined ? { adapterInput: input.adapterInput } : {}),
       onDelta: onDelta ?? (() => undefined),
       ...(signal !== undefined ? { signal } : {}),
       ...(timeoutMs !== undefined ? { timeoutMs } : {})

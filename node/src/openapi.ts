@@ -411,7 +411,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   let modelProviderRouteSnapshot: () => Promise<readonly ModelProviderRouteT[]> = async () => [];
   // Create once and share the managed adapter between Authority-bound chat,
   // exact Model Access routes, and the legacy Agent BYOK compatibility path.
-  const opencodeBridge = options.openCodeBridge ?? createOpenCodeBridge();
+  const opencodeBridge = options.openCodeBridge ?? createOpenCodeBridge({ assertExternalEgressAllowed });
   const modelRouter = new ModelRouter(modelRuntime, providerService, undefined, () => modelProviderRouteSnapshot(), {
     workspace,
     assertExternalEgressAllowed,

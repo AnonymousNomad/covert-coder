@@ -6,10 +6,12 @@ import { createOpenCodeBridge } from '../../node/src/services/opencode-bridge.ts
 
 const fixtureExecutable = path.join(path.dirname(fileURLToPath(import.meta.url)), 'opencode-fixture-server.mjs');
 
-export async function fixtureBridge(dir: string, mode: string, fixtureOptions: { startupDelayMs?: number } = {}) {
+export async function fixtureBridge(dir: string, mode: string, fixtureOptions: { startupDelayMs?: number; fetchFn?: typeof fetch; assertExternalEgressAllowed?: () => void } = {}) {
   const log = path.join(dir, 'events.jsonl');
   await fs.writeFile(log, '', 'utf8');
   const bridge = createOpenCodeBridge({
+    ...(fixtureOptions.fetchFn !== undefined ? { fetchFn: fixtureOptions.fetchFn } : {}),
+    ...(fixtureOptions.assertExternalEgressAllowed !== undefined ? { assertExternalEgressAllowed: fixtureOptions.assertExternalEgressAllowed } : {}),
     executableOverride: { bin: process.execPath, prefix: [fixtureExecutable], version: '1.18.20-fixture' },
     spawnFn: ((command: string, args: string[], spawnOptions: Record<string, unknown>) => {
       const child = spawn(command, args, {

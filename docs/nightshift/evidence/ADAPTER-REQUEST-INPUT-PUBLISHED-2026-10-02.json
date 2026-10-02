@@ -1,0 +1,79 @@
+{
+  "recorded_at": "2026-10-02T07:19:12.423Z",
+  "status": "PUBLISHED_EXACT_SHA_AIDE_CI_SUCCESS",
+  "branch": "nightshift/production-convergence-20260926",
+  "head": "f7175144753a2bcfaaa3ff0ce79a558007f77dbb",
+  "ci": {
+    "id": 36976929885,
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/36976929885",
+    "successful_steps": 23,
+    "architecture": {
+      "tests": 958,
+      "pass": 942,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 16
+    },
+    "veritas": "6/6 TRUE; complete successful workflow",
+    "actual_browser_setup_provider_and_resident": "PASS; controlled fixtures, not live qualification"
+  },
+  "windows_full_push_gate": {
+    "tests": 958,
+    "pass": 947,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 11
+  },
+  "capability_lifecycle": {
+    "capability": "Prepared per-attempt Runtime/Provider request input through existing Router/AgentLoop/AttemptJournal",
+    "implemented": true,
+    "converged": true,
+    "qualified_scope": "CONTROLLED_HTTP_AUTHORITY_RUNTIME_PROVIDER_ROUTER_JOURNAL",
+    "dogfooded": false,
+    "live_model_acceptance": "UNVERIFIED",
+    "release_accepted": false
+  },
+  "capabilities_added": [
+    "Durable content-free exact serialized input per original/retry request before mission fetch"
+  ],
+  "capabilities_lost": "None observed in212 affected cases and complete gates; no whole historical disposition audit",
+  "capabilities_still_isolated": "Visual implementation paused; rejected Lab retained and not accepted",
+  "product_truth_open": [
+    "OpenCode managed request input",
+    "Response-observed model identity",
+    "Actual selected context/skill survival",
+    "Whole Resident18/live model/provider/fresh-user/dogfood/RC"
+  ],
+  "dogfood_findings": "Controlled fixtures only; no live provider/model this unit",
+  "release_blockers": [
+    "Host below unchanged6656/5120local floors",
+    "Historical unexplained gate timeouts",
+    "Default-branch moderate Dependabot warning",
+    "Open Resident/fresh-user/dogfood/RC acceptance"
+  ],
+  "visuals": "PAUSED;33locked visual payloads/original ZIP/references/Lab preserved",
+  "pr31": "FROZEN at b79d2480498e446cff36b26dd4b4faef7745726b",
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-ci-36976929885-completed.json",
+      "sha256": "bcf2cf019ac1a5fa32c17dd4c836d3a1d93d86db2980f8e82c9c624f75b670b6"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-ci-36976929885-completed.log",
+      "sha256": "f4bfa1ad98c00fe32556e4bf5d928051e19065709c790bb6a3ec4908143ec168"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-push.log",
+      "sha256": "a88bff5da7121bf32d1ab5c017c990b2627d59fcb955d55629fd9e0494cd4036"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-push-result.json",
+      "sha256": "10311a6f6fc38b539eb0c8d7022248c8ea5ec2e5e115f734e135d96c912ea3c1"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\adapter-input-publication-boundaries.json",
+      "sha256": "81a7dd40059b4365c90b3b2c96585ce43764fecb2dc81c3cde2ee71de3b87b60"
+    }
+  ],
+  "next": "Managed OpenCode prepared request evidence/refusal cleanup through its existing bridge; response identity and selected context/skill proof follow"
+}

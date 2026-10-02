@@ -16,8 +16,10 @@ import { pairFixture } from './authority-fixture.ts';
 import { WorkerHandoffEnvelope } from '../../common/contracts/worker-handoff.ts';
 import { AgentStartRequest } from '../../common/contracts/agent.ts';
 import { ModelDispatchInputObservation } from '../../common/contracts/routing.ts';
+import { ModelProviderRoute, type ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 import { randomUUID } from 'node:crypto';
 import nodeHttp from 'node:http';
+import { fixtureBridge, readLog } from './opencode-bridge-fixture.ts';
 
 const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
 type Scalar = string | number | boolean | null;
@@ -35,10 +37,17 @@ function eventData(observation: unknown): Record<string, Scalar> {
 // no model process, real endpoint, provider, Authority or qualification here.
 async function fixture(t: TestContext, contextTokens = 1024, modelAlias = 'controlled.gguf') {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-dispatch-observation-'));
+  const beforeRemove: Array<() => Promise<void>> = [];
   t.after(async () => {
+    const failures: unknown[] = [];
+    for (const cleanup of beforeRemove) {
+      try { await cleanup(); }
+      catch (error) { failures.push(error); }
+    }
     assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));
     assert.ok(path.basename(root).startsWith('covert-dispatch-observation-'));
     await fs.rm(root, { recursive: true, force: true });
+    if (failures.length > 0) throw new AggregateError(failures, 'governed fixture cleanup failed');
   });
   const manifestPath = path.join(root, 'manifest.json');
   const id = 'controlled-observation';
@@ -69,7 +78,7 @@ async function fixture(t: TestContext, contextTokens = 1024, modelAlias = 'contr
     const options = { maxTokens: 512, onDispatchInput: observer };
     return router.chatStreamResolvedTarget(target, messages, () => {}, signal, options);
   };
-  return { root, runtime, router, target, seen, order, stream };
+  return { root, runtime, router, target, seen, order, stream, addBeforeRemove: (cleanup: () => Promise<void>) => { beforeRemove.push(cleanup); } };
 }
 
 test('Router observation describes exactly the fitted adapter input before inference, without raw content', async t => {
@@ -196,16 +205,60 @@ async function eventually(probe: () => boolean) {
 
 // Actual HTTP Authority, exact-worker route, AgentLoop, Router, Runtime budget
 // and append-only Journal. Only inference/advisory/handoff content is controlled.
-async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure' | 'cancel' | 'revoke' | 'target-change' = 'pass', stage: 'router' | 'adapter' = 'router') {
+async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure' | 'cancel' | 'revoke' | 'target-change' | 'egress' = 'pass', stage: 'router' | 'adapter' | 'opencode' = 'router') {
   const f = await fixture(t, 16384, stage === 'adapter' ? 'controlled-observation' : 'controlled.gguf');
   const server = new ArchServer(f.root, path.join(f.root, 'arch.log'));
   const journal = createAttemptJournal({ workspace: f.root });
   const record = journal.recordEvent.bind(journal);
+  const openCodeRoutes: ModelProviderRouteT[] = [];
+  const promptBodies: string[] = [];
+  let managedFixture: Awaited<ReturnType<typeof fixtureBridge>> | undefined;
+  let egressAllowed = true;
   let admissionAtDispatch: string | null = null;
   let owner: Awaited<ReturnType<typeof pairFixture>>;
   let dispatchSignal: AbortSignal | undefined;
   let cancellation: Promise<void> | undefined;
   let cancellationError: unknown;
+  if (stage === 'opencode') {
+    const providerModel = 'opencode-go/deepseek-v4.1-flash';
+    managedFixture = await fixtureBridge(f.root, 'agent-completion', {
+      assertExternalEgressAllowed: () => {
+        if (!egressAllowed) throw Object.assign(new Error('controlled OpenCode egress revoked'), { code: 'FORBIDDEN' });
+      },
+      fetchFn: async (url, init) => {
+        if (String(url).endsWith('/prompt_async')) {
+          const rows = (await fs.readFile(journal.journalPath, 'utf8')).trim().split('\n')
+            .map(line => JSON.parse(line) as { event: string });
+          assert.ok(rows.some(row => row.event === 'MODEL_ADAPTER_INPUT_PREPARED'), 'AttemptJournal receipt must be durable before managed prompt HTTP');
+          promptBodies.push(String(init?.body));
+        }
+        return fetch(url, init);
+      }
+    });
+    const ownedBridge = managedFixture;
+    f.addBeforeRemove(async () => {
+      await ownedBridge.bridge.stop();
+      assert.ok((await readLog(ownedBridge.log)).some(event => event.event === 'server-child-close'), 'owned OpenCode fixture child must close');
+    });
+    openCodeRoutes.push(ModelProviderRoute.parse({
+      id: `route:opencode-managed:${providerModel}:opencode`, model_id: `provider:opencode:${providerModel}`,
+      provider_id: 'opencode', connection_id: 'opencode-managed', provider_model_id: providerModel,
+      credential_source_id: 'credential-source:opencode-managed', execution_adapter_id: 'opencode',
+      model_support_state: 'VERIFIED', configured: true, health: 'HEALTHY', available: true,
+      external_egress_required: true, operator_setup_required: false, setup_state: 'READY', selected_roles: ['plan']
+    }));
+    f.router = new ModelRouter(f.runtime, {} as ProviderService, [], async () => openCodeRoutes, {
+      workspace: f.root,
+      assertExternalEgressAllowed: () => {
+        if (!egressAllowed) throw Object.assign(new Error('controlled OpenCode egress revoked'), { code: 'FORBIDDEN' });
+      },
+      runTaskStream: options => ownedBridge.bridge.runTaskStream(options)
+    });
+    const resolved = await f.router.resolveAuthorityTarget(`cloud:opencode:${providerModel}`);
+    assert.equal(resolved.status, 'RESOLVED');
+    if (resolved.status !== 'RESOLVED') throw new Error('Controlled OpenCode target unresolved');
+    f.target = resolved.target;
+  }
   const dispatch = f.router.chatStreamResolvedTarget.bind(f.router);
   f.router.chatStreamResolvedTarget = async (...args) => {
     dispatchSignal = args[3];
@@ -214,11 +267,17 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
   const loop = createAgentLoop({ workspace: f.root, authority: server.authority, attemptJournal: journal,
     chatFn: async () => { throw new Error('legacy fallback forbidden'); } });
   journal.recordEvent = async (attemptId, event, data, source) => {
-    const selectedEvent = stage === 'adapter' ? 'MODEL_ADAPTER_INPUT_PREPARED' : 'MODEL_INPUT_PREPARED';
+    const selectedEvent = stage === 'router' ? 'MODEL_INPUT_PREPARED' : 'MODEL_ADAPTER_INPUT_PREPARED';
     if (event !== selectedEvent) return record(attemptId, event, data, source);
-    if (boundary === 'write-failure') throw new Error('controlled governed observation persistence failure');
+    const admissionPath = path.join(journal.attemptsDir, attemptId + '.json');
+    if (boundary === 'write-failure') {
+      admissionAtDispatch = await fs.readFile(admissionPath, 'utf8');
+      throw new Error('controlled governed observation persistence failure');
+    }
+    const admissionBefore = await fs.readFile(admissionPath, 'utf8');
     const result = await record(attemptId, event, data, source);
-    admissionAtDispatch = await fs.readFile(path.join(journal.attemptsDir, attemptId + '.json'), 'utf8');
+    admissionAtDispatch = await fs.readFile(admissionPath, 'utf8');
+    assert.equal(admissionAtDispatch, admissionBefore, 'append-only observations do not mutate immutable admission');
     if (boundary === 'cancel') {
       const body = { session_id: String(data?.session_id) };
       const headers = await owner.approve('POST', '/api/agent/cancel', body, 'observation-cancel');
@@ -231,7 +290,11 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
       const credential = owner.headers.Authorization.slice('Bearer '.length);
       server.authority.control.revoke(server.authority.authenticate(credential, owner.headers.Origin));
     }
-    if (boundary === 'target-change') f.runtime.list()[0]!.endpoint = 'http://127.0.0.1:1/v1';
+    if (boundary === 'target-change') {
+      if (stage === 'opencode') openCodeRoutes[0] = ModelProviderRoute.parse({ ...openCodeRoutes[0]!, provider_model_id: 'opencode-go/changed-model' });
+      else f.runtime.list()[0]!.endpoint = 'http://127.0.0.1:1/v1';
+    }
+    if (boundary === 'egress') egressAllowed = false;
     return result;
   };
   const inferenceBodies: string[] = [];
@@ -265,14 +328,16 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
     const engineAddress = engine.address(); assert.ok(engineAddress && typeof engineAddress === 'object');
     f.runtime.list()[0]!.endpoint = `http://127.0.0.1:${engineAddress.port}/v1`;
     f.runtime.chatStream = ModelRuntime.prototype.chatStream.bind(f.runtime);
-  } else f.runtime.chatStream = async (_id, messages, onDelta, signal) => {
+  } else if (stage === 'router') f.runtime.chatStream = async (_id, messages, onDelta, signal) => {
     signal.throwIfAborted();
     const rows = (await fs.readFile(journal.journalPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { event: string });
     assert.ok(rows.some(row => row.event === 'MODEL_INPUT_PREPARED'), 'receipt must already be durable before inference');
     f.order.push('inference'); f.seen.push(structuredClone(messages));
     onDelta('<attempt_completion><result>controlled complete</result></attempt_completion>');
   };
-  const worker = { worker: f.target.binding.route_id, provider: 'local', model: f.target.binding.model_id, role: 'plan' as const };
+  else f.runtime.chatStream = async () => { throw new Error('OpenCode prepared-input path must not fall through to local runtime'); };
+  const worker = { worker: f.target.binding.route_id, provider: stage === 'opencode' ? 'opencode' : 'local',
+    model: stage === 'opencode' ? 'opencode-go/deepseek-v4.1-flash' : f.target.binding.model_id, role: 'plan' as const };
   let consumes = 0;
   const envelope = (id: string) => WorkerHandoffEnvelope.parse({
     handoff_id: id, state: 'ACCEPTED', workspace_id: f.root, project_id: null, task_id: 'observation-handoff', workflow_id: null, stage_id: null,
@@ -289,26 +354,45 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
   const http = await server.listen(0);
   const address = http.address(); assert.ok(address && typeof address === 'object');
   owner = await pairFixture(server, `http://127.0.0.1:${address.port}`);
-  t.after(async () => {
+  f.addBeforeRemove(async () => {
+    const hasLiveWorker = loop.list().some(session => !['done', 'error', 'aborted'].includes(session.state));
+    server.events.close();
     try {
-      assert.ok(loop.list().every(session => ['done', 'error', 'aborted'].includes(session.state)), 'no live fixture worker');
+      if (http.listening) {
+        http.closeAllConnections();
+        await new Promise<void>((resolve, reject) => http.close(error => error ? reject(error) : resolve()));
+      }
     } finally {
-      server.events.close(); await server.logger.flush(); http.closeAllConnections();
-      await new Promise<void>(resolve => http.close(() => resolve()));
       server.authority.control.close();
     }
+    await server.logger.flush();
+    assert.equal(hasLiveWorker, false, 'no live fixture worker');
   });
-  const request = AgentStartRequest.parse({ task: 'PRIVATE GOVERNED FIXTURE TASK', mode: 'plan', chat_source: 'local', worker,
+  const request = AgentStartRequest.parse({ task: 'PRIVATE GOVERNED FIXTURE TASK', mode: 'plan', chat_source: stage === 'opencode' ? 'provider' : 'local', worker,
     handoff_id: randomUUID(), expertAdvisory: true, client_request_id: randomUUID() });
   const headers = await owner.approve('POST', '/api/agent/start', request, 'governed-observation');
   const response = await owner.request('/api/agent/start', { method: 'POST', headers, body: JSON.stringify(request) });
   assert.equal(response.status, 200);
   const started = await response.json() as { data: { session_id: string } };
-  await eventually(() => ['done', 'error', 'aborted'].includes(loop.status(started.data.session_id).state));
+  try {
+    await eventually(() => ['done', 'error', 'aborted'].includes(loop.status(started.data.session_id).state));
+  } catch (error) {
+    const journalEvents = (await fs.readFile(journal.journalPath, 'utf8').catch(() => ''))
+      .split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line) as { event?: unknown }).map(row => row.event);
+    const managedEvents = managedFixture === undefined ? [] : (await readLog(managedFixture.log)).map(row => row.event);
+    const current = loop.status(started.data.session_id);
+    console.error('GOVERNED_DISPATCH_TIMEOUT ' + JSON.stringify({
+      boundary, stage, session_state: current.state, session_error: current.error ?? null,
+      iterations: current.iterations, dispatch_aborted: dispatchSignal?.aborted ?? false,
+      prepared_event_count: journalEvents.filter(event => event === (stage === 'router' ? 'MODEL_INPUT_PREPARED' : 'MODEL_ADAPTER_INPUT_PREPARED')).length,
+      prompt_count: promptBodies.length, managed_events: managedEvents
+    }));
+    throw error;
+  }
   await cancellation;
   if (cancellationError !== undefined) throw cancellationError;
   if (engineError !== undefined) throw engineError;
-  return { ...f, loop, journal, sessionId: started.data.session_id, consumes, admissionAtDispatch, inferenceBodies };
+  return { ...f, loop, journal, sessionId: started.data.session_id, consumes, admissionAtDispatch, inferenceBodies, promptBodies, managedFixture };
 }
 
 test('governed exact-worker/handoff/expert path durably records fitted input before inference and recovers it', async t => {
@@ -368,5 +452,56 @@ for (const boundary of ['write-failure', 'cancel', 'revoke', 'target-change'] as
     assert.equal(f.inferenceBodies.length, 0);
     assert.equal(f.seen.length, 0);
     assert.equal(f.loop.status(f.sessionId).state, boundary === 'cancel' ? 'aborted' : 'error');
+  });
+}
+
+test('governed exact-worker OpenCode body is journaled before prompt_async and recovers under unchanged admission', async t => {
+  const f = await governedFixture(t, 'pass', 'opencode');
+  const sessionStatus = f.loop.status(f.sessionId);
+  assert.equal(sessionStatus.state, 'done', JSON.stringify(sessionStatus));
+  assert.equal(f.promptBodies.length, 1);
+  assert.equal(f.seen.length, 0, 'managed OpenCode must not fall through to the local runtime');
+  const body = JSON.parse(f.promptBodies[0]!) as { model: { providerID: string; modelID: string }; parts: Array<{ type: string; text: string }> };
+  assert.deepEqual(body.model, { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' });
+  assert.equal(body.parts[0]?.type, 'text');
+  assert.match(body.parts[0]?.text ?? '', /PRIVATE GOVERNED FIXTURE TASK/);
+  const recovered = createAttemptJournal({ workspace: f.root }); await recovered.recover();
+  const admission = JSON.parse(f.admissionAtDispatch!) as { attempt_id: string };
+  const detail = await recovered.get(admission.attempt_id); assert.ok(detail);
+  const router = detail.events.find(event => event.event === 'MODEL_INPUT_PREPARED'); assert.ok(router);
+  const prepared = detail.events.filter(event => event.event === 'MODEL_ADAPTER_INPUT_PREPARED');
+  assert.equal(prepared.length, 1);
+  assert.equal(prepared[0]!.source, 'opencode-bridge');
+  assert.equal(prepared[0]!.data.adapter, 'opencode-bridge');
+  assert.equal(prepared[0]!.data.protocol, 'opencode-prompt-async');
+  assert.equal(prepared[0]!.data.requested_model, 'opencode-go/deepseek-v4.1-flash');
+  assert.equal(prepared[0]!.data.body_sha256, digest(f.promptBodies[0]!));
+  assert.equal(prepared[0]!.data.body_bytes, Buffer.byteLength(f.promptBodies[0]!, 'utf8'));
+  assert.equal(prepared[0]!.data.route_id, router.data.route_id);
+  assert.equal(prepared[0]!.data.target_revision, router.data.target_revision);
+  assert.equal(prepared[0]!.data.session_id, f.sessionId);
+  assert.equal(prepared[0]!.data.iteration, 1);
+  assert.equal(prepared[0]!.data.request_index, 1);
+  assert.equal(prepared[0]!.data.stream, true);
+  assert.equal(JSON.stringify(prepared).includes('PRIVATE'), false);
+  assert.equal(await fs.readFile(path.join(f.journal.attemptsDir, admission.attempt_id + '.json'), 'utf8'), f.admissionAtDispatch);
+  const openCodeEvents = await readLog(f.managedFixture!.log);
+  assert.equal(openCodeEvents.filter(event => event.event === 'prompt').length, 1);
+  assert.equal(openCodeEvents.filter(event => event.event === 'delete').length, 1);
+});
+
+for (const boundary of ['write-failure', 'cancel', 'revoke', 'target-change', 'egress'] as const) {
+  test(`governed OpenCode ${boundary} at prepared-input boundary permits no managed prompt`, async t => {
+    const f = await governedFixture(t, boundary, 'opencode');
+    assert.equal(f.promptBodies.length, 0);
+    assert.equal(f.loop.status(f.sessionId).state, boundary === 'cancel' ? 'aborted' : 'error');
+    const recovered = createAttemptJournal({ workspace: f.root }); await recovered.recover();
+    const admission = JSON.parse(f.admissionAtDispatch!) as { attempt_id: string };
+    const detail = await recovered.get(admission.attempt_id); assert.ok(detail);
+    const prepared = detail.events.filter(event => event.event === 'MODEL_ADAPTER_INPUT_PREPARED');
+    assert.equal(prepared.length, boundary === 'write-failure' ? 0 : 1);
+    const openCodeEvents = await readLog(f.managedFixture!.log);
+    assert.equal(openCodeEvents.some(event => event.event === 'prompt'), false);
+    assert.equal(openCodeEvents.filter(event => event.event === 'delete').length, 1);
   });
 }

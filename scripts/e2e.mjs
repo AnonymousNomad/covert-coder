@@ -24,7 +24,9 @@ try {
   assert.equal(ready.status, 200);
   assert.equal(typeof ready.body.data.ready, 'boolean');
 
-  const version = await stack.approveJson({ adapter: 'ts', method: 'POST', path: '/api/terminal/run', body: { program: 'node', args: ['--version'], approved: true } });
+  // Leave room for the terminal route's fixed 30s child timeout to return its
+  // own response. This client deadline does not alter the product execution cap.
+  const version = await stack.approveJson({ adapter: 'ts', method: 'POST', path: '/api/terminal/run', body: { program: 'node', args: ['--version'], approved: true }, requestTimeoutMs: 35000 });
   assert.equal(version.status, 200, JSON.stringify(version.body).slice(0, 200));
   const echo = await stack.approveJson({ adapter: 'ts', method: 'POST', path: '/api/terminal/run', body: { program: 'echo', args: ['terminal-ok'], approved: true } });
   assert.equal(echo.status, 200, JSON.stringify(echo.body).slice(0, 200));

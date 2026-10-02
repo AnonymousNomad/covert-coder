@@ -19,6 +19,7 @@
 // authoritatively in the message/session payload.
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
+import { observeAdapterRequestInput, type AdapterRequestInputOptions } from './model-request-input.ts';
 
 export type OpenCodeDetection = {
   provider: 'opencode';
@@ -55,6 +56,7 @@ export interface OpenCodeBridgeOptions {
   fetchFn?: typeof fetch;
   now?: () => number;
   serverStartTimeoutMs?: number;
+  assertExternalEgressAllowed?: (() => void) | undefined;
 }
 
 const PROBE_TIMEOUT_MS = 8000;
@@ -364,7 +366,7 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     return { connected: catalog.connected.includes('opencode-go'), model_ids: modelIds };
   }
 
-  async function runTaskStream(runOptions: {
+  async function runTaskStream(input: AdapterRequestInputOptions & {
     workspace: string;
     prompt: string;
     providerID: string;
@@ -373,10 +375,12 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
     signal?: AbortSignal;
     onDelta: (delta: string) => void;
   }): Promise<OpenCodeTaskResult> {
+    const runOptions = { ...input };
     if (runOptions.providerID.length === 0 || runOptions.modelID.length === 0) {
       throw Object.assign(new Error('OpenCode execution requires an exact provider and model identity'), { code: 'TARGET_MISMATCH' });
     }
     if (runOptions.signal?.aborted) throw Object.assign(new Error('OpenCode task cancelled'), { code: 'CANCELLED' });
+    options.assertExternalEgressAllowed?.();
 
     const startedAt = clock();
     const timeoutMs = Math.max(5000, Math.min(runOptions.timeoutMs ?? 300000, 900000));
@@ -406,6 +410,14 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
       throw code === 'CLEANUP_FAILED' ? error : controller.signal.aborted ? cancellationError() : error;
     }
     let sessionId: string | null = null;
+    let eventReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    let eventReaderTask: Promise<void> | null = null;
+    let eventReaderCancelTask: Promise<void> | null = null;
+    const cancelEventReader = (): Promise<void> => {
+      if (eventReader === null) return Promise.resolve();
+      eventReaderCancelTask ??= eventReader.cancel().catch(() => undefined);
+      return eventReaderCancelTask;
+    };
 
     const request = async (url: string, init: RequestInit, requestTimeoutMs: number): Promise<Response> => {
       if (controller.signal.aborted) throw cancellationError();
@@ -538,6 +550,7 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
       };
       const readEvents = async (): Promise<void> => {
         const reader = eventResponse.body!.getReader();
+        eventReader = reader;
         const decoder = new TextDecoder();
         let buffer = '';
         try {
@@ -562,15 +575,21 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
         } catch (error) {
           settleError(controller.signal.aborted ? cancellationError() : error);
         } finally {
-          await reader.cancel().catch(() => undefined);
+          await cancelEventReader();
           reader.releaseLock();
+          eventReader = null;
         }
       };
       const readerTask = readEvents();
+      eventReaderTask = readerTask;
 
+      const serialized = JSON.stringify({ model: { providerID: runOptions.providerID, modelID: runOptions.modelID }, parts: [{ type: 'text', text: runOptions.prompt }] });
+      await observeAdapterRequestInput(serialized, { adapter: 'opencode-bridge', protocol: 'opencode-prompt-async',
+        requested_model: `${runOptions.providerID}/${runOptions.modelID}`, request_index: 1, stream: true }, runOptions, controller.signal);
+      options.assertExternalEgressAllowed?.();
       const promptResponse = await request(`${running.url}/session/${encodeURIComponent(sessionId)}/prompt_async`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: { providerID: runOptions.providerID, modelID: runOptions.modelID }, parts: [{ type: 'text', text: runOptions.prompt }] })
+        body: serialized
       }, 30000);
       if (promptResponse.status !== 204 && promptResponse.status !== 200) {
         throw Object.assign(new Error(`opencode prompt submission failed (HTTP ${promptResponse.status})`), { code: promptResponse.status === 401 || promptResponse.status === 403 ? 'NOT_READY' : 'CHILD_FAILED' });
@@ -611,12 +630,14 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
       }
       throw mapped;
     } finally {
+      await cancelEventReader();
+      await eventReaderTask?.catch(() => undefined);
       clearTimeout(timeout);
       runOptions.signal?.removeEventListener('abort', abortFromCaller);
     }
   }
 
-  async function runTask(runOptions: {
+  async function runTask(runOptions: AdapterRequestInputOptions & {
     workspace: string;
     prompt: string;
     providerID?: string;
@@ -634,6 +655,7 @@ export function createOpenCodeBridge(options: OpenCodeBridgeOptions = {}) {
       modelID: runOptions.modelID,
       ...(runOptions.timeoutMs !== undefined ? { timeoutMs: runOptions.timeoutMs } : {}),
       ...(runOptions.signal !== undefined ? { signal: runOptions.signal } : {}),
+      ...(runOptions.adapterInput !== undefined ? { adapterInput: runOptions.adapterInput } : {}),
       onDelta: () => undefined
     });
   }

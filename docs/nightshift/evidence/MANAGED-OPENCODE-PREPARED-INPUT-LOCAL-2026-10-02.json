@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-02 17:40:51 UTC",
+  "status": "LOCAL_GATES_GREEN_WITH_PRIOR_INTERMITTENT_FULL_SUITE_TIMEOUTS_OPEN",
+  "branch": "nightshift/production-convergence-20260926",
+  "tested_base_head": "f7175144753a2bcfaaa3ff0ce79a558007f77dbb",
+  "worktree": "E:\\covert-nightshift-integration",
+  "scope": "Managed OpenCode prepared prompt_async request-input evidence through existing Router, AgentLoop and AttemptJournal; adjacent shutdown-listener and E2E caller-lifecycle repairs; GLib advisory remains open.",
+  "controlled_opencode_proof": {
+    "architecture_test_cases_matching_opencode": 18,
+    "claims_proven": [
+      "Exact managed OpenCode serialized prompt bytes are observed before prompt_async and journaled through the existing AttemptJournal path.",
+      "Observation receipts contain digest, byte count, exact requested model, route revision, request index, session and stream facts without prompt content.",
+      "Authority/admission snapshot remains unchanged; write failure, cancellation, revocation, route change and egress revocation block prompt submission.",
+      "Owned event readers and sessions are cancelled/deleted on success and refusal paths; no local runtime fallback or upstream identity claim is used."
+    ],
+    "claims_not_proven": [
+      "Live OpenCode Go or other provider execution.",
+      "Response-observed provider/model identity.",
+      "Selected context/skill survival through live execution.",
+      "Whole Resident/R11/R12, live model qualification, fresh-user, packaged, dogfood or RC acceptance."
+    ]
+  },
+  "local_gates": {
+    "npm run check": {
+      "result": "PASS",
+      "tests_total": 979,
+      "passed": 968,
+      "failed": 0,
+      "skipped": 11,
+      "cancelled": 0,
+      "duration_ms": 695025.4178,
+      "eslint": "0 errors, 62 warnings",
+      "log": "E:\\covert-tooling\\functional-release-20261001\\day-shift-npm-check-v3.log",
+      "sha256": "FF8A232B0EE706285FF2BFD634AB1EC4F250ABE14B51DCA51DBD0DED6D6CA1DC"
+    },
+    "npm test plain uninstrumented v7": {
+      "result": "PASS, exit 0",
+      "log": "E:\\covert-tooling\\functional-release-20261001\\day-shift-npm-test-v7.log",
+      "sha256": "4A68638381257664559460C1F6941CE2151A22F9E942062E7C5558DA5E56DEEA"
+    },
+    "npm test diagnostic v6": {
+      "result": "PASS, exit 0",
+      "log": "E:\\covert-tooling\\functional-release-20261001\\day-shift-npm-test-v6.log",
+      "sha256": "F3DF4BFCC37BCBC83E4DF44DF0E05280E6BAC64F6CA5A0759E90689BB6090ED8",
+      "trace": "E:\\covert-tooling\\functional-release-20261001\\day-shift-http-trace-v6.jsonl",
+      "trace_sha256": "9E9ACF6E53E1A4F245015C214D2C5F06826BA40CE4D6BEE3E9DD5FA07B47E4B2"
+    },
+    "canonical supervised E2E rerun": {
+      "result": "PASS, exit 0; same presets endpoint returned HTTP 200 in 40 ms",
+      "log": "E:\\covert-tooling\\functional-release-20261001\\canonical-e2e-repro-v1.log",
+      "trace": "E:\\covert-tooling\\functional-release-20261001\\canonical-e2e-repro-v1.jsonl"
+    }
+  },
+  "preserved_full_suite_reds": [
+    {
+      "run": "day-shift-npm-test-v2",
+      "outcome": "GET /api/artifacts upstream request timed out at approximately 30 seconds",
+      "log_sha256": "71DB6DF034683E5D4AA8858F5280010531BFBE1E69559F23F26238AAF2051F90"
+    },
+    {
+      "run": "day-shift-npm-test-v3",
+      "outcome": "POST /api/authority/prepare upstream request timed out at approximately 30 seconds",
+      "log_sha256": "B48C1B51A464967D7180C7BDF5C4DF8A1EE3B5F2E2EA28D2BB562C3E5BAEF7FB",
+      "trace_sha256": "3C1D538E4064414B9400898FE1395AF280BBDF10E064A20145B986D5F55E72BB"
+    },
+    {
+      "run": "day-shift-npm-test-v5",
+      "outcome": "GET /api/plugins/presets returned 502 at 29.995 seconds; ArchServer's durable audit append fs.open started and did not complete before caller timeout.",
+      "log_sha256": "AC2AF49D4CFF9C6DC891A4534B7F1BA4C9D1383C57141DA1E9F0B41E501994DA",
+      "trace_sha256": "52F3B521F1CAFF9C6DC891A4534B7F1BA4C9D1383C57141DA1E9F0B41E501994DA"
+    }
+  ],
+  "diagnosis": {
+    "status": "CAUSE_UNKNOWN",
+    "details": "Two later full npm test runs passed (one instrumented and one uninstrumented). The v5 trace proves an unresolved filesystem open during the failed run, but does not establish a product, Windows storage, filter-driver or resource cause. Isolated supervised E2E passed; a synthetic 1 MiB audit fixture returned the same route in 54 ms; 20 append-mode open/close probes against the canonical file had a 1.006 ms maximum. These checks do not erase the preserved red runs or establish root cause."
+  },
+  "security": {
+    "advisory": "GHSA-wrw7-89jp-8q8g / RUSTSEC-2024-0429, glib 0.18.5",
+    "status": "OPEN; Linux dependency edge exists; no compatible correction or release clearance claimed."
+  },
+  "pr31": "FROZEN at b79d2480498e446cff36b26dd4b4faef7745726b",
+  "exact_sha_ci": "Not run for the current candidate; local worktree evidence only."
+}

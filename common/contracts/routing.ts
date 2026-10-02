@@ -101,8 +101,8 @@ export type ModelDispatchInputObservationT = z.infer<typeof ModelDispatchInputOb
 // Prepared mission HTTP body, not proof of server receipt or observed model.
 export const ModelAdapterRequestInputObservation = z.strictObject({
   scope: z.literal('ADAPTER_REQUEST_INPUT'),
-  adapter: z.enum(['local-model-runtime', 'provider-service']),
-  protocol: z.enum(['openai-chat-completions', 'anthropic-messages']),
+  adapter: z.enum(['local-model-runtime', 'provider-service', 'opencode-bridge']),
+  protocol: z.enum(['openai-chat-completions', 'anthropic-messages', 'opencode-prompt-async']),
   route_id: z.string().min(1).max(1000),
   target_revision: z.string().regex(/^[a-f0-9]{64}$/),
   requested_model: z.string().min(1).max(1000),
