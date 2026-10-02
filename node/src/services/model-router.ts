@@ -636,12 +636,16 @@ export class ModelRouter {
   private fitForRoute(route: ModelRoute, messages: ChatMessageT[], maxTokens: number | undefined): { fit: ReturnType<typeof fitHistory>; overflowTrimmed: boolean } {
     const reserve = maxTokens ?? 512;
     const modelId = route.providerType === 'local' ? route.id.slice('local:'.length) : null;
-    const served = modelId !== null ? this.runtime.getEffectiveBudget(modelId, reserve) : null;
-    if (served === null) {
+    const inputBudget = modelId !== null ? this.runtime.getEffectiveBudget(modelId, reserve) : null;
+    if (inputBudget === null) {
       return { fit: fitHistory(messages, route.contextLength, maxTokens !== undefined ? { maxTokens } : {}), overflowTrimmed: false };
     }
-    const budget = Math.max(1, served - reserve);
-    const fit = fitHistory(messages, served, maxTokens !== undefined ? { maxTokens } : {});
+    if (inputBudget <= 0) throw new RouterError('context_overflow', 'completion reserve exhausts the effective model context; choose a smaller reserve or an appropriate model');
+    // Runtime has already reserved completion tokens. fitHistory normally
+    // accepts a whole context window, so disable its additional reservation
+    // when passing the canonical input budget. Runtime options stay unchanged.
+    const budget = inputBudget;
+    const fit = fitHistory(messages, inputBudget, { maxTokens: 0 });
     let overflowTrimmed = false;
     const newest = fit.messages[fit.messages.length - 1];
     if (newest !== undefined && estimateTokens(newest.content) > budget) {
@@ -651,6 +655,9 @@ export class ModelRouter {
       fit.estimatedTokens = Math.max(1, fit.estimatedTokens - estimateTokens(newest.content) + estimateTokens(trimmedContent));
       overflowTrimmed = true;
     }
+    // fitHistory preserves the newest turn even when system + newest cannot
+    // jointly fit. Never send that over-budget result to a local runtime.
+    if (fit.estimatedTokens > budget) throw new RouterError('context_overflow', 'system and newest turn exceed the effective input budget; reduce context before retrying');
     return { fit, overflowTrimmed };
   }
 

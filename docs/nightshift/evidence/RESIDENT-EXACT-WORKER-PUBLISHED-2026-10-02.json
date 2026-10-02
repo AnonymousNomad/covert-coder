@@ -1,0 +1,42 @@
+{
+  "recorded_at": "2026-10-02T04:48:56.602Z",
+  "status": "PUBLISHED_EXACT_SHA_AIDE_CI_SUCCESS",
+  "branch": "nightshift/production-convergence-20260926",
+  "head": "49cf367967c459874a31fb219079ed85c49daece",
+  "ci": {
+    "id": 36963301431,
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/36963301431",
+    "status": "completed",
+    "conclusion": "success",
+    "successful_steps": 23,
+    "architecture": {
+      "tests": 908,
+      "pass": 892,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 16
+    },
+    "veritas": "6/6 true"
+  },
+  "windows_full_push_gate": {
+    "tests": 908,
+    "pass": 897,
+    "fail": 0,
+    "skipped": 11,
+    "cancelled": 0,
+    "duration_ms": 470817.1083
+  },
+  "evidence_layer": "Bounded exact worker/Authority binding and controlled browser integration; not live provider/model or full Resident RC qualification",
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\agent-worker-ci-36963301431-completed.json",
+      "bytes": 4309,
+      "sha256": "2ce9d50f455e9f8cc9c5095d6ee720c62a6b91f6f8e0580ee6fc06a096ecb86a"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\agent-worker-ci-36963301431-completed.log",
+      "bytes": 230297,
+      "sha256": "efbee2ea42e78519d29bd34079e7a30fd7a51603f48bb4f64c8036f23f3f61bc"
+    }
+  ]
+}

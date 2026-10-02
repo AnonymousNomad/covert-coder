@@ -13,7 +13,7 @@ import { ModelRuntime } from '../../node/src/services/model-runtime.ts';
 
 interface StubState {
   overflowBodyChars: number;
-  requests: Array<{ path: string; bodyChars: number; overflow: boolean }>;
+  requests: Array<{ path: string; bodyChars: number; overflow: boolean; messages: Array<{ role: string; content: string }> }>;
 }
 
 function createStubEngine(state: StubState): Promise<{ url: string; close: () => Promise<void> }> {
@@ -35,7 +35,8 @@ function createStubEngine(state: StubState): Promise<{ url: string; close: () =>
         }
         if (route === '/v1/chat/completions') {
           const overflow = body.length > state.overflowBodyChars;
-          state.requests.push({ path: route, bodyChars: body.length, overflow });
+          const payload = JSON.parse(body) as { messages: Array<{ role: string; content: string }> };
+          state.requests.push({ path: route, bodyChars: body.length, overflow, messages: payload.messages });
           if (overflow) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: { message: 'the request exceeds the available context size' } }));
@@ -76,6 +77,7 @@ function createStubEngine(state: StubState): Promise<{ url: string; close: () =>
 
 let dir: string;
 let engine: { url: string; close: () => Promise<void> };
+let state: StubState;
 
 async function makeRuntime(contextTokens: number): Promise<ModelRuntime> {
   const manifestPath = path.join(dir, `manifest-${contextTokens}.json`);
@@ -105,7 +107,8 @@ async function makeRuntime(contextTokens: number): Promise<ModelRuntime> {
 
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-overflow-'));
-  engine = await createStubEngine({ overflowBodyChars: 8000, requests: [] });
+  state = { overflowBodyChars: 8000, requests: [] };
+  engine = await createStubEngine(state);
 });
 
 after(async () => {
@@ -121,6 +124,7 @@ test('chat rescues an HTTP-400 overflow with one refit retry', async () => {
     { role: 'user', content: 'final question' }
   ]);
   assert.equal(result.text, 'stub ok', 'refit retry succeeded instead of surfacing a 504');
+  assert.deepEqual(state.requests.at(-1)?.messages.at(-1), { role: 'user', content: 'final question' }, 'successful retry must preserve the actual newest task');
   await runtime.stopAll();
 });
 
@@ -133,6 +137,7 @@ test('chatStream rescues an HTTP-400 overflow the same way', async () => {
     { role: 'user', content: 'final question' }
   ], delta => deltas.push(delta), new AbortController().signal);
   assert.ok(deltas.join('').includes('stub ok'), 'streamed refit retry produced deltas');
+  assert.deepEqual(state.requests.at(-1)?.messages.at(-1), { role: 'user', content: 'final question' }, 'streamed retry must preserve the actual newest task');
   await runtime.stopAll();
 });
 

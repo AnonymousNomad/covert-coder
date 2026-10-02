@@ -1,0 +1,262 @@
+{
+  "recorded_at": "2026-10-02T04:48:56.601Z",
+  "status": "LOCAL_VERIFIED_PUBLICATION_AND_CANDIDATE_CI_PENDING",
+  "branch": "nightshift/production-convergence-20260926",
+  "parent_head": "49cf367967c459874a31fb219079ed85c49daece",
+  "objective": "Count local input/output budgets once and preserve newest task through HTTP-400 recovery",
+  "evidence_layer": "Actual Runtime/Router and controlled inference/HTTP endpoint; not live-model or provider qualification",
+  "original_red": {
+    "reserve": {
+      "tests": 7,
+      "pass": 0,
+      "fail": 7
+    },
+    "boundaries": {
+      "tests": 11,
+      "pass": 7,
+      "fail": 4
+    },
+    "overflow_newest": {
+      "tests": 3,
+      "pass": 1,
+      "fail": 2
+    },
+    "node_types": "TS2345 capture role narrowing",
+    "first_veritas": {
+      "passed": false,
+      "compile": false,
+      "tests": true
+    }
+  },
+  "repair": [
+    "Runtime input budget is already reserved; Router fitting uses zero additional fitting reserve",
+    "Known exhausted budget returns zero, not unknown/null; Router and runtime retry refuse it",
+    "Router rejects final joint system/newest estimate above the canonical input budget before inference",
+    "Runtime overflow retry inserts the newest turn before older history",
+    "Capture fixture matches actual Runtime role:string shape"
+  ],
+  "verified": {
+    "affected": {
+      "tests": 93,
+      "pass": 93,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "complete_veritas": {
+      "passed": true,
+      "checks": {
+        "path-boundary": true,
+        "secret-scan": true,
+        "manifest-validation": true,
+        "compile": true,
+        "tests": true,
+        "git-diff": true
+      },
+      "architecture": {
+        "tests": 919,
+        "pass": 908,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 11
+      },
+      "npm_test": true
+    },
+    "node_types": true,
+    "browser_types": true,
+    "scoped_lint": true,
+    "c1_generator_check": true,
+    "original_task_chars": 63,
+    "repaired_dispatched_task_chars": 63,
+    "original_retry_newest_preserved": false,
+    "repaired_retry_newest_preserved": true
+  },
+  "boundaries": [
+    "Visual implementation paused; locked specification and untracked Design Lab preserved",
+    "PR #31 frozen",
+    "No Authority, completion setting, admission floor, fixture deadline or old assertion weakened",
+    "No actual local model started; no provider, role, full Resident, packaging or RC acceptance inferred",
+    "Token estimates remain heuristic; unknown-context/cloud fitting and tokenizer/template qualification are not closed by this receipt",
+    "Served-input receipts and response-observed model provenance remain next; sealed admission context must not be rewritten",
+    "Historical unexplained full-gate timeout and fresh-user/dogfood release gates remain open"
+  ],
+  "sourceHashes": [
+    {
+      "file": "node/src/services/model-router.ts",
+      "bytes": 34066,
+      "sha256": "abb3b9fb8499f2e7696311f6d9772613e475993579f4f831315c27102db45fb1"
+    },
+    {
+      "file": "node/src/services/model-runtime.ts",
+      "bytes": 61514,
+      "sha256": "62d8c23569e2f0722f34b6ee1997f9fd6603f3b685784314d77492392562970a"
+    },
+    {
+      "file": "tests/arch/model-router-input-budget.test.ts",
+      "bytes": 7776,
+      "sha256": "0a87fa8794eb43aff2527d77bf0224f14b406e040c880571752b603001ef6ab4"
+    },
+    {
+      "file": "tests/arch/context-overflow-rescue.test.ts",
+      "bytes": 6302,
+      "sha256": "dbbddf00abee55803cc1f5daec12bf998ba0e34dc5a13b6b8b43f056376f9ca0"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-context-double-reserve-reproduction.mjs",
+      "bytes": 2455,
+      "sha256": "ee65218967bbeb1ed710b62d658201208c8c24101fdefd1cc19b1f9343ae519a"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-context-double-reserve-reproduction.log",
+      "bytes": 406,
+      "sha256": "6f0e01d6e77a8d371b5b5de04b212c905530a4de67bd5e74c8c336418456e16a"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-context-double-reserve-repaired.log",
+      "bytes": 407,
+      "sha256": "6deb37acb5d6bf80ba5fccb62d5c6140ad0860e1e64f01e9d7af055e00f17627"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-regression-baseline.log",
+      "bytes": 15698,
+      "sha256": "e937bff2d0c24f2ca1271654723742f406155cce82faff99ebbd4ae7a43c27c6"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-regression-repaired-v1.log",
+      "bytes": 759,
+      "sha256": "2f965d9597524bdb023450c09311a70f763a896ecf7aac6f8005fa1d99d6e3e0"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-boundaries-baseline.log",
+      "bytes": 3701,
+      "sha256": "0ae17ce97bd1db7ec206671c395bccf56c6e418b41dfdca4586685fddb83c86b"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-affected-v1.log",
+      "bytes": 6290,
+      "sha256": "97819e91aa999b571d329b3f50cfccc59711ce2b4d3f250eab19ab05dcd81056"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-affected-final.log",
+      "bytes": 8667,
+      "sha256": "e4557ea565bf00635297a0752e0efa1ed4394a49a6bcce83dd622342d6abcf18"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-node-types.log",
+      "bytes": 984,
+      "sha256": "87611ee1ae47d933d436365a29a629d675755eea9f97d5ed6fecff1ecba39e74"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-node-types-v2.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-browser-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-lint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-lint-v2.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-c1-check.log",
+      "bytes": 57,
+      "sha256": "137cbd157a526db77d7328f6a37f3ff9bea5617b141c6a101b8ded48fe872c0e"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas.json",
+      "bytes": 15282,
+      "sha256": "1630f39ba3e40522d3489d92aad8e298aacbec683f9b488c2c849b2dae0b5e87"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas-metadata.json",
+      "bytes": 249,
+      "sha256": "33ab54579b5f8e8c36fd0503a69c12a487b41407f2d516b19571609bfdd3297c"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas-result.json",
+      "bytes": 238,
+      "sha256": "ef165e97efc2666128edfe00a4f0a9d5a028667bcb745dc0e00ceb430c66f287"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas-v2.json",
+      "bytes": 26115,
+      "sha256": "241bbf262fe7ed4b09474ee95b45b1987e2b308b21515f952db10094c86cf061"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas-v2.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas-v2-metadata.json",
+      "bytes": 249,
+      "sha256": "b7f12fc5ca8014923c82c140b32ce3ba560748a3b6dccab15fe264f54fa54c62"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-veritas-v2-result.json",
+      "bytes": 238,
+      "sha256": "1c32ccc580f1921749a9a8f4a566adb4f98d82e49c99d246991d5480470ae32b"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-overflow-newest-reproduction.mjs",
+      "bytes": 3351,
+      "sha256": "b851143563ef5908ffe0c9803cbeec0d4e48d8639d8b705d2ca328e49a12ec8e"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-overflow-newest-reproduction.log",
+      "bytes": 261,
+      "sha256": "d85cf505b553377101ac52dc0683375ffbce06bf37d6a26811f0f65507f6636e"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-overflow-newest-regression-baseline.log",
+      "bytes": 18271,
+      "sha256": "36e38dda14ed1ec6b2a933e5f1ba076a1541ef625f6a79be6fc0bdd28e84a9ad"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-overflow-newest-repaired.log",
+      "bytes": 259,
+      "sha256": "13f04e2ee81343c13af503d1023f353502d9c7ca71b54370ae7ed9618a17514a"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\agent-worker-ci-36963301431-completed.json",
+      "bytes": 4309,
+      "sha256": "2ce9d50f455e9f8cc9c5095d6ee720c62a6b91f6f8e0580ee6fc06a096ecb86a"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\agent-worker-ci-36963301431-completed.log",
+      "bytes": 230297,
+      "sha256": "efbee2ea42e78519d29bd34079e7a30fd7a51603f48bb4f64c8036f23f3f61bc"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\locked-visual-preservation-recheck.json",
+      "bytes": 272,
+      "sha256": "2cf097771c2c123024bddb38280fb19719ccb952c750a36918a796f1818507d3"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-resource-active.json",
+      "bytes": 735,
+      "sha256": "3ca585cccfcadb95739664d98f7b1d5efe8c716e757f1e9119cc2bc81d5656ca"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-resource-after-veritas.json",
+      "bytes": 427,
+      "sha256": "baac7cf3f0e264688191c99aebb0625e26656a904fd88a519114af6c95b88be9"
+    }
+  ]
+}

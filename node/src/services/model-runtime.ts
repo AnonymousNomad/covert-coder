@@ -785,7 +785,9 @@ export class ModelRuntime {
     const context = served ?? (Number.isFinite(model.context_tokens) && model.context_tokens > 0 ? model.context_tokens : null);
     if (context === null) return null;
     const budget = Math.floor(context - reserveTokens);
-    return budget > 0 ? budget : null;
+    // Zero means the known window is exhausted; null means context is unknown.
+    // Conflating them lets callers fall back to a larger declared window.
+    return Math.max(0, budget);
   }
 
   // Retry a failed completion once with history re-fit to the effective
@@ -794,7 +796,7 @@ export class ModelRuntime {
   // The newest user turn is always preserved; oldest history is dropped.
   private refitForOverflow(id: string, messages: Array<{ role: string; content: string }>, reserveTokens: number): Array<{ role: string; content: string }> | null {
     const budget = this.getEffectiveBudget(id, reserveTokens);
-    if (budget === null) return null;
+    if (budget === null || budget <= 0) return null;
     const newest = messages[messages.length - 1];
     if (newest === undefined) return null;
     const kept: Array<{ role: string; content: string }> = [];
@@ -805,6 +807,7 @@ export class ModelRuntime {
       kept.push({ role: newest.role, content: newest.content.slice(Math.max(0, newest.content.length - keepChars)) });
       return kept;
     }
+    kept.push(newest);
     for (let index = messages.length - 2; index >= 0; index--) {
       const message = messages[index]!;
       const cost = estimateTokens(message.content);
