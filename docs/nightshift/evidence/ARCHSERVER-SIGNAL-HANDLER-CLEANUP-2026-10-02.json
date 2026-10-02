@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-02T19:12:04Z",
+  "status": "CLOSED_FOR_PROVEN_SCOPE",
+  "branch": "nightshift/production-convergence-20260926",
+  "verified_source_sha": "93a6764604dccb0ce85962edb99fda80893cd05",
+  "parent_sha": "f7175144753a2bcfaaa3ff0ce79a558007f77dbb",
+  "scope": "ArchServer-owned SIGINT/SIGTERM listener cleanup across direct close, repeated instances, concurrent instances, and callback-driven shutdown.",
+  "overall_release_readiness": "OPEN_BLOCKERS_REMAIN",
+  "first_red": {
+    "classification": "PRODUCT",
+    "source_state": "Pre-repair source at parent SHA f7175144753a2bcfaaa3ff0ce79a558007f77dbb",
+    "command": "node --experimental-strip-types --test tests/arch/server-signal-cleanup.test.ts",
+    "symptom": "Closing one ArchServer left one process signal listener above baseline (expected 0 new listeners, observed 1).",
+    "artifact": "E:\\covert-tooling\\functional-release-20261001\\server-signal-cleanup-baseline.tap.log",
+    "sha256": "7B131B55CFF03F3008DF557E147B67D29F1597351E74017304874D83C9739C5A",
+    "bytes": 1021
+  },
+  "root_cause": "ArchServer installed anonymous process.once callbacks but retained no callback references and had no server-close cleanup. Directly closing the owning HTTP server left both one-shot listeners registered; repeated server instances accumulated listeners until a signal was delivered.",
+  "repair": {
+    "file": "node/src/server.ts",
+    "behavior": "Retain exact SIGINT/SIGTERM callback references and remove only those references on the owning server's close event.",
+    "global_listener_limit_changed": false,
+    "warning_suppression_added": false,
+    "remove_all_listeners_used": false,
+    "shutdown_deadline_changed": false
+  },
+  "source_hashes": [
+    {
+      "file": "node/src/server.ts",
+      "bytes": 24123,
+      "sha256": "04F393BB00247B48FB3B7E56A18DCF43924B0E384E52CC01E2958CCBCC7EE412"
+    },
+    {
+      "file": "tests/arch/server-signal-cleanup.test.ts",
+      "bytes": 5626,
+      "sha256": "B1F56CFEA1B97591019850A97E8D57868000AC049D6C341AF98C3E9991301C0C"
+    },
+    {
+      "file": "tests/arch/server-signal-shutdown-fixture.mjs",
+      "bytes": 1136,
+      "sha256": "2B8E5E1992EACAC877E734040074D40A764AF174EFC1EF0AB87C0153A5477804"
+    }
+  ],
+  "regressions": {
+    "repeated_cycles": 3,
+    "concurrent_server_identity": true,
+    "closing_one_preserves_other_live_server_handlers": true,
+    "listener_counts_return_to_baseline": true,
+    "sigint_shutdown_callback": true,
+    "sigterm_shutdown_callback": true,
+    "focused": {
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "duration_ms": 3695.0156,
+      "artifact": "E:\\covert-tooling\\functional-release-20261001\\server-signal-cleanup-current-sha-20261002.tap.log",
+      "sha256": "F285563473722CF2DB87BAC8DEEB38C97ECC2893AAA9E68973CFB2A487F867D6"
+    }
+  },
+  "local_verification": {
+    "npm_run_check": {
+      "tests": 979,
+      "passed": 968,
+      "failed": 0,
+      "skipped": 11,
+      "cancelled": 0,
+      "eslint_errors": 0,
+      "eslint_warnings": 62,
+      "artifact": "E:\\covert-tooling\\functional-release-20261001\\day-shift-npm-check-v3.log",
+      "sha256": "FF8A232B0EE706285FF2BFD634AB1EC4F250ABE14B51DCA51DBD0DED6D6CA1DC"
+    },
+    "plain_npm_test": {
+      "exit_code": 0,
+      "full_original_chain": true,
+      "artifact": "E:\\covert-tooling\\functional-release-20261001\\day-shift-npm-test-v7.log",
+      "sha256": "4A68638381257664559460C1F6941CE2151A22F9E942062E7C5558DA5E56DEEA"
+    },
+    "complete_veritas": {
+      "command": "npm run veritas -- --task-class code-change",
+      "exit_code": 0,
+      "passed": true,
+      "checks": {
+        "path-boundary": true,
+        "secret-scan": true,
+        "manifest-validation": true,
+        "compile": true,
+        "tests": true,
+        "git-diff": true
+      },
+      "full_npm_test_chain": true,
+      "failed_checks": [],
+      "artifact": "E:\\covert-tooling\\functional-release-20261001\\day-shift-veritas-server-signal-20261002.log",
+      "sha256": "3BFE5F35A59CEA6DE5BC6D561BBD347AA30B8EA9D07715464D0DA5DBB6F00626"
+    }
+  },
+  "exact_sha_ci": {
+    "workflow": "AIDE CI",
+    "run_id": 37046618494,
+    "head_sha": "93a6764604dccb0ce85962edb99fda80893cd05",
+    "conclusion": "success",
+    "steps": 23,
+    "failed_steps": 0,
+    "skipped_steps": 0,
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/37046618494"
+  },
+  "observed_e2e_timings_ms": {
+    "GET /api/plugins/presets": 37,
+    "GET /api/artifacts": 35,
+    "POST /api/authority/prepare": 11,
+    "interpretation": "Passing later execution is not a root cause for or erasure of the historical 30-second timeout reds."
+  },
+  "cleanup": {
+    "observed_veritas_and_arch_processes_after_completion": 0,
+    "signal_fixture_temp_directories_after_completion": 0,
+    "foreign_processes_terminated": 0,
+    "local_model_started": false
+  },
+  "skill": {
+    "name": "failure-server-signal-handler-leak",
+    "path": "C:\\Users\\Grey_\\.agents\\skills\\failure-server-signal-handler-leak\\SKILL.md",
+    "loaded_and_reviewed": true,
+    "validator_status": "BLOCKED_UNVERIFIED",
+    "validator_blocker": "py -3 reported ModuleNotFoundError for yaml; python and python3 resolved to unavailable Microsoft Store aliases.",
+    "environment_mutated_for_validation": false,
+    "manual_content_review": true
+  },
+  "other_preserved_release_blockers": [
+    {
+      "status": "OPEN_CAUSE_UNKNOWN",
+      "description": "Intermittent historical full-suite request timeouts remain unexplained despite later complete passing runs.",
+      "evidence_record": "docs/nightshift/evidence/MANAGED-OPENCODE-PREPARED-INPUT-LOCAL-2026-10-02.json",
+      "preserved_red_log_hashes": [
+        "71DB6DF034683E5D4AA8858F5280010531BFBE1E69559F23F26238AAF2051F90",
+        "B48C1B51A464967D7180C7BDF5C4DF8A1EE3B5F2E2EA28D2BB562C3E5BAEF7FB",
+        "AC2AF49D4CFF9C6DC891A4534B7F1BA4C9D1383C57141DA1E9F0B41E501994DA"
+      ]
+    },
+    "GHSA-wrw7-89jp-8q8g / RUSTSEC-2024-0429 glib 0.18.5 remains open",
+    "Live provider/model, whole Resident, fresh-user, packaging, dogfood, and RC acceptance remain unproven"
+  ],
+  "preservation": {
+    "pr31_head": "b79d2480498e446cff36b26dd4b4faef7745726b",
+    "theme_work": "paused",
+    "design_lab": "preserved untracked and not staged"
+  },
+  "next": "Continue root-cause investigation of the preserved historical full-suite timeout failures before advancing to the next P2 integration slice."
+}

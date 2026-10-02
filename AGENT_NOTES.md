@@ -2038,6 +2038,20 @@ At base `f7175144753a2bcfaaa3ff0ce79a558007f77dbb`, the existing Bridge → Rout
 
 `npm run check` passed 979 tests (968 pass, 0 fail, 11 existing skips), TypeScript and lint (0 errors, 62 warnings); Veritas is included. Plain uninstrumented `npm test` v7 also exited 0, including the canonical E2E endpoint sequence. Full logs and hashes are in `docs/nightshift/evidence/MANAGED-OPENCODE-PREPARED-INPUT-LOCAL-2026-10-02.json` and `E:\covert-tooling\functional-release-20261001`.
 
+### ArchServer signal-handler lifecycle closure (2026-10-02)
+
+**Status:** `CLOSED_FOR_PROVEN_SCOPE` at source SHA `93a6764604dccb0ce85962edb99fda80893cd05`; overall release blockers remain open.
+
+**First red/root cause:** the preserved pre-repair ArchServer regression failed on close with one `SIGINT`/`SIGTERM` handler left above baseline. Parent source at `f7175144753a2bcfaaa3ff0ce79a558007f77dbb` registered anonymous one-shot process callbacks and had no owning-server close cleanup. Direct close therefore retained handlers; repeated instances accumulated them. Baseline TAP log and SHA are in `ARCHSERVER-SIGNAL-HANDLER-CLEANUP-2026-10-02.json`.
+
+**Repair/proof:** the exact callbacks are now retained and removed only on their owning server's `close`. Regression tests cover three sequential cycles, two concurrent instances, preservation of the other live instance's handlers, baseline restoration, and both synthetic signal callback/shutdown paths. Focused current-source test passed 2/2; `npm run check` passed 979/968/0/11; full plain `npm test` exited 0; complete Veritas exited 0 with all six checks true and the full `npm test` chain. Exact AIDE CI run `37046618494` passed all 23 steps on `93a6764604dccb0ce85962edb99fda80893cd05`.
+
+**Skill/tooling:** existing local `failure-server-signal-handler-leak` was loaded and reused, not modified. Its bundled/automated validator is `BLOCKED/UNVERIFIED` because PyYAML is missing from the available Python launcher; no Python environment was modified. Manual skill content review is not a validator pass.
+
+**Limits/open work:** the signal fixture uses `process.emit()` and does not prove Windows kernel signal delivery. Later full-suite routes were fast, but historical `/api/artifacts`, `/api/authority/prepare`, and `/api/plugins/presets` timeout reds remain `OPEN / CAUSE_UNKNOWN`; their logs/traces and hashes are retained. The GLib advisory remains open. No release, provider/model, packaging, dogfood, Resident, or RC acceptance is inferred. Themes remain paused; Design Lab is preserved untracked; PR #31 remains frozen.
+
+**Evidence:** `docs/nightshift/evidence/ARCHSERVER-SIGNAL-HANDLER-CLEANUP-2026-10-02.md` and `.json`; the full Veritas 9/9 Desktop battery row is retained in `docs/evidence/desktop-battery.md`. The next dependency-ordered action is to root-cause the preserved full-suite timeout failures before advancing P2.
+
 Do not erase prior full-suite reds: v2 timed out at `/api/artifacts`, v3 at `/api/authority/prepare`, and v5 at `/api/plugins/presets`. The v5 trace shows an audit-file `open` that did not complete before the caller deadline. Two later full `npm test` runs passed; isolated E2E, synthetic audit-file and direct open probes passed too. Cause remains UNKNOWN; no product or Windows storage cause is claimed. Do not treat a later green run as root-cause closure.
 
 The GLib 0.18.5 advisory remains OPEN; platform scope evidence is recorded separately and no dependency upgrade, waiver or clearance is claimed. PR #31 remains frozen; themes remain paused and the rejected Design Lab remains untracked/preserved. No live provider request, local model start, admission-floor change or credential access occurred.
