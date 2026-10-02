@@ -44,6 +44,19 @@ Thus the 128 ms journal read accounts for most of one 148 ms sync interval. The 
 
 These observations do not establish a causal E: device fault, a Windows storage fault, or a Covert defect. In particular, the original v5 second audit-path open remained pending through its client timeout, while this passing run did not reproduce that open stall. The historical failure remains OPEN / CAUSE_UNKNOWN.
 
+## Focused v10 route reproduction
+
+To isolate the previously red endpoint from full-suite background load, a temporary harness outside the repository launched the existing `launchSupervisedStack` helper against the canonical workspace and issued only `GET /api/plugins/presets` through the facade. It ran on the same exact source SHA above; no repository test or product source was changed.
+
+- Request result: HTTP 200; server response 45.3623 ms; client request 52.387 ms. The helper's complete launch/request/cleanup cycle took 48,166.816 ms.
+- The passive observer saw 4 complete canonical journal open/write/sync/close cycles across stack health/pairing and the request; maximum durations were open 0.3981 ms, write 1.2619 ms, sync 78.1905 ms, close 0.2928 ms. No open crossed 1 second. The route completed successfully; this does not reproduce or explain the historic timeout.
+- WPR FileIO/DiskIO start and stop both exited `0`. The local ETL covers 97 seconds, with 1,800,419 events processed and zero lost. No CSV conversion was made for this focused pass; the raw ETL remains local.
+- One WPR status probe overlapped the in-progress stop and returned `0xc5580601` (“Duplicate instance of Windows Performance Recorder Control library”). No second stop was issued. The original stop completed successfully, and a later status check confirmed WPR was no longer recording.
+- After cleanup the Node process count returned to its pre-test count of 3. No local model was started.
+- Focused-run artifact SHA-256: ETL `FD479F5084A24305BCDAD6C72BC246FAE753AA12F8A1C69DA7DD20E02930E35A`; WPR summary `D58718C058EE28B67B8B6AE7C0F55E610711B7FD7AEC63E7F5226D183F8FDE9F`; app trace `34FD6960C5AF87B3A391F815C7FF5CB43740FF167961397AA9DB3BBAE31E1AB1`; log `055EB7DC6D0D8F1B6CAC5ACEC4016015592CFBC2CADCE89AAAE013C81529C0CF`; temporary harness `143993B0548798CC65E5754D052423750975687972FB1032C31CD56B7CE8F2B2`; temporary runner `02E72CA048FA21B49DBE6444ECF7730584B3A583BB8F5C2BC5195FDDAAFB90FC`.
+
+This additional pass is a successful single-route reproduction, not a product repair. The original failure remains OPEN / CAUSE_UNKNOWN.
+
 ## Artifact hashes
 
 SHA-256 values for local evidence artifacts:
