@@ -79,3 +79,21 @@ export type RouteFallbackT = z.infer<typeof RouteFallback>;
 export type RouteResponseT = z.infer<typeof RouteResponse>;
 export type FitRequestT = z.infer<typeof FitRequest>;
 export type FitResponseT = z.infer<typeof FitResponse>;
+
+// Initial Router input only: adapters may subsequently refit or reframe it.
+// Trusted internal observation, never a user-supplied prompt or HTTP callback.
+export const ModelDispatchInputObservation = z.strictObject({
+  scope: z.literal('ROUTER_DISPATCH_INPUT'),
+  route_id: z.string().min(1).max(1000),
+  target_revision: z.string().regex(/^[a-f0-9]{64}$/),
+  messages_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  system_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  input_message_count: z.number().int().nonnegative(),
+  dispatched_message_count: z.number().int().nonnegative(),
+  estimated_input_tokens: z.number().int().nonnegative(),
+  fit_dropped_count: z.number().int().nonnegative(),
+  truncated_system: z.boolean(),
+  overflow_trimmed: z.boolean(),
+  completion_reserve_tokens: z.number().int().nonnegative()
+});
+export type ModelDispatchInputObservationT = z.infer<typeof ModelDispatchInputObservation>;

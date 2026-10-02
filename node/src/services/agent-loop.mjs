@@ -6,6 +6,7 @@ import { createAgentTools, computeRisks, resolveInsideWorkspace, relativeInside,
 import { evaluateExecution } from '../../../harness/veritas.mjs';
 import { composeScaffold } from '../../../harness/scaffold.mjs';
 import { AuthorityError } from './execution-authority.mjs';
+import { ModelDispatchInputObservation } from '../../../common/contracts/routing.ts';
 
 // Shared credo loader — single discipline source per THE QUAD Law #1.
 // Resolves relative to THIS file (node/src/services) up to the repo root
@@ -394,7 +395,23 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
             message_count: messages.length
           }, 'model-router');
         }
-        const response = await (session.chatFn ?? chatFn)(messages, session.controller.signal);
+        assertNotCancelled(session);
+        authority.assertActor(session.actor);
+        const observations = {
+          onDispatchInput: async (observation) => {
+            assertNotCancelled(session);
+            authority.assertActor(session.actor);
+            const data = ModelDispatchInputObservation.parse(observation);
+            if (attemptJournal !== null && typeof session.attempt_id === 'string') {
+              await attemptJournal.recordEvent(session.attempt_id, 'MODEL_INPUT_PREPARED', {
+                ...data, session_id: session.id, iteration: session.iterations
+              }, 'model-router');
+            }
+            assertNotCancelled(session);
+            authority.assertActor(session.actor);
+          }
+        };
+        const response = await (session.chatFn ?? chatFn)(messages, session.controller.signal, observations);
         assertNotCancelled(session);
         if (attemptJournal !== null && typeof session.attempt_id === 'string') {
           await attemptJournal.recordEvent(session.attempt_id, 'MODEL_RESPONSE_RECEIVED', {

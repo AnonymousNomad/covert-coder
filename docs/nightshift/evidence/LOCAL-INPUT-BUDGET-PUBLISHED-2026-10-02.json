@@ -1,0 +1,51 @@
+{
+  "status": "PUBLISHED_EXACT_SHA_AIDE_CI_SUCCESS",
+  "branch": "nightshift/production-convergence-20260926",
+  "head": "587257af0b34925b51295133b14777ec6483d061",
+  "ci": {
+    "id": 36966916486,
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/36966916486",
+    "conclusion": "success",
+    "successful_steps": 23,
+    "architecture": { "tests": 919, "pass": 903, "fail": 0, "skipped": 16, "cancelled": 0 },
+    "veritas": "6/6 true",
+    "actual_chromium_controlled_resident": { "cases": 21, "passed": 21 },
+    "required_setup_provider_browser_step": "PASS"
+  },
+  "windows_full_push_gate": {
+    "tests": 919, "pass": 908, "fail": 0, "skipped": 11, "cancelled": 0,
+    "duration_ms": 449502.4254,
+    "log_sha256": "6f40ab876ce499d2d2fe29c06d3b9a5f7337c681cb04b06ea1fcaf2713374997"
+  },
+  "capability_lifecycle": {
+    "capability": "local-input-budget-and-newest-task-recovery",
+    "implemented": true,
+    "qualified_scope": "CONTROLLED_RUNTIME_ROUTER_AND_HTTP_RETRY_REGRESSIONS",
+    "converged": true,
+    "product_journey_live_model_acceptance": "UNVERIFIED",
+    "dogfooded": false,
+    "release_accepted": false,
+    "disposition": "BOUNDED_REPAIR_CONVERGED_BROADER_RESIDENT_R11_RELEASE_GATES_OPEN"
+  },
+  "capabilities_added": ["Canonical reserve-once fitting, exhausted-window refusal, joint-budget refusal and newest-task retry retention"],
+  "capabilities_lost": "No regression detected in affected93/93 or complete gates; not a whole historical capability audit",
+  "capabilities_still_isolated": "No whole historical disposition audit performed in this unit; visual work remains explicitly deferred",
+  "product_truth_open": ["Actual Router versus adapter input receipts", "Response-observed versus requested model identity", "Full Resident context, skill and live-user acceptance"],
+  "dogfood_findings": "No live product dogfood in this controlled unit",
+  "release_blockers": ["Live Resident and fresh-user/dogfood/RC qualification open", "Historical unexplained gate timeouts open", "Default-branch moderate Dependabot alert remains open", "Host below unchanged local-model start floors after verification; foreign runtime ownership not adopted"],
+  "evidence_layer": "Bounded canonical context repair and controlled actual-browser regressions; not model/provider/role/whole R11/RC acceptance",
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-ci-36966916486-completed.json",
+      "sha256": "493a21e15d32429d34246c0bf505c432dacd6284a0cba8f1a9053c31c4e73d2c"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\local-input-budget-ci-36966916486-completed.log",
+      "sha256": "ef40b57bce7cbd4c11859229fb40d12871ceef4bb1b3d5e23bf9a390f6d67992"
+    }
+  ],
+  "issue38_result_comment": 5945989196,
+  "visuals": "PAUSED; locked package hashes and Design Lab preserved",
+  "pr31": "FROZEN",
+  "next": "Bounded actual dispatched-input observations through existing Router, adapters, AgentLoop and append-only AttemptJournal; preserve sealed admission intent"
+}

@@ -5,9 +5,14 @@ import { BUILTIN_PROVIDERS, type ProviderDefinition } from './providers.ts';
 import { fitHistory, estimateTokens } from './history-fit.ts';
 import type { ChatMessageT } from '../../../common/contracts/chat.ts';
 import type { RouteFallbackT, RouteStatusT } from '../../../common/contracts/routing.ts';
+import { ModelDispatchInputObservation, type ModelDispatchInputObservationT } from '../../../common/contracts/routing.ts';
 import type { ModelProviderRouteT } from '../../../common/contracts/model-access.ts';
 
 export type RouteFailureReason = 'down' | 'busy' | 'unsupported' | 'context_overflow';
+
+export interface ModelDispatchObserverOptions {
+  onDispatchInput?: ((observation: Readonly<ModelDispatchInputObservationT>) => Promise<void>) | undefined;
+}
 
 export class RouterError extends Error {
   readonly reason: RouteFailureReason;
@@ -452,15 +457,38 @@ export class ModelRouter {
     return current.target.route;
   }
 
-  async chatResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], options: { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined } = {}): Promise<RouteChatResult> {
+  private async observeDispatchInput(target: ResolvedChatAuthorityTarget, inputCount: number, fit: ReturnType<typeof fitHistory>, overflowTrimmed: boolean, options: ModelDispatchObserverOptions & { maxTokens?: number | undefined; signal?: AbortSignal | undefined }): Promise<ChatMessageT[]> {
+    const snapshot = structuredClone(fit.messages);
+    options.signal?.throwIfAborted();
+    if (options.onDispatchInput !== undefined) {
+      const hash = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
+      const observation = Object.freeze(ModelDispatchInputObservation.parse({
+        scope: 'ROUTER_DISPATCH_INPUT', route_id: target.binding.route_id, target_revision: target.binding.target_revision,
+        messages_sha256: hash(JSON.stringify(snapshot)),
+        system_sha256: hash(snapshot.filter(message => message.role === 'system').map(message => message.content).join('\n---\n')),
+        input_message_count: inputCount, dispatched_message_count: snapshot.length,
+        estimated_input_tokens: fit.estimatedTokens, fit_dropped_count: fit.dropped,
+        truncated_system: fit.truncatedSystem, overflow_trimmed: overflowTrimmed,
+        completion_reserve_tokens: options.maxTokens ?? 512
+      }));
+      await options.onDispatchInput(observation);
+      options.signal?.throwIfAborted();
+      await this.currentBoundRoute(target);
+      options.signal?.throwIfAborted();
+    }
+    return snapshot;
+  }
+
+  async chatResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], options: ModelDispatchObserverOptions & { maxTokens?: number | undefined; temperature?: number | undefined; timeoutMs?: number | undefined; signal?: AbortSignal | undefined } = {}): Promise<RouteChatResult> {
     const route = await this.currentBoundRoute(target);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
     const chatOptions = normalizeOptions(options);
+    const dispatchMessages = await this.observeDispatchInput(target, messages.length, fit, overflowTrimmed, options);
     const result: { text: string; modelId: string; tokens?: number; timingMs: number } = route.providerType === 'local'
-      ? await this.runtime.chat(route.id.slice('local:'.length), fit.messages, chatOptions)
+      ? await this.runtime.chat(route.id.slice('local:'.length), dispatchMessages, chatOptions)
       : target.binding.execution_adapter_id === 'opencode'
-        ? await this.runOpenCode(target, fit.messages, undefined, chatOptions.signal, chatOptions.timeoutMs)
-        : await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, fit.messages, chatOptions);
+        ? await this.runOpenCode(target, dispatchMessages, undefined, chatOptions.signal, chatOptions.timeoutMs)
+        : await this.providers.chat(target.binding.provider_id!, target.binding.provider_model!, dispatchMessages, chatOptions);
     const out: RouteChatResult = {
       text: result.text,
       modelId: route.id,
@@ -474,24 +502,25 @@ export class ModelRouter {
     return out;
   }
 
-  async chatStreamResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], onDelta: (delta: string) => void, signal: AbortSignal, options: { maxTokens?: number | undefined } = {}): Promise<RouteChatResult> {
+  async chatStreamResolvedTarget(target: ResolvedChatAuthorityTarget, messages: ChatMessageT[], onDelta: (delta: string) => void, signal: AbortSignal, options: ModelDispatchObserverOptions & { maxTokens?: number | undefined } = {}): Promise<RouteChatResult> {
     const route = await this.currentBoundRoute(target);
     const { fit, overflowTrimmed } = this.fitForRoute(route, messages, options.maxTokens);
     const chatOptions = normalizeOptions({ ...options, signal });
+    const dispatchMessages = await this.observeDispatchInput(target, messages.length, fit, overflowTrimmed, { ...options, signal });
     let result: { text: string; modelId: string; tokens?: number; timingMs: number };
     if (route.providerType === 'local') {
       const modelId = route.id.slice('local:'.length);
       const started = Date.now();
       let text = '';
-      await this.runtime.chatStream(modelId, fit.messages, delta => {
+      await this.runtime.chatStream(modelId, dispatchMessages, delta => {
         text += delta;
         onDelta(delta);
       }, signal, chatOptions);
       result = { text, modelId, timingMs: Date.now() - started };
     } else {
       result = target.binding.execution_adapter_id === 'opencode'
-        ? await this.runOpenCode(target, fit.messages, onDelta, signal)
-        : await this.providers.chatStream(target.binding.provider_id!, target.binding.provider_model!, fit.messages, onDelta, chatOptions);
+        ? await this.runOpenCode(target, dispatchMessages, onDelta, signal)
+        : await this.providers.chatStream(target.binding.provider_id!, target.binding.provider_model!, dispatchMessages, onDelta, chatOptions);
     }
     const out: RouteChatResult = {
       text: result.text,

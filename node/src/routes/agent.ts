@@ -22,7 +22,7 @@ import {
 } from '../../../common/contracts/agent.ts';
 import { RouterError, ChatTargetChangedError, type ModelRouter, type ResolvedChatAuthorityTarget } from '../services/model-router.ts';
 import { AuthorityError } from '../services/execution-authority.mjs';
-import type { AgentLoopService as CanonicalAgentLoop } from '../services/agent-loop.mjs';
+import type { AgentLoopService as CanonicalAgentLoop, AgentChatFn } from '../services/agent-loop.mjs';
 import type { ErrorCode } from '../../../common/errors.ts';
 import type { WorkerHandoffEnvelopeT, WorkerDescriptorT } from '../../../common/contracts/worker-handoff.ts';
 
@@ -135,14 +135,14 @@ export function routesForAgent(service: AgentLoopService, options: {
       const { body, execution } = context;
       const request = body as AgentStartRequestT;
       const target = targets.get(context);
-      let chatFnOverride: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | undefined;
+      let chatFnOverride: AgentChatFn | undefined;
       if (options.exactWorker) {
         if (execution === undefined || target === undefined) throw new RouteError('FORBIDDEN', 'Authority-resolved agent target is required');
         const router = options.exactWorker.router;
-        chatFnOverride = async (messages, signal) => {
+        chatFnOverride = async (messages, signal, observations) => {
           const result = await router.chatStreamResolvedTarget(target,
             messages.map(message => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content })),
-            () => undefined, signal ?? new AbortController().signal);
+            () => undefined, signal ?? new AbortController().signal, observations);
           if (result.modelId !== target.binding.route_id) throw new RouteError('CONFLICT', 'agent dispatch returned a different model identity');
           return result.text;
         };
@@ -221,14 +221,14 @@ export function routesForAgent(service: AgentLoopService, options: {
         const inner = chatFnOverride ?? null;
         if (inner !== null) {
           let consumed = false;
-          chatFnOverride = async (messages, signal) => {
+          chatFnOverride = async (messages, signal, observations) => {
             signal?.throwIfAborted();
             if (!consumed) {
               await wh.consume(handoffId);
               consumed = true;
             }
             signal?.throwIfAborted();
-            return inner(messages, signal);
+            return inner(messages, signal, observations);
           };
         }
       }
@@ -241,7 +241,7 @@ export function routesForAgent(service: AgentLoopService, options: {
       // missing/slow, the main call proceeds unchanged.
       if (request.expertAdvisory && options.consultExpert && chatFnOverride) {
         const inner = chatFnOverride;
-        chatFnOverride = async (messages, signal) => {
+        chatFnOverride = async (messages, signal, observations) => {
           let advisory: { expert: string; phase: string; confidence: number } | null = null;
           try {
             const ac = new AbortController();
@@ -268,12 +268,12 @@ export function routesForAgent(service: AgentLoopService, options: {
                   ...messages.slice(0, sysIdx),
                   { ...sysMsg, content: block + sysMsg.content },
                   ...messages.slice(sysIdx + 1)
-                ], signal);
+                ], signal, observations);
               }
             }
-            return inner([{ role: 'system', content: block }, ...messages], signal);
+            return inner([{ role: 'system', content: block }, ...messages], signal, observations);
           }
-          return inner(messages, signal);
+          return inner(messages, signal, observations);
         };
       }
       return service.start(request.task, request.mode ?? 'act', chatFnOverride, {

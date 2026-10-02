@@ -1,0 +1,219 @@
+{
+  "recorded_at": "2026-10-02T05:50:06.770Z",
+  "status": "LOCAL_VERIFIED_PUBLICATION_AND_EXACT_SHA_CI_PENDING",
+  "branch": "nightshift/production-convergence-20260926",
+  "parent_head": "587257af0b34925b51295133b14777ec6483d061",
+  "capability": "content-free Router dispatch input through exact-worker AgentLoop and AttemptJournal",
+  "evidence_layer": "Canonical services with actual HTTP Authority and controlled inference; not live model/provider acceptance",
+  "lifecycle": {
+    "implemented": true,
+    "controlled_regressions_qualified": true,
+    "published": false,
+    "dogfooded": false,
+    "release_accepted": false
+  },
+  "observation_scope": "ROUTER_DISPATCH_INPUT",
+  "root_cause": "Sealed admission preserves assembled intent; Router fitting/advisory can alter downstream input, with no dispatch observation forwarded into AgentLoop journal.",
+  "repair": [
+    "Clone fitted input before awaited observation; closed scalar schema records hashes, exact binding/revision and fitting facts",
+    "Await journal persistence before inference and recheck cancellation, actor and exact target",
+    "Forward optional trusted third callback argument through exact-worker, handoff and expert wrappers",
+    "Append MODEL_INPUT_PREPARED under attempt/session/iteration without rewriting sealed admission"
+  ],
+  "original_red": {
+    "router": {
+      "tests": 8,
+      "pass": 0,
+      "fail": 8
+    },
+    "governed_v1": "8pass/4fail: non-UUID fixture handoff rejected by unchanged schema",
+    "governed_v2": "system-block placement assumption and cyclic fixture cancellation; owned test child stopped after exact identity checks"
+  },
+  "verified": {
+    "affected": {
+      "tests": 174,
+      "pass": 174,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "new_dispatch_cases": 14,
+    "complete_veritas": {
+      "passed": true,
+      "checks": {
+        "path-boundary": true,
+        "secret-scan": true,
+        "manifest-validation": true,
+        "compile": true,
+        "tests": true,
+        "git-diff": true
+      },
+      "architecture": {
+        "tests": 933,
+        "pass": 922,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 11
+      },
+      "original_npm_test": true
+    },
+    "node_types": true,
+    "browser_types": true,
+    "scoped_lint": true,
+    "contracts": true,
+    "c1_generator_check": true,
+    "journal_recovery": true,
+    "immutable_admission": true,
+    "zero_late_inference_on_refusal": true
+  },
+  "capabilities_added": [
+    "Durable post-fit exact-worker Router input digests before inference"
+  ],
+  "capabilities_lost": "None observed in174 affected regressions and complete gates; not a whole historical capability audit",
+  "product_truth_open": [
+    "Adapter HTTP400 retry input",
+    "Anthropic/OpenCode framing input",
+    "Response-observed model identity",
+    "Whole Resident18, selected-skill/context survival, live provider/model role qualification",
+    "Fresh-user/dogfood/RC gates"
+  ],
+  "capabilities_still_isolated": "Visual implementation intentionally paused; whole historical capability disposition audit remains open",
+  "dogfood_findings": "Controlled fixtures only; no live model/provider dogfood this unit",
+  "release_blockers": [
+    "Host below unchanged local-model admission floors",
+    "Historical unexplained full-gate timeouts",
+    "Default-branch moderate Dependabot alert",
+    "Open live Resident, onboarding, packaging and dogfood acceptance rows"
+  ],
+  "safeguards": [
+    "No raw prompt/credential persistence in new observation",
+    "No Authority/admission threshold/deadline/test weakening",
+    "No model start, foreign process termination or model/OS/pagefile edit",
+    "Visual ZIP/references/Lab preserved; PR31 frozen"
+  ],
+  "next": "Publish coherent verified unit; exact-SHA CI; then per-attempt input through existing Runtime/Provider/OpenCode adapters",
+  "sourceHashes": [
+    {
+      "file": "common/contracts/routing.ts",
+      "bytes": 3226,
+      "sha256": "cd44dbaa8195184005544c671fa9d3ef58a31720f86b89463fe96f6376c28494"
+    },
+    {
+      "file": "common/contracts/attempt.ts",
+      "bytes": 7319,
+      "sha256": "fe34443068885748fb70a4571c47bdc5a0e8f5a57eefd38bcc5564f3bd51d2e1"
+    },
+    {
+      "file": "node/src/services/model-router.ts",
+      "bytes": 36166,
+      "sha256": "877581bbf702eba9fa561aa92b3c821a35336eff95e79eb4ff18bde11e5cd349"
+    },
+    {
+      "file": "node/src/services/agent-loop.mjs",
+      "bytes": 67413,
+      "sha256": "c694cff0a3c86b660f865f607f25ad26b215e64b83b43e914424405acfd14af7"
+    },
+    {
+      "file": "node/src/services/agent-loop.d.mts",
+      "bytes": 5036,
+      "sha256": "dc14d1c7e1728c1ed5b05fccb28015c6c54e5642d1eb9c82ee62fd29f7966cb0"
+    },
+    {
+      "file": "node/src/routes/agent.ts",
+      "bytes": 21075,
+      "sha256": "59e6623b63506936c560979764cd33bd52a67583bc99c3a8b2d6534358ee62f3"
+    },
+    {
+      "file": "tests/arch/model-dispatch-observation.test.ts",
+      "bytes": 18806,
+      "sha256": "9e7c5c8c4ccc7fddd8fb81d2b56ddc9c641a309ebfb2c7ff2ab87ca5dcc94fa0"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-observation-baseline.log",
+      "bytes": 6631,
+      "sha256": "6d3af0fb821b134a9f766a16b16dbec2fa8b67e82cf2a4d4f4ff2e7a157c48eb"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-observation-repaired-v1.log",
+      "bytes": 912,
+      "sha256": "8e14b63de76ea12a898ffb9a0a449c8206d1c388424485882a95f8bd4e4ad35d"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-governed-v1.log",
+      "bytes": 5889,
+      "sha256": "be0afa0e9f7b01e3ba841a4422ebf272555f29da5447cd3c5516cfc4377838d2"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-governed-v2.log",
+      "bytes": 16030,
+      "sha256": "f98b794f20610c8141ca3e2cacfb69adfdf2f168514fcf4765827ec2d82deb00"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-governed-v3.log",
+      "bytes": 1299,
+      "sha256": "2e2e69735734ae2fb196ebafce7cb4407e235b5c62c2cc805b629b5c09551500"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-affected-final.log",
+      "bytes": 22182,
+      "sha256": "f9cb59bcb3cdeb19f76d2306f2b023bf3cbc93d082ab7229a2fe4d941e4c7eed"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-node-types-settled.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-browser-types-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-scoped-lint-settled.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-contracts-final.log",
+      "bytes": 103,
+      "sha256": "76da50a245ee3d7df8611d09e6e0ab95e901d26086477bad868daac5eb8503b5"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-c1-final.log",
+      "bytes": 57,
+      "sha256": "137cbd157a526db77d7328f6a37f3ff9bea5617b141c6a101b8ded48fe872c0e"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-veritas.json",
+      "bytes": 26224,
+      "sha256": "5ec41e73d304a367e85bfd4ecb0a78e27f571675ee5fb6f7ffa7ed858a7ece78"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-veritas.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-veritas-metadata.json",
+      "bytes": 262,
+      "sha256": "fd6a47ba01516f714bfbc64cce5710e3239b9fbe93cb9d68b542429e3ab6484c"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-veritas-result.json",
+      "bytes": 238,
+      "sha256": "7718ec13c29b9af9fde415197fb550992161387206fd0030cee37a107cfd6c2c"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-resource-active.json",
+      "bytes": 334,
+      "sha256": "8fdce8b12151eec9cc40ff9cb041e38e0645b7786bf26753302e0dcc0cb6a32a"
+    },
+    {
+      "path": "E:\\covert-tooling\\functional-release-20261001\\model-dispatch-resource-after-veritas.json",
+      "bytes": 396,
+      "sha256": "d7560f8ad1d3bb62036bf99bb08c84f945bd6acbe66a16d3a7e2ffb78871ce72"
+    }
+  ]
+}
