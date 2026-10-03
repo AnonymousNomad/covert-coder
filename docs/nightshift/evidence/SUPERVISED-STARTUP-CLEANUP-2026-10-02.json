@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "work_unit": "supervised-test-startup-rollback",
+  "executor_label": "Saul 6.1 Ultra",
+  "starting_sha": "ce01ba9494ab5aefdd0c4a3b62586a649bb6f437",
+  "branch": "nightshift/production-convergence-20260926",
+  "objective": "Rollback helper-owned backends and facade when real supervised startup fails before returning its cleanup handle.",
+  "scope": "TEST_INFRASTRUCTURE_ONLY",
+  "defects": [
+    "launchSupervisedStack lacked startup rollback after child/listener creation.",
+    "Old child termination could report success after a kill exception or taskkill exit without child exit proof and left a watchdog active.",
+    "Temporary semantic observer injected an out-of-scope helper, causing pairing refusal. This diagnostic defect did not establish the historical storage cause."
+  ],
+  "files_changed": [
+    "tests/helpers/supervised-stack.mjs",
+    "tests/arch/supervised-stack-cleanup.test.ts",
+    "tests/arch/supervised-stack-startup-fixture.mjs",
+    "tests/arch/supervised-stack-startup-fixture.d.mts",
+    "AGENT_NOTES.md",
+    "docs/evidence/desktop-battery.md",
+    "docs/nightshift/evidence/SUPERVISED-STARTUP-CLEANUP-2026-10-02.md",
+    "docs/nightshift/evidence/SUPERVISED-STARTUP-CLEANUP-2026-10-02.json"
+  ],
+  "first_pass": {
+    "kind": "INTENTIONAL_REGRESSION_RED_BEFORE_REPAIR",
+    "tests": 1,
+    "pass": 0,
+    "fail": 1,
+    "duration_ms": 6523.53,
+    "reason": "startup rejected while owned children remained alive"
+  },
+  "introduced_regressions": {
+    "product": "NONE_OBSERVED_IN_FOCUSED_OR_AFFECTED_GATES",
+    "tooling": [
+      "Temporary observer scope defect retained outside product repository.",
+      "Two JavaScript tool-wrapper errors before mutation in earlier unit continuation.",
+      "One apply_patch transaction rejected same-path delete/add; preceding independent patch succeeded and was inspected before repair."
+    ]
+  },
+  "repair_loops": {
+    "helper_root_cause_fix": 1,
+    "review_hardening_passes": 2,
+    "note": "Review prompted native-handle termination, stream-close proof, shared-promise assertion and removal of the extra fixture process ownership layer. No rerun-only pass is counted as closure."
+  },
+  "gates": {
+    "focused_final": {
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "skip": 0,
+      "cancel": 0,
+      "duration_ms": 7897.4504
+    },
+    "affected_final": {
+      "tests": 8,
+      "pass": 8,
+      "fail": 0,
+      "skip": 0,
+      "cancel": 0,
+      "duration_ms": 35518.1703
+    },
+    "static_initial": {
+      "node_typescript": "PASS",
+      "browser_typescript": "PASS",
+      "eslint_errors": 0,
+      "eslint_warnings": 62,
+      "scope": "Before final fixture simplification; complete Veritas compile gate must verify final revision."
+    },
+    "veritas": {
+      "passed": true,
+      "checks_passed": 6,
+      "checks_total": 6,
+      "compile_exit_code": 0,
+      "npm_test_exit_code": 0,
+      "architecture": {
+        "tests": 981,
+        "pass": 970,
+        "fail": 0,
+        "skip": 11,
+        "cancel": 0,
+        "duration_ms": 674585.9295
+      },
+      "artifact": "supervised-startup-cleanup-veritas-20261002.json",
+      "sha256": "5a7c3c45b3d55d8617b905c2b2a1c8f6d12b264ce98ddbe2ad4c8d24071a0197"
+    },
+    "full_windows_publication": "PENDING",
+    "exact_sha_ci": "PENDING",
+    "static_final": "Canonical Veritas compile passed both TypeScript projects, ESLint and all architecture tests. Initial measured warning baseline was 62; final report retains the architecture tail rather than a new warning count."
+  },
+  "local_artifacts": [
+    {
+      "file": "supervised-startup-cleanup-baseline-20261002.log",
+      "sha256": "6e21a47654155992f96b628b1b466ee0d1d363791a93bb12c85633c8998ca523"
+    },
+    {
+      "file": "supervised-startup-cleanup-focused-v3-20261002.log",
+      "sha256": "a9ade89679b95cca7514a63cff79c6a8c0f811123ae9b797cc547425dcabde4d"
+    },
+    {
+      "file": "supervised-startup-cleanup-final-affected-20261002.log",
+      "sha256": "db0bcce052e1711e07b155ffb5291223e4600471603260dfc1d25e9030ba1adb"
+    }
+  ],
+  "artifact_directory": "E:/covert-tooling/functional-release-20261001",
+  "elapsed_total": "UNKNOWN; only test-run durations and filesystem timestamps are retained.",
+  "constraints": [
+    "PR #31 frozen.",
+    "design-lab/ preserved untouched.",
+    "No admission floor, Authority, test assertion or request timeout weakened.",
+    "No unrelated process terminated; only exact owned interrupted harness tree was removed and its captured descendants confirmed absent."
+  ],
+  "remaining_uncertainty": [
+    "Historical storage/audit timeout OPEN / CAUSE_UNKNOWN; current green repro does not explain it.",
+    "Response-observed provider/model identity not yet implemented.",
+    "No live provider or local model acceptance from these infrastructure tests.",
+    "Local model physical headroom below 6656 MiB in latest sample; no model start attempted.",
+    "GLib advisory remains OPEN."
+  ],
+  "next": "Priority 1: response-observed identity through existing Router/AgentLoop/AttemptJournal; first bounded managed OpenCode observation must identify delegated selection evidence and preserve upstream UNKNOWN.",
+  "publication_hook": {
+    "configuration": "Inherited core.hooksPath points to E:/aide-sovern-workbench, whose pre-push lacks the accepted local-Git-environment isolation repair.",
+    "action": "Select E:/covert-nightshift-integration tracked hook via invocation-local git -c core.hooksPath for full publication; preserve shared configuration.",
+    "canonical_hook_sha256": "d68313644ad8064e74ebe9b524b4f0388ee03c00d83631f7cef331f281de0bd2"
+  }
+}

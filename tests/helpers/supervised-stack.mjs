@@ -39,19 +39,36 @@ export async function waitForHttp(url, timeoutMs = 30000) {
 }
 
 function terminateChild(ref, timeoutMs = 5000) {
-  if (ref.exitCode !== null || ref.signalCode !== null || ref.pid === undefined) return Promise.resolve();
-  return new Promise(resolve => {
-    const finished = () => resolve();
-    ref.once('exit', finished);
-    try { ref.kill(); } catch { finished(); }
-    setTimeout(() => {
-      if (ref.exitCode === null && ref.signalCode === null) {
-        const taskkill = spawn('taskkill', ['/pid', String(ref.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
-        taskkill.once('exit', finished);
-        taskkill.once('error', finished);
-      } else {
-        finished();
-      }
+  const exited = () => ref.exitCode !== null || ref.signalCode !== null;
+  if (ref.pid === undefined || (exited() && ref.stdout?.destroyed !== false && ref.stderr?.destroyed !== false)) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    let childClosed = false;
+    let lastError;
+    let escalation;
+    let deadline;
+    const dispose = () => {
+      clearTimeout(escalation);
+      clearTimeout(deadline);
+      ref.off('close', onClose);
+    };
+    const finish = () => {
+      if (!childClosed) return;
+      dispose();
+      resolve();
+    };
+    const onClose = () => { childClosed = true; finish(); };
+    ref.once('close', onClose);
+    if (!exited()) try { ref.kill(); } catch (error) { lastError = error; }
+    escalation = setTimeout(() => {
+      if (childClosed || exited()) return;
+      // Use the retained native child handle, never reopen an old PID.
+      try { ref.kill('SIGKILL'); } catch (error) { lastError = error; }
+    }, timeoutMs / 2);
+    deadline = setTimeout(() => {
+      dispose();
+      const message = exited() ? 'owned test child stream cleanup was not confirmed before the deadline'
+        : 'owned test child exit was not confirmed before the deadline';
+      reject(new Error(message, { cause: lastError }));
     }, timeoutMs);
   });
 }
@@ -60,6 +77,15 @@ export async function launchSupervisedStack({ workspace, env = {}, origin = 'htt
   if (!workspace) throw new Error('workspace is required');
   const children = [];
   const logs = [];
+  let supervisor;
+  let facade;
+  let addresses;
+  let facadePort;
+  let bases;
+  let closePromise;
+  let token = null;
+  let actorId = null;
+  const boundOrigin = origin;
   function child(entry, extra) {
     const ref = spawn(process.execPath, [entry], {
       cwd: ROOT,
@@ -73,31 +99,37 @@ export async function launchSupervisedStack({ workspace, env = {}, origin = 'htt
     return ref;
   }
 
-  const supervisor = superviseAuthority(child('node/src/server.ts', { AIDE_ARCH_PORT: '0' }));
-  const legacy = child('daemon/server.mjs', { AIDE_DAEMON_PORT: '0', AIDE_LEGACY_PORT: '0' });
-  supervisor.attach('legacy', legacy);
-  const addresses = await supervisor.ready();
-  const targets = {
-    ts: { host: HOST, port: addresses.arch.port },
-    legacy: { host: HOST, port: addresses.legacy.port }
-  };
-  const routeMap = await loadRouteMap(path.join(ROOT, 'common/facade-route-map.json'));
-  const facade = await createFacade({
-    routeMap,
-    targets,
-    authenticate: (token, requestOrigin) => supervisor.authenticate(token, requestOrigin)
-  });
-  const facadePort = facade.server.address().port;
-  const bases = {
-    facade: `http://${HOST}:${facadePort}`,
-    ts: `http://${HOST}:${targets.ts.port}`,
-    legacy: `http://${HOST}:${targets.legacy.port}`
-  };
-  await waitForHttp(`${bases.facade}/api/health`);
+  try {
+    supervisor = superviseAuthority(child('node/src/server.ts', { AIDE_ARCH_PORT: '0' }));
+    const legacy = child('daemon/server.mjs', { AIDE_DAEMON_PORT: '0', AIDE_LEGACY_PORT: '0' });
+    supervisor.attach('legacy', legacy);
+    addresses = await supervisor.ready();
+    const targets = {
+      ts: { host: HOST, port: addresses.arch.port },
+      legacy: { host: HOST, port: addresses.legacy.port }
+    };
+    const routeMap = await loadRouteMap(path.join(ROOT, 'common/facade-route-map.json'));
+    facade = await createFacade({
+      routeMap,
+      targets,
+      authenticate: (token, requestOrigin) => supervisor.authenticate(token, requestOrigin)
+    });
+    facadePort = facade.server.address().port;
+    bases = {
+      facade: `http://${HOST}:${facadePort}`,
+      ts: `http://${HOST}:${targets.ts.port}`,
+      legacy: `http://${HOST}:${targets.legacy.port}`
+    };
+    await waitForHttp(`${bases.facade}/api/health`);
 
-  let token = null;
-  let actorId = null;
-  const boundOrigin = origin;
+    await pair();
+  } catch (error) {
+    try { await close(); }
+    catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'supervised stack startup failed and cleanup was not confirmed', { cause: error });
+    }
+    throw error;
+  }
 
   async function pair() {
     const { proof } = await supervisor.pairing(boundOrigin);
@@ -115,7 +147,6 @@ export async function launchSupervisedStack({ workspace, env = {}, origin = 'htt
     actorId = session.data.actor_id;
     return session.data;
   }
-  await pair();
 
   function authHeaders(extra, envelope = true) {
     const headers = new Headers({ Origin: boundOrigin });
@@ -186,10 +217,18 @@ export async function launchSupervisedStack({ workspace, env = {}, origin = 'htt
     return { status: response.status, body };
   }
 
-  async function close() {
-    supervisor.close();
-    await facade.close();
-    await Promise.all(children.map(ref => terminateChild(ref)));
+  function close() {
+    if (!closePromise) closePromise = (async () => {
+      const failures = [];
+      try { supervisor?.close(); } catch (error) { failures.push(error); }
+      const results = await Promise.allSettled([
+        Promise.resolve().then(() => facade?.close()),
+        ...children.map(ref => terminateChild(ref))
+      ]);
+      for (const result of results) if (result.status === 'rejected') failures.push(result.reason);
+      if (failures.length) throw new AggregateError(failures, 'supervised stack cleanup was not confirmed');
+    })();
+    return closePromise;
   }
 
   // Canonical approval surface for operations the services propose at run time
