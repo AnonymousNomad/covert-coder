@@ -42,6 +42,23 @@ removal is conditional on confirmed cleanup and checked absolute boundaries.
   970 pass / 0 fail / 11 skip / 0 cancelled**, 674585.9295 ms.
 - Full publication gate and exact-SHA CI remain pending before publication.
 
+### Cumulative architecture rerun after the preserved full-suite red (2026-10-03)
+
+On source SHA `b82ace3922fbe5f519562c1168438bb5aad59cc0`, the ordered cumulative
+architecture suite completed naturally with **981 tests / 970 pass / 0 fail /
+11 skip / 0 cancelled**, exit code 0, in 785079.0917 ms. This includes all 12
+test cases named in the earlier interrupted/red run; none reproduced. This is a
+non-reproduction result only: the earlier failures and hang remain preserved,
+and their initiating cause is still **UNKNOWN**. No root-cause closure is
+claimed. The run used the detailed Node reporter, single-file concurrency,
+`AIDE_FULL_BATTERY=1`, and invocation-local clearing of Git hook environment
+variables. It is the architecture suite result, not a new whole-Veritas,
+`npm test`, publication-hook, or exact-SHA CI result.
+
+Raw log: `E:/covert-tooling/functional-release-20261001/b82-full-arch-diagnostics-20261003.log`
+SHA-256: `64669E627AE2118C8016C4DD234C6E260207E914D9EB6D464468B5FFB970FF6D`.
+The canonical publication hook and exact-SHA CI remain pending.
+
 The inherited hook path targets an older checkout without the accepted Git
 environment-isolation repair. The publication invocation selects this canonical
 worktree's tracked pre-push hook explicitly; shared configuration is preserved.
@@ -54,8 +71,11 @@ These tests do not qualify a model or close the historical storage timeout.
 
 Historical storage/audit timeout remains **OPEN / CAUSE_UNKNOWN**. The GLib
 advisory stays open. Visual work and PR #31 remain preserved. After the green
-publication checkpoint, continue response identity through the existing journal;
-OpenCode-reported selection must remain distinct from upstream response proof.
+publication checkpoint, continue the owner-directed Planner/Coder/Reviewer
+onboarding-trio completion through existing Model Manager, model acquisition,
+role assignment and qualification owners. Preserve the separate response
+identity and context/skill survival gates; OpenCode-reported selection must
+remain distinct from upstream response proof.
 
 The companion JSON records comparison details, repair loops, raw log hashes,
 known tooling mistakes and evidence limits. Total executor wall time is UNKNOWN.
