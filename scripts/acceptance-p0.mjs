@@ -147,7 +147,7 @@ try {
   const byokWrites = [
     ['PUT', '/api/byok/providers/set', { provider: { id: 'hermetic', name: 'Hermetic', base_url: 'http://127.0.0.1:1/v1', api_type: 'chat-completions', model_id: 'hermetic-1', tool_calling: true } }],
     ['PUT', '/api/byok/key', { provider_id: 'hermetic', api_key: 'sk-hermetic-p0-test' }],
-    ['PUT', '/api/byok/routing', { routing: { plan: 'local', act: { provider_id: 'hermetic', model_id: 'hermetic-1' }, utility: 'local' } }],
+    ['PUT', '/api/byok/routing', { routing: { planner: 'local', coder: { provider_id: 'hermetic', model_id: 'hermetic-1' }, reviewer: 'local', utility: 'local' } }],
     ['PUT', '/api/byok/consent', { enabled: true }],
     ['POST', '/api/byok/test', { provider_id: 'hermetic' }]
   ];
@@ -169,7 +169,7 @@ try {
   assert.equal(byokStatus.status, 200);
   assert.equal(byokStatus.body.data.consent_enabled, false, 'consent never enabled by denied writes');
   assert.deepEqual(byokStatus.body.data.providers, [], 'no provider configured by denied writes');
-  assert.equal(byokStatus.body.data.routing.plan, 'local', 'no routing altered by denied writes');
+  assert.deepEqual(byokStatus.body.data.routing, { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, 'no routing altered by denied writes');
 
   // PHASE 9: selection validation and exact operation approval are distinct.
   // Describing a registered local target does not start or qualify a runtime.
@@ -181,7 +181,7 @@ try {
   assert.equal(typeof modelId, 'string', 'canonical model catalog supplies an exact target for the approval test');
   const agentDenied = await stack.json('facade', 'POST', '/api/agent/start', { body: {
     task: 'Improve note.md', mode: 'act', chat_source: 'local',
-    worker: { worker: `local:${modelId}`, provider: 'local', model: modelId, role: 'act' }
+    worker: { worker: `local:${modelId}`, provider: 'local', model: modelId, role: 'coder' }
   } });
   assert.equal(agentDenied.status, 409, 'agent start requires an approved exact operation');
   assert.equal(agentDenied.body.error?.code, 'NOT_READY');
