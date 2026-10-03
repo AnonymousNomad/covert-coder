@@ -474,8 +474,9 @@ test('production OpenCode Model Access route is governed and requires exact re-v
   const routeId = `route:opencode-managed:${OPENCODE_PROVIDER_MODEL}:opencode`;
   const routingBody = {
     routing: {
-      plan: 'local',
-      act: { provider_id: 'opencode', model_id: OPENCODE_PROVIDER_MODEL },
+      planner: 'local',
+      coder: { provider_id: 'opencode', model_id: OPENCODE_PROVIDER_MODEL },
+      reviewer: 'local',
       utility: 'local'
     }
   };

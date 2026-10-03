@@ -2635,7 +2635,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 282
+          "line": 285
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
@@ -3660,7 +3660,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 270
+          "line": 273
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
@@ -4632,27 +4632,27 @@
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 192
+          "line": 195
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 212
+          "line": 215
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 230
+          "line": 233
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 245
+          "line": 248
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 295
+          "line": 298
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 323
+          "line": 326
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
