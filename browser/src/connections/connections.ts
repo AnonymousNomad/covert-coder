@@ -24,7 +24,7 @@ export interface ConnectionsPanel {
   refresh(): Promise<void>;
 }
 
-const ROLES = ['plan', 'act', 'utility'] as const;
+const ROLES = ['planner', 'coder', 'reviewer', 'utility'] as const;
 type Role = (typeof ROLES)[number];
 
 const STATUS_LABELS: Record<ConnectionStatusT, string> = {

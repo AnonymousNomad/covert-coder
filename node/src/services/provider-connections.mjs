@@ -173,7 +173,7 @@ export function createProviderConnectionsService(options) {
 
   async function apiConnections() {
     const result = [];
-    let byokStatus = { providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: false };
+    let byokStatus = { providers: [], routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, consent_enabled: false };
     try {
       byokStatus = byokService.status() ?? byokStatus;
     } catch {
@@ -262,7 +262,7 @@ export function createProviderConnectionsService(options) {
     }
     const opencodeReferences = new Map();
     const routedRoles = byokStatus.routing && typeof byokStatus.routing === 'object' ? byokStatus.routing : {};
-    for (const role of ['plan', 'act', 'utility']) {
+    for (const role of ['planner', 'coder', 'reviewer', 'utility']) {
       const target = routedRoles[role];
       if (!target || typeof target !== 'object' || target.provider_id !== 'opencode') continue;
       const providerModelId = safeLabel(target.model_id, '');
@@ -429,7 +429,7 @@ export function createProviderConnectionsService(options) {
   function currentRouting() {
     try {
       const status = byokService.status();
-      const routing = status && status.routing ? status.routing : { plan: 'local', act: 'local', utility: 'local' };
+      const routing = status && status.routing ? status.routing : { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' };
       const safeTarget = target => {
         if (target === 'local') return 'local';
         if (!target || typeof target !== 'object') return 'local';
@@ -439,12 +439,13 @@ export function createProviderConnectionsService(options) {
         };
       };
       return {
-        plan: safeTarget(routing.plan),
-        act: safeTarget(routing.act),
+        planner: safeTarget(routing.planner),
+        coder: safeTarget(routing.coder),
+        reviewer: safeTarget(routing.reviewer),
         utility: safeTarget(routing.utility)
       };
     } catch {
-      return { plan: 'local', act: 'local', utility: 'local' };
+      return { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' };
     }
   }
 
@@ -489,7 +490,7 @@ export function createProviderConnectionsService(options) {
       }
       const status = byokService.status() ?? {};
       const routing = status.routing && typeof status.routing === 'object' ? status.routing : {};
-      const selected = ['plan', 'act', 'utility'].some(role => {
+      const selected = ['planner', 'coder', 'reviewer', 'utility'].some(role => {
         const target = routing[role];
         return target && typeof target === 'object' && target.provider_id === 'opencode' && target.model_id === providerModelId;
       });

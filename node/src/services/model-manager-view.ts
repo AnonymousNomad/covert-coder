@@ -156,12 +156,12 @@ function availability(connection: ProviderConnectionT, modelSupportState: string
 
 function selectedRoles(connections: ConnectionsViewResponseT, connection: ProviderConnectionT, providerModelId: string): string[] {
   const roles: string[] = [];
-  for (const role of ['plan', 'act', 'utility'] as const) {
+  for (const role of ['planner', 'coder', 'reviewer', 'utility'] as const) {
     const target = connections.routed_roles[role] as unknown;
     if (target && typeof target === 'object') {
       const route = target as { provider_id?: string; model_id?: string };
       if (route.provider_id === connection.provider_id && route.model_id === providerModelId) {
-        roles.push(role === 'plan' ? 'PLANNING' : role === 'act' ? 'IMPLEMENTATION' : 'UTILITY');
+        roles.push(role === 'planner' ? 'PLANNING' : role === 'coder' ? 'IMPLEMENTATION' : role === 'reviewer' ? 'REVIEW' : 'UTILITY');
       }
     }
   }
@@ -217,7 +217,7 @@ function buildAdapters(connections: ConnectionsViewResponseT, runtime: ModelMana
 function connectionView(raw: unknown): ConnectionsViewResponseT {
   return ConnectionsViewResponse.parse(raw ?? {
     consensus: 'none',
-    routed_roles: { plan: 'local', act: 'local', utility: 'local' },
+    routed_roles: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' },
     preference: 'local-first',
     connections: []
   });

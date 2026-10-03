@@ -73,6 +73,15 @@ test('new conversation uses the workspace act target or local route, never the f
   assert.equal(initialConversationRouteId([{ ...routes[0], status: 'down' }], 'local'), '');
 });
 
+test('exact local workspace coder target stays bound to that model when routes are unavailable', () => {
+  const target = { provider_id: 'local', model_id: 'qualified-coder' } as const;
+  const routes = [
+    { id: 'local:another-model', providerType: 'local', status: 'ready' },
+    { id: 'cloud:openai:gpt-x', providerType: 'cloud', status: 'ready' }
+  ] as const;
+  assert.equal(initialConversationRouteId(routes, target), 'local:qualified-coder');
+});
+
 test('saved conversation route remains exact when its catalog entry disappears', () => {
   const saved = 'cloud:opencode:opencode-go/deepseek-v4.1-flash';
   assert.equal(restoreConversationRouteId(saved, [{ id: 'cloud:openai:gpt-x', providerType: 'cloud', status: 'ready' }]), saved);

@@ -77,7 +77,7 @@ export function routesForAgent(service: AgentLoopService, options: {
     router: Pick<ModelRouter, 'resolveAuthorityTarget' | 'chatStreamResolvedTarget'>;
     effectiveContext?: (target: ResolvedChatAuthorityTarget) => number | null;
   };
-  resolveProviderChatFn?: (role: 'plan' | 'act') => ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
+  resolveProviderChatFn?: (role: 'planner' | 'coder' | 'reviewer') => ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
   // Live worker-switch wiring (Wave 3/4 reconciliation): governed handoff
   // reception + the exact destination chat functions used for binding and
   // one-shot consume.
@@ -88,7 +88,7 @@ export function routesForAgent(service: AgentLoopService, options: {
     consume(id: string): Promise<WorkerHandoffEnvelopeT>;
   };
   resolveLocalChatFn?: () => Promise<(messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>>;
-  providerTargetFor?: (role: 'plan' | 'act') => { provider: string; model: string } | null;
+  providerTargetFor?: (role: 'planner' | 'coder' | 'reviewer') => { provider: string; model: string } | null;
   dispatchTool?: (name: string, args: Record<string, string>, opts: { sandbox?: string }) => Promise<{ ok: boolean; output: string; terminal?: boolean }>;
   // Expert advisory: when set, the route layer consults this micro-expert
   // (e.g. task-router) BEFORE the main model call and prepends the result
@@ -148,7 +148,10 @@ export function routesForAgent(service: AgentLoopService, options: {
         };
       } else if (request.chat_source === 'provider') {
         if (!options.resolveProviderChatFn) throw new RouteError('NOT_READY', 'no provider resolver wired');
-        const role = request.mode === 'plan' ? 'plan' as const : 'act' as const;
+        const requestedRole = request.worker?.role;
+        const role = requestedRole === 'planner' || requestedRole === 'coder' || requestedRole === 'reviewer'
+          ? requestedRole
+          : request.mode === 'plan' ? 'planner' as const : 'coder' as const;
         let resolved: ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
         try {
           resolved = options.resolveProviderChatFn(role);
@@ -170,7 +173,10 @@ export function routesForAgent(service: AgentLoopService, options: {
       if (handoffId !== undefined) {
         const wh = options.workerHandoff;
         if (!wh) throw new RouteError('NOT_READY', 'no worker handoff resolver wired');
-        const role: 'plan' | 'act' = request.mode === 'plan' ? 'plan' : 'act';
+        const requestedRole = request.worker?.role;
+        const role: 'planner' | 'coder' | 'reviewer' = requestedRole === 'planner' || requestedRole === 'coder' || requestedRole === 'reviewer'
+          ? requestedRole
+          : request.mode === 'plan' ? 'planner' : 'coder';
         let envelope: WorkerHandoffEnvelopeT;
         try {
           envelope = await wh.get(handoffId);
@@ -179,11 +185,20 @@ export function routesForAgent(service: AgentLoopService, options: {
           throw new RouteError(code === 'NOT_FOUND' ? 'NOT_FOUND' : 'CONFLICT', String((error as Error).message).slice(0, 300));
         }
         let actual: WorkerDescriptorT;
+        const canonicalWorkerRole = (workerRole: WorkerDescriptorT['role']) => workerRole === 'plan' ? 'planner' : workerRole === 'act' ? 'coder' : workerRole;
         if (target !== undefined) {
           actual = request.worker!;
         } else if (request.chat_source === 'provider') {
           const target = options.providerTargetFor ? options.providerTargetFor(role) : null;
           if (target === null) throw new RouteError('NOT_READY', 'no provider route is configured for this role');
+          const requested = request.worker;
+          if (requested !== undefined && (
+            requested.worker !== `cloud:${target.provider}:${target.model}` ||
+            requested.provider !== target.provider || requested.model !== target.model ||
+            canonicalWorkerRole(requested.role) !== role
+          )) {
+            throw new RouteError('CONFLICT', 'requested worker does not match the configured exact role target');
+          }
           actual = { worker: `cloud:${target.provider}:${target.model}`, provider: target.provider, model: target.model, role };
         } else {
           const requested = (request as { worker?: WorkerDescriptorT }).worker;
@@ -194,9 +209,7 @@ export function routesForAgent(service: AgentLoopService, options: {
         // reviewer) maps deterministically onto the session's execution mode
         // (plan/act); exact matches always bind. Role change never grants
         // authority — the session's own approvals still gate every action.
-        const roleMatches = envelope.to.role === actual.role
-          || ((envelope.to.role === 'coder' || envelope.to.role === 'reviewer') && actual.role === 'act')
-          || (envelope.to.role === 'planner' && actual.role === 'plan');
+        const roleMatches = canonicalWorkerRole(envelope.to.role) === canonicalWorkerRole(actual.role);
         const bindingOk = envelope.to.provider === actual.provider
           && roleMatches
           && (envelope.to.model === actual.model || (actual.provider === 'local' && envelope.to.model === 'auto'));

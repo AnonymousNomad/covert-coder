@@ -313,7 +313,7 @@ test('synthetic secrets never enter the envelope; the raw transcript stays out',
   const provider = { id: 'stub-wh', name: 'WH Stub', base_url: `http://127.0.0.1:${stubPort}/v1`, api_type: 'chat-completions', model_id: 'stub-wh-1', tool_calling: false };
   assert.equal((await approved('PUT', '/api/byok/providers/set', { provider }, 'task:wh-secret-set')).status, 200);
   assert.equal((await approved('PUT', '/api/byok/key', { provider_id: 'stub-wh', api_key: SECRET }, 'task:wh-secret-key')).status, 200);
-  assert.equal((await approved('PUT', '/api/byok/routing', { routing: { plan: 'local', act: { provider_id: 'stub-wh', model_id: 'stub-wh-1' }, utility: 'local' } }, 'task:wh-secret-routing')).status, 200);
+  assert.equal((await approved('PUT', '/api/byok/routing', { routing: { planner: 'local', coder: { provider_id: 'stub-wh', model_id: 'stub-wh-1' }, reviewer: 'local', utility: 'local' } }, 'task:wh-secret-routing')).status, 200);
   stubReply = `<attempt_completion><result>worker output mentions ${SECRET} accidentally</result></attempt_completion>`;
   const started = await approved<{ session_id: string }>('POST', '/api/agent/start', { task: 'secret boundary stage', mode: 'act', chat_source: 'provider' }, 'task:wh-secret-start');
   assert.equal(started.status, 200);

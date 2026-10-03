@@ -35,7 +35,7 @@ function metadata(...parts: string[]): HTMLElement {
   return row;
 }
 
-function roleTarget(target: ModelManagerResponseT['connections']['routed_roles']['plan']): string {
+function roleTarget(target: ModelManagerResponseT['connections']['routed_roles']['planner']): string {
   return target === 'local' ? 'local runtime' : target.provider_id + ' · ' + target.model_id;
 }
 
@@ -73,13 +73,13 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     body.appendChild(el('div', 'models-section-header', 'MODEL SELECTION SCOPE'));
     body.appendChild(metadata(
       'conversation: Chat selection is saved with that conversation and does not change project defaults',
-      'project role defaults: plan, act, and utility targets below persist for this project',
+      'project role defaults: planner, coder, reviewer, and utility targets below persist for this project',
       'global model override: none configured; the built-in default lane is the local runtime'
     ));
 
     body.appendChild(el('div', 'models-section-header', 'PROJECT ROLE DEFAULTS'));
     const roles = el('div', 'models-list');
-    for (const role of ['plan', 'act', 'utility'] as const) {
+    for (const role of ['planner', 'coder', 'reviewer', 'utility'] as const) {
       const row = el('div', 'route-row');
       row.appendChild(el('span', 'route-id', role.toUpperCase()));
       row.appendChild(el('span', 'route-name', roleTarget(view.connections.routed_roles[role])));

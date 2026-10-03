@@ -3951,7 +3951,7 @@
                     "routing": {
                       "type": "object",
                       "properties": {
-                        "plan": {
+                        "planner": {
                           "default": "local",
                           "anyOf": [
                             {
@@ -3976,7 +3976,32 @@
                             }
                           ]
                         },
-                        "act": {
+                        "coder": {
+                          "default": "local",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "local"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "provider_id": {
+                                  "type": "string"
+                                },
+                                "model_id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "provider_id",
+                                "model_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "reviewer": {
                           "default": "local",
                           "anyOf": [
                             {
@@ -4028,8 +4053,9 @@
                         }
                       },
                       "required": [
-                        "plan",
-                        "act",
+                        "planner",
+                        "coder",
+                        "reviewer",
                         "utility"
                       ],
                       "additionalProperties": false
@@ -4054,7 +4080,7 @@
                   "routing": {
                     "type": "object",
                     "properties": {
-                      "plan": {
+                      "planner": {
                         "default": "local",
                         "anyOf": [
                           {
@@ -4079,7 +4105,32 @@
                           }
                         ]
                       },
-                      "act": {
+                      "coder": {
+                        "default": "local",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "local"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "provider_id": {
+                                "type": "string"
+                              },
+                              "model_id": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "provider_id",
+                              "model_id"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "reviewer": {
                         "default": "local",
                         "anyOf": [
                           {
@@ -4131,8 +4182,9 @@
                       }
                     },
                     "required": [
-                      "plan",
-                      "act",
+                      "planner",
+                      "coder",
+                      "reviewer",
                       "utility"
                     ],
                     "additionalProperties": false
@@ -4219,7 +4271,7 @@
                     "routing": {
                       "type": "object",
                       "properties": {
-                        "plan": {
+                        "planner": {
                           "default": "local",
                           "anyOf": [
                             {
@@ -4244,7 +4296,32 @@
                             }
                           ]
                         },
-                        "act": {
+                        "coder": {
+                          "default": "local",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "local"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "provider_id": {
+                                  "type": "string"
+                                },
+                                "model_id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "provider_id",
+                                "model_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "reviewer": {
                           "default": "local",
                           "anyOf": [
                             {
@@ -4296,8 +4373,9 @@
                         }
                       },
                       "required": [
-                        "plan",
-                        "act",
+                        "planner",
+                        "coder",
+                        "reviewer",
                         "utility"
                       ],
                       "additionalProperties": false
@@ -5487,7 +5565,7 @@
                     "routed_roles": {
                       "type": "object",
                       "properties": {
-                        "plan": {
+                        "planner": {
                           "default": "local",
                           "anyOf": [
                             {
@@ -5512,7 +5590,32 @@
                             }
                           ]
                         },
-                        "act": {
+                        "coder": {
+                          "default": "local",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "local"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "provider_id": {
+                                  "type": "string"
+                                },
+                                "model_id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "provider_id",
+                                "model_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "reviewer": {
                           "default": "local",
                           "anyOf": [
                             {
@@ -5564,8 +5667,9 @@
                         }
                       },
                       "required": [
-                        "plan",
-                        "act",
+                        "planner",
+                        "coder",
+                        "reviewer",
                         "utility"
                       ],
                       "additionalProperties": false
@@ -14790,7 +14894,7 @@
                         "routed_roles": {
                           "type": "object",
                           "properties": {
-                            "plan": {
+                            "planner": {
                               "default": "local",
                               "anyOf": [
                                 {
@@ -14815,7 +14919,32 @@
                                 }
                               ]
                             },
-                            "act": {
+                            "coder": {
+                              "default": "local",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "local"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "provider_id": {
+                                      "type": "string"
+                                    },
+                                    "model_id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "provider_id",
+                                    "model_id"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "reviewer": {
                               "default": "local",
                               "anyOf": [
                                 {
@@ -14867,8 +14996,9 @@
                             }
                           },
                           "required": [
-                            "plan",
-                            "act",
+                            "planner",
+                            "coder",
+                            "reviewer",
                             "utility"
                           ],
                           "additionalProperties": false

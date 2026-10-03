@@ -13,9 +13,30 @@ import {
 import { createProviderConnectionsService } from '../../node/src/services/provider-connections.mjs';
 import { createModelManagerView, evaluateQualificationFreshness } from '../../node/src/services/model-manager-view.ts';
 import { routeForModelManager } from '../../node/src/routes/models.ts';
+import { projectRoleTargetOptions } from '../../browser/src/byok/role-target-options.ts';
 
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);
+
+test('role assignment options expose only exact verified local models and preserve an unavailable selection', () => {
+  const localConnection = {
+    id: 'local-runtime', provider_id: 'local', name: 'Local', kind: 'local-runtime',
+    status: 'connected', routing_available: true,
+    access: { model_refs: [
+      { model_id: 'qualified-local', provider_model_id: 'qualified-local', model_support_state: 'verified' },
+      { model_id: 'unknown-local', provider_model_id: 'unknown-local', model_support_state: 'unknown' }
+    ] }
+  } as any;
+  const options = projectRoleTargetOptions([], [localConnection], 'local');
+  assert.deepEqual(options.map(option => option.target), [
+    'local',
+    { provider_id: 'local', model_id: 'qualified-local' }
+  ]);
+  const stale = projectRoleTargetOptions([], [localConnection], { provider_id: 'local', model_id: 'missing-local' });
+  assert.equal(stale.length, 3);
+  assert.equal(stale[2]?.unavailable, true);
+  assert.match(stale[2]?.label ?? '', /not in the current catalog; preserved/);
+});
 
 test('logical model identity is independent of routes, credentials, and adapters', () => {
   const model = ModelAccessIdentity.parse({
@@ -135,7 +156,7 @@ test('maximum BYOK provider ID fits the prefixed connection and governed test re
     byokService: {
       status: () => ({
         providers: [{ id: providerId, name: 'Long ID', base_url: 'https://provider.example/v1', model_id: 'model-a', key_stored: true }],
-        routing: { plan: 'local', act: 'local', utility: 'local' },
+        routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' },
         consent_enabled: false
       }),
       testProvider: async () => ({ ok: false, detail: 'not configured' })
@@ -167,7 +188,7 @@ test('connection read projection is passive, secret-free, and never invents read
     byokService: {
       status: () => ({
         providers: [{ id: 'custom-a', name: secret, model_id: 'model-a', key_stored: true }],
-        routing: { plan: 'local', act: { provider_id: secret, model_id: secret }, utility: 'local' },
+        routing: { planner: 'local', coder: { provider_id: secret, model_id: secret }, reviewer: 'local', utility: 'local' },
         consent_enabled: false
       }),
       testProvider: async () => { providerExecutions++; return { ok: true, detail: 'unexpected' }; }
@@ -216,7 +237,7 @@ test('connection read projection is passive, secret-free, and never invents read
   assert.equal(local.status, 'configured_not_verified');
   assert.equal(local.routing_available, false);
   assert.equal(local.access.setup_state, 'verification_required');
-  assert.deepEqual(view.routed_roles.act, { provider_id: 'redacted', model_id: 'redacted' });
+  assert.deepEqual(view.routed_roles.coder, { provider_id: 'redacted', model_id: 'redacted' });
 });
 
 test('provider health does not imply exact model route support and local-only gates egress', async t => {
@@ -228,7 +249,7 @@ test('provider health does not imply exact model route support and local-only ga
     preferencePath,
     providerService: { list: async () => [{ id: 'openai', name: 'OpenAI', models: ['gpt-4o'], status: 'connected', configured: true }] },
     byokService: {
-      status: () => ({ providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: true }),
+      status: () => ({ providers: [], routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, consent_enabled: true }),
       testProvider: async () => ({ ok: false, detail: 'not configured' })
     },
     modelRuntimeStatus: async () => ({ runtime: false, models: [] }),
@@ -274,7 +295,7 @@ test('only the exact provider model confirmed by its probe becomes an eligible M
       modelSupportState: (_providerId: string, modelId: string) => modelId === 'gpt-4o-mini' ? 'verified' : 'unknown'
     },
     byokService: {
-      status: () => ({ providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: true }),
+      status: () => ({ providers: [], routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, consent_enabled: true }),
       testProvider: async () => ({ ok: false, detail: 'not configured' })
     },
     modelRuntimeStatus: async () => ({ runtime: false, models: [] }),
@@ -312,7 +333,7 @@ test('OpenCode exact target remains UNKNOWN until its Authority-authorized provi
     byokService: {
       status: () => ({
         providers: [],
-        routing: { plan: { provider_id: 'opencode', model_id: exactRef }, act: 'local', utility: 'local' },
+        routing: { planner: { provider_id: 'opencode', model_id: exactRef }, coder: 'local', reviewer: 'local', utility: 'local' },
         consent_enabled: true
       }),
       testProvider: async () => ({ ok: false, detail: 'not configured' })
@@ -422,7 +443,7 @@ test('external route projection is passive and fresh without unrelated runtime, 
       modelSupportState: (_provider: string, model: string) => verified && model === 'gpt-4o-mini' ? 'verified' : 'unknown'
     },
     byokService: {
-      status: () => ({ providers: [], routing: { plan: { provider_id: 'openai', model_id: selectedModel }, act: 'local', utility: 'local' }, consent_enabled: consent }),
+      status: () => ({ providers: [], routing: { planner: { provider_id: 'openai', model_id: selectedModel }, coder: 'local', reviewer: 'local', utility: 'local' }, consent_enabled: consent }),
       testProvider: async () => { throw new Error('passive reads cannot probe'); }
     },
     modelRuntimeStatus: async () => { runtimeReads++; return { runtime: false, models: [] }; },
@@ -497,7 +518,7 @@ test('one OpenCode Go catalog exposes multiple models without granting exact rou
     workspace,
     providerService: { list: async () => [] },
     byokService: {
-      status: () => ({ providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: true }),
+      status: () => ({ providers: [], routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, consent_enabled: true }),
       testProvider: async () => ({ ok: false, detail: 'not configured' })
     },
     opencodeBridge: {
@@ -553,7 +574,7 @@ test('Model Manager GET is passive and selection policy cannot change execution 
     connectionsService: {
       list: async () => ({
         consensus: 'none',
-        routed_roles: { plan: 'local', act: 'local', utility: 'local' },
+        routed_roles: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' },
         preference: 'local-first',
         connections: []
       }),
@@ -596,7 +617,7 @@ test('local artifact discovery is bounded and never means model readiness', asyn
     connectionsService: {
       list: async () => ({
         consensus: 'none',
-        routed_roles: { plan: 'local', act: 'local', utility: 'local' },
+        routed_roles: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' },
         preference: 'local-first',
         connections: []
       })
@@ -635,7 +656,7 @@ test('registered local GGUF imports appear in Model Access without implying qual
       ] })
     } as any,
     connectionsService: {
-      list: async () => ({ consensus: 'none', routed_roles: { plan: 'local', act: 'local', utility: 'local' }, preference: 'local-first', connections: [] })
+      list: async () => ({ consensus: 'none', routed_roles: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, preference: 'local-first', connections: [] })
     } as any,
     runtimeStatus: async () => ({ backend: 'LLAMA_CPP', health: 'UNKNOWN' }) as any
   });

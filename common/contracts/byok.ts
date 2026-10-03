@@ -21,8 +21,9 @@ export const RoleTarget = z.union([
 export type RoleTargetT = z.infer<typeof RoleTarget>;
 
 export const RoleRouting = z.strictObject({
-  plan: RoleTarget.default('local'),
-  act: RoleTarget.default('local'),
+  planner: RoleTarget.default('local'),
+  coder: RoleTarget.default('local'),
+  reviewer: RoleTarget.default('local'),
   utility: RoleTarget.default('local'),
 });
 export type RoleRoutingT = z.infer<typeof RoleRouting>;

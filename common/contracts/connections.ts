@@ -1,7 +1,7 @@
 // Unified Provider Connections contract — one canonical view over every
 // provider/connection family (subscription runtimes, API-key providers, local
 // runtimes, catalog access) plus the routing preference that governs how the
-// existing role router resolves plan/act/utility. No second registry, routing
+// existing role router resolves planner/coder/reviewer/utility. No second registry, routing
 // engine, credential store, or authority system: this view composes the
 // existing services and stores.
 import { z } from 'zod';

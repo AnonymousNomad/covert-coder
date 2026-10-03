@@ -71,7 +71,7 @@ test('byok: status starts empty local-default with consent off; contract shape h
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.data!.providers, []);
   assert.equal(res.body.data!.consent_enabled, false);
-  assert.equal(res.body.data!.routing.plan, 'local');
+  assert.deepEqual(res.body.data!.routing, { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' });
 });
 
 test('byok: provider set + key put are governed writes; digest-bound approval, denial, replay and privacy', async () => {
@@ -179,16 +179,38 @@ test('byok: routing and consent are governed writes; test is a governed external
   const keyHeaders = await owner.approve('PUT', '/api/byok/key', { provider_id: 'prov1', api_key: 'sk-probe-key' }, 'task:byok-key-t3');
   assert.equal((await owner.request('/api/byok/key', { method: 'PUT', headers: keyHeaders, body: JSON.stringify({ provider_id: 'prov1', api_key: 'sk-probe-key' }) })).status, 200);
 
+  // Existing project preferences are migrated in the same routing file.
+  // The legacy act target was shared, so read projection preserves it for both
+  // coder and reviewer without rewriting bytes until an approved new write.
+  const routingPath = path.join(workspace, '.aide', 'byok', 'routing.json');
+  const legacyBytes = JSON.stringify({ plan: 'local', act: { provider_id: 'prov1', model_id: 'm-1' }, utility: 'local' });
+  await fs.mkdir(path.dirname(routingPath), { recursive: true });
+  await fs.writeFile(routingPath, legacyBytes, 'utf8');
+  const migrated = await call<{ routing: Record<string, unknown> }>('GET', '/api/byok/status');
+  assert.deepEqual(migrated.body.data!.routing, {
+    planner: 'local',
+    coder: { provider_id: 'prov1', model_id: 'm-1' },
+    reviewer: { provider_id: 'prov1', model_id: 'm-1' },
+    utility: 'local'
+  });
+  assert.equal(await fs.readFile(routingPath, 'utf8'), legacyBytes, 'a read-only projection does not rewrite legacy preferences');
+
   // routing and consent are governed writes: unapproved attempts fail closed,
   // approved exact values execute once, and changed values cannot reuse it.
-  const routingValue = { routing: { plan: 'local', act: { provider_id: 'prov1', model_id: 'm-1' }, utility: 'local' } };
+  const routingValue = { routing: {
+    planner: 'local',
+    coder: { provider_id: 'prov1', model_id: 'm-1' },
+    reviewer: { provider_id: 'prov1', model_id: 'm-1' },
+    utility: 'local'
+  } };
   const routingUnapproved = await call('PUT', '/api/byok/routing', routingValue);
   assert.equal(routingUnapproved.status, 409);
   const routingHeaders = await owner.approve('PUT', '/api/byok/routing', routingValue, 'task:byok-routing-t3');
-  const routingChanged = await owner.request('/api/byok/routing', { method: 'PUT', headers: routingHeaders, body: JSON.stringify({ routing: { plan: 'local', act: 'local', utility: 'local' } }) });
+  const routingChanged = await owner.request('/api/byok/routing', { method: 'PUT', headers: routingHeaders, body: JSON.stringify({ routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' } }) });
   assert.equal(routingChanged.status, 409, 'changed routing cannot reuse approval');
   const routingApplied = await owner.request('/api/byok/routing', { method: 'PUT', headers: routingHeaders, body: JSON.stringify(routingValue) });
   assert.equal(routingApplied.status, 200, 'approved routing executes');
+  assert.deepEqual(JSON.parse(await fs.readFile(routingPath, 'utf8')), routingValue.routing, 'approved migration writes one canonical role map');
   const routingReplay = await owner.request('/api/byok/routing', { method: 'PUT', headers: routingHeaders, body: JSON.stringify(routingValue) });
   assert.equal(routingReplay.status, 409, 'consumed routing approval cannot replay');
 
@@ -227,5 +249,5 @@ test('byok: routing and consent are governed writes; test is a governed external
   const status = await call<{ routing: Record<string, string>; consent_enabled: boolean }>('GET', '/api/byok/status');
   assert.equal(status.status, 200);
   assert.equal(status.body.data!.consent_enabled, false, 'no denied mutation may flip consent');
-  assert.equal(status.body.data!.routing.plan, 'local', 'no denied mutation may alter routing');
+  assert.equal(status.body.data!.routing.planner, 'local', 'no denied mutation may alter routing');
 });

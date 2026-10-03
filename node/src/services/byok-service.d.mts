@@ -22,5 +22,5 @@ export declare function createByokService(options: {
   getConsent(): boolean;
   setConsent(enabled: boolean): boolean;
   testProvider(providerId: string, fetchOverride?: typeof fetch): Promise<{ ok: boolean; detail: string }>;
-  resolveChatFn(role: 'plan' | 'act' | 'utility'): ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
+  resolveChatFn(role: 'planner' | 'coder' | 'reviewer' | 'utility'): ((messages: Array<{ role: string; content: string }>, signal?: AbortSignal) => Promise<string>) | null;
 };

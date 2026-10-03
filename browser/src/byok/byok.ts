@@ -13,7 +13,7 @@ export interface ByokPanel {
   refresh(): Promise<void>;
 }
 
-const ROLES = ['plan', 'act', 'utility'] as const;
+const ROLES = ['planner', 'coder', 'reviewer', 'utility'] as const;
 type Role = (typeof ROLES)[number];
 
 function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['providers'][number], actions: {
@@ -91,7 +91,7 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
         <button type="button" id="byok-add" class="provider-confirm">Save provider</button>
       </div>
       <h3 class="providers-title">Project role defaults</h3>
-      <p class="providers-note">Plan, act, and utility targets persist for this project. OpenCode Go appears as one connected source with its currently discovered models. A Chat model choice is saved with that conversation and does not change these defaults.</p>
+      <p class="providers-note">Planner, coder, reviewer, and utility targets persist for this project. OpenCode Go appears as one connected source with its currently discovered models. A Chat model choice is saved with that conversation and does not change these defaults.</p>
       <div class="byok-routing" id="byok-routing"></div>
     </div>
   `;
@@ -177,7 +177,7 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
 
   let lastStatus: ByokStatusResponseT = {
     providers: [],
-    routing: { plan: 'local', act: 'local', utility: 'local' },
+    routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' },
     consent_enabled: false
   };
 

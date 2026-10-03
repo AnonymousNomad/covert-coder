@@ -40,7 +40,12 @@ function routingBinding(routing: Record<string, unknown>): Record<string, unknow
   const target = (value: unknown): unknown => typeof value === 'string'
     ? value
     : { provider_id: (value as { provider_id?: unknown }).provider_id ?? null, model_id: (value as { model_id?: unknown }).model_id ?? null };
-  return { plan: target(routing.plan), act: target(routing.act), utility: target(routing.utility) };
+  return {
+    planner: target(routing.planner),
+    coder: target(routing.coder),
+    reviewer: target(routing.reviewer),
+    utility: target(routing.utility)
+  };
 }
 
 type ByokService = {

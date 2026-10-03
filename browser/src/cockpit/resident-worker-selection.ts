@@ -6,16 +6,24 @@ type SelectionView = {
   runtime: Pick<ModelManagerResponseT['runtime'], 'selected_model_id' | 'health'>;
 };
 
+type WorkerRole = 'planner' | 'coder' | 'reviewer';
+
 // Project role defaults and the observed loaded runtime remain owned by Model
 // Access. This is only an exact request projection, never readiness or fallback.
-export function residentWorkerForSelection(view: SelectionView, mode: 'plan' | 'act' = 'act'): WorkerDescriptorT {
-  const selected = view.connections.routed_roles[mode];
+export function residentWorkerForSelection(view: SelectionView, role: WorkerRole = 'coder'): WorkerDescriptorT {
+  const selected = view.connections.routed_roles[role];
+  if (selected !== 'local' && selected.provider_id === 'local') {
+    if (view.runtime.health !== 'HEALTHY' || view.runtime.selected_model_id !== selected.model_id) {
+      throw new Error(`The exact local ${role} model is not the healthy loaded model. Review Model Access; no replacement was selected.`);
+    }
+    return { worker: `local:${selected.model_id}`, provider: 'local', model: selected.model_id, role };
+  }
   if (selected !== 'local') {
     if (view.connections.preference === 'local-only') throw new Error('The selected project worker is external, but Local-Only is enabled. Review Model Access.');
     if (!selected.provider_id || !selected.model_id) throw new Error('The selected project worker has no exact provider/model identity.');
-    return { worker: `cloud:${selected.provider_id}:${selected.model_id}`, provider: selected.provider_id, model: selected.model_id, role: mode };
+    return { worker: `cloud:${selected.provider_id}:${selected.model_id}`, provider: selected.provider_id, model: selected.model_id, role };
   }
   const model = view.runtime.selected_model_id;
   if (view.runtime.health !== 'HEALTHY' || model === null) throw new Error('No healthy exact local model is loaded. Review Model Access; no replacement was selected.');
-  return { worker: `local:${model}`, provider: 'local', model, role: mode };
+  return { worker: `local:${model}`, provider: 'local', model, role };
 }

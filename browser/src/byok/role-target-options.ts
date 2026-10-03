@@ -38,6 +38,14 @@ export function projectRoleTargetOptions(
   };
 
   add('local', 'Local runtime');
+  const local = connections.find(connection => connection.kind === 'local-runtime');
+  if (local?.status === 'connected' && local.routing_available) {
+    for (const reference of local.access.model_refs) {
+      if (reference.model_support_state !== 'verified') continue;
+      const target = { provider_id: local.provider_id, model_id: reference.provider_model_id };
+      add(target, `Local · ${reference.provider_model_id} (VERIFIED and running)`);
+    }
+  }
   for (const provider of providers) {
     add(
       { provider_id: provider.id, model_id: provider.model_id },

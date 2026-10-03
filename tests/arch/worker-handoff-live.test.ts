@@ -155,12 +155,15 @@ async function createHandoff(task: string, from: Record<string, string>, to: Rec
   assert.equal(created.status, 200, JSON.stringify(created.body).slice(0, 300));
   return created.body.data!.handoff;
 }
-async function setupStubProvider(providerId: string, modelId: string): Promise<void> {
+async function setupStubProvider(providerId: string, modelId: string, role: 'coder' | 'reviewer' = 'coder'): Promise<void> {
   const provider = { id: providerId, name: providerId, base_url: `http://127.0.0.1:${stubPort}/v1`, api_type: 'chat-completions', model_id: modelId, tool_calling: false };
   assert.equal((await approved('PUT', '/api/byok/providers/set', { provider }, `task:live-set-${providerId}`)).status, 200);
   assert.equal((await approved('PUT', '/api/byok/key', { provider_id: providerId, api_key: `sk-${providerId}-0123456789` }, `task:live-key-${providerId}`)).status, 200);
   assert.equal((await approved('PUT', '/api/byok/consent', { enabled: true }, `task:live-consent-${providerId}`)).status, 200);
-  assert.equal((await approved('PUT', '/api/byok/routing', { routing: { plan: 'local', act: { provider_id: providerId, model_id: modelId }, utility: 'local' } }, `task:live-routing-${providerId}`)).status, 200);
+  const current = await getJson<{ routing: Record<string, unknown> }>('/api/byok/status');
+  assert.equal(current.status, 200);
+  const routing = { ...current.body.data!.routing, [role]: { provider_id: providerId, model_id: modelId } };
+  assert.equal((await approved('PUT', '/api/byok/routing', { routing }, `task:live-routing-${providerId}`)).status, 200);
 }
 const desc = (worker: string, provider: string, model: string, role: string) => ({ worker, provider, model, role });
 
@@ -214,7 +217,7 @@ test('remote -> local live switch: local destination receives bounded context th
 });
 
 test('remote A -> remote B live switch and role change (coder -> reviewer)', async () => {
-  await setupStubProvider('stub-live-b', 'stub-live-b-1');
+  await setupStubProvider('stub-live-b', 'stub-live-b-1', 'reviewer');
   const reviewerTo = desc('cloud:stub-live-b:stub-live-b-1', 'stub-live-b', 'stub-live-b-1', 'reviewer');
   const coderFrom = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1', 'coder');
   const handoff = await createHandoff(sessionA, coderFrom, reviewerTo, 'c');

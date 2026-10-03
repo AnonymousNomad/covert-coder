@@ -21,7 +21,7 @@ let owner: Awaited<ReturnType<typeof pairFixture>>;
 const secrets = new Map<string, string>();
 let byokStatusValue: Record<string, unknown> = {
   providers: [],
-  routing: { plan: 'local', act: 'local', utility: 'local' },
+  routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' },
   consent_enabled: false
 };
 
@@ -94,7 +94,7 @@ test('connections: unified view composes existing surfaces truthfully', async ()
   assert.equal(res.status, 200);
   assert.equal(res.body.data!.consensus, 'none');
   assert.equal(res.body.data!.preference, 'local-first');
-  assert.equal(res.body.data!.routed_roles.plan, 'local');
+  assert.equal(res.body.data!.routed_roles.planner, 'local');
   const ids = new Set(res.body.data!.connections.map(entry => entry.id));
   assert.ok(ids.has('subscription:codex'));
   assert.ok(ids.has('subscription:claude'));
@@ -113,7 +113,7 @@ test('connections: unified view composes existing surfaces truthfully', async ()
   secrets.set('prov1', 'sk-prov1');
   byokStatusValue = {
     providers: [{ id: 'prov1', name: 'GW', base_url: 'https://gw.example.com/v1', api_type: 'chat-completions', model_id: 'm-1', tool_calling: false, key_stored: true }],
-    routing: { plan: 'local', act: { provider_id: 'prov1', model_id: 'm-1' }, utility: 'local' },
+    routing: { planner: 'local', coder: { provider_id: 'prov1', model_id: 'm-1' }, reviewer: 'local', utility: 'local' },
     consent_enabled: false
   };
   const second = await call<{ consensus: string; connections: Array<{ id: string; status: string; capabilities: string[] }> }>('GET', '/api/connections');
@@ -129,7 +129,7 @@ test('connections: exact OpenCode model test approval binds the delegated provid
   const exact = { connection_id: 'opencode-managed', provider_model_id: 'opencode-go/deepseek-v4.1-flash' };
   byokStatusValue = {
     providers: [],
-    routing: { plan: { provider_id: 'opencode', model_id: exact.provider_model_id }, act: 'local', utility: 'local' },
+    routing: { planner: { provider_id: 'opencode', model_id: exact.provider_model_id }, coder: 'local', reviewer: 'local', utility: 'local' },
     consent_enabled: true
   };
 
@@ -148,7 +148,7 @@ test('connections: exact OpenCode model test approval binds the delegated provid
   assert.deepEqual(envelope.data.args.body, exact, 'Authority digest contains the exact delegated provider and model');
   assert.ok(!envelopeText.includes('credential'), 'the operation contains no credential material');
   assert.equal((await owner.decide(envelope.data.operation_id, 'reject')).status, 200);
-  byokStatusValue = { providers: [], routing: { plan: 'local', act: 'local', utility: 'local' }, consent_enabled: false };
+  byokStatusValue = { providers: [], routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, consent_enabled: false };
 });
 
 test('connections: routing preference is a governed write (approval + replay + change refusal)', async () => {

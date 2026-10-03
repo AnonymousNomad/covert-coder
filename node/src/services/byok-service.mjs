@@ -63,7 +63,15 @@ export function createByokService(options) {
 
   function getRouting() {
     const routing = readJson(routingPath, {});
-    return { plan: routing.plan ?? 'local', act: routing.act ?? 'local', utility: routing.utility ?? 'local' };
+    // Migrate the previous plan/act/utility projection without writing on
+    // read. Legacy act was shared by coder/reviewer requests, so preserve that
+    // exact target for both until the operator changes either role explicitly.
+    return {
+      planner: routing.planner ?? routing.plan ?? 'local',
+      coder: routing.coder ?? routing.act ?? 'local',
+      reviewer: routing.reviewer ?? routing.act ?? 'local',
+      utility: routing.utility ?? 'local'
+    };
   }
 
   function setRouting(routing) {
