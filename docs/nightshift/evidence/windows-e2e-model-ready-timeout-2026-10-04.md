@@ -4,7 +4,7 @@ Date: 2026-10-04
 Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
 Last published parent SHA: `ca8527e565b62326fd940f574d9964413e3c6751`
-Status: **BLOCKED — prior aggregate `/api/model/ready` red remains unexplained; latest aggregate attempt stopped earlier at Academy response validation**
+Status: **BLOCKED — original aggregate `/api/model/ready` red remains unexplained; corrected-preload full suite reached it successfully, then timed out at `/api/authority/decision`**
 
 ## Preserved Veritas result
 
@@ -71,4 +71,30 @@ After the PID-reuse cleanup repair described in [the Windows process ancestry ev
 - A focused uninstrumented `node scripts/acceptance-real.mjs` also passed Academy check (HTTP 200, **333 ms**) and the remaining acceptance steps. Its output is retained at `E:\pip_temp\covert-acceptance-real-academy-repro-20261004.log`, SHA-256 `29D136E40DDE61655AC00769A811EA33032CB06C7D05A416484D7BFB3C011FC8`.
 - The flawed-preload run recorded **no `/api/model/ready` request**. The previous response-contract failure is classified as a diagnostic-harness defect, not a product red. The earlier uninstrumented Veritas model-ready timeout remains preserved and unresolved.
 
-Next: rerun the canonical full suite with the corrected diagnostic preload and unchanged checks so it can reach the final E2E. If an earlier acceptance assertion fails, retain its ArchServer log before the fixture removes its workspace. Only a run that reaches `/api/model/ready` can answer the original timeout question using route timing, event-loop delay, and nested `where.exe` / PowerShell measurements. Do not start a local model or close foreign processes. The model-ready release gate remains **RED/OPEN**.
+## Corrected-preload full-suite outcome
+
+The same full `npm test` chain was rerun with the corrected preload (`util.promisify.custom` preserved) and the original deadlines and assertions. Academy passed; the final E2E reached model readiness and then failed while deciding the prepared terminal operation:
+
+- `/api/model/ready?id=qwen-coder-1.5b-q4`: HTTP **200**, **1,491 ms** at the ArchServer route and **1,495 ms** at the facade.
+- During that request, `where.exe unsloth` completed in **133.32 ms** with exit 1 (not found), and the port-18888 PowerShell listener probe completed in **1,155.35 ms** with exit 0 (`FREE`). These durations account for most of the endpoint's measured time; neither child probe reached its 3,000 ms deadline.
+- `/api/authority/prepare` then completed HTTP 200 in **2,276 ms**.
+- The subsequent `POST /api/authority/decision` returned facade **502** at **30,005 ms**. The run ended before `/api/terminal/run`.
+- Full output: `E:\pip_temp\covert-w5-npm-test-corrected-preload-20261004.log`; SHA-256 `70876161E15DB28B8FE44B2D4B589AF477467A1129A46659862E5DB8B816EEA0`.
+- Probe trace: `E:\pip_temp\covert-w5-npm-test-corrected-preload-20261004.jsonl`; SHA-256 `CA9E4BA907750B53CE747D3BE2238B9462BD3088DFBAA53076DCD95C59EA0D9F`.
+- The ArchServer logger recorded successful prepare but no completion log for the decision. The preload at this run did not yet capture route-start/route-close for the decision, so whether the request reached ArchServer and where it stalled remain **UNKNOWN**.
+- The full-run response confirms the earlier Academy 500 was diagnostic-preload-induced; Academy returned HTTP 200 in **100 ms** with the corrected preload.
+
+## Isolated final E2E comparison
+
+The same `node scripts/e2e.mjs` sequence passed on an immediate isolated run with expanded route instrumentation:
+
+- `/api/model/ready`: HTTP 200 in **1,280 ms** at ArchServer / **1,283 ms** at the facade.
+- Both `/api/authority/prepare` calls, both `/api/authority/decision` calls, and both `/api/terminal/run` calls completed HTTP 200. Authority decisions took **17.72 ms** and **21.20 ms** at ArchServer.
+- One event-loop interval before model readiness recorded **6,190.79 ms** maximum delay, ending several seconds before `/api/model/ready` began. This shows a host scheduling stall occurred in the isolated run, but it does not explain the full-suite authority timeout or the earlier model-ready timeout.
+- Output: `E:\pip_temp\covert-e2e-authority-decision-instrumented-20261004.log`; SHA-256 `D129DEABC44B9B68BC9CC465F1905CB4D8E153D425C033A045E35F3FBC328228`.
+- Trace: `E:\pip_temp\covert-e2e-authority-decision-instrumented-20261004.jsonl`; SHA-256 `9600527697E48C47D7D53A219EEB08D838E4CD3F433312FAC9A4C704DF09D232`.
+- Expanded temporary preloader SHA-256 `CDD348E748A002CF9122193BB053B1A6BE9E6C01A39B4ACCE794DB73319F007A`.
+
+These successful route checks do not erase either aggregate red. The intermittent 30-second `/api/model/ready` Veritas failure and the full-suite authority-decision timeout have distinct observed boundaries; neither has a proven root cause. No local model was started and no foreign process was terminated.
+
+Next: run the full serial `npm test` once with the expanded route-start/finish and per-second event-loop capture enabled. The capture must establish whether the 30-second decision reaches the ArchServer and whether the event loop stalls during that interval. Preserve the first failed results and keep both aggregate gates **RED/OPEN** until their causes are explained and the canonical sequence passes.

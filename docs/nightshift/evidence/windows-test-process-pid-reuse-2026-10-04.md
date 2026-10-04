@@ -31,4 +31,4 @@ Two regressions were added: a PID-reuse edge is excluded, and an edge with unava
 
 This local repair does not clear the earlier Veritas `/api/model/ready` timeout and has not been published or exact-SHA CI-verified.
 
-The subsequent instrumented full-suite attempt's Academy 500 was caused by the temporary diagnostic preload dropping `util.promisify.custom` while wrapping `execFile`; it is not treated as a Covert product regression. The preload was corrected and the aggregate suite has not yet been rerun with it.
+The subsequent instrumented full-suite attempt's Academy 500 was caused by the temporary diagnostic preload dropping `util.promisify.custom` while wrapping `execFile`; it is not treated as a Covert product regression. The corrected-preload aggregate run then passed Academy and the repaired launch checks, reached `/api/model/ready` in 1.491 seconds, and later timed out at `/api/authority/decision`. The expanded-route instrumentation and current classification are recorded in [the E2E blocker evidence](windows-e2e-model-ready-timeout-2026-10-04.md).
