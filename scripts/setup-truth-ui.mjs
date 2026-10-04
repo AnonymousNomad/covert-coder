@@ -36,7 +36,7 @@ try {
   await page.evaluate(async baseline => {
     const { api } = await import('/src/services/api.ts');
     const { createSetupSession } = await import(baseline ? '/src/cockpit/__setup_truth_baseline__.ts' : '/src/cockpit/SetupSession.ts');
-    window.fixture = { failure: '', healthState: 'HEALTHY', pendingHealth: false, choices: {}, writes: [], writeAttempts: 0, failAtWrite: 0, completed: 0, toasts: [], saved: null };
+    window.fixture = { failure: '', healthState: 'HEALTHY', pendingHealth: false, choices: {}, writes: [], writeAttempts: 0, failAtWrite: 0, completed: 0, toasts: [], saved: null, providerIds: [], modelId: 'fixture-model', artifactHash: 'a'.repeat(64), runtimeBackend: 'UNSLOTH', runtimeId: 'unsloth', selectedModelId: 'fixture-model' };
     const state = window.fixture;
     const check = name => { if (state.failure === name) throw new Error('fixture unavailable'); };
     Object.assign(api, {
@@ -57,8 +57,15 @@ try {
           const rejectRead = state.rejectHeldByok;
           window.releaseByok = () => { if (rejectRead) reject(new Error('abandoned read failed')); else resolve({ consent_enabled: true, providers: [] }); };
         });
-        check('providers'); return { consent_enabled: false, providers: [] };
+        check('providers'); return { consent_enabled: false, routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, providers: state.providerIds.map(id => ({ id, name: id, base_url: 'https://example.invalid/v1', api_type: 'chat-completions', model_id: 'provider-model', key_stored: true, tool_calling: false })) };
       },
+      modelManager: async () => { check('model-access'); return ({
+        runtime: { canonical_runtime_id: 'unsloth', default_runtime_id: 'unsloth', reported_backend: state.runtimeBackend, discovered_state: 'DISCOVERED', configured_runtime_id: state.runtimeId, configured: true, available: true, health: 'HEALTHY', selected_model_id: state.selectedModelId },
+        models: [{ identity: { canonical_id: state.modelId, display_name: 'Fixture Model', family: 'fixture', capabilities: ['chat'], context_window_tokens: 4096, qualification: { state: 'QUALIFIED', basis: { source_revision: 'fixture', artifact_sha256: state.artifactHash, runtime_id: state.runtimeId, runtime_version: 'fixture' }, stale_reasons: [] } }, artifact_ids: ['fixture-artifact'], availability: 'AVAILABLE', compatibility: 'COMPATIBLE', readiness: 'READY', recommended_roles: [], execution_selected_roles: [] }],
+        artifacts: [{ id: 'fixture-artifact', model_id: state.modelId, source_kind: 'LOCAL_MANIFEST', source_ref: 'fixture-manifest', revision: 'fixture', filename: 'fixture.gguf', format: 'GGUF', quantization: 'Q4_K_M', expected_sha256: state.artifactHash, observed_sha256: state.artifactHash, hash_status: 'VERIFIED', license: 'Apache-2.0', availability: 'AVAILABLE', compatibility: 'COMPATIBLE' }],
+        routes: [], credential_sources: [], execution_adapters: [],
+        connections: { preference: 'local-first', routed_roles: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, connections: [] },
+      }); },
     });
     window.setup = createSetupSession(document.getElementById('host'), {}, {
       onToast: (_code, message) => state.toasts.push(message), onNavigate: () => {},
@@ -157,7 +164,8 @@ try {
       await page.evaluate(value => {
         window.setup.close(); window.fixture.saved = null; window.fixture.failure = value;
         window.fixture.choices = {}; window.fixture.completed = 0; window.fixture.writes = [];
-        window.fixture.writeAttempts = 0; window.fixture.failAtWrite = 0;
+        window.fixture.writeAttempts = 0; window.fixture.failAtWrite = 0; window.fixture.providerIds = [];
+        window.fixture.modelId = 'fixture-model'; window.fixture.artifactHash = 'a'.repeat(64); window.fixture.runtimeBackend = 'UNSLOTH'; window.fixture.runtimeId = 'unsloth'; window.fixture.selectedModelId = 'fixture-model';
         window.fixture.byokCalls = 0; window.fixture.holdByokCall = 0; window.fixture.rejectHeldByok = false;
         delete window.releaseByok;
         window.setup.open();
@@ -202,11 +210,43 @@ try {
     assert.equal(await page.evaluate(() => window.fixture.completed), 1);
     assert.equal(await page.evaluate(() => typeof JSON.parse(window.fixture.saved).completedAt), 'string');
     console.log('PASS UI: success records preferences and canonical completion before completion claim');
+    await fresh('');
+    await page.evaluate(() => { window.fixture.providerIds = ['provider-before-validation']; });
+    await goToValidation();
+    await next.click();
+    await page.waitForFunction(() => document.querySelector('.cockpit-setup-stage').textContent.startsWith('SETUP 12 OF'));
+    async function changeIdentityAndRevalidate(change) {
+      await page.evaluate(change);
+      await page.waitForFunction(() => document.querySelector('.cockpit-setup-body').textContent.includes('IDENTITY CHANGED SINCE VALIDATION'), null, { timeout: 7000 });
+      assert.match(await page.locator('.cockpit-setup-body').innerText(), /SETUP UNRESOLVED — VALIDATION NOT_RUN/);
+      assert.equal(await next.isDisabled(), true);
+      assert.equal(await page.evaluate(() => window.fixture.completed), 0);
+      await page.getByRole('button', { name: 'RERUN VALIDATION' }).click();
+      await next.click();
+      await page.waitForFunction(() => document.querySelector('.cockpit-setup-stage').textContent.startsWith('SETUP 12 OF'));
+      assert.match(await page.locator('.cockpit-setup-body').innerText(), /CORE VALIDATION PASSED/);
+    }
+    await changeIdentityAndRevalidate(() => { window.fixture.providerIds = ['provider-after-validation']; });
+    await changeIdentityAndRevalidate(() => { window.fixture.modelId = 'fixture-model-replaced'; window.fixture.selectedModelId = 'fixture-model-replaced'; window.fixture.artifactHash = 'b'.repeat(64); });
+    await changeIdentityAndRevalidate(() => { window.fixture.runtimeBackend = 'LLAMA_CPP'; window.fixture.runtimeId = 'llama-cpp'; });
+    await next.click();
+    await page.waitForFunction(() => document.querySelector('.cockpit-setup-body').textContent.includes('SETUP PREFERENCES SAVED AND COMPLETION RECORDED.'));
+    assert.equal(await page.evaluate(() => window.fixture.completed), 1);
+    console.log('PASS UI: provider, model/artifact and runtime identity changes revoke readiness until revalidated');
     await page.evaluate(() => { window.setup.close(); window.setup.open(); });
     await page.waitForFunction(() => !document.querySelector('.cockpit-setup-primary').disabled);
     assert.equal(await title.innerText(), 'VALIDATION');
     assert.match(await page.locator('.cockpit-setup-body').innerText(), /NOT_RUN/);
     console.log('PASS UI: completed profile resumes with validation required rather than stale READY');
+    await fresh('model-access'); await goToValidation(); await next.click();
+    await page.waitForFunction(() => document.querySelector('.cockpit-setup-stage').textContent.startsWith('SETUP 12 OF'));
+    const identityUnavailable = await page.locator('.cockpit-setup-body').innerText();
+    assert.match(identityUnavailable, /UNAVAILABLE — model access identity/);
+    assert.match(identityUnavailable, /UNAVAILABLE — provider identity/);
+    assert.doesNotMatch(identityUnavailable, /CORE VALIDATION PASSED/);
+    assert.equal(await next.isDisabled(), true);
+    assert.equal(await page.evaluate(() => window.fixture.completed), 0);
+    console.log('PASS UI: unavailable current identity read prevents setup readiness');
     await fresh(''); await goToValidation(); await next.click();
     await page.waitForFunction(() => document.querySelector('.cockpit-setup-stage').textContent.startsWith('SETUP 12 OF'));
     await page.evaluate(() => { window.fixture.failAtWrite = window.fixture.writeAttempts + 2; });

@@ -10,7 +10,7 @@ import type { AppState, Panel } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { OnboardingUserChoicesT } from '../../../common/contracts/onboarding.ts';
 import type { HardwareRecommendResponseT } from '../../../common/contracts/hardware.ts';
-import { createSetupValidation, setupValidationReady, type SetupCheck } from './setup-validation.ts';
+import { createSetupValidation, setupOperationalIdentityFingerprint, setupValidationReady, type SetupCheck } from './setup-validation.ts';
 import { SetupProfile, parseSetupProfile, setupPreferenceSignature, setupChoiceDispositions, type Answers } from './setup-profile.ts';
 
 export interface SetupSessionHandles {
@@ -93,6 +93,69 @@ export function createSetupSession(
   let savedModelId: string | null = null;
   let setupError = '';
   let completion: 'NOT_RUN' | 'PASSED' | 'FAILED' = 'NOT_RUN';
+  let validatedIdentityFingerprint: string | null = null;
+  let identityMonitorTimer: number | null = null;
+  let identityMonitorEpoch = 0;
+  let identityMonitorInFlight = false;
+
+  function stopIdentityMonitor(): void {
+    identityMonitorEpoch++;
+    if (identityMonitorTimer !== null) window.clearInterval(identityMonitorTimer);
+    identityMonitorTimer = null;
+  }
+
+  async function readOperationalIdentitySnapshot(): Promise<{ fingerprint: string; providerCount: number }> {
+    const [modelAccess, providers] = await Promise.all([api.modelManager(), api.byokStatus()]);
+    return { fingerprint: await setupOperationalIdentityFingerprint(modelAccess, providers), providerCount: providers.providers.length };
+  }
+
+  function revokeIdentityValidation(message: string): void {
+    stopIdentityMonitor();
+    validatedIdentityFingerprint = null;
+    validation.invalidate();
+    completion = 'NOT_RUN';
+    setupError = message;
+    renderStage();
+  }
+
+  function monitorOperationalIdentity(currentSession: number): void {
+    stopIdentityMonitor();
+    const epoch = identityMonitorEpoch;
+    const recheck = async () => {
+      if (identityMonitorInFlight || !open || session !== currentSession || stage !== 11 || busy || !setupValidationReady(validation.snapshot()) || validatedIdentityFingerprint === null) return;
+      identityMonitorInFlight = true;
+      try {
+        const current = await readOperationalIdentitySnapshot();
+        if (!open || session !== currentSession || stage !== 11 || busy || epoch !== identityMonitorEpoch) return;
+        if (current.fingerprint !== validatedIdentityFingerprint) revokeIdentityValidation('MODEL / RUNTIME / PROVIDER IDENTITY CHANGED SINCE VALIDATION — rerun validation before setup can complete.');
+      } catch {
+        if (open && session === currentSession && stage === 11 && !busy && epoch === identityMonitorEpoch) revokeIdentityValidation('CURRENT MODEL / RUNTIME / PROVIDER IDENTITY UNAVAILABLE — validation was revoked; rerun when status can be read.');
+      } finally {
+        identityMonitorInFlight = false;
+      }
+    };
+    identityMonitorTimer = window.setInterval(() => { void recheck(); }, 2000);
+    void recheck();
+  }
+
+  async function identityStillMatches(currentSession: number): Promise<boolean> {
+    if (validatedIdentityFingerprint === null) {
+      revokeIdentityValidation('CURRENT MODEL / RUNTIME / PROVIDER IDENTITY WAS NOT BOUND — rerun validation before setup can complete.');
+      return false;
+    }
+    try {
+      const current = await readOperationalIdentitySnapshot();
+      if (!open || session !== currentSession) return false;
+      if (current.fingerprint !== validatedIdentityFingerprint) {
+        revokeIdentityValidation('MODEL / RUNTIME / PROVIDER IDENTITY CHANGED SINCE VALIDATION — rerun validation before setup can complete.');
+        return false;
+      }
+      return true;
+    } catch {
+      if (open && session === currentSession) revokeIdentityValidation('CURRENT MODEL / RUNTIME / PROVIDER IDENTITY UNAVAILABLE — validation was revoked; rerun when status can be read.');
+      return false;
+    }
+  }
 
   function preferenceSignature(): string { return setupPreferenceSignature(answers, selected?.modelId ?? savedModelId); }
   function preferencesSaved(): boolean { return savedSignature === preferenceSignature(); }
@@ -247,14 +310,18 @@ export function createSetupSession(
       const ready = setupValidationReady(result);
       body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED' : `CORE VALIDATION ${result.status} — required checks must complete successfully`));
     } else if (stage === 11) {
-      const ready = setupValidationReady(validation.snapshot());
-      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED.' : `SETUP UNRESOLVED — VALIDATION ${validation.snapshot().status}`));
+      const result = validation.snapshot();
+      const ready = setupValidationReady(result);
+      const checks = el('div', 'cockpit-setup-plan');
+      for (const check of result.checks) checks.appendChild(line(`${check.status} — ${check.label}`, check.detail));
+      body.appendChild(checks);
+      body.appendChild(el('p', ready ? 'cockpit-setup-ready' : 'cockpit-setup-note', ready ? 'CORE VALIDATION PASSED.' : `SETUP UNRESOLVED — VALIDATION ${result.status}`));
       body.appendChild(el('p', completion === 'PASSED' ? 'cockpit-setup-ready' : 'cockpit-setup-note', completion === 'PASSED' ? 'SETUP PREFERENCES SAVED AND COMPLETION RECORDED.' : `SETUP COMPLETION ${completion === 'FAILED' ? 'UNRESOLVED' : 'NOT RUN'}.`));
       body.appendChild(el('p', 'cockpit-setup-detail', 'Core checks do not qualify a model or prove a usable execution route. Open MODELS to configure and verify the route you want to use.'));
       for (const disposition of setupChoiceDispositions(preferencesSaved())) body.appendChild(line(`${disposition.choice} — ${disposition.status}`, disposition.detail));
       const rerun = el('button', 'cockpit-setup-btn', 'RERUN VALIDATION') as HTMLButtonElement;
       rerun.type = 'button';
-      rerun.addEventListener('click', () => { if (busy) return; validation.invalidate(); completion = 'NOT_RUN'; setupError = ''; stage = 10; renderStage(); });
+      rerun.addEventListener('click', () => { if (busy) return; stopIdentityMonitor(); validatedIdentityFingerprint = null; validation.invalidate(); completion = 'NOT_RUN'; setupError = ''; stage = 10; renderStage(); });
       body.appendChild(rerun);
       body.appendChild(el('p', 'cockpit-setup-detail', 'Talk to Resident to begin.'));
       const actions = el('div', 'cockpit-setup-actions');
@@ -303,6 +370,8 @@ export function createSetupSession(
       return true;
     } catch {
       if (open && session === currentSession) {
+        stopIdentityMonitor();
+        validatedIdentityFingerprint = null;
         savedSignature = null;
         validation.invalidate();
         setupError = 'SETUP SAVE FAILED — preferences/completion are unresolved. Retry the approved write.';
@@ -356,6 +425,8 @@ export function createSetupSession(
   }
 
   async function runValidation(): Promise<void> {
+    stopIdentityMonitor();
+    validatedIdentityFingerprint = null;
     const runId = validation.begin();
     renderStage();
     const results: SetupCheck[] = [];
@@ -371,7 +442,6 @@ export function createSetupSession(
     await attempt('model registry', async () => { const s = await api.modelsStatus(); return `${s.models.length} models configured`; });
     await attempt('workflow runtime', async () => { const w = await api.workflowState(); return `stage ${w.stage}`; });
     await attempt('evidence bus', async () => { const a = await api.auditRead({ limit: 5 }); return `${a.events.length} recent events`; });
-    await attempt('providers', async () => { const b = await api.byokStatus(); return `${b.providers.length} configured`; });
     const choices = onboardingChoices();
     try {
       const state = await api.onboardingState();
@@ -385,21 +455,37 @@ export function createSetupSession(
       if (matched && validation.snapshot().run === runId) savedSignature = preferenceSignature();
       results.push({ label: 'setup preferences', status: matched ? 'PASSED' : 'FAILED', detail: matched ? 'Current preferences persisted' : 'Current preferences missing or mismatched' });
     } catch { results.push({ label: 'setup preferences', status: 'UNAVAILABLE', detail: 'Persisted preferences unavailable' }); }
-    validation.complete(runId, results);
+    try {
+      const identitySnapshot = await readOperationalIdentitySnapshot();
+      results.push({ label: 'providers', status: 'PASSED', detail: `${identitySnapshot.providerCount} configured` });
+      results.push({ label: 'model access identity', status: 'PASSED', detail: 'Current models, artifacts and runtime are bound to this validation' });
+      results.push({ label: 'provider identity', status: 'PASSED', detail: 'Current provider identities and routing are bound to this validation' });
+      if (validation.complete(runId, results) && setupValidationReady(validation.snapshot())) validatedIdentityFingerprint = identitySnapshot.fingerprint;
+    } catch {
+      results.push({ label: 'providers', status: 'UNAVAILABLE', detail: 'Provider status could not be read during identity validation' });
+      results.push({ label: 'model access identity', status: 'UNAVAILABLE', detail: 'Current model, artifact and runtime identity could not be bound to validation' });
+      results.push({ label: 'provider identity', status: 'UNAVAILABLE', detail: 'Current provider identity could not be bound to validation' });
+      validation.complete(runId, results);
+    }
+    if (!setupValidationReady(validation.snapshot())) validatedIdentityFingerprint = null;
   }
 
   async function finish(currentSession: number): Promise<void> {
     if (!setupValidationReady(validation.snapshot())) return;
+    if (!await identityStillMatches(currentSession)) return;
     if (!await saveProfile(10, currentSession)) { if (open && session === currentSession) completion = 'FAILED'; return; }
+    if (!await identityStillMatches(currentSession)) return;
     try {
       await api.onboardingComplete();
       if (!open || session !== currentSession) return;
+      if (!await identityStillMatches(currentSession)) return;
     } catch {
-      if (open && session === currentSession) { completion = 'FAILED'; validation.invalidate(); setupError = 'SETUP COMPLETION FAILED — preferences remain saved; retry validation and completion.'; }
+      if (open && session === currentSession) { stopIdentityMonitor(); validatedIdentityFingerprint = null; completion = 'FAILED'; validation.invalidate(); setupError = 'SETUP COMPLETION FAILED — preferences remain saved; retry validation and completion.'; }
       return;
     }
     if (!await saveProfile(10, currentSession, new Date().toISOString())) { if (open && session === currentSession) completion = 'FAILED'; return; }
     completion = 'PASSED';
+    stopIdentityMonitor();
   }
 
   async function advance(): Promise<void> {
@@ -427,15 +513,21 @@ export function createSetupSession(
         }
       }
     } finally {
-      if (open && session === currentSession) { busy = false; renderStage(); }
+      if (open && session === currentSession) {
+        busy = false;
+        renderStage();
+        if (stage === 11 && completion !== 'PASSED' && setupValidationReady(validation.snapshot())) monitorOperationalIdentity(currentSession);
+      }
     }
   }
 
-  back.addEventListener('click', () => { if (stage > 0 && !busy) { validation.invalidate(); completion = 'NOT_RUN'; setupError = ''; stage--; renderStage(); } });
+  back.addEventListener('click', () => { if (stage > 0 && !busy) { stopIdentityMonitor(); validatedIdentityFingerprint = null; validation.invalidate(); completion = 'NOT_RUN'; setupError = ''; stage--; renderStage(); } });
   next.addEventListener('click', () => { void advance(); });
   skip.addEventListener('click', () => close());
 
   function show(): void {
+    stopIdentityMonitor();
+    validatedIdentityFingerprint = null;
     session++;
     const currentSession = session;
     open = true;
@@ -458,6 +550,8 @@ export function createSetupSession(
   }
 
   function close(): void {
+    stopIdentityMonitor();
+    validatedIdentityFingerprint = null;
     session++;
     validation.invalidate();
     busy = false;
