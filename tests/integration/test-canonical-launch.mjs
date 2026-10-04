@@ -64,22 +64,56 @@ async function windowsProcessInventory() {
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
+function processCreationTime(processInfo) {
+  const value = String(processInfo?.CreationDate ?? '');
+  const wmiDate = /^\/Date\((-?\d+)(?:[+-]\d{4})?\)\/$/.exec(value);
+  if (wmiDate) return Number(wmiDate[1]);
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function descendantsOf(rootPid, processes) {
   const descendants = [];
-  const pending = [Number(rootPid)];
-  const seen = new Set(pending);
+  const byPid = new Map(processes.map(processInfo => [Number(processInfo.ProcessId), processInfo]));
+  const root = Number(rootPid);
+  const pending = [{ pid: root, processInfo: byPid.get(root) }];
+  const seen = new Set([root]);
   while (pending.length > 0) {
     const parent = pending.shift();
+    const parentStartedAt = processCreationTime(parent.processInfo);
     for (const processInfo of processes) {
       const pid = Number(processInfo.ProcessId);
-      if (Number(processInfo.ParentProcessId) !== parent || seen.has(pid)) continue;
+      if (Number(processInfo.ParentProcessId) !== parent.pid || seen.has(pid)) continue;
+      const childStartedAt = processCreationTime(processInfo);
+      if (parentStartedAt !== null && childStartedAt !== null && childStartedAt < parentStartedAt) continue;
       seen.add(pid);
-      pending.push(pid);
+      pending.push({ pid, processInfo });
       descendants.push(processInfo);
     }
   }
   return descendants;
 }
+
+test('PID reuse does not turn a pre-existing process into a launch descendant', () => {
+  const rootStart = 1_700_000_000_000;
+  const processes = [
+    { ProcessId: 100, ParentProcessId: 1, Name: 'node.exe', CreationDate: `/Date(${rootStart})/` },
+    { ProcessId: 200, ParentProcessId: 100, Name: 'conhost.exe', CreationDate: `/Date(${rootStart + 1_000})/` },
+    { ProcessId: 300, ParentProcessId: 200, Name: 'node.exe', CreationDate: `/Date(${rootStart + 1_500})/` },
+    { ProcessId: 400, ParentProcessId: 200, Name: 'operator-process.exe', CreationDate: `/Date(${rootStart - 2_000})/` }
+  ];
+
+  assert.deepEqual(descendantsOf(100, processes).map(processInfo => processInfo.ProcessId), [200, 300]);
+});
+
+test('process ancestry stays conservative when a creation time is unavailable', () => {
+  const processes = [
+    { ProcessId: 100, ParentProcessId: 1, Name: 'node.exe', CreationDate: null },
+    { ProcessId: 200, ParentProcessId: 100, Name: 'node.exe', CreationDate: '/Date(1700000000000)/' }
+  ];
+
+  assert.deepEqual(descendantsOf(100, processes).map(processInfo => processInfo.ProcessId), [200]);
+});
 
 async function killTree(child) {
   if (child.pid === undefined) return { skipped: 'launcher pid unavailable' };

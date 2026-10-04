@@ -4,7 +4,7 @@ Date: 2026-10-04
 Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
 Last published parent SHA: `ca8527e565b62326fd940f574d9964413e3c6751`
-Status: **BLOCKED — aggregate E2E red preserved; nested cause not yet isolated**
+Status: **BLOCKED — prior aggregate `/api/model/ready` red remains unexplained; latest aggregate attempt stopped earlier at Academy response validation**
 
 ## Preserved Veritas result
 
@@ -55,4 +55,15 @@ Probe log: `E:\pip_temp\covert-w5-model-ready-isolated-20261004.log`; SHA-256 `4
 
 The isolated read completes under the same low-headroom host condition, which does **not** clear the aggregate E2E red. The post-run headroom deficit is measured, but it is not proven as the cause of the 30-second stall. The exact nested probe duration, event-loop delay, and resource sample at the failing request remain unavailable. No stale E2E stack child or checked-port listener remained after cleanup.
 
-Next: capture timestamped ArchServer event-loop delay and nested `where.exe` / PowerShell runtime-probe durations during the full test sequence, preserving all existing deadlines and assertions. Do not start a local model or close foreign processes for this diagnosis. Keep this aggregate gate **RED/OPEN** until its failing run is explained and the canonical full sequence passes.
+## Later instrumented full-suite attempt
+
+After the PID-reuse cleanup repair described in [the Windows process ancestry evidence](windows-test-process-pid-reuse-2026-10-04.md), the full repository `npm test` progressed past canonical launch but stopped at `scripts/acceptance-real.mjs` before the final E2E script:
+
+- `POST /api/academy/check` returned HTTP **500** after **108 ms** with `response violates the contract`.
+- Full output: `E:\pip_temp\covert-w5-npm-test-instrumented-after-pid-fix-20261004.log`; SHA-256 `0D5F1D6D75F6B9E6CD51AACF5549897AFC32E14B2F6FF338F23936874FA87B0F`.
+- Diagnostic trace: `E:\pip_temp\covert-w5-npm-test-instrumented-after-pid-fix-20261004.jsonl`; SHA-256 `B1EEAF96EA14518D711AEA9E6679EECEAC092BC359F7AA0E84D5BDB90752CB99`.
+- The run produced runtime-probe timings from earlier supervised stacks, but it recorded **no `/api/model/ready` request**. It therefore provides no nested timing evidence for the original model-ready failure.
+- A focused `node scripts/acceptance-real.mjs` rerun passed Academy check (HTTP 200, **333 ms**) and the remaining acceptance steps. Output: `E:\pip_temp\covert-acceptance-real-academy-repro-20261004.log`; SHA-256 `29D136E40DDE61655AC00769A811EA33032CB06C7D05A416484D7BFB3C011FC8`.
+- The 500's validation issue detail was not retained because the acceptance script removed its temporary workspace in `finally`. The focused success does not erase the full-suite red; its cause remains **UNKNOWN**.
+
+Next: preserve the ArchServer validation issue before the acceptance fixture removes its workspace, then rerun the canonical full suite with unchanged checks so it can reach the final E2E. Only then can the preloader's route timing, event-loop delay, and nested `where.exe` / PowerShell measurements answer the original `/api/model/ready` question. Do not start a local model or close foreign processes. The model-ready release gate remains **RED/OPEN**.
