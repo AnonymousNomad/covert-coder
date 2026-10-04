@@ -4,7 +4,7 @@ Date: 2026-10-04
 Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
 Base checkpoint: `65f4696e8644f404135f980e5a815f8c1301d582`
-Status: **LOCAL VERIFICATION, VERITAS, AND EXACT-SHA GITHUB CI PASS**
+Status: **AUTH-REJECTION CHECKPOINT EXACT-SHA CI PASS; CREDENTIAL-REPLACEMENT FOLLOW-UP IN PROGRESS**
 
 ## Failure and cause
 
@@ -42,4 +42,21 @@ The same stale verification applied to streaming requests. Before repair, `model
 
 All W5 provider behavior in this checkpoint is fixture-backed. It does not prove authenticated live provider execution, quota behavior at a vendor, subscription-backed Codex execution, clean-user packaging, or release acceptance. Local-model floors and runtime qualification remain unchanged. Live external execution remains **UNKNOWN** until the owner-managed auth path and spend ceiling are supplied and safely verified.
 
-Next: continue to the next dependency-ordered provider-path defect after this exact-SHA checkpoint. Inspect Issue #38 before starting that bounded slice.
+The auth-rejection repair above is exact-SHA CI-green. The credential-replacement follow-up below remains open until its post-repair gates pass.
+
+## W5 follow-up: replacement credential invalidates prior verification
+
+### Failure and repair
+
+- A test first established a connected OpenAI fixture, then held the replacement-key probe open. It failed **20 passed, 1 failed**: after the replacement credential was stored, `ProviderService.list()` still returned `connected` while its new probe was pending; exact-model support also had not been withdrawn.
+- The existing provider probe cache is now cleared after the Authority egress guard passes and immediately before the replacement credential is stored. The existing probe must then complete again before the provider/model route can return to `verified`.
+- After the repair, `tests/arch/providers.test.ts` passed **21/21**.
+
+### Preserved parallel-invocation red
+
+- An exploratory default-concurrency command over the five affected provider/BYOK/Model Access/lifecycle test files produced **46 passed, 1 failed, 0 skipped**. The failing `provider lifecycle fixture excludes the operator global BYOK store` case ended with `TimeoutError: The operation was aborted due to timeout` after **16,055 ms**. Its output is preserved in the session transcript.
+- The same lifecycle case then passed alone **1/1** in **6.94 s**: `E:\pip_temp\covert-w5-provider-replacement-lifecycle-isolated-20261004.log` (SHA-256 `DED279C6B19CDBCF770BA835C0E7F18A6B276BF3B6F39C60F26AC8B957FF36C6`).
+- The same five files passed through the project's serial `--test-concurrency=1` invocation **47/47, 0 failed, 0 skipped** in **88.05 s**: `E:\pip_temp\covert-w5-provider-replacement-focused-serial-20261004.log` (SHA-256 `B18D7DE5939E26233F7868EDB4D0B17E8EC791947034EB75F2324E37478565B7`).
+- `scripts/run-arch.mjs` and the versioned pre-push hook both enforce serial architecture-file execution to avoid conflicts between fixture servers bound to ephemeral ports. The red was observed in a noncanonical parallel invocation; the serial/isolated comparison supports invocation-level fixture contention. The exact lower-level Windows scheduling/latency contribution during that parallel run remains **UNKNOWN**. No timeout, assertion, or test concurrency setting was changed in the product or canonical runner.
+
+The replacement-credential follow-up passes its focused serial suite, Node typecheck, and scoped lint. Its full local Veritas attempt is **RED/OPEN** because the final Windows E2E timed out at `/api/model/ready`; the Veritas compile subprocess also returned a failed check without exposing its underlying process error. Details and preserved output hash are in [the Windows E2E blocker evidence](windows-e2e-model-ready-timeout-2026-10-04.md). This W5 follow-up is **not accepted or pushed**; canonical full pre-push and exact-SHA CI remain pending until the aggregate blocker is explained and the complete gates pass.

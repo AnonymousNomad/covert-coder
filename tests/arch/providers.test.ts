@@ -119,6 +119,43 @@ test('connect probes with a successful response -> connected and persists the ke
   }
 });
 
+test('replacing a provider credential withdraws old model verification until the new key is probed', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-replacement-'));
+  let releaseReplacementProbe: ((response: Response) => void) | undefined;
+  let replacementProbeStartedResolve: (() => void) | undefined;
+  const replacementProbeStarted = new Promise<void>(resolve => { replacementProbeStartedResolve = resolve; });
+  const replacementProbe = new Promise<Response>(resolve => { releaseReplacementProbe = resolve; });
+  try {
+    let calls = 0;
+    const fetchFn = (async () => {
+      calls += 1;
+      if (calls === 1) return openAiProbeResponse();
+      replacementProbeStartedResolve?.();
+      return replacementProbe;
+    }) as typeof fetch;
+    const { service } = makeService(dir, fetchFn);
+    const initial = await service.connect({ providerId: 'openai', key: 'fixture-valid-key' });
+    assert.equal(initial.status, 'connected');
+    assert.equal(service.modelSupportState('openai', 'gpt-4o-mini'), 'verified');
+
+    const replacement = service.connect({ providerId: 'openai', key: 'fixture-replacement-key' });
+    await replacementProbeStarted;
+    try {
+      const current = (await service.list()).find(provider => provider.id === 'openai');
+      assert.equal(current?.status, 'checking', 'the prior credential probe cannot remain connected during replacement verification');
+      assert.equal(service.modelSupportState('openai', 'gpt-4o-mini'), 'unknown', 'old model verification is withdrawn while the new credential is unresolved');
+    } finally {
+      releaseReplacementProbe?.(new Response(null, { status: 401 }));
+      await replacement;
+    }
+    const afterRejectedReplacement = (await service.list()).find(provider => provider.id === 'openai');
+    assert.equal(afterRejectedReplacement?.status, 'invalid_key');
+    assert.equal(service.modelSupportState('openai', 'gpt-4o-mini'), 'unknown');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('a success status without a valid completion does not verify model support', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-empty-probe-'));
   try {

@@ -274,6 +274,7 @@ export class ProviderService {
       throw new ProviderError('NOT_READY', 'credential store unavailable on this platform');
     }
     this.assertExternalEgressAllowed();
+    this.probeCache.delete(request.providerId);
     await this.credentials.set(request.providerId, request.key);
     const model = request.model ?? provider.models[0]!;
     const probe = await this.probe(provider, request.key, baseUrl, model, host);
