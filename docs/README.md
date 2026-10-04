@@ -1,6 +1,6 @@
 # Covert Coder documentation
 
-This directory contains the public product contracts, operational guidance, research records, release gates, and dated engineering evidence for AIDE Sovereign Workbench (the engineering lineage of Covert Coder).
+This directory contains the public product contracts, operational guidance, research records, release gates, and dated engineering evidence for Covert Coder. Older records may refer to AIDE Sovereign Workbench as historical engineering lineage.
 
 ## Start here
 

@@ -1,6 +1,6 @@
-# Covert Coder — AIDE Sovereign Workbench
+# Covert Coder
 
-> Covert Coder is the product direction for AIDE Sovereign Workbench, an open-source local-first development environment with editor, models, Git, debugging, and verification under operator control.
+> Covert Coder is an open-source local-first development environment with an editor, models, Git, debugging, and verification under operator control. AIDE Sovereign Workbench is historical engineering lineage.
 
 - Current status: pre-production; capability labels are conservative and uncommitted work is not release evidence.
 - Product topology: browser frontend (:4173) → product façade (:4777) → canonical TypeScript backend (:4778); legacy backend (:4779) remains migration inventory.

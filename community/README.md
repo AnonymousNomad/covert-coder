@@ -1,4 +1,4 @@
-# AIDE Sovereign Community Node
+# Covert Coder Community Node
 
 The community layer is local-first and disabled by default. A user can develop privately without an account, server, relay, payment provider, or network connection.
 

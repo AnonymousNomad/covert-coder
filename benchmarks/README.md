@@ -1,4 +1,4 @@
-# AIDE Model Benchmarks
+# Covert Coder Model Benchmarks
 
 Run the common suite with `npm run benchmarks`. Run one installed model at a time by setting `AIDE_BENCH_MODEL`; each model must be served on the endpoint recorded in `models/manifest.json`.
 

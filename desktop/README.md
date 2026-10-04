@@ -1,4 +1,4 @@
-# AIDE Desktop Shell Plan
+# Covert Coder Desktop Shell Plan
 
 The production desktop target is a lightweight native shell around the existing web workbench and the local daemon.
 
@@ -6,7 +6,7 @@ The production desktop target is a lightweight native shell around the existing 
 
 - **UI:** editor, panels, community views, model lanes, and user approvals.
 - **Daemon:** filesystem, Git, terminal/task broker, model process lifecycle, workspace trust, audit log, and encrypted-sync adapters.
-- **Model runtimes:** separate localhost processes using the AIDE model contract.
+- **Model runtimes:** separate localhost processes using the Covert Coder model contract.
 - **Community transports:** optional direct peers or user-selected relays; disabled by default.
 
 Tauri is the intended shell because it can provide a smaller offline desktop package than an Electron-only implementation. This environment does not currently have Rust/Tauri installed, so the daemon is the runnable first boundary. Do not label a Tauri binary available until it is compiled and smoke-tested on each target platform.

@@ -1,6 +1,6 @@
-# AIDE Architecture — Canonical Direction (FROZEN; topology snapshot refreshed 2026-09-15)
+# Covert Coder Architecture — Canonical Direction (FROZEN; topology snapshot refreshed 2026-09-15)
 
-Source of truth for what AIDE's architecture IS, and where every legacy feature goes next.
+Source of truth for what Covert Coder's architecture IS, and where every legacy feature goes next.
 
 ## 1. The Canonical Path (FROZEN)
 

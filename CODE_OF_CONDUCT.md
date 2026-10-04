@@ -1,4 +1,4 @@
-# AIDE Community Code
+# Covert Coder Community Code
 
 Participants must be respectful, constructive, and honest about evidence, capability, and limitations. Do not harass contributors, expose private information, submit malicious artifacts, or use the project to facilitate unauthorized access or harm.
 
