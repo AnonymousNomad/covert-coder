@@ -999,6 +999,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       contract_version: 1,
       canonical_backend: 'UNSLOTH',
       backend: 'UNSLOTH',
+      accelerator: 'UNKNOWN',
       version: this.version,
       engine: null,
       endpoint: this.endpoint.toString().replace(/\/$/, ''),

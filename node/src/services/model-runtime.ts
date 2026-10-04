@@ -114,8 +114,12 @@ export function resolveLlamaBinary(workspace: string): { path: string; vulkan: b
     const accelerator = inferLlamaAccelerator(binaryPath, process.env.AIDE_LLAMA_ACCELERATOR);
     return { path: binaryPath, vulkan: accelerator === 'vulkan', accelerator };
   };
+  // An explicit operator path is an exact selection. If it is missing, fail
+  // closed instead of silently using a workspace or machine-local binary.
+  if (process.env.AIDE_LLAMA_SERVER) {
+    return existsSync(process.env.AIDE_LLAMA_SERVER) ? configured(process.env.AIDE_LLAMA_SERVER) : null;
+  }
   const candidates: Array<{ path: string; vulkan: boolean; accelerator: LlamaAccelerator }> = [
-    process.env.AIDE_LLAMA_SERVER ? configured(process.env.AIDE_LLAMA_SERVER) : null,
     configured(path.join(workspace, 'runtime', exe)),
     // Historical Windows CPU installation. Explicit AIDE_LLAMA_SERVER takes
     // precedence and is the cross-platform compatibility path.
@@ -174,6 +178,13 @@ export interface ModelRuntimeOptions {
 interface PythonCandidate {
   interp: string;
   args: string[];
+}
+
+function childIsRunning(child: ChildProcess): boolean {
+  // On Windows, a child killed by a signal has exitCode === null and
+  // signalCode set. Checking exitCode alone mistakes a terminated child for
+  // a still-running owned process.
+  return child.exitCode === null && child.signalCode === null;
 }
 
 // GGUF import is availability only. The qualified Liquid artifact reports lfm2;
@@ -336,6 +347,7 @@ export class ModelRuntime {
     return {
       runtime: engineAvailable,
       models: [...this.models.values()].map(model => {
+        const child = this.processes.get(model.id);
         const artifactAvailable = model.file.length > 0 && existsSync(model.file);
         let modelStatus = model.status;
         if (artifactAvailable && model.status !== 'ready' && engineAvailable) modelStatus = 'ready';
@@ -345,7 +357,7 @@ export class ModelRuntime {
         const entry: Record<string, unknown> = {
           id: model.id,
           name: model.name,
-          status: this.processes.has(model.id) ? 'running' : modelStatus,
+          status: child !== undefined && childIsRunning(child) ? 'running' : modelStatus,
           declared_status: modelStatus,
           endpoint: model.endpoint,
           runtime_available: engineAvailable,
@@ -365,6 +377,37 @@ export class ModelRuntime {
 
   list(): ModelEntry[] {
     return [...this.models.values()];
+  }
+
+  /** Process ownership exposed to RuntimeAdapters without exposing mutable handles. */
+  ownsRunningProcess(id: string): boolean {
+    const child = this.processes.get(id);
+    return child !== undefined && child.pid !== undefined && childIsRunning(child);
+  }
+
+  ownedProcessPid(id: string): number | null {
+    const child = this.processes.get(id);
+    return child !== undefined && childIsRunning(child) && child.pid !== undefined ? child.pid : null;
+  }
+
+  runtimeEngineName(): string | null {
+    const binary = resolveLlamaBinary(this.workspace);
+    if (binary !== null) return path.basename(binary.path);
+    return this.pythonReady ? 'llama_cpp.server' : null;
+  }
+
+  /** Wait on the legacy llama-server endpoint directly while the adapter is loading. */
+  async waitForDirectModelReady(id: string, timeoutMs = 60_000): Promise<boolean> {
+    const model = this.models.get(id);
+    if (model === undefined) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const result = await ModelRuntime.prototype.verifyEndpointModel.call(this, id, 5000).catch(() => ({ ready: false as const, status: 'not-ready' as const, served_models: [] }));
+      if (result.ready) return true;
+      if (result.status === 'conflict') throw new ModelRuntimeError('CONFLICT', result.error ?? 'model endpoint is owned by a different runtime');
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return false;
   }
 
   private expectedModelIds(model: ModelEntry): string[] {
@@ -476,7 +519,13 @@ export class ModelRuntime {
   async start(id: string): Promise<{ id: string; status: string; endpoint: string }> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('CHILD_FAILED', 'model is not allowlisted');
-    if (this.processes.has(id)) return { id, status: 'running', endpoint: model.endpoint };
+    const existingProcess = this.processes.get(id);
+    if (existingProcess !== undefined && childIsRunning(existingProcess)) return { id, status: 'running', endpoint: model.endpoint };
+    if (existingProcess !== undefined) {
+      this.processes.delete(id);
+      this.warmed.delete(id);
+      void this.clearEnginePid(id);
+    }
     if (model.file.length === 0) throw new ModelRuntimeError('NOT_READY', `Local model setup required: model file was not found at ${model.file || '(unknown path)'}.`);
     await fs.access(model.file).catch(() => {
       throw new ModelRuntimeError('NOT_READY', `Local model setup required: model file was not found at ${model.file}.`);
@@ -656,15 +705,23 @@ export class ModelRuntime {
   async stop(id: string): Promise<{ id: string; status: string }> {
     const child = this.processes.get(id);
     if (!child) return { id, status: 'stopped' };
-    this.processes.delete(id);
     this.warmed.delete(id);
-    const waitExit = new Promise<void>(resolve => {
-      if (child.exitCode !== null) resolve();
-      else child.once('exit', () => resolve());
+    const waitExit = (timeoutMs: number): Promise<void> => new Promise(resolve => {
+      if (!childIsRunning(child)) return resolve();
+      let timer: ReturnType<typeof setTimeout>;
+      const onExit = (): void => {
+        clearTimeout(timer);
+        resolve();
+      };
+      child.once('exit', onExit);
+      timer = setTimeout(() => {
+        child.removeListener('exit', onExit);
+        resolve();
+      }, timeoutMs);
     });
-    if (child.exitCode === null) child.kill('SIGTERM');
-    await Promise.race([waitExit, new Promise<void>(resolve => setTimeout(resolve, 5000))]);
-    if (child.exitCode === null) {
+    if (childIsRunning(child)) child.kill('SIGTERM');
+    await waitExit(5000);
+    if (childIsRunning(child)) {
       // Windows: child.kill() cannot reap engines that ignore signals or hold
       // grandchildren; taskkill /T tree-kills the whole process tree (same
       // proven repair as the legacy model-manager orphan fix).
@@ -672,11 +729,15 @@ export class ModelRuntime {
         await new Promise<void>(resolve => {
           execFile('taskkill', ['/PID', String(child.pid), '/F', '/T'], () => resolve());
         });
-        await Promise.race([waitExit, new Promise<void>(resolve => setTimeout(resolve, 3000))]);
       } else {
         child.kill('SIGKILL');
       }
+      await waitExit(3000);
     }
+    if (childIsRunning(child)) {
+      throw new ModelRuntimeError('CHILD_FAILED', 'owned model runtime process tree did not exit after bounded termination; ownership is retained for recovery');
+    }
+    this.processes.delete(id);
     await this.clearEnginePid(id);
     return { id, status: 'stopped' };
   }

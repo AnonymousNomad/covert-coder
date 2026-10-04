@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const RuntimeBackend = z.enum(['UNSLOTH', 'LLAMA_CPP']);
+export const RuntimeAccelerator = z.enum(['CPU', 'VULKAN', 'ROCM', 'UNKNOWN']);
 export const RuntimeOwnership = z.enum(['COVERT_OWNED', 'USER_OWNED', 'FOREIGN', 'UNKNOWN']);
 export const RuntimeHealth = z.enum(['HEALTHY', 'UNHEALTHY', 'STOPPED', 'NOT_INSTALLED', 'UNKNOWN']);
 export const RuntimeCapabilityState = z.enum(['SUPPORTED', 'PARTIAL', 'UNSUPPORTED', 'UNKNOWN']);
@@ -58,6 +59,7 @@ export const RuntimeStatusResponse = z.object({
   contract_version: z.literal(1),
   canonical_backend: z.literal('UNSLOTH'),
   backend: RuntimeBackend,
+  accelerator: RuntimeAccelerator,
   version: z.string().nullable(),
   engine: z.string().nullable(),
   endpoint: z.string().nullable(),
@@ -94,6 +96,7 @@ export const RuntimeToolEvidence = z.object({
 }).strict();
 
 export type RuntimeBackendT = z.infer<typeof RuntimeBackend>;
+export type RuntimeAcceleratorT = z.infer<typeof RuntimeAccelerator>;
 export type RuntimeOwnershipT = z.infer<typeof RuntimeOwnership>;
 export type RuntimeHealthT = z.infer<typeof RuntimeHealth>;
 export type RuntimeCapabilityStateT = z.infer<typeof RuntimeCapabilityState>;

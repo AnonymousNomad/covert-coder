@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { configuredLocalRuntimeBackend } from '../../node/src/openapi.ts';
+import { configuredLocalRuntimeBackend, createModelRuntime } from '../../node/src/openapi.ts';
+import { BrokerModelRuntime } from '../../node/src/services/broker-model-runtime.ts';
 import { normalizeLlamaAccelerator, resolveLlamaBinary } from '../../node/src/services/model-runtime.ts';
 
 test('local runtime backend defaults to Unsloth and accepts explicit llama.cpp compatibility mode', () => {
@@ -42,6 +43,46 @@ test('explicit external llama.cpp ROCm binary is selected without changing the d
     if (previousAccelerator === undefined) delete process.env.AIDE_LLAMA_ACCELERATOR;
     else process.env.AIDE_LLAMA_ACCELERATOR = previousAccelerator;
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('explicit llama.cpp construction remains broker-managed and does not fall back from a missing external binary', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'covert-llama-broker-root-'));
+  const workspace = await mkdtemp(path.join(os.tmpdir(), 'covert-llama-broker-workspace-'));
+  const modelDir = path.join(root, 'models');
+  const artifact = path.join(modelDir, 'candidate.gguf');
+  const manifestPath = path.join(modelDir, 'manifest.json');
+  const previousBackend = process.env.AIDE_LOCAL_RUNTIME_BACKEND;
+  const previousServer = process.env.AIDE_LLAMA_SERVER;
+  try {
+    await mkdir(modelDir, { recursive: true });
+    await writeFile(artifact, 'candidate model');
+    await writeFile(manifestPath, JSON.stringify({ models: [{
+      id: 'candidate', name: 'Candidate', status: 'ready', roles: ['chat'], file: artifact,
+      endpoint: 'http://127.0.0.1:19002/v1', model: 'candidate.gguf', artifact_uri: 'local://candidate.gguf', context_tokens: 1024
+    }] }));
+    process.env.AIDE_LOCAL_RUNTIME_BACKEND = 'llama-cpp';
+    process.env.AIDE_LLAMA_SERVER = path.join(root, 'missing-operator-llama-server');
+
+    const runtime = await createModelRuntime(root, workspace, { resourceAdmission: {
+      admitLocalRuntimeStart: async () => ({ decision: 'START' })
+    } as never });
+
+    assert.ok(runtime instanceof BrokerModelRuntime, 'explicit compatibility selection still uses the canonical BrokerModelRuntime facade');
+    const runtimeStatus = await runtime.runtimeStatusSnapshot();
+    assert.equal(runtimeStatus.backend, 'LLAMA_CPP');
+    assert.equal(runtimeStatus.health, 'NOT_INSTALLED', 'missing explicit binary remains unavailable');
+    const modelStatus = await runtime.status();
+    assert.equal(modelStatus.runtime, false);
+    assert.equal(modelStatus.models[0]?.status, 'pending', 'legacy manifest READY is not inherited by an unqualified backend');
+    assert.equal(modelStatus.models[0]?.qualification, 'unqualified');
+  } finally {
+    if (previousBackend === undefined) delete process.env.AIDE_LOCAL_RUNTIME_BACKEND;
+    else process.env.AIDE_LOCAL_RUNTIME_BACKEND = previousBackend;
+    if (previousServer === undefined) delete process.env.AIDE_LLAMA_SERVER;
+    else process.env.AIDE_LLAMA_SERVER = previousServer;
+    await rm(root, { recursive: true, force: true });
+    await rm(workspace, { recursive: true, force: true });
   }
 });
 

@@ -38,10 +38,6 @@ export function deriveTier(totalRamBytes) {
   return 'XL';
 }
 
-export function deriveBackend(vramBytes) {
-  return vramBytes >= 2 * 1024 ** 3 ? 'vulkan' : 'cpu';
-}
-
 function fitFor(fileBytes, totalRamBytes) {
   // Runtime overhead ~30% over weights; COMFORTABLE leaves 1.5GB plus room.
   const required = Math.ceil(fileBytes * 1.3);
@@ -71,11 +67,17 @@ export async function getDeviceProfile() {
     totalRamBytes: hw.totalRamBytes,
     freeRamBytes: hw.freeRamBytes,
     logicalCpus: hw.logicalCpus,
+    devices: hw.devices,
+    vendor: hw.vendor,
+    deviceName: hw.deviceName,
+    driverVersion: hw.driverVersion,
+    architecture: hw.architecture,
     vramBytes: hw.vramBytes,
     freeVramBytes: hw.freeVramBytes,
     vramSource: hw.vramSource,
     tier: deriveTier(hw.totalRamBytes),
-    backend: deriveBackend(hw.vramBytes),
+    // A GPU vendor or VRAM size does not prove a usable inference backend.
+    backend: 'unknown',
     detectedAt: Date.now()
   };
 }
@@ -134,10 +136,10 @@ export async function recommendRoles() {
   return {
     device: {
       tier,
-      backend: deriveBackend(hw.vramBytes),
+      backend: 'unknown',
       totalRamGb: Math.round((hw.totalRamBytes / 1024 ** 3) * 10) / 10,
       logicalCpus: hw.logicalCpus,
-      vramMb: Math.round(hw.vramBytes / 1048576)
+      vramMb: hw.vramBytes === null ? null : Math.round(hw.vramBytes / 1048576)
     },
     recommendations,
     generatedAt: Date.now()

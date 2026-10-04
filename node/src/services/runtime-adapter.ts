@@ -154,14 +154,18 @@ export class RuntimeBroker {
   constructor(
     canonical: RuntimeAdapter,
     recovery: RuntimeAdapter | null,
-    workspace: string
+    workspace: string,
+    selectedBackend: RuntimeBackendT = 'UNSLOTH'
   ) {
     this.canonical = canonical;
     this.recovery = recovery;
     this.workspace = workspace;
     if (canonical.backendId !== 'UNSLOTH') throw new Error('the canonical Runtime Broker adapter must be Unsloth');
     if (recovery !== null && recovery.backendId !== 'LLAMA_CPP') throw new Error('the recovery adapter must be direct llama.cpp');
-    this.active = canonical;
+    if (selectedBackend === 'LLAMA_CPP' && recovery === null) {
+      throw new Error('explicit LLAMA_CPP selection requires a configured llama.cpp adapter');
+    }
+    this.active = selectedBackend === 'LLAMA_CPP' ? recovery! : canonical;
   }
 
   get selectedBackend(): RuntimeBackendT {
@@ -169,8 +173,9 @@ export class RuntimeBroker {
   }
 
   async discover(): Promise<void> {
-    // Discovery follows the product path only. Recovery remains dormant unless explicitly selected.
-    await this.canonical.discover();
+    // Discovery follows the operator-selected adapter. No adapter change is
+    // triggered by missing binaries, health, or discovery errors.
+    await this.active.discover();
   }
 
   private async invoke<T>(operation: () => Promise<T>): Promise<T> {

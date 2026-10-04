@@ -127,10 +127,11 @@ import { SessionStore } from './services/session-store.ts';
 import { WorkspaceService } from './services/workspace.ts';
 import { LspManager } from './services/lsp.ts';
 import { DapManager, type DapAdapterConfig } from './services/dap.ts';
-import { ModelRuntime } from './services/model-runtime.ts';
+import { ModelRuntime, resolveLlamaBinary } from './services/model-runtime.ts';
 import { BrokerModelRuntime, UNSLOTH_V1_QUALIFICATION } from './services/broker-model-runtime.ts';
 import { RuntimeBroker } from './services/runtime-adapter.ts';
 import { UnslothRuntimeAdapter } from './services/unsloth-runtime-adapter.ts';
+import { LlamaCppRuntimeAdapter } from './services/llama-cpp-runtime-adapter.ts';
 import { createHealthSupervisor } from './services/health-supervisor.ts';
 import { createReadinessService } from './services/readiness.ts';
 import { routesForReadiness } from './routes/readiness.ts';
@@ -265,19 +266,30 @@ export async function createModelRuntime(repoRoot: string, workspace: string, op
     }
   };
 
-  // Unsloth remains the V1 default and the only frozen qualified local profile.
-  // Direct llama.cpp is an explicit compatibility selection for hardware where
-  // Unsloth is unavailable; it is never selected as a silent fallback and does
-  // not inherit Unsloth qualification.
-  if (configuredLocalRuntimeBackend() === 'LLAMA_CPP') {
-    const runtime = new ModelRuntime(runtimeOptions);
-    await runtime.load();
-    return runtime;
-  }
-
-  const runtime = new BrokerModelRuntime(
+  // Both backends use the canonical RuntimeBroker -> BrokerModelRuntime path.
+  // The legacy ModelRuntime methods remain the single inventory/process owner
+  // behind the llama.cpp adapter; callbacks bypass BrokerModelRuntime overrides
+  // so adapter operations do not recurse back into RuntimeBroker.
+  const selectedBackend = configuredLocalRuntimeBackend();
+  let runtime: BrokerModelRuntime;
+  const llamaAdapter = new LlamaCppRuntimeAdapter({
+    workspace,
+    listModels: () => runtime.list(),
+    getModel: id => runtime.get(id),
+    isOwned: id => runtime.ownsRunningProcess(id),
+    pidForModel: id => runtime.ownedProcessPid(id),
+    engineName: () => runtime.runtimeEngineName(),
+    start: id => ModelRuntime.prototype.start.call(runtime, id),
+    waitReady: id => runtime.waitForDirectModelReady(id),
+    stop: id => ModelRuntime.prototype.stop.call(runtime, id),
+    chat: (id, messages, chatOptions) => ModelRuntime.prototype.chat.call(runtime, id, messages, chatOptions),
+    chatStream: (id, messages, onDelta, signal, chatOptions) => ModelRuntime.prototype.chatStream.call(runtime, id, messages, onDelta, signal, chatOptions),
+    available: async () => resolveLlamaBinary(workspace) !== null,
+    accelerator: () => resolveLlamaBinary(workspace)?.accelerator ?? 'unknown'
+  });
+  runtime = new BrokerModelRuntime(
     runtimeOptions,
-    new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), null, workspace),
+    new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), llamaAdapter, workspace, selectedBackend),
     UNSLOTH_V1_QUALIFICATION,
     resourceAdmission
   );

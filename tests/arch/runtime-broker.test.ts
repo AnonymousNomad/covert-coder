@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:net';
@@ -64,6 +65,7 @@ function baseStatus(backend: 'UNSLOTH' | 'LLAMA_CPP', health: RuntimeHealthT, lo
     contract_version: 1,
     canonical_backend: 'UNSLOTH',
     backend,
+    accelerator: 'UNKNOWN',
     version: null,
     engine: backend === 'LLAMA_CPP' ? 'llama-server' : null,
     endpoint: null,
@@ -1008,6 +1010,20 @@ test('Runtime Broker does not fall back silently and journals only an explicit r
   }
 });
 
+test('explicit llama.cpp selection remains selected when the adapter is unavailable or discovery fails', async () => {
+  const canonical = new AdapterStub('UNSLOTH', 'UNHEALTHY');
+  const compatibility = new AdapterStub('LLAMA_CPP', 'NOT_INSTALLED');
+  let compatibilityDiscoveries = 0;
+  compatibility.discover = async () => { compatibilityDiscoveries++; throw new RuntimeAdapterError('NOT_INSTALLED', 'operator-selected llama.cpp binary is unavailable'); };
+  const broker = new RuntimeBroker(canonical, compatibility, os.tmpdir(), 'LLAMA_CPP');
+  assert.equal(broker.selectedBackend, 'LLAMA_CPP');
+  await assert.rejects(() => broker.discover(), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'NOT_INSTALLED');
+  assert.equal(compatibilityDiscoveries, 1);
+  assert.equal(broker.selectedBackend, 'LLAMA_CPP', 'adapter failure never switches to Unsloth automatically');
+  await assert.rejects(() => broker.infer({ modelId: 'm', messages: [] }));
+  assert.equal(broker.selectedBackend, 'LLAMA_CPP');
+});
+
 test('artifact hash changes invalidate the previous runtime identity', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-runtime-hash-'));
   const artifact = path.join(dir, 'model.gguf');
@@ -1056,6 +1072,7 @@ test('direct llama.cpp recovery lifecycle controls only its retained owned proce
   };
   let owned = false;
   let stopCalls = 0;
+  let startCalls = 0;
   const adapter = new LlamaCppRuntimeAdapter({
     workspace: dir,
     listModels: () => [model],
@@ -1063,27 +1080,207 @@ test('direct llama.cpp recovery lifecycle controls only its retained owned proce
     isOwned: () => owned,
     pidForModel: () => owned ? 12345 : null,
     engineName: () => 'llama-server',
-    start: async id => { owned = true; return { id, status: 'running', endpoint: model.endpoint }; },
+    start: async id => { startCalls++; owned = true; return { id, status: 'running', endpoint: model.endpoint }; },
     waitReady: async () => true,
     stop: async id => { assert.equal(owned, true); stopCalls++; owned = false; return { id, status: 'stopped' }; },
     chat: async id => ({ text: 'reference', modelId: id, timingMs: 1 }),
     chatStream: async (_id, _messages, onDelta) => { onDelta('reference'); },
     available: async () => true,
+    accelerator: () => 'unknown',
     now: () => FIXED_TIME
   });
   try {
+    assert.equal((await adapter.status()).ownership, 'UNKNOWN', 'an externally available runtime is not reported as Covert-owned');
     await assert.rejects(() => adapter.unload(model.id), (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'OWNERSHIP_UNVERIFIED');
     await adapter.load({ modelId: model.id, modelPath: artifact });
     const active = await adapter.status();
     assert.equal(active.ownership, 'COVERT_OWNED');
     assert.equal(active.pid, 12345);
+    assert.equal(active.loaded_model?.artifact_name, 'reference.gguf');
+    assert.equal(active.loaded_model?.artifact_sha256, createHash('sha256').update('reference artifact').digest('hex'));
+    assert.equal(active.loaded_model?.identity_evidence, 'REQUESTED_ARTIFACT');
     await adapter.unload(model.id);
     assert.equal(stopCalls, 1);
     assert.equal(owned, false);
 
+    await adapter.load({ modelId: model.id, modelPath: artifact });
+    assert.equal(startCalls, 2, 'restart re-enters the selected adapter for the same registered artifact');
+    assert.equal((await adapter.status()).loaded_model?.artifact_sha256, createHash('sha256').update('reference artifact').digest('hex'));
+    await adapter.unload(model.id);
+    assert.equal(stopCalls, 2);
+
     await adapter.shutdown();
-    assert.equal(stopCalls, 1, 'shutdown with no owned process does not stop a foreign process');
+    assert.equal(stopCalls, 2, 'shutdown with no owned process does not stop a foreign process');
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('direct llama.cpp refuses and cleans up if the registered artifact changes during startup', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-llama-artifact-change-'));
+  const artifact = path.join(dir, 'changing.gguf');
+  await writeFile(artifact, 'artifact before load');
+  const model = {
+    id: 'changing-model', name: 'Changing Model', status: 'ready', roles: ['chat'],
+    endpoint: 'http://127.0.0.1:19002/v1', model: 'changing.gguf', artifact_uri: `local://${artifact}`,
+    context_tokens: 1024, file: artifact
+  };
+  let owned = false;
+  let stopCalls = 0;
+  const adapter = new LlamaCppRuntimeAdapter({
+    workspace: dir,
+    listModels: () => [model],
+    getModel: id => id === model.id ? model : undefined,
+    isOwned: () => owned,
+    pidForModel: () => owned ? 12348 : null,
+    engineName: () => 'llama-server',
+    start: async id => { owned = true; return { id, status: 'starting', endpoint: model.endpoint }; },
+    waitReady: async () => {
+      await writeFile(artifact, 'artifact replaced while loading');
+      return true;
+    },
+    stop: async id => { stopCalls++; owned = false; return { id, status: 'stopped' }; },
+    chat: async id => ({ text: '', modelId: id, timingMs: 0 }),
+    chatStream: async () => {},
+    available: async () => true,
+    accelerator: () => 'unknown'
+  });
+  try {
+    await assert.rejects(() => adapter.load({ modelId: model.id, modelPath: artifact }),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'ARTIFACT_CHANGED');
+    assert.equal(stopCalls, 1, 'the owned process is stopped when the registered artifact changes during startup');
+    assert.equal(owned, false);
+    const status = await adapter.status();
+    assert.equal(status.loaded_model, null, 'changed artifact never receives a loaded identity');
+    assert.equal(status.health, 'STOPPED');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('direct llama.cpp cancellation reaches the owned stream and permits cleanup', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-llama-cancel-'));
+  const artifact = path.join(dir, 'cancel.gguf');
+  await writeFile(artifact, 'cancellation artifact');
+  const model = {
+    id: 'cancel-model', name: 'Cancel Model', status: 'ready', roles: ['chat'],
+    endpoint: 'http://127.0.0.1:19003/v1', model: 'cancel.gguf', artifact_uri: `local://${artifact}`,
+    context_tokens: 1024, file: artifact
+  };
+  let owned = false;
+  const adapter = new LlamaCppRuntimeAdapter({
+    workspace: dir,
+    listModels: () => [model],
+    getModel: id => id === model.id ? model : undefined,
+    isOwned: () => owned,
+    pidForModel: () => owned ? 12346 : null,
+    engineName: () => 'llama-server',
+    start: async id => { owned = true; return { id, status: 'starting', endpoint: model.endpoint }; },
+    waitReady: async () => true,
+    stop: async id => { owned = false; return { id, status: 'stopped' }; },
+    chat: async id => ({ text: '', modelId: id, timingMs: 0 }),
+    chatStream: async (_id, _messages, onDelta, signal) => {
+      onDelta('partial');
+      await new Promise<void>((resolve, reject) => {
+        if (signal.aborted) return reject(signal.reason);
+        const timer = setTimeout(resolve, 5000);
+        signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+      });
+    },
+    available: async () => true,
+    accelerator: () => 'unknown'
+  });
+  try {
+    await adapter.load({ modelId: model.id, modelPath: artifact });
+    const deltas: string[] = [];
+    const stream = adapter.stream({ modelId: model.id, messages: [{ role: 'user', content: 'cancel safely' }] }, delta => deltas.push(delta), new AbortController().signal);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(await adapter.cancel(), true);
+    await assert.rejects(stream, (error: unknown) => error instanceof Error && error.name === 'AbortError');
+    assert.deepEqual(deltas, ['partial']);
+    assert.equal(await adapter.cancel(), false, 'the cancelled stream releases its active controller');
+    await adapter.unload(model.id);
+    assert.equal(owned, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('llama.cpp cleanup failure remains owned and unhealthy until shutdown confirms recovery', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'covert-llama-cleanup-failure-'));
+  const artifact = path.join(dir, 'cleanup.gguf');
+  await writeFile(artifact, 'cleanup artifact');
+  const model = {
+    id: 'cleanup-model', name: 'Cleanup Model', status: 'ready', roles: ['chat'],
+    endpoint: 'http://127.0.0.1:19004/v1', model: 'cleanup.gguf', artifact_uri: `local://${artifact}`,
+    context_tokens: 1024, file: artifact
+  };
+  let owned = false;
+  let stopCalls = 0;
+  const adapter = new LlamaCppRuntimeAdapter({
+    workspace: dir,
+    listModels: () => [model],
+    getModel: id => id === model.id ? model : undefined,
+    isOwned: () => owned,
+    pidForModel: () => owned ? 12347 : null,
+    engineName: () => 'llama-server',
+    start: async id => { owned = true; return { id, status: 'starting', endpoint: model.endpoint }; },
+    waitReady: async () => false,
+    stop: async id => {
+      stopCalls++;
+      if (stopCalls === 1) throw new RuntimeAdapterError('CLEANUP_FAILED', 'fixture stop did not terminate the owned child');
+      owned = false;
+      return { id, status: 'stopped' };
+    },
+    chat: async id => ({ text: '', modelId: id, timingMs: 0 }),
+    chatStream: async () => {},
+    available: async () => true,
+    accelerator: () => 'unknown'
+  });
+  try {
+    await assert.rejects(() => adapter.load({ modelId: model.id, modelPath: artifact }),
+      (error: unknown) => error instanceof RuntimeAdapterError && error.code === 'CLEANUP_FAILED');
+    const failedCleanup = await adapter.status();
+    assert.equal(failedCleanup.health, 'UNHEALTHY');
+    assert.equal(failedCleanup.ownership, 'COVERT_OWNED');
+    assert.equal(failedCleanup.loaded_model, null, 'failed startup does not retain a stale READY model identity');
+    assert.equal(failedCleanup.pid, 12347);
+
+    await adapter.shutdown();
+    const recovered = await adapter.status();
+    assert.equal(stopCalls, 2, 'shutdown retries cleanup only through the retained owned-process handle');
+    assert.equal(recovered.health, 'STOPPED');
+    assert.equal(recovered.ownership, 'UNKNOWN');
+    assert.equal(recovered.loaded_model, null);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('llama.cpp runtime status preserves the selected accelerator identity', async () => {
+  const acceleratorCases = [
+    ['cpu', 'CPU'],
+    ['vulkan', 'VULKAN'],
+    ['rocm', 'ROCM'],
+    ['unknown', 'UNKNOWN']
+  ] as const;
+  for (const [selected, expected] of acceleratorCases) {
+    const adapter = new LlamaCppRuntimeAdapter({
+      workspace: os.tmpdir(),
+      listModels: () => [],
+      getModel: () => undefined,
+      isOwned: () => false,
+      pidForModel: () => null,
+      engineName: () => 'llama-server',
+      start: async id => ({ id, status: 'starting', endpoint: 'http://127.0.0.1:1/v1' }),
+      waitReady: async () => false,
+      stop: async id => ({ id, status: 'stopped' }),
+      chat: async id => ({ text: '', modelId: id, timingMs: 0 }),
+      chatStream: async () => {},
+      available: async () => true,
+      accelerator: () => selected
+    } as ConstructorParameters<typeof LlamaCppRuntimeAdapter>[0]);
+    const status = await adapter.status();
+    assert.equal((status as unknown as { accelerator?: string }).accelerator, expected);
   }
 });

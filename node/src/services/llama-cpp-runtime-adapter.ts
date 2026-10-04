@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
-import type { RuntimeCapabilityDescriptorT, RuntimeHealthT, RuntimeMetricsT, RuntimeModelIdentityT, RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
+import type { RuntimeAcceleratorT, RuntimeCapabilityDescriptorT, RuntimeHealthT, RuntimeMetricsT, RuntimeModelIdentityT, RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
 import { RuntimeAdapterError, unknownMetrics, unknownModelIdentity, type RuntimeAdapter, type RuntimeInferenceRequest, type RuntimeInferenceResult, type RuntimeLoadRequest } from './runtime-adapter.ts';
-import type { ModelEntry } from './model-runtime.ts';
+import type { LlamaAccelerator, ModelEntry } from './model-runtime.ts';
 
 export interface LlamaCppRuntimeAdapterOptions {
   workspace: string;
@@ -18,6 +18,7 @@ export interface LlamaCppRuntimeAdapterOptions {
   chat: (id: string, messages: RuntimeInferenceRequest['messages'], options: { maxTokens?: number; temperature?: number }) => Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }>;
   chatStream: (id: string, messages: RuntimeInferenceRequest['messages'], onDelta: (delta: string) => void, signal: AbortSignal, options: { maxTokens?: number; temperature?: number }) => Promise<void>;
   available: () => Promise<boolean>;
+  accelerator: () => LlamaAccelerator;
   now?: () => Date;
 }
 
@@ -38,6 +39,7 @@ export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
   private loaded: RuntimeModelIdentityT | null = null;
   private loadedModelId: string | null = null;
   private startedAt: string | null = null;
+  private cleanupFailed = false;
   private controllers = new Set<AbortController>();
 
   constructor(options: LlamaCppRuntimeAdapterOptions) {
@@ -50,8 +52,24 @@ export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
     await this.options.available();
   }
 
+  private ownedProcessModelId(): string | null {
+    return this.options.listModels().find(model => this.options.isOwned(model.id))?.id ?? null;
+  }
+
+  private clearLoadedState(): void {
+    this.loaded = null;
+    this.loadedModelId = null;
+    this.startedAt = null;
+  }
+
   async health(): Promise<RuntimeHealthT> {
-    if (this.loadedModelId !== null && this.options.isOwned(this.loadedModelId)) return 'HEALTHY';
+    const ownedModelId = this.ownedProcessModelId();
+    if (ownedModelId !== null) {
+      if (this.cleanupFailed || this.loadedModelId !== ownedModelId || this.loaded === null) return 'UNHEALTHY';
+      return 'HEALTHY';
+    }
+    if (this.loadedModelId !== null) this.clearLoadedState();
+    this.cleanupFailed = false;
     return await this.options.available() ? 'STOPPED' : 'NOT_INSTALLED';
   }
 
@@ -96,30 +114,56 @@ export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
   async load(request: RuntimeLoadRequest): Promise<RuntimeModelIdentityT> {
     const model = this.options.getModel(request.modelId);
     if (!model || path.resolve(model.file) !== path.resolve(request.modelPath)) throw new RuntimeAdapterError('MODEL_NOT_ALLOWLISTED', 'direct llama.cpp recovery accepts only the registered model artifact');
+    const registeredArtifactSha256 = await artifactHash(model.file);
     const result = await this.options.start(request.modelId);
     if (!this.options.isOwned(request.modelId)) throw new RuntimeAdapterError('OWNERSHIP_UNVERIFIED', 'direct llama.cpp start did not yield a retained Covert-owned process');
-    if (result.status === 'starting' && !(await this.options.waitReady(request.modelId))) {
-      if (this.options.isOwned(request.modelId)) await this.options.stop(request.modelId);
-      throw new RuntimeAdapterError('LLAMA_CPP_NOT_READY', 'direct llama.cpp did not become ready');
+    try {
+      // A retained child handle is ownership evidence, not readiness. Probe the
+      // exact served model for both a new start and an already-running child.
+      if (!(await this.options.waitReady(request.modelId))) {
+        throw new RuntimeAdapterError('LLAMA_CPP_NOT_READY', `direct llama.cpp (${result.status}) did not become ready`);
+      }
+      const loadedArtifactSha256 = await artifactHash(model.file);
+      if (loadedArtifactSha256 !== registeredArtifactSha256) {
+        throw new RuntimeAdapterError('ARTIFACT_CHANGED', 'registered model artifact changed while direct llama.cpp was starting');
+      }
+      const identity: RuntimeModelIdentityT = {
+        model_id: model.id,
+        display_name: request.displayName ?? model.name,
+        artifact_name: path.basename(model.file),
+        artifact_sha256: registeredArtifactSha256,
+        identity_evidence: 'REQUESTED_ARTIFACT'
+      };
+      this.loaded = identity;
+      this.loadedModelId = model.id;
+      this.startedAt = this.now().toISOString();
+      this.cleanupFailed = false;
+      return identity;
+    } catch (error) {
+      this.clearLoadedState();
+      if (this.options.isOwned(request.modelId)) {
+        try {
+          await this.options.stop(request.modelId);
+          this.cleanupFailed = false;
+        } catch {
+          this.cleanupFailed = true;
+          throw new RuntimeAdapterError('CLEANUP_FAILED', 'direct llama.cpp failed and cleanup of its Covert-owned process could not be confirmed');
+        }
+      }
+      throw error;
     }
-    const identity: RuntimeModelIdentityT = {
-      model_id: model.id,
-      display_name: request.displayName ?? model.name,
-      artifact_name: path.basename(model.file),
-      artifact_sha256: await artifactHash(model.file),
-      identity_evidence: 'REQUESTED_ARTIFACT'
-    };
-    this.loaded = identity;
-    this.loadedModelId = model.id;
-    this.startedAt = this.now().toISOString();
-    return identity;
   }
 
   async unload(modelId: string): Promise<void> {
     if (this.loadedModelId !== modelId || !this.options.isOwned(modelId)) throw new RuntimeAdapterError('OWNERSHIP_UNVERIFIED', 'direct llama.cpp unload is permitted only for a process started and retained by Covert');
-    await this.options.stop(modelId);
-    this.loaded = null;
-    this.loadedModelId = null;
+    try {
+      await this.options.stop(modelId);
+    } catch (error) {
+      this.cleanupFailed = true;
+      throw error;
+    }
+    this.clearLoadedState();
+    this.cleanupFailed = false;
   }
 
   async infer(request: RuntimeInferenceRequest): Promise<RuntimeInferenceResult> {
@@ -184,13 +228,32 @@ export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
   async metrics(): Promise<RuntimeMetricsT> { return unknownMetrics(); }
 
   async shutdown(): Promise<void> {
-    if (this.loadedModelId !== null) await this.unload(this.loadedModelId);
+    for (const model of this.options.listModels()) {
+      if (!this.options.isOwned(model.id)) continue;
+      try {
+        await this.options.stop(model.id);
+      } catch (error) {
+        this.cleanupFailed = true;
+        throw error;
+      }
+      if (this.loadedModelId === model.id) this.clearLoadedState();
+    }
+    this.cleanupFailed = false;
   }
 
   async status(): Promise<RuntimeStatusResponseT> {
-    const model = this.loadedModelId === null ? null : this.options.getModel(this.loadedModelId);
-    const owned = this.loadedModelId !== null && this.options.isOwned(this.loadedModelId);
+    const ownedModelId = this.ownedProcessModelId();
+    if (this.loadedModelId !== null && this.loadedModelId !== ownedModelId) this.clearLoadedState();
+    const model = ownedModelId === null ? null : this.options.getModel(ownedModelId);
+    const owned = ownedModelId !== null;
+    const loaded = ownedModelId === this.loadedModelId ? this.loaded : null;
     const health = await this.health();
+    const selectedAccelerator: Record<LlamaAccelerator, RuntimeAcceleratorT> = {
+      cpu: 'CPU',
+      vulkan: 'VULKAN',
+      rocm: 'ROCM',
+      unknown: 'UNKNOWN'
+    };
     let endpoint: string | null = null;
     let port: number | null = null;
     if (model) {
@@ -204,15 +267,16 @@ export class LlamaCppRuntimeAdapter implements RuntimeAdapter {
       contract_version: 1,
       canonical_backend: 'UNSLOTH',
       backend: 'LLAMA_CPP',
+      accelerator: selectedAccelerator[this.options.accelerator()],
       version: null,
       engine: this.options.engineName(),
       endpoint,
       port,
-      pid: owned && this.loadedModelId !== null ? this.options.pidForModel(this.loadedModelId) : null,
-      started_at: this.startedAt,
+      pid: owned && ownedModelId !== null ? this.options.pidForModel(ownedModelId) : null,
+      started_at: loaded === null ? null : this.startedAt,
       health,
       ownership: owned ? 'COVERT_OWNED' : 'UNKNOWN',
-      loaded_model: this.loaded,
+      loaded_model: loaded,
       capabilities: this.capabilities(),
       metrics: await this.metrics(),
       last_error: null,
