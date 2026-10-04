@@ -155,7 +155,7 @@ Stop the pilot and preserve the first red if any occurs:
 
 ## Dependabot triage — exact GitHub alert remains blocked
 
-The default branch is `covert-production` at `81aff88b924db05c689dc734aa3e67605f4b18ce` as observed during this audit. A read-only GitHub Dependabot alerts API request returned HTTP `403 Forbidden`; anonymous security UI GET returned `404`, and `gh auth status` reported the configured token could not authenticate. These results do not identify the repository alert. Do not send or request credentials through chat.
+The default branch is `covert-production` at `81aff88b924db05c689dc734aa3e67605f4b18ce` as observed during this audit. GitHub's research-branch push response identified the default-branch finding as alert `#1`, severity `moderate`, with link `https://github.com/AnonymousNomad/covert-coder/security/dependabot/1`. A read-only request to the alert-specific API returned HTTP `403 Forbidden`; an anonymous GET of the alert page returned `404`, and `gh auth status` reported the configured token could not authenticate. Therefore the alert number/severity are known, but its dependency/advisory details remain inaccessible. Do not send or request credentials through chat.
 
 Independent registry audit of the exact default-branch root `package.json` and `package-lock.json` found:
 
@@ -164,6 +164,6 @@ Independent registry audit of the exact default-branch root `package.json` and `
 - The same audit found `dompurify@3.4.13` as a production dependency via Monaco with a low advisory; this is not a moderate alert match.
 - `npm audit --json` reported 0 moderate, 1 high, 1 low; this does not match the earlier GitHub alert count. No dependency was changed.
 
-**Triage status: BLOCKED for exact alert identity.** If GitHub confirms the moderate is the brace-expansion advisory above, remediation appears routine at the lockfile/dependency level, but the package's additional high advisories should be addressed in the normal dependency lane. This report does not close, dismiss, or update any alert.
+**Triage status: BLOCKED for exact dependency/advisory identity; GitHub identified alert #1 as moderate.** If GitHub confirms the moderate is the brace-expansion advisory above, remediation appears routine at the lockfile/dependency level, but the package's additional high advisories should be addressed in the normal dependency lane. This report does not close, dismiss, or update any alert.
 
 See [`ORT_QNN_RESEARCH_EVIDENCE.md`](ORT_QNN_RESEARCH_EVIDENCE.md) for pinned source links, dates, checksums and access-denial records; [`ORT_QNN_ARTIFACT_PACKAGE.md`](ORT_QNN_ARTIFACT_PACKAGE.md) for the proposed immutable package layout; and [`ORT_QNN_QUALIFICATION_PLAN.md`](ORT_QNN_QUALIFICATION_PLAN.md) for the later physical-device gate.

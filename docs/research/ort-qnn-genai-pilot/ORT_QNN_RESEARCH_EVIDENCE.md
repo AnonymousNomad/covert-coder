@@ -68,13 +68,15 @@ The complete high-impact QNN plugin/Genie/HTP DLL and license-notice member hash
 
 ### First red: exact alert endpoint
 
-Read-only request made against `AnonymousNomad/covert-coder`:
+Read-only requests made against `AnonymousNomad/covert-coder`:
 
 ```text
 GET /repos/AnonymousNomad/covert-coder/dependabot/alerts?state=open&per_page=100
 ```
 
 `gh api` returned `403 Forbidden`, exit 1. `gh auth status` reported it could not log in with the configured token. Anonymous GET of the repository Dependabot UI returned 404; GitHub can obscure private/unauthorized security pages, so this does not prove absence. No tokens were read or printed. The original request, environment, exit code and state impact are recorded at `/tmp/DEPENDABOT_ALERT_API_FIRST_RED_20261004.md` outside the repository workspace; no product state changed.
+
+The subsequent research-branch push response from GitHub stated: `GitHub found 1 vulnerability on AnonymousNomad/covert-coder's default branch (1 moderate)` and linked alert `#1` at `https://github.com/AnonymousNomad/covert-coder/security/dependabot/1`. A follow-up read-only `gh api repos/AnonymousNomad/covert-coder/dependabot/alerts/1` also returned `403 Forbidden`, exit 1; anonymous GET of that exact alert URL returned `404`. This adds reliable alert number/severity and URL, but still exposes no dependency/advisory fields. The exact identity remains blocked.
 
 ### Default-branch current lock cross-check
 
@@ -84,7 +86,7 @@ GET /repos/AnonymousNomad/covert-coder/dependabot/alerts?state=open&per_page=100
 - The repository source has no direct `minimatch`/`brace-expansion` import. `rg` search of tracked source produced no matches. The lock and audit show a dev/build graph edge, not a direct runtime dependency. No attacker-controlled brace pattern path was identified in source; this is not proof that all build-tool paths are unreachable.
 - Public GHSA page information supports the advisory's affected/fixed range, but not that it is the exact repository alert. Its moderate/high aggregate differs from GitHub's reported “one moderate.”
 
-**Conclusion:** exact dependency/advisory/installed/fixed values for the single reported GitHub alert are not observable in this environment. The `brace-expansion` tuple is a candidate correlation only; do not attribute it to that alert without alert metadata. If confirmed, the package fix is routine at the lock level (`>=5.0.12` for the moderate GHSA), but the higher-severity advisories need the normal dependency owner to choose a fully patched version. No dependency was changed or alert dismissed.
+**Conclusion:** GitHub identified the reported alert as `#1`, moderate, but exact dependency/advisory/installed/fixed values remain unobservable in this environment. The `brace-expansion` tuple is a candidate correlation only; do not attribute it to that alert without alert metadata. If confirmed, the package fix is routine at the lock level (`>=5.0.12` for the moderate GHSA), but the higher-severity advisories need the normal dependency owner to choose a fully patched version. No dependency was changed or alert dismissed.
 
 ## Preserved research execution issues
 
