@@ -9341,7 +9341,7 @@
         },
         {
           "file": "browser/src/services/api.ts",
-          "line": 279,
+          "line": 280,
           "methodEvidence": "POST",
           "source": "return call('/api/file', { query: query.data, schema: FileReadResponse });"
         }
@@ -9452,7 +9452,7 @@
       "otherFrontendMethodReferences": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 290,
+          "line": 291,
           "methodEvidence": "POST",
           "source": "return call('/api/search', { query: query.data, schema: SearchResponse });"
         }
