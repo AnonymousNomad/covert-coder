@@ -4,7 +4,7 @@ Date: 2026-10-04
 Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
 Last published parent SHA: `ca8527e565b62326fd940f574d9964413e3c6751`
-Status: **BLOCKED — the earlier Veritas `/api/model/ready` timeout and aggregate Authority timeout remain preserved; the latest full serial `npm test` passed after host resource recovery, but the low-level cause is not proven**
+Status: **BLOCKED/OPEN — full serial `npm test` and Veritas now pass after host resource recovery; the earlier low-headroom timeouts remain preserved and their exact Windows-level cause is not proven**
 
 ## Preserved Veritas result
 
@@ -119,4 +119,16 @@ The full package `npm test` chain then completed with **exit code 0**, including
 - Instrumented ArchServer events show all **29** Authority decision responses in the full test trace were HTTP 200 (maximum observed route time **157.39 ms**); all **27** prepare responses and all **4** terminal runs were also HTTP 200. The final E2E decision reached ArchServer and returned in **69.95 ms**, followed by terminal execution in **92.50 ms**.
 - Event-loop samples near model readiness showed maximum delays between **29.69 and 49.97 ms**. The trace's overall maximum was **6,190.79 ms** in an earlier interval, not during the final readiness/Authority requests.
 
-The contrast between the preserved low-headroom reds and this pass after Unity exited supports host resource pressure as a contributing condition. It does **not** prove which Windows scheduling, paging, or I/O operation caused either prior timeout, and it does not erase the earlier Veritas failure. Rerun the canonical Veritas gate at this recovered baseline; keep the prior red in the record and do not start a model.
+The contrast between the preserved low-headroom reds and this pass after Unity exited supports host resource pressure as a contributing condition. It does **not** prove which Windows scheduling, paging, or I/O operation caused either prior timeout, and it does not erase the earlier Veritas failure. Keep the prior red in the record and do not start a model.
+
+## Canonical Veritas rerun at recovered baseline
+
+The canonical `npm run veritas -- --json` ran without the diagnostic preload on local HEAD `4c8854b6c6e8b6b7f87964c29b19c4d0cf240a8b` and exited **0**. The only tracked worktree change was `docs/evidence/desktop-battery.md`, updated by the full-test runs; the owner directive stayed untracked and excluded. Veritas's `git-diff --check` also passed.
+
+- Veritas output: `E:\pip_temp\covert-w5-veritas-recovery-baseline-20261004.log`; SHA-256 `0D2137D2B4DE6BE9136B42CEB95570A99F369FB05C6B6B2C697FA19A84F52E29`.
+- Report: **6/6 checks passed** — path boundary, secret scan, manifest validation, compile (`npm run check`, exit 0), tests (`npm test`, exit 0), and git diff. Veritas status `verified`, score **1.0 / 0.9 threshold**, no failed checks or oaths.
+- Run window: `2026-10-04T12:43:46Z` to `2026-10-04T12:59:49Z`. Compile/check completed in **717,868 ms**; the full test command also exited 0.
+- During the run, observed free RAM ranged from **4.65 to 5.80 GiB**, and free commit from **5.78 to 7.31 GiB**. No local model/runtime start was requested.
+- A read-only Windows System log query for Resource-Exhaustion-Detector event 2004 between `10:30Z` and `11:20Z`, covering the original failing Veritas run, found **no matching event**.
+
+This successful canonical rerun strengthens the host-pressure correlation, but it cannot reconstruct the uninstrumented inner operation from the earlier 30-second timeout. Keep that red preserved and its low-level cause **UNKNOWN**. The current local gates are green at the tested source SHA; the full pre-push gate and exact-SHA CI are still required before publication.
