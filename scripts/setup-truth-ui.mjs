@@ -36,7 +36,7 @@ try {
   await page.evaluate(async baseline => {
     const { api } = await import('/src/services/api.ts');
     const { createSetupSession } = await import(baseline ? '/src/cockpit/__setup_truth_baseline__.ts' : '/src/cockpit/SetupSession.ts');
-    window.fixture = { failure: '', healthState: 'HEALTHY', pendingHealth: false, choices: {}, writes: [], writeAttempts: 0, failAtWrite: 0, completed: 0, toasts: [], saved: null, providerIds: [], modelId: 'fixture-model', artifactHash: 'a'.repeat(64), runtimeBackend: 'UNSLOTH', runtimeId: 'unsloth', selectedModelId: 'fixture-model' };
+    window.fixture = { failure: '', healthState: 'HEALTHY', pendingHealth: false, choices: {}, writes: [], writeAttempts: 0, failAtWrite: 0, completed: 0, toasts: [], saved: null, providerIds: [], connectionReads: 0, workbenchDetailReads: [], modelId: 'fixture-model', artifactHash: 'a'.repeat(64), runtimeBackend: 'UNSLOTH', runtimeId: 'unsloth', selectedModelId: 'fixture-model' };
     const state = window.fixture;
     const check = name => { if (state.failure === name) throw new Error('fixture unavailable'); };
     Object.assign(api, {
@@ -58,6 +58,16 @@ try {
           window.releaseByok = () => { if (rejectRead) reject(new Error('abandoned read failed')); else resolve({ consent_enabled: true, providers: [] }); };
         });
         check('providers'); return { consent_enabled: false, routing: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, providers: state.providerIds.map(id => ({ id, name: id, base_url: 'https://example.invalid/v1', api_type: 'chat-completions', model_id: 'provider-model', key_stored: true, tool_calling: false })) };
+      },
+      connections: async () => {
+        state.connectionReads++;
+        check('connections');
+        return { consensus: 'fixture-only', preference: 'local-first', routed_roles: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, connections: [] };
+      },
+      workbenchDetail: async id => {
+        state.workbenchDetailReads.push(id);
+        check('workbench-detail');
+        return { workbench: { id, name: id, version: 'fixture', description: 'Controlled browser harness fixture.', offline_by_default: true, installed: false, enabled: false, plugins: [], skills: [], mcp_servers: [], recommended_models: [], setup: [], validated: true, issues: [] } };
       },
       modelManager: async () => { check('model-access'); return ({
         runtime: { canonical_runtime_id: 'unsloth', default_runtime_id: 'unsloth', reported_backend: state.runtimeBackend, discovered_state: 'DISCOVERED', configured_runtime_id: state.runtimeId, configured: true, available: true, health: 'HEALTHY', selected_model_id: state.selectedModelId },
@@ -93,6 +103,8 @@ try {
       await next.click();
       await page.waitForFunction(expected => document.querySelector('.cockpit-setup-stage').textContent.startsWith(`SETUP ${expected} OF`), i + 2);
     }
+    assert.ok(await page.evaluate(() => window.fixture.connectionReads > 0), 'connections read must use the controlled API fixture');
+    assert.ok(await page.evaluate(() => window.fixture.workbenchDetailReads.length > 0), 'workbench detail read must use the controlled API fixture');
   }
   await page.evaluate(() => { window.fixture.failure = 'daemon'; });
   await goToValidation();
@@ -164,7 +176,7 @@ try {
       await page.evaluate(value => {
         window.setup.close(); window.fixture.saved = null; window.fixture.failure = value;
         window.fixture.choices = {}; window.fixture.completed = 0; window.fixture.writes = [];
-        window.fixture.writeAttempts = 0; window.fixture.failAtWrite = 0; window.fixture.providerIds = [];
+        window.fixture.writeAttempts = 0; window.fixture.failAtWrite = 0; window.fixture.providerIds = []; window.fixture.connectionReads = 0; window.fixture.workbenchDetailReads = [];
         window.fixture.modelId = 'fixture-model'; window.fixture.artifactHash = 'a'.repeat(64); window.fixture.runtimeBackend = 'UNSLOTH'; window.fixture.runtimeId = 'unsloth'; window.fixture.selectedModelId = 'fixture-model';
         window.fixture.byokCalls = 0; window.fixture.holdByokCall = 0; window.fixture.rejectHeldByok = false;
         delete window.releaseByok;
@@ -185,7 +197,13 @@ try {
     await next.click();
     await page.waitForFunction(() => document.querySelector('.cockpit-setup-stage').textContent.startsWith('SETUP 12 OF'));
     assert.equal(await next.isVisible(), true);
-    assert.match(await page.locator('.cockpit-setup-body').innerText(), /SAVED AS PREFERENCE/);
+    const savedPreferenceSummary = await page.locator('.cockpit-setup-body').innerText();
+    assert.match(savedPreferenceSummary, /Model preference — PLANNED/);
+    assert.match(savedPreferenceSummary, /preference and recommendations are recorded/);
+    const savedPreferenceProfile = await page.evaluate(() => JSON.parse(window.fixture.saved));
+    assert.equal(savedPreferenceProfile.version, 2);
+    assert.equal(savedPreferenceProfile.stage, 10);
+    assert.equal(savedPreferenceProfile.completedAt, null);
     await page.evaluate(() => { window.fixture.failure = 'save'; });
     await next.click();
     await page.waitForFunction(() => !document.querySelector('.cockpit-setup-controls button').disabled);

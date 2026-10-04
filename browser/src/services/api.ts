@@ -158,6 +158,7 @@ import {
 } from '../../../common/contracts/resident.ts';
 import {
   WorkbenchListResponse,
+  WorkbenchDetailRequest,
   WorkbenchDetailResponse,
   WorkbenchUninstallResponse,
   WorkbenchInstallRequest,
@@ -503,6 +504,11 @@ export const api = {
   },
   workbenches(): Promise<WorkbenchListResponseT> {
     return call('/api/workbenches', { schema: WorkbenchListResponse });
+  },
+  workbenchDetail(id: string): Promise<WorkbenchDetailResponseT> {
+    const body = WorkbenchDetailRequest.safeParse({ id });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid workbench detail request');
+    return call('/api/workbenches/detail', { method: 'POST', body: body.data, schema: WorkbenchDetailResponse });
   },
   onboardingState(): Promise<OnboardingStateT> {
     return call('/api/onboarding/state', { schema: OnboardingStateResponse }).then(response => response.state);

@@ -19,7 +19,7 @@ type Role = (typeof ROLES)[number];
 function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['providers'][number], actions: {
   onEdit(): void;
   onDelete(): void;
-}): void {
+}, onToast: ByokPanelOptions['onToast']): void {
   const row = document.createElement('div');
   row.className = 'byok-row';
   row.dataset.providerId = provider.id;
@@ -50,12 +50,12 @@ function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['pro
       .byokTest(provider.id)
       .then(result => {
         status.textContent = result.ok ? `CONNECTED (${result.detail})` : `INVALID CREDENTIAL (${result.detail})`;
-        opts.onToast(result.ok ? 'OK' : 'NOT_READY', result.detail);
+        onToast(result.ok ? 'OK' : 'NOT_READY', result.detail);
       })
       .catch((error: unknown) => {
         const message = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'test failed';
         status.textContent = `UNAVAILABLE (${message})`;
-        opts.onToast('INTERNAL', message);
+        onToast('INTERNAL', message);
       })
       .finally(() => {
         test.disabled = false;
@@ -72,10 +72,8 @@ function renderProviderRow(list: HTMLElement, provider: ByokStatusResponseT['pro
   list.appendChild(row);
 }
 
-let opts: ByokPanelOptions;
-
 export function createByokPanel(container: HTMLElement, options: ByokPanelOptions): ByokPanel {
-  opts = options;
+  const opts = options;
   container.innerHTML = `
     <div class="byok-panel">
       <h3 class="providers-title">BYOK models</h3>
@@ -213,7 +211,7 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
             })
             .catch((error: unknown) => toast('INTERNAL', error instanceof Error ? error.message : 'delete failed'));
         }
-      });
+      }, opts.onToast);
     }
     await refreshRouting(status, connections);
   }
@@ -260,6 +258,7 @@ export function createByokPanel(container: HTMLElement, options: ByokPanelOption
         const message = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'save failed';
         toast('INTERNAL', message);
       } finally {
+        keyEl.value = '';
         addEl.disabled = false;
       }
     })();

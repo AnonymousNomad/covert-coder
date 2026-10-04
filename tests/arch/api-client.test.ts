@@ -147,17 +147,20 @@ test('workbench operations use the shared versioned transport and validated cont
   });
   try {
     assert.equal((await api.workbenches()).workbenches[0]?.id, summary.id);
+    assert.equal((await api.workbenchDetail(summary.id)).workbench.id, summary.id);
     assert.equal((await api.workbenchInstall(summary.id)).workbench.installed, true);
     assert.equal((await api.workbenchTrust(summary.id, 'filesystem', true)).workbench.id, summary.id);
     assert.equal((await api.workbenchUninstall(summary.id)).removed, summary.id);
     assert.deepEqual(seen.map(entry => [entry.url, entry.method]), [
       ['/api/workbenches', 'GET'],
+      ['/api/workbenches/detail', 'POST'],
       ['/api/workbenches/install', 'POST'],
       ['/api/workbenches/trust', 'POST'],
       ['/api/workbenches/uninstall', 'POST']
     ]);
     assert.ok(seen.every(entry => entry.format === 'envelope-v1'));
-    assert.deepEqual(seen[2]?.body, { id: summary.id, server: 'filesystem', trusted: true });
+    assert.deepEqual(seen[1]?.body, { id: summary.id });
+    assert.deepEqual(seen[3]?.body, { id: summary.id, server: 'filesystem', trusted: true });
   } finally {
     mock.restoreAll();
   }
