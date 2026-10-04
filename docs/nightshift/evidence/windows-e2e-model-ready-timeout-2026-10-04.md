@@ -4,7 +4,7 @@ Date: 2026-10-04
 Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
 Last published parent SHA: `ca8527e565b62326fd940f574d9964413e3c6751`
-Status: **BLOCKED — original aggregate `/api/model/ready` red remains unexplained; corrected-preload full suite reached it successfully, then timed out at `/api/authority/decision`**
+Status: **BLOCKED — the earlier Veritas `/api/model/ready` timeout and aggregate Authority timeout remain preserved; the latest full serial `npm test` passed after host resource recovery, but the low-level cause is not proven**
 
 ## Preserved Veritas result
 
@@ -97,4 +97,26 @@ The same `node scripts/e2e.mjs` sequence passed on an immediate isolated run wit
 
 These successful route checks do not erase either aggregate red. The intermittent 30-second `/api/model/ready` Veritas failure and the full-suite authority-decision timeout have distinct observed boundaries; neither has a proven root cause. No local model was started and no foreign process was terminated.
 
-Next: run the full serial `npm test` once with the expanded route-start/finish and per-second event-loop capture enabled. The capture must establish whether the 30-second decision reaches the ArchServer and whether the event loop stalls during that interval. Preserve the first failed results and keep both aggregate gates **RED/OPEN** until their causes are explained and the canonical sequence passes.
+Next: rerun canonical `npm run veritas -- --json` at the recovered host baseline and compare its final Windows E2E with the preserved original red. Keep the prior timeout in the record; do not treat this full `npm test` pass as proving its low-level cause.
+
+## Expanded-instrumentation full serial `npm test`
+
+After the earlier aggregate failures, the owner-authorized Unity close was performed gracefully through the editor's main window. The target was Unity PID **8888**, `FoundingVisualFoundation` in the separate Nomadic Creed worktree; its two asset-import workers and owned Unity helpers exited with the editor. No process was force-terminated. This recovered host capacity but is not a product-code repair.
+
+Resource observations:
+
+- Before close, at `2026-10-04T12:28:42Z`: **3.22 GiB free physical RAM**; Windows commit **29.12/32.74 GiB**, about **3.62 GiB free commit**.
+- After close, before the full suite, at `2026-10-04T12:31:28Z`: **6.24 GiB free physical RAM**; commit **23.85/31.65 GiB**, about **7.80 GiB free commit**.
+- During the suite, at `2026-10-04T12:35:56Z`: **6.03 GiB free RAM** and about **7.57 GiB free commit** (24.08 GiB committed of 31.65 GiB).
+- Immediately after the final E2E, at `2026-10-04T12:36:55Z`: **6.10 GiB free RAM** and **7.72 GiB free commit**.
+- The Windows-reported C: pagefile allocation changed from 14,275 MiB to 13,162 MiB during this interval; E: reported 2,944 MiB. No manual pagefile change was made. No local model was started; the local-model admission floors remained controlling.
+
+The full package `npm test` chain then completed with **exit code 0**, including the final E2E. The expanded diagnostic preload was outside the repository, SHA-256 `CDD348E748A002CF9122193BB053B1A6BE9E6C01A39B4ACCE794DB73319F007A`; product deadlines and assertions were unchanged.
+
+- Full output: `E:\pip_temp\covert-w5-npm-test-expanded-route-20261004.log`; SHA-256 `15CB0487FB680D46081C447898A21EB7C08E04F1C2B189FF1CE614769E1EC632`.
+- Trace: `E:\pip_temp\covert-w5-npm-test-expanded-route-20261004.jsonl`; SHA-256 `4A722B97D79990E7B66EE328A890F0C83F3435CCED17B49D66A0708C66E25909`.
+- The final `/api/model/ready?id=qwen-coder-1.5b-q4` returned HTTP 200 in **1,621 ms** at ArchServer / **1,623 ms** at the E2E client. This is a read-only readiness result, not a model start or model qualification.
+- Instrumented ArchServer events show all **29** Authority decision responses in the full test trace were HTTP 200 (maximum observed route time **157.39 ms**); all **27** prepare responses and all **4** terminal runs were also HTTP 200. The final E2E decision reached ArchServer and returned in **69.95 ms**, followed by terminal execution in **92.50 ms**.
+- Event-loop samples near model readiness showed maximum delays between **29.69 and 49.97 ms**. The trace's overall maximum was **6,190.79 ms** in an earlier interval, not during the final readiness/Authority requests.
+
+The contrast between the preserved low-headroom reds and this pass after Unity exited supports host resource pressure as a contributing condition. It does **not** prove which Windows scheduling, paging, or I/O operation caused either prior timeout, and it does not erase the earlier Veritas failure. Rerun the canonical Veritas gate at this recovered baseline; keep the prior red in the record and do not start a model.
