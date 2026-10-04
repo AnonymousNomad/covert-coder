@@ -3,7 +3,7 @@
 Date: 2026-10-04
 Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
-Status: **REPAIRED LOCALLY / FOCUSED PROOF PASS; FULL SUITE STILL BLOCKED BY A SEPARATE ACCEPTANCE FAILURE**
+Status: **REPAIRED LOCALLY / FOCUSED PROOF PASS; FULL AGGREGATE GATE STILL OPEN**
 
 ## Preserved failure
 
@@ -30,3 +30,5 @@ Two regressions were added: a PID-reuse edge is excluded, and an edge with unava
 - Full affected file: `node --test --test-concurrency=1 tests/integration/test-canonical-launch.mjs` — **5/5 passed**, 0 failed, 0 skipped, 17.47 seconds. Output: `E:\pip_temp\covert-canonical-launch-after-pid-reuse-repair-20261004.log`; SHA-256 `C29BAEE7B786E08F68182E9C971E724014C549E22655EF97DFF36FD7C4D27FC8`.
 
 This local repair does not clear the earlier Veritas `/api/model/ready` timeout and has not been published or exact-SHA CI-verified.
+
+The subsequent instrumented full-suite attempt's Academy 500 was caused by the temporary diagnostic preload dropping `util.promisify.custom` while wrapping `execFile`; it is not treated as a Covert product regression. The preload was corrected and the aggregate suite has not yet been rerun with it.

@@ -55,15 +55,20 @@ Probe log: `E:\pip_temp\covert-w5-model-ready-isolated-20261004.log`; SHA-256 `4
 
 The isolated read completes under the same low-headroom host condition, which does **not** clear the aggregate E2E red. The post-run headroom deficit is measured, but it is not proven as the cause of the 30-second stall. The exact nested probe duration, event-loop delay, and resource sample at the failing request remain unavailable. No stale E2E stack child or checked-port listener remained after cleanup.
 
-## Later instrumented full-suite attempt
+## Later instrumented full-suite attempt — diagnostic preload defect
 
-After the PID-reuse cleanup repair described in [the Windows process ancestry evidence](windows-test-process-pid-reuse-2026-10-04.md), the full repository `npm test` progressed past canonical launch but stopped at `scripts/acceptance-real.mjs` before the final E2E script:
+After the PID-reuse cleanup repair described in [the Windows process ancestry evidence](windows-test-process-pid-reuse-2026-10-04.md), an instrumented repository `npm test` progressed past canonical launch but stopped at `scripts/acceptance-real.mjs` before the final E2E script. The Academy failure was produced by the temporary diagnostic preload, so this run is **not valid product-regression evidence**:
 
 - `POST /api/academy/check` returned HTTP **500** after **108 ms** with `response violates the contract`.
 - Full output: `E:\pip_temp\covert-w5-npm-test-instrumented-after-pid-fix-20261004.log`; SHA-256 `0D5F1D6D75F6B9E6CD51AACF5549897AFC32E14B2F6FF338F23936874FA87B0F`.
 - Diagnostic trace: `E:\pip_temp\covert-w5-npm-test-instrumented-after-pid-fix-20261004.jsonl`; SHA-256 `B1EEAF96EA14518D711AEA9E6679EECEAC092BC359F7AA0E84D5BDB90752CB99`.
 - The run produced runtime-probe timings from earlier supervised stacks, but it recorded **no `/api/model/ready` request**. It therefore provides no nested timing evidence for the original model-ready failure.
 - A focused `node scripts/acceptance-real.mjs` rerun passed Academy check (HTTP 200, **333 ms**) and the remaining acceptance steps. Output: `E:\pip_temp\covert-acceptance-real-academy-repro-20261004.log`; SHA-256 `29D136E40DDE61655AC00769A811EA33032CB06C7D05A416484D7BFB3C011FC8`.
-- The 500's validation issue detail was not retained because the acceptance script removed its temporary workspace in `finally`. The focused success does not erase the full-suite red; its cause remains **UNKNOWN**.
+- The preload wrapped `child_process.execFile` without preserving Node's `util.promisify.custom`. A direct probe showed that normal `promisify(execFile)` returns an object with string `stdout` and `stderr`, while the flawed preload changed it to a stdout string with undefined `.stdout` and `.stderr`. The Academy runner reads those object fields, which explains the response-contract 500 in that instrumented run.
+- Baseline `promisify(execFile)` probe output: `E:\pip_temp\covert-promisify-baseline-20261004.log`; SHA-256 `C96D0F48798CD0AE0DDD3D23850C97E2D6C0A7479D27D70ACD5AEAB641E84AA3`.
+- After correcting the temporary preload to preserve `util.promisify.custom`, the identical probe produced the same object/string-field result: `E:\pip_temp\covert-promisify-fixed-20261004.log`; SHA-256 `C96D0F48798CD0AE0DDD3D23850C97E2D6C0A7479D27D70ACD5AEAB641E84AA3`.
+- Corrected temporary preloader SHA-256: `51DF48CB975422463B7E2F90BEABB874193604D9E1CC976AD30CDE62881C30B0`.
+- A focused uninstrumented `node scripts/acceptance-real.mjs` also passed Academy check (HTTP 200, **333 ms**) and the remaining acceptance steps. Its output is retained at `E:\pip_temp\covert-acceptance-real-academy-repro-20261004.log`, SHA-256 `29D136E40DDE61655AC00769A811EA33032CB06C7D05A416484D7BFB3C011FC8`.
+- The flawed-preload run recorded **no `/api/model/ready` request**. The previous response-contract failure is classified as a diagnostic-harness defect, not a product red. The earlier uninstrumented Veritas model-ready timeout remains preserved and unresolved.
 
-Next: preserve the ArchServer validation issue before the acceptance fixture removes its workspace, then rerun the canonical full suite with unchanged checks so it can reach the final E2E. Only then can the preloader's route timing, event-loop delay, and nested `where.exe` / PowerShell measurements answer the original `/api/model/ready` question. Do not start a local model or close foreign processes. The model-ready release gate remains **RED/OPEN**.
+Next: rerun the canonical full suite with the corrected diagnostic preload and unchanged checks so it can reach the final E2E. If an earlier acceptance assertion fails, retain its ArchServer log before the fixture removes its workspace. Only a run that reaches `/api/model/ready` can answer the original timeout question using route timing, event-loop delay, and nested `where.exe` / PowerShell measurements. Do not start a local model or close foreign processes. The model-ready release gate remains **RED/OPEN**.
