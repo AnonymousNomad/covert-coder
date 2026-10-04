@@ -18,6 +18,7 @@ import {
 } from '../../../common/contracts/chat.ts';
 import { createRequire } from 'node:module';
 import { createChatContextComposer, type ChatContextProviders, type ChatIndexService } from '../services/chat-context.ts';
+import { containmentEnabled, governAnswer, logContainment } from '../services/resident-containment.mjs';
 
 const require = createRequire(import.meta.url);
 const { scoreCandidate } = require('../../../harness/gates.mjs') as {
@@ -44,9 +45,14 @@ type MemoryRecallService = {
 type ChatRouteOptions = {
   indexService?: ChatIndexService;
   providers?: ChatContextProviders;
+  // Canonical live containment governance (Slice 6 wiring): the Arsenal
+  // projection loader supplies capability truth; containment itself is
+  // provider-owned and default-ON with explicit disable (AIDE_RESIDENT_CONTAINMENT=0).
+  governance?: { getProjection?: () => Promise<unknown> };
 };
 
 function toRouteError(error: unknown): RouteError {
+  if (error instanceof RouteError) return error;
   if (error instanceof RouterError) return new RouteError(error.code, error.message);
   if (error instanceof Error && error.name === 'AbortError') return new RouteError('TIMEOUT', 'chat stream aborted');
   return new RouteError('CHILD_FAILED', error instanceof Error ? error.message : 'chat failed');
@@ -76,14 +82,44 @@ export function routeForChat(
     handler: async ({ body }) => {
       const request = body as ChatRequestT;
       try {
+        if (!containmentEnabled()) throw new RouteError('NOT_READY', 'chat is unavailable because Resident containment is disabled');
         const composed = await composer.compose(request);
         const result = await gatedChat(router, request, composed.messages);
+        let text = result.text;
+        const lastUser = [...request.messages].reverse().find(message => message.role === 'user');
+        if (!lastUser) throw new RouteError('BAD_REQUEST', 'chat requires a user message for containment');
+        if (lastUser) {
+          let projection: unknown = null;
+          try {
+            projection = options?.governance?.getProjection ? await options.governance.getProjection() : null;
+          } catch { projection = null; }
+          const governed = await governAnswer({
+            requestText: lastUser.content,
+            rawText: result.text,
+            projection,
+            canonical: { commit_hash: 'UNKNOWN', timestamp: 'UNKNOWN' },
+            generate: async note => {
+              const retryMessages = composed.messages.map((message, index) =>
+                index === composed.messages.length - 1 && message.role === 'user'
+                  ? { ...message, content: `${message.content}\n\n(Note: ${note})` }
+                  : message);
+              const retry = await router.chat(request.modelId, retryMessages, {
+                maxTokens: request.options?.maxTokens,
+                temperature: request.options?.temperature ?? 0.2,
+                timeoutMs: request.options?.timeoutMs
+              });
+              return retry.text;
+            }
+          });
+          logContainment(workspace, governed);
+          text = governed.final;
+        }
         return {
-          text: result.text,
+          text,
           modelId: result.modelId,
           tokens: result.tokens,
           timingMs: result.timingMs,
-          answer: result.text,
+          answer: text,
           gated: result.gated,
           harness: composed.harness
         };
@@ -126,18 +162,56 @@ export function routeForChatStream(
       };
       try {
         const composed = await composer.compose({ modelId: request.modelId, messages: request.messages, harness: true });
-        const result = await router.chatStream(request.modelId, composed.messages, delta => {
-          const parsed = ChatStreamDelta.safeParse({ delta });
-          if (parsed.success) write(parsed.data);
-        }, controller.signal);
-        const done = ChatStreamDone.safeParse({
-          done: true,
-          modelId: result.modelId,
-          usedApprox: result.usedApprox,
-          dropped: result.dropped,
-          truncatedSystem: result.truncatedSystem
-        });
-        if (done.success) write(done.data);
+        if (!containmentEnabled()) {
+          throw new RouteError('NOT_READY', 'chat is unavailable because Resident containment is disabled');
+        } else {
+          // Governed path (stream containment parity): generate into a buffer
+          // (no user-visible deltas), run the SAME canonical containment as the
+          // non-stream route, then release only the approved text in chunks.
+          // Safety outranks animation: no protected claim becomes user-visible
+          // before governance, and no partial unsafe fragment is ever emitted.
+          let buffered = '';
+          const lastUser = [...request.messages].reverse().find(message => message.role === 'user');
+          if (!lastUser) throw new RouteError('BAD_REQUEST', 'chat requires a user message for containment');
+          const result = await router.chatStream(request.modelId, composed.messages, delta => {
+            buffered += delta;
+          }, controller.signal);
+          let projection: unknown = null;
+          try {
+            projection = options?.governance?.getProjection ? await options.governance.getProjection() : null;
+          } catch { projection = null; }
+          const governed = await governAnswer({
+            requestText: lastUser.content,
+            rawText: buffered,
+            projection,
+            canonical: { commit_hash: 'UNKNOWN', timestamp: 'UNKNOWN' },
+            generate: async note => {
+              const retryMessages = composed.messages.map((message, index) =>
+                index === composed.messages.length - 1 && message.role === 'user'
+                  ? { ...message, content: `${message.content}\n\n(Note: ${note})` }
+                  : message);
+              const retry = await router.chat(request.modelId, retryMessages, {});
+              return retry.text;
+            }
+          });
+          logContainment(workspace, governed);
+          const approved = governed.final;
+          for (let offset = 0; offset < approved.length; offset += 120) {
+            if (aborted) break;
+            const parsed = ChatStreamDelta.safeParse({ delta: approved.slice(offset, offset + 120) });
+            if (parsed.success) write(parsed.data);
+          }
+          if (!aborted) {
+            const done = ChatStreamDone.safeParse({
+              done: true,
+              modelId: result.modelId,
+              usedApprox: result.usedApprox,
+              dropped: result.dropped,
+              truncatedSystem: result.truncatedSystem
+            });
+            if (done.success) write(done.data);
+          }
+        }
       } catch (error) {
         if (!aborted) {
           const parsed = ChatStreamError.safeParse({ error: error instanceof Error ? error.message : 'stream failed' });

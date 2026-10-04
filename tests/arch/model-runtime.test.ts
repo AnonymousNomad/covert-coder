@@ -189,3 +189,37 @@ test('start serves the ingested model for real and stop tears it down', async t 
   const after = (await runtime.status()).models.find(entry => entry.id === ingested.id);
   assert.notEqual(after?.status, 'running');
 });
+
+test('stop is truthful when an unowned engine serves the model (adopted, never a false stopped)', async t => {
+  if (!BUNDLED_MODEL_PRESENT) {
+    t.skip(BUNDLED_SKIP_REASON);
+    return;
+  }
+  const target = path.join(dir, 'stop-truth.gguf');
+  await fs.copyFile(SMALL_MODEL, target);
+  const ingested = await runtime.ingest(target);
+  const started = await runtime.start(ingested.id);
+  assert.equal(started.status, 'starting');
+  assert.equal(await runtime.waitReady(ingested.id, 90_000), true);
+
+  // A second runtime instance shares the workspace but owns no process handle.
+  const other = new ModelRuntime({
+    workspace: dir,
+    manifestPath: MANIFEST,
+    ingestedPath: path.join(dir, '.aide', 'ingested-models.json'),
+    modelDir: MODEL_DIR,
+    logger: { info: () => {}, warn: () => {}, error: () => {} }
+  });
+  await other.load();
+  const adopted = await other.start(ingested.id);
+  assert.equal(adopted.status, 'running', 'an already-served model is adopted, not spawned twice');
+  await assert.rejects(
+    () => other.stop(ingested.id),
+    (error: Error & { code?: string }) => error.code === 'CONFLICT',
+    'stop must not claim stopped while an unowned engine keeps serving'
+  );
+  const owned = await runtime.stop(ingested.id);
+  assert.equal(owned.status, 'stopped');
+  const afterOwnerStop = await other.stop(ingested.id);
+  assert.equal(afterOwnerStop.status, 'stopped', 'once nothing serves the model, stopped is truthful');
+});

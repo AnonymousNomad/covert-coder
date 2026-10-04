@@ -1,0 +1,78 @@
+{
+  "schema": "resident-train-manifest-v1",
+  "created_at": "2026-09-23",
+  "status": "NOT_STARTED_BLOCKED_HARDWARE",
+  "blocker": {
+    "class": "RUNTIME_RESOURCE / HARNESS",
+    "items": [
+      "native LiquidAI/LFM2.5-2.6B post-trained checkpoint not present on disk (only the Q4 GGUF baseline)",
+      "training venv torch half-removed (site-packages/~orch pip-abort remnant); no peft/transformers",
+      "GTX 1060 6GB CC6.1 FP32-only: project scale law caps trainable size at ~150M; 4-bit QLoRA path unavailable on this class",
+      "C: 9.7 GB free (install/cache pressure)",
+      "HF download unreliable at 1.09 MB/s best-case with stalls"
+    ]
+  },
+  "base_model": {
+    "intended": "LiquidAI/LFM2.5-2.6B (official post-trained native checkpoint)",
+    "on_disk": false,
+    "must_not_train_on": "LFM2.5-2.6B-QAD-Q4_0.gguf (deployment artifact; preserved as baseline)",
+    "preserved_baseline": { "file": "LFM2.5-2.6B-QAD-Q4_0.gguf", "sha256": "a247afd6414918eac8e520a9e6137dc271235461ecbe1180462221d5b8d40b03" },
+    "local_control_checkpoint": { "model": "LFM2.5-1.2B-Instruct (Q8_0 GGUF)", "role": "bounded control, live DEV results recorded" },
+    "local_native_checkpoint_available": { "model": "LFM2.5-230M (HF native)", "path": "E:\\models\\lfm2.5-230m-hf", "note": "retired as permanent Resident candidate for capacity; usable for pipeline smoke tests" }
+  },
+  "dataset": {
+    "builder": "dataset/build-dataset.mjs",
+    "train": { "file": "dataset/train.jsonl", "rows": 147, "items": 73, "sha256": "4d7d14fd33cd661e8b8a1cf499526b1a740ec7b756a0f88dff61d259dbaac209" },
+    "dev": { "file": "dataset/dev.jsonl", "rows": 14, "sha256": "6ea59bae5b1ee9bd3ab5b97e9c1c6a4afacf7682500f7f25e14298de97ab9c8e" },
+    "seat_system_sha256": "3df298124a496f7a5db30a03eeee0cba00f151ea2543c688826eabb424ca1ce5",
+    "leak_guard": "8-gram overlap vs frozen parity+battery prompts enforced at build time (PASS)",
+    "classes": ["AUTHORITY", "CLAIM_DISCIPLINE", "COMPOUND", "RETRIEVAL", "ROUTING", "TOOL", "COMMUNICATION"],
+    "domains": 12
+  },
+  "sft_lora": {
+    "framework": "peft (LoRA) + transformers Trainer",
+    "rank": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": "all linear projections (q,k,v,o,gate,up,down) resolved at load time from the native checkpoint",
+    "learning_rate": 1e-4,
+    "lr_schedule": "cosine",
+    "warmup_ratio": 0.03,
+    "epochs": 3,
+    "micro_batch_size": 1,
+    "gradient_accumulation": 8,
+    "max_seq_length": 2048,
+    "optimizer": "adamw_torch",
+    "precision": "fp32 (Pascal law: no AMP)",
+    "seed": 1337,
+    "resumable": true,
+    "checkpoint_dir": "E:\\models\\house-model\\resident-specialization\\sft",
+    "notes": "LoRA first (smallest sufficient); full fine-tune explicitly out of scope. On a capable machine: bf16/fp16 per hardware, batch sized to VRAM, same hyperparameters as the starting point."
+  },
+  "dpo_lora": {
+    "status": "NOT_REQUIRED_YET",
+    "framework": "peft + trl DPOTrainer",
+    "beta": 0.1,
+    "learning_rate": 5e-7,
+    "epochs": 1,
+    "pair_source": "DEV failures after SFT (near-miss rejected answers authored per failure mode)",
+    "precondition": "SFT checkpoint shows clear improvement with preference-level errors remaining"
+  },
+  "grpo": {
+    "status": "NOT_STARTED",
+    "precondition": "SFT AND DPO materially improve behavior while machine-checkable failure classes remain",
+    "reward_spec_required_before_training": true
+  },
+  "quantization": {
+    "targets": ["Q4_K_M", "Q5_K_M"],
+    "record": ["native checkpoint sha256", "merged checkpoint sha256", "GGUF sha256", "quantization parameters", "converter version"],
+    "parity_required": ["authority", "protected claims", "compound instructions", "tool calls", "structured output"]
+  },
+  "qualification": {
+    "frozen_parity": "experiments/resident-orchestration/runtime/parity-suite.mjs (6 tasks)",
+    "frozen_battery": "experiments/resident-orchestration/battery/TASKS.json (12 tasks / 8 classes)",
+    "dev_runner": "experiments/resident-specialization/run-dev.mjs",
+    "tool_roundtrip": "experiments/resident-orchestration/runtime/tool-roundtrip.mjs",
+    "acceptance": "0 false-success escapes, 0 protected-claim violations, 0 critical authority inconsistencies, 0 process leaks, 0 unresolved system defects, compound adherence meets contract, tool roundtrip passes, resource coexistence passes"
+  }
+}

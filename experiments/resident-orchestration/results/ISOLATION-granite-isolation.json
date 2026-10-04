@@ -1,0 +1,65 @@
+{
+  "schema": "resident-path-isolation-v1",
+  "at": "2026-09-23T14:59:42.449Z",
+  "candidate": "granite-isolation",
+  "specimen": "The parser tests are failing. Give me the workflow stage, the governing procedure, and the role that owns the fix.",
+  "layers": {
+    "RAW": {
+      "prompt_tokens": 82,
+      "answer": "To address the issue of parser tests failing, we need to follow a structured approach to identify the root cause, understand the workflow stage, governing procedure, and determine the role responsible for fixing it. Here's a step-by-step workflow: 1. **Workflow Stage:** - Identify where the test failures are occurring in the software development lifecycle (SDLC). This could be during the 'Unit Tes",
+      "A_stage": true,
+      "B_sop": false,
+      "C_role": false,
+      "count": 1,
+      "latency_ms": 67376
+    },
+    "ADAPTER": {
+      "status": 200,
+      "answer": "To address the issue of parser tests failing, we need to follow a structured approach to identify the root cause and implement a solution. Here's a step-by-step workflow: 1. **Workflow Stage:** - **Development:** Identify the failure during unit testing or integration testing in the development phase. - **Testing:** If the issue persists, it moves to the testing phase for further investigation. - ",
+      "A_stage": false,
+      "B_sop": false,
+      "C_role": false,
+      "count": 0,
+      "latency_ms": 41475
+    },
+    "COVERT_PATH": {
+      "status": 200,
+      "harness_tokens_approx": 0,
+      "answer": "To address the issue of parser tests failing, we need to follow a structured approach to identify the root cause, implement a solution, and ensure proper documentation for future reference. Here's a suggested workflow: **Workflow Stage:** 1. **Issue Identification & Triage:** - Monitor test failure notifications or alert systems. - Gather relevant information such as error messages, stack traces, ",
+      "A_stage": true,
+      "B_sop": false,
+      "C_role": false,
+      "count": 1,
+      "latency_ms": 90793
+    },
+    "SEAT_SYSTEM": {
+      "status": 200,
+      "harness_tokens_approx": 0,
+      "answer": "The parsing tests are currently at the \"Development\" stage. The governing procedure is outlined in Procedure ID: DEV-PROC-001. This process is overseen by the Quality Assurance (QA) team. They are responsible for the fix. I will coordinate with them to resolve the issue.",
+      "A_stage": false,
+      "B_sop": false,
+      "C_role": false,
+      "count": 0,
+      "latency_ms": 11673
+    },
+    "PROJECTIONS": {
+      "status": 200,
+      "projections_tokens_approx": 124,
+      "harness_tokens_approx": 0,
+      "answer": "1. Workflow Stage: The current stage is \"Testing\". 2. Governing Procedure: The procedure in place for this stage is outlined in the project's \"Test Execution Protocol\" (TEP). 3. Role Ownership of Fix: The responsibility for resolving these parser tests falls under the domain of the \"Quality Assurance Engineer\" (QAE), who owns the fix according to the TEP.",
+      "A_stage": false,
+      "B_sop": false,
+      "C_role": false,
+      "count": 0,
+      "latency_ms": 12719
+    }
+  },
+  "summary": {
+    "raw": 1,
+    "adapter": 0,
+    "covert_path": 1,
+    "seat_system": 0,
+    "projections": 0,
+    "first_failing_transition": "no degradation through PROJECTIONS (0/3)"
+  }
+}

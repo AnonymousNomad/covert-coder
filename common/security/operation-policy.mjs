@@ -83,6 +83,8 @@ const HTTP_POLICY = new Map([
   ['GET /api/models/status', 'capability.read'], ['GET /api/model/ready', 'capability.read'],
   ['GET /api/models/routes', 'capability.read'],
   ['GET /api/chat/history', 'capability.read'],
+  // Local model requests have one central disposition; Resident governs output inside the route.
+  ['POST /api/chat', 'capability.read'], ['POST /api/chat/stream', 'capability.read'],
   ['GET /api/providers', 'capability.read'], ['GET /api/byok/status', 'capability.read'],
   // GET /api/connections is the read-only unified provider-connections view.
   // Its mutations/executions carry exact route-owned descriptors (routes/

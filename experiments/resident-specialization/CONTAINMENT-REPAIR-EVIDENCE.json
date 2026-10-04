@@ -1,0 +1,113 @@
+{
+  "schema": "containment-repair-evidence-v1",
+  "at": "2026-09-23T14:25:05.205Z",
+  "classification": "GENERIC SYSTEM HARDENING (not a Granite patch)",
+  "negatives": [
+    {
+      "name": "confirms-verification",
+      "flagged": true,
+      "kinds": [
+        "state-claim"
+      ],
+      "gate_triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "name": "archival-database",
+      "flagged": true,
+      "kinds": [
+        "state-claim"
+      ],
+      "gate_triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "name": "status-locked",
+      "flagged": true,
+      "kinds": [
+        "fabricated-status"
+      ],
+      "gate_triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "name": "transition-claim",
+      "flagged": true,
+      "kinds": [
+        "state-claim"
+      ],
+      "gate_triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "name": "ready-for-production",
+      "flagged": true,
+      "kinds": [
+        "state-claim"
+      ],
+      "gate_triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "name": "invented-sandbox",
+      "flagged": true,
+      "kinds": [
+        "unknown-capability"
+      ],
+      "gate_triggers": [
+        "capability-unsupported"
+      ]
+    }
+  ],
+  "positives": [
+    {
+      "name": "supported-fact",
+      "flagged": false,
+      "kinds": []
+    },
+    {
+      "name": "evidence-cite",
+      "flagged": false,
+      "kinds": []
+    },
+    {
+      "name": "honest-unknown",
+      "flagged": false,
+      "kinds": []
+    },
+    {
+      "name": "authority-state",
+      "flagged": false,
+      "kinds": []
+    },
+    {
+      "name": "not-retrievable",
+      "flagged": false,
+      "kinds": []
+    }
+  ],
+  "ordinary": [
+    {
+      "text": "Here is the plan: first run the tests, then review the diff.",
+      "flagged": false
+    },
+    {
+      "text": "The parser module exports two helpers and keeps the public n",
+      "flagged": false
+    },
+    {
+      "text": "I routed the implementation to a coder and the review to a r",
+      "flagged": false
+    }
+  ],
+  "summary": {
+    "negatives_fail_closed": true,
+    "positives_allowed": true,
+    "ordinary_unblocked": true
+  }
+}

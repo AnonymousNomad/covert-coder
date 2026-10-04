@@ -1,0 +1,39 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "smollm3-3b-r3",
+  "candidate_file": "SmolLM3-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T20:35:13.920Z",
+  "rows": [
+    {
+      "example_id": "dev-cmp-02",
+      "class": "COMPOUND",
+      "domain": "testing",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 1588,
+      "answer": " I've reviewed the task status and identified a critical issue with the version parser's test contract implementation. The current workflow is not meeting the required standards due to inconsistencies between the codebas",
+      "latency_ms": 77216
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "total": 1,
+    "by_class": {
+      "COMPOUND": {
+        "passed": 0,
+        "total": 1
+      }
+    },
+    "critical_failures": [],
+    "verdict": "SCREEN_FAIL"
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

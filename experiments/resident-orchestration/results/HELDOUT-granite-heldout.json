@@ -1,0 +1,136 @@
+{
+  "schema": "heldout-compound-results-v1",
+  "label": "granite-heldout",
+  "candidate_file": "granite-3.3-2b-instruct-Q4_K_M.gguf",
+  "seat_graph": false,
+  "seat_sequencer": true,
+  "at": "2026-09-24T20:00:50.469Z",
+  "rows": [
+    {
+      "example_id": "h-cmp-01",
+      "critical": true,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 377,
+      "answer": "DECISION: The next required step is to run the test suite to verify the effectiveness of the repair. Once the tests are green, the repair will be considered accepted. || RATIONALE: Before accepting a repair, it's essenti",
+      "latency_ms": 20315
+    },
+    {
+      "example_id": "h-cmp-02",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 238,
+      "answer": "DECISION: O1 ACTION add logging to the upload handler RATIONALE: The task requires implementing an action (O1) to incorporate logging into the upload handler, ensuring no changes to the existing retry behavior (O2). OPER",
+      "latency_ms": 14580
+    },
+    {
+      "example_id": "h-cmp-03",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 214,
+      "answer": "O1 ACTION completed: Config typo fixed. RATIONALE: The typo was identified and corrected, ensuring the version parser adheres to its test contract. OPERATOR_STATUS: Config typo fix initiated. Status report pending.",
+      "latency_ms": 14247
+    },
+    {
+      "example_id": "h-cmp-04",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 345,
+      "answer": "DECISION: Improve the CLI help text || RATIONALE: The task requires enhancing the command-line interface (CLI) help text without introducing any new dependencies. This can be achieved by reviewing and updating the existi",
+      "latency_ms": 27817
+    },
+    {
+      "example_id": "h-cmp-05",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 560,
+      "answer": "DECISION: The correct order is validation (O1) before release (O2), with both steps being owned by the Quality Assurance (QA) team. The responsibility of reporting this order lies with the Project Manager. RATIONALE: Val",
+      "latency_ms": 21895
+    },
+    {
+      "example_id": "h-cmp-06",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 35202
+    },
+    {
+      "example_id": "h-cmp-07",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 27296
+    },
+    {
+      "example_id": "h-cmp-08",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 308,
+      "answer": "DECISION: Initiate a review of the rejection feedback to identify the specific reasons for the rejection. || RATIONALE: The first step is to understand the reviewer's concerns before proposing any changes. This ensures t",
+      "latency_ms": 14336
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 8,
+    "critical_failures": [],
+    "errors": []
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "REGENERATED",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

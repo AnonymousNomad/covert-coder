@@ -1,0 +1,2684 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-09-21T14:20:19.750Z",
+  "note": "Resident Awareness Layer Slice 1 — canonical arsenal projection (read-only; not wired into any prompt/context).",
+  "availability_values": [
+    "READY",
+    "RUNNING",
+    "STARTING",
+    "STOPPED",
+    "DEGRADED",
+    "UNAVAILABLE",
+    "DISCONNECTED",
+    "NOT_CONFIGURED",
+    "NOT_INSTALLED",
+    "CONNECTING",
+    "UNKNOWN"
+  ],
+  "sources": {
+    "SKILL": "skills/registry.json",
+    "MODEL": "models/manifest.json + .aide/ingested-models.json",
+    "PROVIDER": "node/src/services/providers.ts (BUILTIN_PROVIDERS) + .aide/byok/providers.json",
+    "PLUGIN": "plugins/manager.mjs + plugins/presets.json + .aide/plugins.json",
+    "WORKFLOW": "workbenches/manager.mjs (in-box bundles) + .aide/workbenches/<id>.json",
+    "TOOL": "node/src/services/agent-tools.mjs (createAgentTools)",
+    "VERIFICATION": "harness/policy.json (verification[])",
+    "DEVICE": "node/src/services/hardware.ts (probeHardware) + hardware-profile.mjs (deriveTier/deriveBackend)",
+    "RUNTIME": "node/src/services/runtime-providers.ts (createRuntimeProviderRegistry)"
+  },
+  "descriptors": [
+    {
+      "id": "local-device",
+      "kind": "DEVICE",
+      "availability": "READY",
+      "capabilities": [
+        "tier:L",
+        "ram:16gb",
+        "backend:vulkan",
+        "vram:6144mb",
+        "cpus:12"
+      ]
+    },
+    {
+      "id": "aide-cipher-v1",
+      "kind": "MODEL",
+      "availability": "READY",
+      "roles": [
+        "coder",
+        "chat",
+        "planning",
+        "reviewer"
+      ],
+      "context_limit": 3072,
+      "location": "local"
+    },
+    {
+      "id": "granite-3.3-2b-instruct",
+      "kind": "MODEL",
+      "availability": "NOT_INSTALLED",
+      "roles": [
+        "reason",
+        "chat",
+        "structured-output"
+      ],
+      "context_limit": 131072,
+      "location": "local"
+    },
+    {
+      "id": "north-mini-code-1.0",
+      "kind": "MODEL",
+      "availability": "READY",
+      "roles": [
+        "chat",
+        "coder",
+        "planning",
+        "reviewer"
+      ],
+      "context_limit": 32768,
+      "location": "local"
+    },
+    {
+      "id": "north-mini-code-1.0-ud-q2_k_xl",
+      "kind": "MODEL",
+      "availability": "READY",
+      "context_limit": 8192,
+      "location": "local"
+    },
+    {
+      "id": "phi-3.5-mini-instruct",
+      "kind": "MODEL",
+      "availability": "NOT_INSTALLED",
+      "roles": [
+        "chat",
+        "reason",
+        "multilingual"
+      ],
+      "context_limit": 131072,
+      "location": "local"
+    },
+    {
+      "id": "qwen-coder-0.5b-q4",
+      "kind": "MODEL",
+      "availability": "READY",
+      "roles": [
+        "fast",
+        "autocomplete"
+      ],
+      "context_limit": 4096,
+      "location": "local"
+    },
+    {
+      "id": "qwen-coder-1.5b-q4",
+      "kind": "MODEL",
+      "availability": "READY",
+      "roles": [
+        "build",
+        "verify"
+      ],
+      "context_limit": 8192,
+      "location": "local"
+    },
+    {
+      "id": "qwen3-4b-minimax-m2.1-coder.q4_k_m",
+      "kind": "MODEL",
+      "availability": "READY",
+      "context_limit": 8192,
+      "location": "local"
+    },
+    {
+      "id": "smollm2-1.7b-instruct",
+      "kind": "MODEL",
+      "availability": "NOT_INSTALLED",
+      "roles": [
+        "chat",
+        "reason",
+        "fast"
+      ],
+      "context_limit": 8192,
+      "location": "local"
+    },
+    {
+      "id": "smollm2-360m-q8",
+      "kind": "MODEL",
+      "availability": "READY",
+      "roles": [
+        "research",
+        "chat",
+        "fast"
+      ],
+      "context_limit": 2048,
+      "location": "local"
+    },
+    {
+      "id": "academy-author",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "workspace.write",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "assistant-context",
+      "kind": "PLUGIN",
+      "availability": "UNAVAILABLE",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "blueprint-export",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "branch-manager",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "command.register"
+      ]
+    },
+    {
+      "id": "dap-inspector",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "command.register",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "dependency-audit",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "terminal.run",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "env-inspector",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "command.register",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "git-history",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "git-review",
+      "kind": "PLUGIN",
+      "availability": "READY",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "json-schema",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "command.register"
+      ]
+    },
+    {
+      "id": "local-notes",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "workspace.write",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "lsp-toolbox",
+      "kind": "PLUGIN",
+      "availability": "UNAVAILABLE",
+      "location": "local",
+      "capabilities": [
+        "command.register",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "markdown-preview",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "patch-review",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "workspace.write",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "problem-triage",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "project-onboarding",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "release-checker",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "terminal.run",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "task-dashboard",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "command.register",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "test-runner",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "command.register",
+        "terminal.run",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "workspace-health",
+      "kind": "PLUGIN",
+      "availability": "NOT_INSTALLED",
+      "location": "local",
+      "capabilities": [
+        "workspace.read",
+        "ui.view"
+      ]
+    },
+    {
+      "id": "anthropic",
+      "kind": "PROVIDER",
+      "availability": "NOT_CONFIGURED",
+      "location": "cloud",
+      "capabilities": [
+        "api:anthropic"
+      ],
+      "context_limit": 200000
+    },
+    {
+      "id": "google",
+      "kind": "PROVIDER",
+      "availability": "NOT_CONFIGURED",
+      "location": "cloud",
+      "capabilities": [
+        "api:openai-compatible"
+      ],
+      "context_limit": 1048576
+    },
+    {
+      "id": "groq",
+      "kind": "PROVIDER",
+      "availability": "NOT_CONFIGURED",
+      "location": "cloud",
+      "capabilities": [
+        "api:openai-compatible"
+      ],
+      "context_limit": 128000
+    },
+    {
+      "id": "mistral",
+      "kind": "PROVIDER",
+      "availability": "NOT_CONFIGURED",
+      "location": "cloud",
+      "capabilities": [
+        "api:openai-compatible"
+      ],
+      "context_limit": 32768
+    },
+    {
+      "id": "openai",
+      "kind": "PROVIDER",
+      "availability": "NOT_CONFIGURED",
+      "location": "cloud",
+      "capabilities": [
+        "api:openai-compatible"
+      ],
+      "context_limit": 128000
+    },
+    {
+      "id": "openrouter",
+      "kind": "PROVIDER",
+      "availability": "NOT_CONFIGURED",
+      "location": "cloud",
+      "capabilities": [
+        "api:openai-compatible"
+      ],
+      "context_limit": 128000
+    },
+    {
+      "id": "native",
+      "kind": "RUNTIME",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "wsl",
+      "kind": "RUNTIME",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "PC management",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "adapter-serve-routing",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "agent-notes",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "aid-capability-battery-thinking-models",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-cipher-4b-fine-tune-pipeline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-closed-loop-on-by-default",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-closed-loop-self-improvement",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-dap-real-debugpy-fixture",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-double-check-everything",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-moe-lora-6gb-card",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-skills-auto-load-by-context",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aid-venv-care",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "aide-academy-phase-a1-learner-model",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "academy"
+    },
+    {
+      "id": "aide-academy-phase-a2-socratic-tutor",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "academy"
+    },
+    {
+      "id": "aide-academy-phase-a3-exercise-engine",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "academy"
+    },
+    {
+      "id": "aide-acceptance-test-repair",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-advanced-orchestration",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-agent-harness-convergence",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-agent-workflow-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-agents-md",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-aide-stack-launch-and-recover",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-android-build",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-arch-backend-core",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-editor",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-extensions",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-foundations",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-frontend-core",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-git",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-model-runtime",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-packaging-release",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-protocols",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-terminal",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-test-fixes",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-training-ecosystem",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-arch-wiring",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-architect-editor-implementation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-architect-editor-pattern",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "architecture"
+    },
+    {
+      "id": "aide-autonomous-workflow",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-backend-autoselect",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-background-tasks",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-browser-ide",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-build-b1-task-service",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "build-series"
+    },
+    {
+      "id": "aide-build-b2-problem-matchers",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "build-series"
+    },
+    {
+      "id": "aide-build-b3-compound-tasks",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "build-series"
+    },
+    {
+      "id": "aide-build-b4-notifications",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "build-series"
+    },
+    {
+      "id": "aide-build-b5-local-cache",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "build-series"
+    },
+    {
+      "id": "aide-build-series-roadmap",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "build-series"
+    },
+    {
+      "id": "aide-ci-diagnostics",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-cipher",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-cipher-house-model",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-cipher-living-system",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-cipher-self-healing-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-closed-loop-wiring",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-cloud-economy",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "cloud-handoff"
+    },
+    {
+      "id": "aide-cloud-handoff",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "cloud-handoff"
+    },
+    {
+      "id": "aide-context-retrieval-wiring",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-credo-guardrail",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-cross-terminal-sync",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-debugging-discipline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-desktop-agent-model-spec",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-desktop-control-cipher",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-desktop-control-integration",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-device-benchmark-runner",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-distribution-packaging",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-engine-lifecycle-doctrine",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-fine-tune-lane-wire-in",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-flagship-twin-mind-train",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-frontier-model",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-grammar-constrained-generation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-harness-prompt-scaffolding",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-helix-memory",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-house-model",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-ide-research",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-inference-control",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-inhouse-model-runtime",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-inhouse-only-policy-hook",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-iron-suit-orchestrator",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-master-roadmap",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-mcp-inbox-surface",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-mcp-server-recommendations",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-micro-expert-collective",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-model-configuration",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-model-handoff",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-model-hub-acquisition",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-model-ingestion",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-model-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-model-task-recommender",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-moe-aux-loss-stability",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-msvc-build-tools-setup",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-north-mini-code-engine",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-north-mini-code-house-model",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-offline-agent-loop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-offline-rag",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-onboarding-walkthrough",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-orchestrator-awareness",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-p2-descent-intro",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-p6-companion-model",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-p6-desktop-control",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-packaging-offline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-parity-p1-commands-keybindings-settings",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "parity"
+    },
+    {
+      "id": "aide-parity-p2-quickopen-global-search",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "parity"
+    },
+    {
+      "id": "aide-parity-p3-editor-depth",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "parity"
+    },
+    {
+      "id": "aide-parity-p4-scm-depth",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "parity"
+    },
+    {
+      "id": "aide-perf-launch-engineering",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-phase-router",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase1-model-runtime",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase10-model-hub",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase2-view-switching",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase3-editor-core",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase4-git-integration",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase5-training-arena",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase6-tutor-mode",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase7-community-hub",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase8-android-build",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-phase9-extension-host",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "phase-legacy"
+    },
+    {
+      "id": "aide-plugin-author-guide",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-plugins-surface-v1",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-power-surface",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-pre-commit-hooks",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-pre-push-gate",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-product-vision",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-production-cutover",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-production-readiness-plan",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-project-replay",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-provider-connect",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-rebrand-name-change",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-release-engineering",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-resilience-orchestrator",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-responsive-a11y",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-route-slice-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-rseries-refactor",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-sandbox-loop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-secrets-handling-protocol",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-security-hardening",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-session-resilience",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-skill-curation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-smart-workbench-flow",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-subagent-dispatch",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-supply-chain-audit",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-system-map",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-tab-autocomplete",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-task-verification-battery",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-telegram-relay-bot",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-the-quad",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-trace-intelligence",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-training-phase-b1-dataset-studio",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-ecosystem"
+    },
+    {
+      "id": "aide-training-phase-b2-qlora-runner",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-ecosystem"
+    },
+    {
+      "id": "aide-training-phase-b3-eval-export",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-ecosystem"
+    },
+    {
+      "id": "aide-trio-integration",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-trio-tuning",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-typescript-strict-pass",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-unified-diff-repair",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-ux-hardening",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-veritas-layer",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-vscode-parity-roadmap",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-windows-dev-reality",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-workflow-gap-roadmap",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "aide-worktree-isolation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "aide-core"
+    },
+    {
+      "id": "anti-trash-data-doctrine",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ask-dont-circle",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "cipher-checkpoint",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-cloud-setup",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-cloud-training",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-data-pipeline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-eval",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-qlora-finetune",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-sizing",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-tokenizer",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cipher-training",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cloud-artifact-pack-upload",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cloud-checkpoint-retrieval",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cloud-pretrain-window-execution",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cloud-scale-probe-gate",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "coherence-nlp-training",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "comprehension-engineering",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "continuous-improvement-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "corpus-curation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "cross-synthesis-generation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "curriculum-learning-design",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "desktop-agent-eval-battery",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "desktop-control-trajectory-generation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "developer-code-and-credo",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "developer-creed-production-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "developer-discipline-engineering",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "developer-way",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "device-training-1060",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "dual-mind-reasoning-traces",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "edge-deployment-ci",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-aiui-embedded-assistant-design",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-arch-immersive-landing-architecture",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-com-premium-storefront-architecture",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-del-revision-approval-workflow",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-dply-static-hosting-deploy",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-fnt-component-composition",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-int-motion-choreography",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-qc-production-readiness-checklist",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-strat-client-brief-extraction",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "ex-vis-premium-aesthetic-language",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-apply-patch-same-path-replacement",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-apply-patch-stale-context",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-battery-memory-pressure-504",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-ci-platform-parity",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-conventional-commit-message",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-desktop-generated-staging-authority",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-desktop-runtime-env-name",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-desktop-staged-smoke-obsolete-route",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-desktop-staged-stack-exit",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-git-api-stage-500",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-harness-trace-contract-drift",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-lsp-completion-timeout",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-model-integrity-declaration",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-npm-lru-cache",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-playwright-managed-browser-absent",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-powershell-foreach-pipeline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-pythonpath-hijack",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-typescript-mjs-declaration",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "failure-vite-entry-relative-url-assertion",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "felon-master",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-bash-tool-chunking",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-cloze-collapse-small-model",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-gutenberg-catalog-locc-filter",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-license-classifier-url-groundtruth",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-sft-50m-56-pairs-format-collapse",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-sft-few-pairs-undertrained",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-small-model-gate-underflow",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "fsi-tokenizer-byte-level-bpe-gates",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "gguf-quantization-deployment",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "github-repo-professional-setup",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "gold-training-docs",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "hard-rules",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "human-systems-synthesis",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "kd-corpus-production",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "kd-teacher-strengths",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "model-engineering",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "model-merge-doctrine",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "model-scaling",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "multi-format-interference-repair",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "multi-format-retention-repair",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase0-environment",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase1-baseline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase1-serve",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase2-corpus",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase3-finetune",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase4-export",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase5-enforcement",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "north-phase6-closedloop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "nvidia-brev-cloud-access",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "nvidia-cloud-training-master",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "on-policy-distillation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "one-heavy-job",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "original-trace-engineering",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "pipeline-excellence",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-1-foundations",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-10-serve-release",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-2-architecture-tokenizer",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-3-data-curation",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-4-tokenization-cache",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-5-pretrain-code",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-6-pretrain-run",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-7-post-train-data",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-8-post-train-runs",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "pipeline-phase-9-eval-gates",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "post-training-closed-loop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "post-training"
+    },
+    {
+      "id": "post-training-distill",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "post-training"
+    },
+    {
+      "id": "post-training-pipeline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "post-training"
+    },
+    {
+      "id": "post-training-preference",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "post-training"
+    },
+    {
+      "id": "post-training-sft",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "post-training"
+    },
+    {
+      "id": "process-hygiene-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "production-readiness",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "training-pipeline"
+    },
+    {
+      "id": "professional-developer",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "project-governance",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "sft-format-marker-loop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "shopify-capability-engineering",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "skill-creator",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "surgical-precision",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "synthetic-data-pipeline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "textbook-quality-data-acquisition",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "train-serve-consistency",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "training-from-scratch",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "training-sop",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "twin-mind-expert-colony",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "verification-complete",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "verify-first-discipline",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "discipline"
+    },
+    {
+      "id": "web-builder",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "web-builder"
+    },
+    {
+      "id": "web-builder-full-stack-synthesis",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "web-builder"
+    },
+    {
+      "id": "web-builder-model-frontier",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "web-builder"
+    },
+    {
+      "id": "web-builder-production-canary",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "web-builder"
+    },
+    {
+      "id": "web-builder-spec-renderer",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "web-builder"
+    },
+    {
+      "id": "web-human-systems-security",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "windows-desktop-sandbox-harness",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "windows-training-hang-triage",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "zero-dup-high-quality",
+      "kind": "SKILL",
+      "availability": "READY",
+      "location": "local",
+      "category": "general"
+    },
+    {
+      "id": "attempt_completion",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": true
+    },
+    {
+      "id": "desktop_action",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": false
+    },
+    {
+      "id": "list_dir",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": true
+    },
+    {
+      "id": "read_file",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": true
+    },
+    {
+      "id": "replace_in_file",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": false
+    },
+    {
+      "id": "run_command",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": false
+    },
+    {
+      "id": "search",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": true
+    },
+    {
+      "id": "switch_mode",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": false
+    },
+    {
+      "id": "write_file",
+      "kind": "TOOL",
+      "availability": "READY",
+      "location": "local",
+      "read_only": false
+    },
+    {
+      "id": "format",
+      "kind": "VERIFICATION",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "git-diff",
+      "kind": "VERIFICATION",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "patch-parse",
+      "kind": "VERIFICATION",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "path-boundary",
+      "kind": "VERIFICATION",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "tests",
+      "kind": "VERIFICATION",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "sovereign-architect",
+      "kind": "WORKFLOW",
+      "availability": "NOT_INSTALLED",
+      "location": "local"
+    },
+    {
+      "id": "sovereign-coder",
+      "kind": "WORKFLOW",
+      "availability": "READY",
+      "location": "local"
+    },
+    {
+      "id": "sovereign-pipeline",
+      "kind": "WORKFLOW",
+      "availability": "NOT_INSTALLED",
+      "location": "local"
+    }
+  ],
+  "summary": {
+    "total": 348,
+    "by_kind": {
+      "SKILL": 292,
+      "MODEL": 10,
+      "PROVIDER": 6,
+      "PLUGIN": 20,
+      "WORKFLOW": 3,
+      "TOOL": 9,
+      "VERIFICATION": 5,
+      "DEVICE": 1,
+      "RUNTIME": 2
+    },
+    "by_availability": {
+      "READY": 318,
+      "UNAVAILABLE": 2,
+      "NOT_CONFIGURED": 6,
+      "NOT_INSTALLED": 22
+    }
+  },
+  "unsupported": {
+    "classes": [
+      {
+        "id": "RESIDENT_SOPS",
+        "reason": "no canonical resident-SOP registry exists (design-planned namespace; later slice)"
+      },
+      {
+        "id": "WORKERS",
+        "reason": "no separate canonical worker registry; worker routing metadata is exposed via MODEL roles[]"
+      },
+      {
+        "id": "TOOLS.commands",
+        "reason": "the builtin command registry has no exported canonical source (module-local in openapi.ts); agent tools are covered"
+      }
+    ],
+    "fields": [
+      {
+        "id": "cost_class",
+        "reason": "no canonical cost source exists; omitted from every descriptor"
+      },
+      {
+        "id": "sop",
+        "reason": "no resident.* routing hints exist yet; omitted from every descriptor"
+      }
+    ]
+  },
+  "warnings": [],
+  "measurements": {
+    "note": "characters/estimated_tokens are measured over the projection body excluding this measurements block",
+    "characters": 61222,
+    "estimated_tokens": 15306,
+    "summary_tokens": 56,
+    "by_kind": {
+      "SKILL": {
+        "count": 292,
+        "characters": 33572,
+        "estimated_tokens": 8393
+      },
+      "MODEL": {
+        "count": 10,
+        "characters": 1431,
+        "estimated_tokens": 358
+      },
+      "PROVIDER": {
+        "count": 6,
+        "characters": 893,
+        "estimated_tokens": 224
+      },
+      "PLUGIN": {
+        "count": 20,
+        "characters": 2755,
+        "estimated_tokens": 689
+      },
+      "WORKFLOW": {
+        "count": 3,
+        "characters": 279,
+        "estimated_tokens": 70
+      },
+      "TOOL": {
+        "count": 9,
+        "characters": 855,
+        "estimated_tokens": 214
+      },
+      "VERIFICATION": {
+        "count": 5,
+        "characters": 414,
+        "estimated_tokens": 104
+      },
+      "DEVICE": {
+        "count": 1,
+        "characters": 140,
+        "estimated_tokens": 35
+      },
+      "RUNTIME": {
+        "count": 2,
+        "characters": 148,
+        "estimated_tokens": 37
+      }
+    }
+  }
+}

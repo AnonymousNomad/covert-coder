@@ -11,8 +11,9 @@
 // Pairing and every mutation approval use the real HTTP control plane
 // (POST /api/authority/pair, /api/authority/prepare, /api/authority/decision).
 // No test-only credential, bypass, or internal state access is involved.
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
@@ -54,6 +55,47 @@ function terminateChild(ref, timeoutMs = 5000) {
       }
     }, timeoutMs);
   });
+}
+
+// Windows reality: ChildProcess.kill() terminates the child WITHOUT delivering
+// SIGTERM, so the arch server's shutdown hooks (modelRuntime.stopAll) never run
+// and its DETACHED engines survive the stack close (deterministically reproduced
+// 2026-09-21). This reap is ownership-verified: it only kills a process whose
+// listening port comes from THIS workspace's registry AND whose command line
+// contains the exact registered model file path. Foreign engines are untouched.
+function reapWorkspaceEngines(workspace) {
+  const candidates = [];
+  try {
+    const registry = JSON.parse(readFileSync(path.join(workspace, '.aide', 'ingested-models.json'), 'utf8'));
+    for (const entry of Array.isArray(registry) ? registry : []) {
+      const portMatch = /^http:\/\/127\.0\.0\.1:(\d+)/.exec(String(entry.endpoint ?? ''));
+      const file = String(entry.file ?? '');
+      if (portMatch && file !== '') candidates.push({ port: Number(portMatch[1]), file });
+    }
+  } catch {
+    return [];
+  }
+  const reaped = [];
+  for (const candidate of candidates) {
+    let pid = null;
+    try {
+      const connection = execFileSync('powershell', ['-NoProfile', '-Command',
+        `(Get-NetTCPConnection -LocalPort ${candidate.port} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess`
+      ], { encoding: 'utf8', timeout: 15000 }).trim();
+      pid = Number(connection) || null;
+    } catch { pid = null; }
+    if (pid === null) continue;
+    let cmdline = '';
+    try {
+      cmdline = execFileSync('powershell', ['-NoProfile', '-Command',
+        `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`
+      ], { encoding: 'utf8', timeout: 15000 }).trim();
+    } catch { cmdline = ''; }
+    const normalized = cmdline.toLowerCase();
+    if (cmdline === '' || !normalized.includes('llama-server') || !normalized.includes(candidate.file.toLowerCase())) continue;
+    try { execFileSync('taskkill', ['/PID', String(pid), '/F', '/T'], { timeout: 15000 }); reaped.push(pid); } catch { /* already gone */ }
+  }
+  return reaped;
 }
 
 export async function launchSupervisedStack({ workspace, env = {}, origin = 'http://127.0.0.1:4173' } = {}) {
@@ -169,12 +211,13 @@ export async function launchSupervisedStack({ workspace, env = {}, origin = 'htt
     return result.body;
   }
 
-  async function approve({ adapter, method, path: pathname, body, baseName = 'facade', taskId }) {
+  async function approve({ adapter, method, path: pathname, body, baseName = 'facade', taskId, signal }) {
     const operation = await prepare({ adapter, method, path: pathname, body, taskId });
     await decide(operation.operation_id);
     return request(baseName, method, pathname, {
       body,
-      headers: { 'X-AIDE-Operation': operation.operation_id, 'X-AIDE-Task': operation.task_id }
+      headers: { 'X-AIDE-Operation': operation.operation_id, 'X-AIDE-Task': operation.task_id },
+      ...(signal ? { signal } : {})
     });
   }
 
@@ -189,6 +232,9 @@ export async function launchSupervisedStack({ workspace, env = {}, origin = 'htt
     supervisor.close();
     await facade.close();
     await Promise.all(children.map(ref => terminateChild(ref)));
+    // Reap engines this workspace's registry proves are ours (Windows delivers no
+    // SIGTERM through child.kill, so the runtime's own shutdown never ran).
+    reapWorkspaceEngines(workspace);
   }
 
   // Canonical approval surface for operations the services propose at run time

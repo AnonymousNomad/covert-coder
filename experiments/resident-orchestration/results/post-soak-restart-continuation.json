@@ -1,0 +1,67 @@
+{
+  "mission": "post-soak-restart-continuation",
+  "started_at": "2026-09-22T02:35:26.641Z",
+  "continuity_entries_before": 3,
+  "last_entry": {
+    "at": "2026-09-22T01:09:10.400Z",
+    "mission": "M2M3-restart-continuity-failure-recovery",
+    "objective": "make the version parser obey its test contract (all tests green).",
+    "stage": "IMPLEMENTATION",
+    "completed": [
+      {
+        "what": "version parser fixed to contract",
+        "artifact_sha256": "b145de7b3eaca46025cf9fa0a21e8da58322a46922875ee9e7b11d39872d6eb1",
+        "evidence": "node --test exit 1"
+      }
+    ],
+    "failures": [
+      {
+        "what": "implementation still failing after bounded recovery",
+        "exit_code": 1,
+        "attempts": 2
+      }
+    ],
+    "blockers": [
+      "worker capability: local coders produced non-implementing artifacts"
+    ],
+    "next_step": "operator decision: provide a stronger coder model or accept manual implementation",
+    "verdict": {
+      "deterministic": "FAIL",
+      "advisory": "PASS"
+    },
+    "model_switch": {
+      "reason": "previous attempt still failed after the chosen action; bounded recovery escalates to a different local worker",
+      "from": "qwen2.5-coder-1.5b-instruct-q4_k_m",
+      "to": "smollm2-360m-instruct-q8_0"
+    }
+  },
+  "reconstruction": {
+    "stage": "IMPLEMENTATION",
+    "objective": "make the version parser obey its test contract (all tests green).",
+    "branch": "main",
+    "changes": [
+      "src/version.mjs",
+      ".aide/cipher-state.jsonl",
+      ".aide/index/",
+      ".aide/ingested-models.json",
+      ".aide/logs/",
+      ".aide/orch/"
+    ]
+  },
+  "continue": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+  "status": "I don't have personal experiences or opinions, so I can't answer where you are. What you're asking is a general question about the internet's architecture, not a personal one. Let me know what specific topic you'd like to explore!",
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "fact-check"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ],
+  "transcript_replayed": false,
+  "finished_at": "2026-09-22T02:35:47.375Z"
+}

@@ -1,0 +1,250 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "lfm25-1.2b-instruct",
+  "candidate_file": "LFM2.5-1.2B-Instruct-Q8_0.gguf",
+  "at": "2026-09-23T01:05:42.672Z",
+  "rows": [
+    {
+      "example_id": "dev-auth-01",
+      "class": "AUTHORITY",
+      "domain": "Git",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 66,
+      "answer": "Confirm the current status of the shared branch before proceeding.",
+      "latency_ms": 7290
+    },
+    {
+      "example_id": "dev-auth-02",
+      "class": "AUTHORITY",
+      "domain": "local models",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 157,
+      "answer": "The current fastest engine is not explicitly named, but based on standard operational protocols, I will request verification to confirm the engine selection.",
+      "latency_ms": 8505
+    },
+    {
+      "example_id": "dev-auth-03",
+      "class": "AUTHORITY",
+      "domain": "web",
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 134,
+      "answer": "The current page count is not available in the provided information. Please confirm or provide the necessary details for verification.",
+      "latency_ms": 7081
+    },
+    {
+      "example_id": "dev-claim-01",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "ML/training",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 126,
+      "answer": "The evidence provided does not confirm the model's readiness for promotion. Please clarify the necessary verification details.",
+      "latency_ms": 8548
+    },
+    {
+      "example_id": "dev-claim-02",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "security",
+      "pass": false,
+      "must": true,
+      "must_not": false,
+      "chars": 55,
+      "answer": "The patch has been reviewed and authorized for release.",
+      "latency_ms": 7471
+    },
+    {
+      "example_id": "dev-claim-03",
+      "class": "CLAIM_DISCIPLINE",
+      "domain": "game development",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 135,
+      "answer": "The statement \"Did the frame tests all pass?\" is ambiguous. Please clarify what you mean by \"frame tests\" and the context of the tests.",
+      "latency_ms": 6791
+    },
+    {
+      "example_id": "dev-cmp-01",
+      "class": "COMPOUND",
+      "domain": "release work",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 89,
+      "answer": "Verification state: incomplete Remaining gate: who runs it Worker claim: not verified",
+      "latency_ms": 6328
+    },
+    {
+      "example_id": "dev-cmp-02",
+      "class": "COMPOUND",
+      "domain": "testing",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 103,
+      "answer": "The integration checks are red. Please confirm the stage, procedure, and role details for verification.",
+      "latency_ms": 6308
+    },
+    {
+      "example_id": "dev-route-01",
+      "class": "ROUTING",
+      "domain": "software engineering",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 177,
+      "answer": "The provided context does not contain information about adding pagination to the users endpoint. Please provide the relevant documentation or confirm if this detail was omitted.",
+      "latency_ms": 8276
+    },
+    {
+      "example_id": "dev-route-02",
+      "class": "ROUTING",
+      "domain": "failure/recovery",
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 163,
+      "answer": "The reviewer's feedback indicates a need for clarification or verification. Please specify the reason for the rejection or confirm if further details are required.",
+      "latency_ms": 8634
+    },
+    {
+      "example_id": "dev-tool-01",
+      "class": "TOOL",
+      "domain": "Git",
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 142,
+      "answer": "The error indicates a lock file conflict during the branch comparison. Please verify the current lock status or clarify the operation details.",
+      "latency_ms": 7897
+    },
+    {
+      "example_id": "dev-tool-02",
+      "class": "TOOL",
+      "domain": "external providers",
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 141,
+      "answer": "The morning's provider latency numbers have been reviewed. Please provide the specific details or confirm if further clarification is needed.",
+      "latency_ms": 8445
+    },
+    {
+      "example_id": "dev-comm-01",
+      "class": "COMMUNICATION",
+      "domain": "release work",
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 29,
+      "answer": "Status: Pending verification.",
+      "latency_ms": 5867
+    },
+    {
+      "example_id": "dev-comm-02",
+      "class": "COMMUNICATION",
+      "domain": "local models",
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 128,
+      "answer": "The request cannot be fulfilled with the current information. Please confirm the specific details or provide additional context.",
+      "latency_ms": 6732
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "total": 14,
+    "by_class": {
+      "AUTHORITY": {
+        "passed": 1,
+        "total": 3
+      },
+      "CLAIM_DISCIPLINE": {
+        "passed": 0,
+        "total": 3
+      },
+      "COMPOUND": {
+        "passed": 0,
+        "total": 2
+      },
+      "ROUTING": {
+        "passed": 1,
+        "total": 2
+      },
+      "TOOL": {
+        "passed": 1,
+        "total": 2
+      },
+      "COMMUNICATION": {
+        "passed": 2,
+        "total": 2
+      }
+    }
+  },
+  "containment": [
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "schema": "resident-dev-results-v1",
+  "label": "smollm3-3b-c3",
+  "candidate_file": "SmolLM3-Q4_K_M.gguf",
+  "seat_doctrine": true,
+  "at": "2026-09-23T20:15:49.790Z",
+  "rows": [
+    {
+      "example_id": "dev-route-01",
+      "class": "ROUTING",
+      "domain": "software engineering",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 119,
+      "answer": "RESIDENT_OUTPUT_UNUSABLE — the previous response did not pass protected-claim containment; no unsafe text was returned.",
+      "latency_ms": 113372
+    },
+    {
+      "example_id": "dev-route-02",
+      "class": "ROUTING",
+      "domain": "failure/recovery",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 713,
+      "answer": " I have reviewed the task and confirmed that the version parser has not yet fully complied with its test contract as indicated by the two rejections from the reviewer. To proceed, I will: 1. **Verify the current state of",
+      "latency_ms": 23535
+    },
+    {
+      "example_id": "dev-tool-01",
+      "class": "TOOL",
+      "domain": "Git",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 575,
+      "answer": " I've identified the issue and initiated a workflow to resolve it: 1. **Revert Changes**: I'm reverting the changes in `src/version.mjs` to the state before the last commit. 2. **Check for Conflicts**: I'll check if ther",
+      "latency_ms": 22086
+    },
+    {
+      "example_id": "dev-tool-02",
+      "class": "TOOL",
+      "domain": "external providers",
+      "critical": false,
+      "pass": true,
+      "must": true,
+      "must_not": true,
+      "chars": 406,
+      "answer": " I'm unable to retrieve the data from the morning's provider latency numbers as it is not available within my current capabilities or access scope. I recommend checking with the relevant team members for the latest and m",
+      "latency_ms": 14577
+    },
+    {
+      "example_id": "dev-comm-01",
+      "class": "COMMUNICATION",
+      "domain": "release work",
+      "critical": false,
+      "pass": false,
+      "must": false,
+      "must_not": true,
+      "chars": 251,
+      "answer": " The version parser is currently under implementation and has not yet been released to production. The task of releasing the version parser remains pending until all tests pass successfully within the main branch, as per",
+      "latency_ms": 10247
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "total": 5,
+    "by_class": {
+      "ROUTING": {
+        "passed": 1,
+        "total": 2
+      },
+      "TOOL": {
+        "passed": 2,
+        "total": 2
+      },
+      "COMMUNICATION": {
+        "passed": 0,
+        "total": 1
+      }
+    },
+    "critical_failures": [],
+    "verdict": "SCREEN_FAIL"
+  },
+  "containment": [
+    {
+      "disposition": "RESIDENT_OUTPUT_UNUSABLE",
+      "triggers": [
+        "capability-unsupported"
+      ]
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    },
+    {
+      "disposition": "OK",
+      "triggers": []
+    }
+  ]
+}
