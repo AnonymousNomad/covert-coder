@@ -358,7 +358,10 @@ export class ProviderService {
         });
       }
       if (response.status === 429 || response.status === 503) throw new ProviderError('CHILD_FAILED', `provider ${providerId} is busy (HTTP ${response.status})`);
-      if (response.status === 401 || response.status === 403) throw new ProviderError('NOT_READY', `provider ${providerId} rejected the stored key (HTTP ${response.status})`);
+      if (response.status === 401 || response.status === 403) {
+        this.markCredentialRejected(providerId);
+        throw new ProviderError('NOT_READY', `provider ${providerId} rejected the stored key (HTTP ${response.status})`);
+      }
       if (!response.ok) throw new ProviderError('CHILD_FAILED', `provider ${providerId} returned HTTP ${response.status}`);
       const payload = (await response.json().catch(() => {
         throw new ProviderError('CHILD_FAILED', `provider ${providerId} returned non-JSON`);
@@ -462,7 +465,10 @@ export class ProviderService {
       }
       readerBody = response.body;
       if (response.status === 429 || response.status === 503) throw new ProviderError('CHILD_FAILED', `provider ${providerId} is busy (HTTP ${response.status})`);
-      if (response.status === 401 || response.status === 403) throw new ProviderError('NOT_READY', `provider ${providerId} rejected the stored key (HTTP ${response.status})`);
+      if (response.status === 401 || response.status === 403) {
+        this.markCredentialRejected(providerId);
+        throw new ProviderError('NOT_READY', `provider ${providerId} rejected the stored key (HTTP ${response.status})`);
+      }
       if (!response.ok) throw new ProviderError('CHILD_FAILED', `provider ${providerId} returned HTTP ${response.status}`);
 
       let text = '';
@@ -586,6 +592,12 @@ export class ProviderService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private markCredentialRejected(providerId: string): void {
+    const cached = this.probeCache.get(providerId);
+    if (cached === undefined) return;
+    this.probeCache.set(providerId, { ...cached, status: 'invalid_key', at: Date.now() });
   }
 
   private async isHostApproved(host: string): Promise<boolean> {

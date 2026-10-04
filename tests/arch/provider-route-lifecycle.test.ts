@@ -82,14 +82,16 @@ function assertExactOpenCodeTarget(target: Record<string, unknown>): void {
   assert.ok(typeof target.target_revision === 'string' && target.target_revision.length > 0);
 }
 
-function fixtureFetch(states: TransportState[]): typeof fetch {
+function fixtureFetch(states: TransportState[], onProviderRequest: () => void): typeof fetch {
   return (async (_url: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     if (headers.get('authorization') !== `Bearer ${PROVIDER_KEY}`) return new Response(null, { status: 401 });
     const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
     const prompt = lastUserMessage(body);
+    onProviderRequest();
     const model = String(body.model ?? '');
     const streaming = body.stream === true;
+    if (prompt === 'revoked credential path') return new Response(null, { status: 401 });
     if (!streaming) {
       const content = prompt === 'ping' ? 'probe verified' : `returned:${prompt}`;
       return Response.json({ choices: [{ message: { content }, finish_reason: 'stop' }] });
@@ -168,10 +170,11 @@ async function startStack(
 ) {
   const arch = new ArchServer(workspace, path.join(workspace, '.aide', `provider-lifecycle-${Date.now()}.log`));
   const modelRuntime = await createModelRuntime(REPO_ROOT, workspace, { events: arch.events, logger: arch.logger });
+  const providerRequestCount = { value: 0 };
   const providerService = new ProviderService(workspace, {
     credentials: new CredentialStore(workspace, new FixtureCrypt()),
     assertExternalEgressAllowed: () => arch.authority.assertExternalEgressAllowed(),
-    fetchFn: fixtureFetch(states),
+    fetchFn: fixtureFetch(states, () => { providerRequestCount.value++; }),
     requestTimeoutMs: 500,
     logger: arch.logger
   });
@@ -203,6 +206,7 @@ async function startStack(
     base,
     owner,
     modelRuntime,
+    providerRequestCount,
     async close() {
       httpServer.closeAllConnections();
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
@@ -459,6 +463,42 @@ test('production provider route is governed end to end and recovers only after e
     assert.equal(recoveredAfter.state, 'succeeded');
     assertExactTarget(receiptTarget(recoveredAfter));
     assert.ok(transportStates.some(state => state.prompt === 'recovered after restart' && state.model === PROVIDER_MODEL));
+
+    const revokedBody = { modelId: CHAT_MODEL_ID, messages: [{ role: 'user' as const, content: 'revoked credential path' }] };
+    const revoked = await prepareAndApprove(stack.owner, 'POST', '/api/chat/stream', revokedBody, 'provider-lifecycle-revoked-credential');
+    assertExactTarget(receiptTarget(revoked.before));
+    const beforeRevokedRequest = stack.providerRequestCount.value;
+    const revokedResponse = await stack.owner.request('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'X-AIDE-Operation': revoked.operationId, 'X-AIDE-Task': 'provider-lifecycle-revoked-credential' },
+      body: JSON.stringify(revokedBody)
+    });
+    assert.equal(revokedResponse.status, 200);
+    const revokedText = await revokedResponse.text();
+    assert.doesNotMatch(revokedText, /"done":true/, 'a rejected stored credential cannot become a successful stream');
+    assert.equal(stack.providerRequestCount.value, beforeRevokedRequest + 1, 'the exact approved request reached the provider once');
+    const revokedAfter = await operationReceipt(stack.owner, revoked.operationId);
+    assert.equal(revokedAfter.state, 'failed');
+    assertExactTarget(receiptTarget(revokedAfter));
+
+    const providerStateResponse = await stack.owner.request('/api/providers');
+    const providerState = await providerStateResponse.json() as { data: { providers: Array<{ id: string; status: string }> } };
+    assert.equal(providerState.data.providers.find(provider => provider.id === 'openai')?.status, 'invalid_key');
+    const managerAfterRevocation = await stack.owner.request('/api/models/manager');
+    const managerAfterRevocationEnvelope = await managerAfterRevocation.json() as { data: { routes: ModelProviderRouteT[] } };
+    const routeAfterRevocation = managerAfterRevocationEnvelope.data.routes.find(route => route.id === exactRoute.id);
+    assert.ok(routeAfterRevocation);
+    assert.equal(routeAfterRevocation.model_support_state, 'UNKNOWN');
+    assert.equal(routeAfterRevocation.available, false, 'revoked credentials immediately remove exact route availability');
+    assert.equal(routeAfterRevocation.health, 'UNHEALTHY');
+
+    const beforeBlockedDispatch = stack.providerRequestCount.value;
+    const blockedAfterRevocation = await stack.owner.request('/api/authority/prepare', {
+      method: 'POST',
+      body: JSON.stringify({ method: 'POST', path: '/api/chat/stream', body: revokedBody, task_id: 'provider-lifecycle-revoked-route' })
+    });
+    assert.equal(blockedAfterRevocation.status, 403, 'the provider/model route stays blocked until credentials are re-verified');
+    assert.equal(stack.providerRequestCount.value, beforeBlockedDispatch, 'blocked exact route performs no provider request');
   } finally {
     if (stack !== undefined) await stack.close();
     await removeFixtureWorkspace(workspace);

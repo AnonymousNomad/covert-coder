@@ -213,6 +213,41 @@ test('disconnect removes the credential and resets status', async () => {
   }
 });
 
+test('a provider 401 after a successful probe revokes cached model support for chat and stream', async () => {
+  const provider = BUILTIN_PROVIDERS.find(entry => entry.id === 'openai');
+  assert.ok(provider);
+  const model = provider.models[0]!;
+
+  for (const requestKind of ['chat', 'stream'] as const) {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-revoked-'));
+    try {
+      let fetchCalls = 0;
+      const fetchFn = (async () => {
+        fetchCalls++;
+        return fetchCalls === 1
+          ? openAiProbeResponse()
+          : new Response(null, { status: 401 });
+      }) as typeof fetch;
+      const { service } = makeService(dir, fetchFn);
+
+      const connected = await service.connect({ providerId: provider.id, key: 'fixture-key', model });
+      assert.equal(connected.status, 'connected');
+      assert.equal(service.modelSupportState(provider.id, model), 'verified');
+
+      const request = requestKind === 'chat'
+        ? () => service.chat(provider.id, model, [{ role: 'user', content: 'test' }])
+        : () => service.chatStream(provider.id, model, [{ role: 'user', content: 'test' }], () => {});
+      await assert.rejects(request, error => error instanceof ProviderError && error.code === 'NOT_READY');
+
+      const providerList = await service.list();
+      assert.equal(providerList.find(entry => entry.id === provider.id)?.status, 'invalid_key', `${requestKind} 401 must invalidate cached provider health`);
+      assert.equal(service.modelSupportState(provider.id, model), 'unknown', `${requestKind} 401 must revoke exact-model support`);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  }
+});
+
 test('chat propagates caller cancellation instead of misreporting a provider timeout', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-prov-'));
   try {

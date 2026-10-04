@@ -5,7 +5,7 @@ Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
 Base: `7391b98e1e0972dd3fe4365420fe15366b77b24c`
 Implementation commit: `2923db8f99b9070a991210e976caef3faf9055af`
-Status: **LOCAL VERIFICATION PASS; exact-SHA GitHub CI pending**
+Status: **LOCAL VERIFICATION PASS; exact-SHA GitHub CI PASS on checkpoint `65f4696e8644f404135f980e5a815f8c1301d582`**
 
 ## Failure and cause
 
@@ -36,4 +36,4 @@ The browser proof uses the existing controlled API fixture and exercises the act
 
 ## Publication
 
-Exact-SHA GitHub CI for implementation commit `2923db8f99b9070a991210e976caef3faf9055af` is pending publication and will be recorded after the result is observed.
+The implementation was checkpointed with its generated battery evidence at `65f4696e8644f404135f980e5a815f8c1301d582`. Exact-SHA AIDE CI run [37191160380](https://github.com/AnonymousNomad/covert-coder/actions/runs/37191160380) completed **SUCCESS** with 23 completed workflow steps on that exact SHA. The subsequent provider-revocation work is a separate W5 slice and is not included in this W4 acceptance statement.
