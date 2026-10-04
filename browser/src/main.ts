@@ -24,6 +24,7 @@ import type { ClosedLoopStatusT } from '../../common/contracts/closed-loop.ts';
 import { connectEvents, setSharedEvents } from './services/ws.ts';
 import { facadeWebSocketUrl } from './services/runtime-config.ts';
 import { initializeAuthority } from './services/authority.ts';
+import { renderAuthorityPairing } from './cockpit/AuthorityPairingGate.ts';
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string): Worker {
@@ -59,9 +60,15 @@ function renderAllTabs(host: EditorHost): void {
 }
 
 async function boot(): Promise<void> {
-  await initializeAuthority();
   const app = document.getElementById('app');
   if (app === null) throw new Error('#app missing');
+  app.setAttribute('role', 'status');
+  app.textContent = 'Starting Covert and waiting for secure browser pairing…';
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  await initializeAuthority(renderAuthorityPairing);
+  app.textContent = 'Loading the Covert workspace…';
+  app.removeAttribute('role');
+  app.replaceChildren();
   const store = new Store(INITIAL_STATE);
   const shell: CockpitHandles = mountCockpit(app, store);
   const session = new SessionService();
@@ -269,4 +276,20 @@ async function refreshVerificationChip(shell: CockpitHandles): Promise<void> {
   shell.topbar.setVerification('UNVERIFIED');
 }
 
-void boot();
+void boot().catch(() => {
+  const app = document.getElementById('app');
+  if (app === null) return;
+  const panel = document.createElement('main');
+  panel.setAttribute('role', 'alert');
+  panel.style.cssText = 'min-height:100vh;display:grid;place-content:center;gap:12px;padding:24px;background:#080f14;color:#e8f6ff;font:16px system-ui,sans-serif';
+  const title = document.createElement('h1');
+  title.textContent = 'Covert could not finish startup';
+  const message = document.createElement('p');
+  message.textContent = 'Covert stopped before the workspace finished loading. Reload to retry. Never share the one-use pairing code in chat or screenshots.';
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.textContent = 'Reload and retry pairing';
+  retry.addEventListener('click', () => window.location.reload());
+  panel.append(title, message, retry);
+  app.replaceChildren(panel);
+});

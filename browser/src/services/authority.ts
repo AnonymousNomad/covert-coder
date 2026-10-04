@@ -23,10 +23,15 @@ export async function pairAuthority(proof: string): Promise<void> {
   const session = AuthoritySessionResponse.parse(await control('/api/authority/pair', { proof }));
   credential = session.token; expiresAt = session.expires_at;
 }
-export async function initializeAuthority(): Promise<void> {
+export async function initializeAuthority(
+  browserPairing: (pair: (proof: string) => Promise<void>) => Promise<void>
+): Promise<void> {
   const host = window as unknown as { __TAURI_INTERNALS__?: { invoke(command: string): Promise<unknown> } };
-  const proof = host.__TAURI_INTERNALS__ ? await host.__TAURI_INTERNALS__.invoke('authority_pairing')
-    : window.prompt('Pair this Covert session: type pair in the launch terminal, then enter its one-use code.');
+  if (!host.__TAURI_INTERNALS__) {
+    await browserPairing(pairAuthority);
+    return;
+  }
+  const proof = await host.__TAURI_INTERNALS__.invoke('authority_pairing');
   if (typeof proof !== 'string' || !proof.trim()) throw new Error('Pairing cancelled; privileged access remains disabled.');
   await pairAuthority(proof.trim());
 }
