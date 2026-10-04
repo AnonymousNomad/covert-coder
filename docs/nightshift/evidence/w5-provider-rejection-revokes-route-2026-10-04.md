@@ -4,7 +4,7 @@ Date: 2026-10-04
 Worktree: `E:\covert-nightshift-integration`
 Branch: `nightshift/production-convergence-20260926`
 Base checkpoint: `65f4696e8644f404135f980e5a815f8c1301d582`
-Status: **LOCAL VERIFICATION AND VERITAS PASS; W5 exact-SHA GitHub CI pending**
+Status: **LOCAL VERIFICATION, VERITAS, AND EXACT-SHA GITHUB CI PASS**
 
 ## Failure and cause
 
@@ -35,11 +35,11 @@ The same stale verification applied to streaming requests. Before repair, `model
 - Veritas compile check ran `npm run check`: architecture battery **985 total, 974 passed, 0 failed, 11 skipped**; TypeScript and ESLint completed successfully.
 - Veritas tests check ran the repository `npm test` chain — **exit 0**. The command's emitted desktop evidence recorded a new `DC-a battery` **9/9** row in `docs/evidence/desktop-battery.md`; that generated evidence is preserved.
 - Full Veritas output log: `E:\pip_temp\covert-w5-provider-revocation-veritas-20261004.log`, SHA-256 `c471e1c3c643f0983d9a9be3efe153a2ebcac0118137633422fe8312f03ae844`.
-
-The exact base checkpoint CI was green on `65f4696e8644f404135f980e5a815f8c1301d582` (AIDE CI `37191160380`, SUCCESS). The W5 code and evidence still require the canonical full pre-push gate, publication, and exact-SHA CI.
+- Canonical full pre-push — **PASS**; architecture suite **985 total, 974 passed, 0 failed, 11 skipped**; push succeeded.
+- Exact-SHA GitHub AIDE CI [37194469318](https://github.com/AnonymousNomad/covert-coder/actions/runs/37194469318) — **SUCCESS** on source SHA `0eaa7510ad76c21b3f539ee74c82b8b79d7b109f`; backend/integration, browser regressions, type/lint, architecture tests, Veritas gates/report, generated-file/worktree checks, and required gate summary completed successfully (11m 05s).
 
 ## Evidence limits and next action
 
 All W5 provider behavior in this checkpoint is fixture-backed. It does not prove authenticated live provider execution, quota behavior at a vendor, subscription-backed Codex execution, clean-user packaging, or release acceptance. Local-model floors and runtime qualification remain unchanged. Live external execution remains **UNKNOWN** until the owner-managed auth path and spend ceiling are supplied and safely verified.
 
-Next: run the canonical full pre-push gate, push this coherent W5 checkpoint, inspect Issue #38, and wait for exact-SHA CI before selecting the next dependency-ordered Model Access task.
+Next: continue to the next dependency-ordered provider-path defect after this exact-SHA checkpoint. Inspect Issue #38 before starting that bounded slice.
