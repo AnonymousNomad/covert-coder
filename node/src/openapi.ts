@@ -242,19 +242,45 @@ export async function createDapManager(repoRoot: string, workspace: string, opti
   });
 }
 
+export type ConfiguredLocalRuntimeBackend = 'UNSLOTH' | 'LLAMA_CPP';
+
+export function configuredLocalRuntimeBackend(env: NodeJS.ProcessEnv = process.env): ConfiguredLocalRuntimeBackend {
+  const raw = String(env.AIDE_LOCAL_RUNTIME_BACKEND ?? '').trim().toLowerCase();
+  if (raw === '' || raw === 'unsloth') return 'UNSLOTH';
+  if (raw === 'llama-cpp' || raw === 'llama_cpp') return 'LLAMA_CPP';
+  throw new Error('AIDE_LOCAL_RUNTIME_BACKEND must be "unsloth" or "llama-cpp"');
+}
+
 export async function createModelRuntime(repoRoot: string, workspace: string, options: BuildRoutesOptions): Promise<ModelRuntime> {
   const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
-  const runtime = new BrokerModelRuntime({
+  const runtimeOptions = {
     workspace,
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
     ingestedPath: path.join(workspace, '.aide', 'ingested-models.json'),
     modelDir: path.join(repoRoot, 'models'),
     logger: options.logger,
-    onStatusChange: (id, status) => {
+    onStatusChange: (id: string, status: string) => {
       const eventStatus = status === 'running' ? 'ready' : status === 'starting' ? 'loading' : status === 'stopped' ? 'stopped' : 'error';
       options.events?.publish('model', { id, status: eventStatus });
     }
-  }, new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), null, workspace), UNSLOTH_V1_QUALIFICATION, resourceAdmission);
+  };
+
+  // Unsloth remains the V1 default and the only frozen qualified local profile.
+  // Direct llama.cpp is an explicit compatibility selection for hardware where
+  // Unsloth is unavailable; it is never selected as a silent fallback and does
+  // not inherit Unsloth qualification.
+  if (configuredLocalRuntimeBackend() === 'LLAMA_CPP') {
+    const runtime = new ModelRuntime(runtimeOptions);
+    await runtime.load();
+    return runtime;
+  }
+
+  const runtime = new BrokerModelRuntime(
+    runtimeOptions,
+    new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), null, workspace),
+    UNSLOTH_V1_QUALIFICATION,
+    resourceAdmission
+  );
   await runtime.load();
   return runtime;
 }

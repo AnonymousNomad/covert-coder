@@ -91,24 +91,38 @@ export async function hashModelArtifact(file: string): Promise<string> {
   return hash.digest('hex');
 }
 
-export function resolveLlamaBinary(workspace: string): { path: string; vulkan: boolean } | null {
+export type LlamaAccelerator = 'cpu' | 'vulkan' | 'rocm' | 'unknown';
+
+export function normalizeLlamaAccelerator(value: string | undefined): LlamaAccelerator {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'cpu' || normalized === 'vulkan' || normalized === 'rocm') return normalized;
+  return 'unknown';
+}
+
+function inferLlamaAccelerator(binaryPath: string, configured?: string): LlamaAccelerator {
+  const explicit = normalizeLlamaAccelerator(configured);
+  if (explicit !== 'unknown') return explicit;
+  const dir = path.dirname(binaryPath);
+  if (['ggml-vulkan.dll', 'libggml-vulkan.so', 'libggml-vulkan.dylib'].some(name => existsSync(path.join(dir, name)))) return 'vulkan';
+  if (['ggml-hip.dll', 'libggml-hip.so', 'libggml-hip.dylib'].some(name => existsSync(path.join(dir, name)))) return 'rocm';
+  return 'unknown';
+}
+
+export function resolveLlamaBinary(workspace: string): { path: string; vulkan: boolean; accelerator: LlamaAccelerator } | null {
   const exe = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-  const candidates: Array<{ path: string; vulkan: boolean }> = [
-    process.env.AIDE_LLAMA_SERVER ? { path: process.env.AIDE_LLAMA_SERVER, vulkan: false } : null,
-    { path: path.join(workspace, 'runtime', exe), vulkan: false },
-    // CPU fallback (operator override path). Kept before Vulkan so that any
-    // operator-installed binary keeps priority over the bundled Vulkan build.
-    { path: 'E:\\llama-cpp\\llama-server.exe', vulkan: false },
-    // Bundled Vulkan build: a sibling ggml-vulkan.dll in the same directory
-    // signals Vulkan support, and llama-server --version confirms the build.
-    // Track this separately so the spawn layer can add -ngl 999 by default.
-    { path: 'E:\\llama-cpp-vulkan\\llama-server.exe', vulkan: true }
-  ].filter((candidate): candidate is { path: string; vulkan: boolean } => candidate !== null && existsSync(candidate.path));
-  for (const candidate of candidates) {
-    if (candidate.vulkan && !existsSync(path.join(path.dirname(candidate.path), 'ggml-vulkan.dll'))) continue;
-    return candidate;
-  }
-  return null;
+  const configured = (binaryPath: string): { path: string; vulkan: boolean; accelerator: LlamaAccelerator } => {
+    const accelerator = inferLlamaAccelerator(binaryPath, process.env.AIDE_LLAMA_ACCELERATOR);
+    return { path: binaryPath, vulkan: accelerator === 'vulkan', accelerator };
+  };
+  const candidates: Array<{ path: string; vulkan: boolean; accelerator: LlamaAccelerator }> = [
+    process.env.AIDE_LLAMA_SERVER ? configured(process.env.AIDE_LLAMA_SERVER) : null,
+    configured(path.join(workspace, 'runtime', exe)),
+    // Historical Windows CPU installation. Explicit AIDE_LLAMA_SERVER takes
+    // precedence and is the cross-platform compatibility path.
+    { path: 'E:\\llama-cpp\\llama-server.exe', vulkan: false, accelerator: 'cpu' },
+    { path: 'E:\\llama-cpp-vulkan\\llama-server.exe', vulkan: true, accelerator: 'vulkan' }
+  ].filter((candidate): candidate is { path: string; vulkan: boolean; accelerator: LlamaAccelerator } => candidate !== null && existsSync(candidate.path));
+  return candidates[0] ?? null;
 }
 
 function samplerArgs(profile: ReturnType<typeof readModelProfileSidecar>): string[] {
@@ -488,10 +502,14 @@ export class ModelRuntime {
       const profile = readModelProfileSidecar(model.file);
       if (profile.invalid) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is invalid; inspect it before starting the model');
       if (profile.binding !== undefined) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is bound to a different canonical runtime');
-      // For a Vulkan build, the sidecar may not set ngl; default to offload-all
-      // so the model actually uses the GPU. CPU builds must NOT default to ngl,
-      // since llama-server interprets -ngl > 0 on a CPU binary as an error.
+      // GPU builds may omit ngl in older profiles. Default to offload-all for
+      // explicitly identified Vulkan or ROCm/HIP runtimes so a compatibility
+      // binary does not silently execute on CPU. Unknown/CPU binaries never get
+      // implicit GPU flags.
       const profileNgl = Number(profile.runtime?.ngl);
+      const profileBackend = String(profile.runtime?.backend ?? '').trim().toLowerCase();
+      const gpuAccelerated = llamaResolution.accelerator === 'vulkan' || llamaResolution.accelerator === 'rocm' ||
+        profileBackend === 'vulkan' || profileBackend === 'rocm' || profileBackend === 'hip';
       // LAWS (aide-inhouse-model-runtime SOP, verified 2026-08-27 A/B):
       //   - --no-warmup REQUIRED: without it the Vulkan warmup epoch
       //     crashes the process (exit code 1, empty stderr).
@@ -513,7 +531,7 @@ export class ModelRuntime {
         '--prio', '-1'
       ];
       const sampler = samplerArgs(profile);
-      const binaryArgs = llamaResolution.vulkan && !Number.isFinite(profileNgl)
+      const binaryArgs = gpuAccelerated && !Number.isFinite(profileNgl)
         ? [...baseArgs, '-ngl', '999', ...sampler]
         : [...baseArgs, ...sampler];
       const alreadyUpBinary = await this.verifyEndpointModel(id).catch(async () => {
