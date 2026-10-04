@@ -71,6 +71,13 @@ AMD device; it did not run a model because local start floors were below
 threshold. The existing Windows ownership-probe red remains open with its
 cause not proven. Therefore:
 
+- The audit record commit `821b49975394a9ceab14565765d16b0fcdd17c02` passed
+  exact-SHA AIDE CI on both push run `37185757652` and PR run `37185759452`.
+  Both runs reported SUCCESS on that same SHA; the 19-step verify job passed,
+  including architecture tests, Veritas, generated-file/worktree checks, and
+  the required gate summary. This follow-up edit records that result; its own
+  exact-SHA checks are tracked on the resulting commit.
+
 - PR #41 remains **OPEN / DRAFT / NOT MERGE-READY**.
 - gfx900/ROCm remains **UNQUALIFIED**.
 - Current AMD local start admission remains **REFUSED when required live
