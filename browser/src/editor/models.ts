@@ -12,6 +12,8 @@ export interface ModelMeta {
   eol: Eol;
   bom: boolean;
   dirty: boolean;
+  savedContent: string;
+  externallyModified: boolean;
   language: string;
 }
 
@@ -35,7 +37,7 @@ export function openModel(relPath: string, content: string): monaco.editor.IText
   const model = monaco.editor.createModel(content, language, uriFor(relPath));
   model.setEOL(sniffEol(content) === 'crlf' ? monaco.editor.EndOfLineSequence.CRLF : monaco.editor.EndOfLineSequence.LF);
   models.set(relPath, model);
-  meta.set(relPath, { relPath, eol: sniffEol(content), bom: hasBom(content), dirty: false, language });
+  meta.set(relPath, { relPath, eol: sniffEol(content), bom: hasBom(content), dirty: false, savedContent: content, externallyModified: false, language });
   model.onDidChangeContent(() => {
     const m = meta.get(relPath);
     if (m !== undefined && !m.dirty) {
@@ -62,11 +64,14 @@ export function disposeModel(relPath: string): void {
   for (const fn of dirtyListeners) fn();
 }
 
-export function markClean(relPath: string): void {
+export function markClean(relPath: string, savedContent?: string): void {
   const m = meta.get(relPath);
-  if (m !== undefined && m.dirty) {
+  if (m !== undefined) {
+    if (savedContent !== undefined) m.savedContent = savedContent;
+    const changed = m.dirty || m.externallyModified;
     m.dirty = false;
-    for (const fn of dirtyListeners) fn();
+    m.externallyModified = false;
+    if (changed) for (const fn of dirtyListeners) fn();
   }
 }
 
@@ -76,8 +81,32 @@ export function reloadClean(relPath: string, content: string): boolean {
   if (model === undefined || m === undefined) return false;
   if (m.dirty) return false;
   model.setValue(content);
+  model.setEOL(sniffEol(content) === 'crlf' ? monaco.editor.EndOfLineSequence.CRLF : monaco.editor.EndOfLineSequence.LF);
+  m.eol = sniffEol(content);
+  m.bom = hasBom(content);
+  m.savedContent = content;
+  m.dirty = false;
+  m.externallyModified = false;
   for (const fn of dirtyListeners) fn();
   return true;
+}
+
+export function markExternallyModified(relPath: string): void {
+  const m = meta.get(relPath);
+  if (m === undefined || m.externallyModified) return;
+  m.externallyModified = true;
+  for (const fn of dirtyListeners) fn();
+}
+
+export function clearExternalModification(relPath: string): void {
+  const m = meta.get(relPath);
+  if (m === undefined || !m.externallyModified) return;
+  m.externallyModified = false;
+  for (const fn of dirtyListeners) fn();
+}
+
+export function hasExternalModification(relPath: string): boolean {
+  return meta.get(relPath)?.externallyModified ?? false;
 }
 
 export function isDirty(relPath: string): boolean {

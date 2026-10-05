@@ -49,7 +49,7 @@ Do not introduce a second backend, universal event bus, model router, workspace 
 | 6. Window lifetime vs service lifetime | `WindowManagerView` hides/minimizes a window without calling service stops. Removing a window element detaches its hosted root; reopening reattaches the registered root. Terminal stop is an explicit `POST /api/terminal/sessions/stop`. | **PARTIAL / NEEDS LIFECYCLE E2E.** Closing a view does not intentionally stop its process. Hidden/detached app controllers can still poll or render; add visibility suspension only through existing controller lifecycle seams and prove reactivation. |
 | 7–13. Cipher ASK/PLAN/ACT, conversation binding, exact model identity | `browser/src/chat/chat.ts` owns direct streamed chat and conversation model binding. `ResidentCore.ts` separately owns governed task selection/start/status through `/api/agent/*`. Backend `chat.ts`, `agent.ts`, Model Access, Context Control, and Authority remain distinct. | **PARTIAL.** Existing difference between direct chat and governed execution is real and must remain. The user-facing Cipher surface currently presents chat and governed composer separately; there is no single typed InteractionService/timeline joining them. Do not make model choice mutate workspace or collapse conversation binding into role routing. |
 | 14–16. Tool and Command Registries | `node/src/services/agent-tools.mjs`, `node/src/services/command-registry.mjs`, and `node/src/routes/commands.ts` exist. The desktop palette currently contains shell-owned open-app/layout actions. | **PARTIAL.** Existing registries must be inspected and reused. The shell palette is not yet the shared registry, and an available tool is not authority. No shell action may imply authorization. |
-| 17–19, 22. Document Service, unsaved buffers, model/view separation, edit events | `browser/src/editor/models.ts` owns Monaco text models; `EditorHost` owns document operations and groups; `editor/lsp-bridge.ts` observes Monaco changes. Canonical file read/write uses typed facade routes. | **PARTIAL / HIGH RISK GAP.** A separate AI file mutation can bypass an open dirty Monaco buffer unless its canonical path reconciles editor model/version state. This lane has not established an open-buffer-safe WorkspaceEdit/DocumentService contract. Do not claim this solved by moving the editor window. |
+| 17–19, 22. Document Service, unsaved buffers, model/view separation, edit events | `browser/src/editor/models.ts` owns Monaco text models; `EditorHost` owns document operations and groups; `editor/lsp-bridge.ts` observes Monaco changes. Canonical file read/write uses typed facade routes. | **PARTIAL.** Governed AgentLoop `write_file` / `replace_in_file` now emits a content-free file-mutation event over the existing `agent` channel. The browser re-reads via `/api/file`, reloads a clean model, and preserves dirty buffers with a visible conflict flag and explicit overwrite confirmation. Shell/task command edits, patch/search routes, and the actual browser dirty-buffer journey remain open. This is a bounded reconciliation seam, not a complete DocumentService. |
 | 20. Event transport | `browser/src/services/ws.ts` creates one shared authenticated event bus; terminal and editor diagnostics subscribe to it. | **REUSED.** Do not create another global bus. REST remains the request/response truth. |
 | 21. Context Control | Existing chat composer and model router own prompt context; Resident task requests own their existing context/workflow fields. | **PARTIAL.** Active document/selection/open files are not yet proven to survive into both ASK and ACT through a single visible Context Control projection. Do not inject every workbench datum automatically. |
 | 23. Terminal | `createTerminalPanel` uses xterm, canonical terminal session routes, and the shared authenticated event bus. Browser review before pairing showed `authenticated actor required`; no interactive PTY acceptance was performed. | **IMPLEMENTED SURFACE / LIVE ACCEPTANCE UNKNOWN.** It is a real terminal route, not a simulated console. Window move/minimize/restore must preserve the exact session and PTY resize; not yet proven. |
@@ -106,11 +106,39 @@ After inspecting the durable path, one isolated execution of the exact named tes
 
 No model was started. The browser session was unpaired; workspace/terminal API calls remained protected and unavailable. No claim is made for real PTY, provider, model, restart, or Authority acceptance through this browser review.
 
+## Governed AgentLoop edit → Monaco reconciliation slice — 2026-10-05
+
+### Finding and bounded repair
+
+Source tracing established the defect boundary: AgentLoop's governed `write_file` and `replace_in_file` tools update the workspace through the existing Authority-controlled execution path, while Monaco keeps its own URI-keyed in-memory text model. There was no typed notification from the successful backend mutation to the existing editor host. Moving or remounting the editor window did not synchronize the two owners.
+
+The repair extends the existing `AgentStreamEvent` union with `file_mutation { session_id, paths, outcome }`; it publishes no file content and adds no event bus or authorization path. A successful file tool emits `observed` after the tool returns success. If a dispatched file tool errors, it emits `uncertain`, so the browser checks disk without assuming whether the write landed. The browser validates the event, re-reads through the canonical file route, and then:
+
+- leaves a matching saved snapshot alone;
+- reloads a changed clean model and lets the existing Monaco change listener notify LSP;
+- preserves a changed dirty model, marks the tab for review, and requires explicit operator confirmation before a save can replace the disk version;
+- marks state unavailable and blocks an unconfirmed save if the canonical file read cannot establish current contents.
+
+### Evidence
+
+- `node --experimental-strip-types --no-warnings --test tests/unit/test-document-reconcile.test.mjs` — **4 passed, 0 failed, 0 skipped**.
+- Browser TypeScript check — passed.
+- Focused ESLint across changed browser/backend/contracts/tests — passed.
+- `node --check node/src/services/agent-loop.mjs` — passed.
+- `node --experimental-strip-types --no-warnings --test --test-concurrency=1 tests/arch/agent-routes.test.ts tests/arch/agent-execution-integrity.test.ts` — **38 passed, 0 failed, 0 skipped**. This includes a real paired AgentLoop write observed through the existing authenticated WebSocket channel; the event contains only the relative path and the test verifies file content is absent.
+- `npm run build:frontend` — passed, 1,432 modules. The existing main bundle size warning remains (4,682.03 kB; 1,209.00 kB gzip).
+- `npx playwright test tests/e2e/workstation-shell.spec.ts --config playwright.config.ts` — **1 passed** on the built preview; no page error and shell interaction regression observed.
+- `git diff --check` — passed.
+
+### Scope still unproven
+
+The browser E2E did not pair an operator, open a file, make an unsaved Monaco change, and deliver a real backend mutation event to that same page. The pure policy test and backend WebSocket producer test cover separate halves only. Shell `run_command`, task/patch/search writes, and mutations from external processes do not emit this event. The required unsaved-edit journey remains **OPEN** until an integrated receiver/conflict test and all canonical write paths are covered or explicitly bounded by the owner.
+
 ## Sequencing decision
 
 1. Finish and verify this isolated shell foundation without claiming a complete workstation integration.
 2. Use the canonical backend/Authority owners; do not add `WorkbenchSession`, `InteractionService`, `DocumentService`, universal `ToolRegistry`, or another event bus until each existing equivalent is mapped to a concrete gap and an owner-approved contract.
-3. The first functional-spine candidate after shell stabilization is the open-buffer edit boundary: trace the exact AgentLoop tool dispatch into file writes and compare it with Monaco's live model/LSP update path. If the same file can be mutated behind a dirty editor model, preserve a reproducer and repair through the existing owner seam before attempting a broad Cipher unified timeline.
+3. Extend the file-mutation seam to other canonical write paths and add the integrated unsaved-buffer browser acceptance before calling document editing safe.
 4. Then implement Cipher ASK/PLAN/ACT presentation by composing the current direct-chat and governed AgentLoop paths, preserving conversation binding, exact Model Access identity, Context Control, and the same Execution Authority. No direct mutation route from a window or speech adapter.
 5. Prove the prescribed journeys in dependency order: editor/context; ACT/Authority; document/model/LSP/Git; test/verification; process and model lifetime; layout restore; provider failure/offline; extension only after its ecosystem lane is integrated.
 

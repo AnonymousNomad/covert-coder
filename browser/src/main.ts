@@ -12,7 +12,7 @@ import './desktop/desktop.css';
 import { createEditorHost, type EditorHost } from './editor/host.ts';
 import { createGroups } from './editor/groups.ts';
 import { createSearchPanel } from './editor/search.ts';
-import { onDirtyChange, isDirty, openPaths } from './editor/models.ts';
+import { onDirtyChange, isDirty, hasExternalModification, openPaths } from './editor/models.ts';
 import { ArchLspBridge, applyDiagnostics } from './editor/lsp-bridge.ts';
 import { registerLspProviders } from './editor/lsp-providers.ts';
 import type { DiagnosticsEventT } from '../../common/contracts/events.ts';
@@ -21,6 +21,7 @@ import type { ModelStatusResponseT } from '../../common/contracts/models.ts';
 import { modelDisplayState, modelIsActive, modelIsVerifiedReady } from '../../common/model-state.ts';
 import { createCloudStatusReader } from './services/cloud-status.ts';
 import type { ClosedLoopStatusT } from '../../common/contracts/closed-loop.ts';
+import { AgentFileMutationEvent } from '../../common/contracts/agent.ts';
 
 import { connectEvents, setSharedEvents } from './services/ws.ts';
 import { facadeWebSocketUrl } from './services/runtime-config.ts';
@@ -38,10 +39,14 @@ function renderTabBar(tabBar: HTMLElement, groupId: string, host: EditorHost): v
   const paths = host.tabsIn(groupId);
   for (const relPath of paths) {
     const button = document.createElement('button');
+    const externalConflict = hasExternalModification(relPath);
     button.type = 'button';
-    button.className = 'tab' + (host.activePath() === relPath ? ' active' : '') + (isDirty(relPath) ? ' dirty' : '');
-    button.textContent = relPath.split('\\').pop() ?? relPath;
-    button.title = relPath;
+    button.className = 'tab' + (host.activePath() === relPath ? ' active' : '') + (isDirty(relPath) ? ' dirty' : '') + (externalConflict ? ' external-conflict' : '');
+    button.textContent = `${relPath.split('\\').pop() ?? relPath}${externalConflict ? ' !' : ''}`;
+    button.title = externalConflict
+      ? `${relPath} · disk version changed or could not be checked; your editor buffer is preserved`
+      : relPath;
+    if (externalConflict) button.setAttribute('aria-label', `${relPath}; external disk change requires review before overwrite`);
     button.addEventListener('click', () => host.activate(relPath));
     const close = document.createElement('span');
     close.className = 'tab-close';
@@ -101,6 +106,7 @@ async function boot(): Promise<void> {
   });
   const host = createEditorHost(groups, session, {
     confirmDirty: relPath => window.confirm(`${relPath} has unsaved changes. Close anyway?`),
+    confirmExternalOverwrite: relPath => window.confirm(`The disk version of ${relPath} changed after this buffer was loaded. Replace that version with the current editor buffer?`),
     onTabChange: () => {
       renderAllTabs(host);
       if (openPaths().length > 0) session.set(() => host.captureSession());
@@ -116,6 +122,15 @@ async function boot(): Promise<void> {
 
   const events = connectEvents(facadeWebSocketUrl('/ws'));
   setSharedEvents(events);
+  events.subscribe('agent', data => {
+    const event = AgentFileMutationEvent.safeParse(data);
+    if (!event.success) return;
+    for (const relPath of event.data.paths) {
+      void host.reconcileExternalChange(relPath).catch(() => {
+        shell.notify('DOCUMENT_STATE_UNKNOWN', `External edit state for ${relPath} could not be reconciled. The editor buffer remains in place.`);
+      });
+    }
+  });
   const lspStates: Record<string, string> = {};
   events.subscribe('log', data => {
     const event = data as { level?: string; message?: string; path?: string };

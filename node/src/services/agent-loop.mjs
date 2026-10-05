@@ -581,6 +581,12 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     }
 
     const toolInput = { workspace: rootAbs, taskId: session.id, kind: 'agent.tool', args: { body: { name: call.name, args } } };
+    const mutationPath = ['write_file', 'replace_in_file'].includes(call.name) && typeof args.path === 'string'
+      ? (() => {
+        try { return relativeInside(rootAbs, resolveInsideWorkspace(rootAbs, args.path)); }
+        catch { return null; }
+      })()
+      : null;
     if (attemptJournal !== null && typeof session.attempt_id === 'string') {
       await attemptJournal.recordEvent(session.attempt_id, 'ACTION_REQUESTED', { tool: call.name, risk_count: risks.length }, 'execution-authority');
     }
@@ -614,14 +620,19 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
     }
 
     let result;
+    let toolDispatchStarted = false;
     try {
       if (attemptJournal !== null && typeof session.attempt_id === 'string') {
         await attemptJournal.recordEvent(session.attempt_id, 'TOOL_STARTED', { tool: call.name }, 'harness');
         if (call.name === 'run_command') await attemptJournal.recordEvent(session.attempt_id, 'COMMAND_STARTED', { command: String(args.command ?? '') }, 'harness');
       }
+      toolDispatchStarted = true;
       result = toolOperation
         ? await authority.execute(session.actor, toolOperation, toolInput, (_, execution) => tool.execute(args, execution, session.controller.signal))
         : await tool.execute(args, undefined, session.controller.signal);
+      if (result?.ok === true && mutationPath !== null) {
+        emit({ event: 'file_mutation', session_id: session.id, paths: [mutationPath], outcome: 'observed' });
+      }
       assertNotCancelled(session);
       if (result?.ok !== true) throw new Error(String(result?.output ?? 'tool returned no successful result'));
       // HARNESS vNEXT H3 — observe the effect (post-state hash where possible).
@@ -655,6 +666,9 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         }
       }
     } catch (error) {
+      if (toolDispatchStarted && mutationPath !== null && result?.ok !== true) {
+        emit({ event: 'file_mutation', session_id: session.id, paths: [mutationPath], outcome: 'uncertain' });
+      }
       if (cancellationPending(session)) throw error;
       const code = error?.code ? `[${error.code}] ` : '';
       const message = `${code}${error instanceof Error ? error.message : String(error)}`;

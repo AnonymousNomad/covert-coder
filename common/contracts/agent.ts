@@ -146,6 +146,16 @@ export const AgentToolResultEvent = z.object({
   output: z.string()
 }).strict();
 
+// Content-free notification that a governed AgentLoop file mutation may have
+// changed workspace state. Subscribers must re-read through the canonical
+// file route; this event is not document content or a filesystem authority.
+export const AgentFileMutationEvent = z.object({
+  event: z.literal('file_mutation'),
+  session_id: z.string().min(1),
+  paths: z.array(z.string().min(1).max(1024)).min(1).max(20),
+  outcome: z.enum(['observed', 'uncertain'])
+}).strict();
+
 export const AgentAwaitingApprovalEvent = z.object({
   event: z.literal('awaiting_approval'),
   session_id: z.string().min(1),
@@ -198,6 +208,7 @@ export const AgentStreamEvent = z.discriminatedUnion('event', [
   AgentMessageEvent,
   AgentToolCallEvent,
   AgentToolResultEvent,
+  AgentFileMutationEvent,
   AgentAwaitingApprovalEvent,
   AgentDoneEvent,
   AgentErrorEvent,

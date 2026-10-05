@@ -256,6 +256,36 @@ test('real producer verification survives EventHub and facade WebSocket validati
   }
 });
 
+test('paired AgentLoop publishes a content-free file mutation event over the existing event channel', async () => {
+  const previousReplies = replies;
+  const target = `mutation-event-${Date.now()}.txt`;
+  replies = [
+    `<write_file><path>${target}</path><content>secret file contents must stay out of the event</content></write_file>`,
+    '<attempt_completion><result>done</result></attempt_completion>'
+  ];
+  const socket = new WebSocket(base.replace('http:', 'ws:') + '/ws', { headers: { Origin: 'http://fixture.local' } });
+  const received: any[] = [];
+  socket.on('message', raw => received.push(JSON.parse(String(raw))));
+  try {
+    await new Promise<void>((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
+    socket.send(JSON.stringify({ type: 'authenticate', token: owner.headers.Authorization.slice(7) }));
+    await eventually(() => received.some(message => message.type === 'authenticated') ? true : null);
+    socket.send(JSON.stringify({ type: 'subscribe', channels: ['agent'] }));
+    await new Promise<void>((resolve, reject) => { socket.once('pong', resolve); socket.once('error', reject); socket.ping(); });
+
+    const id = await start('write a file for the mutation event contract');
+    await approveAllPending(id);
+    await terminal(id);
+    const envelope = await eventually(() => received.find(message => message.channel === 'agent' && message.data.session_id === id && message.data.event === 'file_mutation') ?? null);
+    assert.deepEqual(envelope.data, { event: 'file_mutation', session_id: id, paths: [target], outcome: 'observed' });
+    assert.equal(JSON.stringify(envelope.data).includes('secret file contents'), false);
+    assert.equal(AgentStreamEvent.safeParse(envelope.data).success, true);
+  } finally {
+    replies = previousReplies;
+    socket.terminate();
+  }
+});
+
 test('invalid decisions cannot approve a pending session mutation', async () => {
   const fixture = await pairServiceFixture(workspace);
   const loop = createAgentLoop({ workspace, authority: fixture.authority, chatFn: async () => '<write_file><path>session-denied.txt</path><content>denied</content><approved>true</approved></write_file>' });
@@ -276,8 +306,13 @@ test('invalid decisions cannot approve a pending session mutation', async () => 
 
 test('legitimate session approval is one-shot and preserves approved writes', async () => {
   let calls = 0;
+  const mutationEvents: unknown[] = [];
   const fixture = await pairServiceFixture(workspace);
-  const loop = createAgentLoop({ workspace, authority: fixture.authority, audit: createAuditTrail({ workspace }), onEvent: event => arch.events.publish('agent', event),
+  const loop = createAgentLoop({ workspace, authority: fixture.authority, audit: createAuditTrail({ workspace }), onEvent: event => {
+    const published = arch.events.publish('agent', event);
+    if (event.event === 'file_mutation') mutationEvents.push(event);
+    return published;
+  },
     chatFn: async () => ++calls === 1 ? '<write_file><path>approved.txt</path><content>trusted session</content></write_file>' : '<attempt_completion><result>done</result></attempt_completion>' });
   const { session_id: id } = await fixture.startAgent(loop, 'write approved.txt');
   const pending = await eventually(() => loop.status(id).pending_approval);
@@ -289,6 +324,8 @@ test('legitimate session approval is one-shot and preserves approved writes', as
   await assert.rejects(() => fixture.decideAgent(loop, id, pending.approval_id, 'approve'));
   const final = await eventually(() => loop.status(id).state === 'done' ? loop.status(id) : null);
   assert.equal(await fs.readFile(path.join(workspace, 'approved.txt'), 'utf8'), 'trusted session');
+  assert.deepEqual(mutationEvents, [{ event: 'file_mutation', session_id: id, paths: ['approved.txt'], outcome: 'observed' }]);
+  assert.equal(AgentStreamEvent.safeParse(mutationEvents[0]).success, true);
   assert.equal(final.verification?.execution, 'succeeded');
   assert.equal(final.verification?.state, 'unavailable');
   assert.equal(final.verification?.passed, false);

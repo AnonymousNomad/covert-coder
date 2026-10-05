@@ -6,23 +6,26 @@ import type { FileReadResponseT } from '../../../common/contracts/file.ts';
 import type { SessionFileT, SessionTabT } from '../../../common/contracts/session.ts';
 import type { SessionService } from '../services/session.ts';
 import { api } from '../services/api.ts';
-import { openModel, disposeModel, markClean, isDirty, openPaths, getModel, metaFor, onModelChange } from './models.ts';
+import { openModel, disposeModel, markClean, isDirty, openPaths, getModel, metaFor, onModelChange, reloadClean, markExternallyModified, clearExternalModification, hasExternalModification } from './models.ts';
 import { createView, disposeViewFor, focusView, restoreViewState, saveViewState, revealLine, disposeAllViews, setEditorAppearance } from './views.ts';
 import type { AppearancePreferences } from '../desktop/theme.ts';
 import type { GroupsManager, EditorGroup } from './groups.ts';
 import { applyEol, restoreBom } from './text-io.ts';
 import type { LspBridge } from './lsp-bridge.ts';
+import { classifyExternalDocumentChange } from './document-reconcile.ts';
 
 export interface EditorHostOptions {
   confirmDirty?: (relPath: string) => boolean;
   onTabChange?: () => void;
   onToast?: (code: string, message: string) => void;
+  confirmExternalOverwrite?: (relPath: string) => boolean;
 }
 
 export interface EditorHost {
   open(relPath: string, line?: number): Promise<void>;
   activate(relPath: string): void;
   save(relPath: string): Promise<boolean>;
+  reconcileExternalChange(relPath: string): Promise<'closed' | 'unchanged' | 'reconciled' | 'conflict' | 'unavailable'>;
   saveAll(): Promise<void>;
   close(relPath: string): Promise<void>;
   split(direction: 'vertical' | 'horizontal'): Promise<void>;
@@ -133,13 +136,14 @@ markClean(relPath);
   async function save(relPath: string): Promise<boolean> {
     const model = getModel(relPath);
     if (model === undefined) return false;
+    if (hasExternalModification(relPath) && opts.confirmExternalOverwrite?.(relPath) !== true) return false;
     const m = metaFor(relPath);
     const eol = m?.eol ?? 'lf';
     const bom = m?.bom ?? false;
     const content = restoreBom(applyEol(model.getValue(), eol), bom);
     try {
       await api.fileWrite(relPath, content);
-      markClean(relPath);
+      markClean(relPath, content);
       lsp.onSave(relPath);
       notify();
       return true;
@@ -147,6 +151,60 @@ markClean(relPath);
       opts.onToast?.('COMMIT_FAILED', error instanceof Error ? error.message : 'save failed');
       return false;
     }
+  }
+
+  async function reconcileExternalChange(relPath: string): Promise<'closed' | 'unchanged' | 'reconciled' | 'conflict' | 'unavailable'> {
+    const model = getModel(relPath);
+    const metadata = metaFor(relPath);
+    if (model === undefined || metadata === undefined) return 'closed';
+
+    let file: FileReadResponseT;
+    try {
+      file = await api.fileRead(relPath);
+    } catch {
+      markExternallyModified(relPath);
+      notify();
+      opts.onToast?.('DOCUMENT_STATE_UNKNOWN', `Could not re-read ${relPath} after an external edit. The editor buffer is preserved; confirm before saving over the disk version.`);
+      return 'unavailable';
+    }
+    if (file.too_large || file.content === null) {
+      markExternallyModified(relPath);
+      notify();
+      opts.onToast?.('DOCUMENT_STATE_UNKNOWN', `Could not compare ${relPath} because its current contents are unavailable. The editor buffer is preserved; confirm before saving.`);
+      return 'unavailable';
+    }
+    const action = classifyExternalDocumentChange({
+      savedContent: metadata.savedContent,
+      editorContent: model.getValue(),
+      diskContent: file.content,
+      dirty: isDirty(relPath)
+    });
+    if (action === 'unchanged') {
+      clearExternalModification(relPath);
+      return 'unchanged';
+    }
+
+    if (action === 'conflict') {
+      markExternallyModified(relPath);
+      notify();
+      opts.onToast?.('DOCUMENT_CONFLICT', `Disk changed for ${relPath}. Your unsaved editor buffer is preserved. Review the conflict before saving.`);
+      return 'conflict';
+    }
+
+    if (isDirty(relPath) && model.getValue() === file.content) {
+      markClean(relPath, file.content);
+      notify();
+      return 'reconciled';
+    }
+    if (reloadClean(relPath, file.content)) {
+      notify();
+      return 'reconciled';
+    }
+
+    markExternallyModified(relPath);
+    notify();
+    opts.onToast?.('DOCUMENT_STATE_UNKNOWN', `Could not safely refresh ${relPath}. The current editor buffer is preserved.`);
+    return 'unavailable';
   }
 
   async function saveAll(): Promise<void> {
@@ -272,6 +330,7 @@ for (const tab of tabsList) {
     open,
     activate,
     save,
+    reconcileExternalChange,
     saveAll,
     close,
     split,
