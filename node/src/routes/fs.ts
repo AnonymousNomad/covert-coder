@@ -1,8 +1,9 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { Route } from '../server.ts';
+import type { Route, RouteContext } from '../server.ts';
 import { RouteError } from '../server.ts';
 import type { WorkspaceService } from '../services/workspace.ts';
+import type { EventHub } from '../events.ts';
 import {
   FileReadQuery,
   FileReadResponse,
@@ -63,6 +64,37 @@ function flag(value: string | undefined): boolean {
   return value === '1';
 }
 
+type FileMutationOrigin = 'file_write' | 'search_replace' | 'patch_apply';
+
+function publishFileMutation(
+  events: EventHub | undefined,
+  actor: RouteContext['actor'],
+  origin: FileMutationOrigin,
+  paths: string[],
+  outcome: 'observed' | 'uncertain' = 'observed'
+): void {
+  if (!events || !actor || paths.length === 0) return;
+  const uniquePaths = [...new Set(paths)];
+  let batch: string[] = [];
+  const publish = (): void => {
+    if (batch.length === 0) return;
+    events.publish('agent', { event: 'file_mutation', origin, paths: batch, outcome }, identity => identity?.id === actor.id);
+    batch = [];
+  };
+  for (const relativePath of uniquePaths) {
+    const candidate = [...batch, relativePath];
+    const payload = { event: 'file_mutation', origin, paths: candidate, outcome };
+    if (candidate.length > 20 || Buffer.byteLength(JSON.stringify(payload)) > 6 * 1024) publish();
+    batch.push(relativePath);
+  }
+  publish();
+}
+
+function eventPath(workspace: WorkspaceService, relativePath: string): string {
+  const absolute = workspace.resolve(relativePath);
+  return path.relative(workspace.root, absolute).split(path.sep).join('/');
+}
+
 export function routeForFileRead(workspace: WorkspaceService): Route {
   return {
     method: 'GET',
@@ -81,29 +113,33 @@ export function routeForFileRead(workspace: WorkspaceService): Route {
   };
 }
 
-export function routeForFileWrite(workspace: WorkspaceService): Route {
+export function routeForFileWrite(workspace: WorkspaceService, events?: EventHub): Route {
   return {
     method: 'POST',
     path: '/api/file/write',
     body: FileWriteRequest,
     response: FileWriteResponse,
-    handler: async ({ body }): Promise<FileWriteResponseT> => {
+    handler: async ({ body, actor }): Promise<FileWriteResponseT> => {
       const request = body as { path: string; content: string; approved: boolean };
-      return workspace.write(request.path, request.content, request.approved);
+      const result = await workspace.write(request.path, request.content, request.approved);
+      publishFileMutation(events, actor, 'file_write', [eventPath(workspace, result.path)]);
+      return result;
     }
   };
 }
 
-export function routeForPatchApply(workspace: WorkspaceService): Route {
+export function routeForPatchApply(workspace: WorkspaceService, events?: EventHub): Route {
   return {
     method: 'POST',
     path: '/api/patch/apply',
     body: PatchApplyRequest,
     response: PatchApplyResponse,
-    handler: async ({ body }): Promise<PatchApplyResponseT> => {
+    handler: async ({ body, actor }): Promise<PatchApplyResponseT> => {
       const request = body as { patch: string; approved: boolean };
       try {
-        return await workspace.applyPatch(request.patch, request.approved);
+        const result = await workspace.applyPatch(request.patch, request.approved);
+        publishFileMutation(events, actor, 'patch_apply', result.paths.map(relativePath => eventPath(workspace, relativePath)));
+        return { applied: result.applied, bytes: result.bytes };
       } catch (error) {
         if (error instanceof RouteError) throw error;
         throw new RouteError('BAD_REQUEST', 'patch could not be applied', (error as Error).message);
@@ -169,13 +205,13 @@ export function routeForSearch(workspace: WorkspaceService): Route {
   };
 }
 
-export function routeForSearchReplace(workspace: WorkspaceService): Route {
+export function routeForSearchReplace(workspace: WorkspaceService, events?: EventHub): Route {
   return {
     method: 'POST',
     path: '/api/search/replace',
     body: SearchReplaceRequest,
     response: SearchReplaceResponse,
-    handler: async ({ body }): Promise<SearchReplaceResponseT> => {
+    handler: async ({ body, actor }): Promise<SearchReplaceResponseT> => {
       const request = body as {
         query: string;
         replacement: string;
@@ -202,6 +238,7 @@ export function routeForSearchReplace(workspace: WorkspaceService): Route {
       const excludes = excludeSet(request.include);
       let filesChanged = 0;
       let occurrences = 0;
+      const changedPaths: string[] = [];
       const SENSITIVE_PATHS = /^(credentials|secret|\.env|\.aide\/credentials|\.aide\/telegram|\.dpapi)/i;
       const walk = async (dir: string): Promise<void> => {
         if (occurrences >= SEARCH_MAX_OCCURRENCES) return;
@@ -225,12 +262,17 @@ export function routeForSearchReplace(workspace: WorkspaceService): Route {
           if (changed === text) continue;
           const count = (text.match(globalPattern) || []).length;
           await workspace.write(relative, changed, true);
+          changedPaths.push(relative);
           filesChanged++;
           occurrences += count;
         }
       };
-      await walk(workspace.root);
-      return { files_changed: filesChanged, occurrences };
+      try {
+        await walk(workspace.root);
+        return { files_changed: filesChanged, occurrences };
+      } finally {
+        publishFileMutation(events, actor, 'search_replace', changedPaths);
+      }
     }
   };
 }

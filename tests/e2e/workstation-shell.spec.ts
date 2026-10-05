@@ -114,7 +114,7 @@ test('file mutation event receiver preserves a dirty Monaco buffer and cancels a
         agentSubscribed = true;
         publishMutation = () => socket.send(JSON.stringify({
           channel: 'agent', ts: Date.now(),
-          data: { event: 'file_mutation', session_id: 'fixture-agent-session', paths: ['fixture.ts'], outcome: 'observed' }
+          data: { event: 'file_mutation', origin: 'agent_loop', session_id: 'fixture-agent-session', paths: ['fixture.ts'], outcome: 'observed' }
         }));
       }
     });
@@ -147,8 +147,9 @@ test('file mutation event receiver preserves a dirty Monaco buffer and cancels a
   await expect(tab).toHaveClass(/dirty/);
 
   diskContent = agentDisk;
-  expect(publishMutation).not.toBeNull();
-  publishMutation?.();
+  const sendMutation = publishMutation as (() => void) | null;
+  expect(sendMutation).not.toBeNull();
+  sendMutation?.();
 
   await expect(tab).toHaveClass(/external-conflict/);
   await expect(tab).toHaveAttribute('title', /disk version changed/);

@@ -148,8 +148,8 @@ test('agent stream event contract validates every emitted shape', () => {
     { event: 'message', session_id: 's1', text: 'hi' },
     { event: 'tool_call', session_id: 's1', tool: 'write_file', args: { path: 'a.txt' } },
     { event: 'tool_result', session_id: 's1', tool: 'write_file', ok: true, output: 'wrote' },
-    { event: 'file_mutation', session_id: 's1', paths: ['src/a.ts'], outcome: 'observed' },
-    { event: 'file_mutation', session_id: 's1', paths: ['src/a.ts'], outcome: 'uncertain' },
+    { event: 'file_mutation', origin: 'agent_loop', session_id: 's1', paths: ['src/a.ts'], outcome: 'observed' },
+    { event: 'file_mutation', origin: 'agent_loop', session_id: 's1', paths: ['src/a.ts'], outcome: 'uncertain' },
     {
       event: 'awaiting_approval',
       session_id: 's1',

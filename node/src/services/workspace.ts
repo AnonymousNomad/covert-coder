@@ -7,6 +7,28 @@ import type { WorkspaceTreeNodeT } from '../../../common/contracts/workspace.ts'
 export const TREE_MAX_DEPTH = 4;
 const TREE_EXCLUDES = new Set(['node_modules', 'target', 'dist']);
 
+function parseApplyNumstat(output: string): string[] {
+  const records = output.split('\0');
+  const paths: string[] = [];
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index];
+    if (!record) continue;
+    const firstTab = record.indexOf('\t');
+    const secondTab = firstTab < 0 ? -1 : record.indexOf('\t', firstTab + 1);
+    if (secondTab < 0) throw new RouteError('BAD_REQUEST', 'patch file list could not be determined');
+    const file = record.slice(secondTab + 1);
+    if (file) {
+      paths.push(file);
+      continue;
+    }
+    const oldPath = records[++index];
+    const newPath = records[++index];
+    if (!oldPath || !newPath) throw new RouteError('BAD_REQUEST', 'patch rename paths could not be determined');
+    paths.push(oldPath, newPath);
+  }
+  return [...new Set(paths)];
+}
+
 export class WorkspaceService {
   readonly root: string;
 
@@ -74,7 +96,7 @@ export class WorkspaceService {
     return { path: relativePath, bytes: Buffer.byteLength(content) };
   }
 
-  async applyPatch(patch: string, approved: boolean): Promise<{ applied: boolean; bytes: number }> {
+  async applyPatch(patch: string, approved: boolean): Promise<{ applied: boolean; bytes: number; paths: string[] }> {
     if (approved !== true) throw new RouteError('FORBIDDEN', 'explicit approval required');
     if (typeof patch !== 'string' || !patch.startsWith('diff --git ')) {
       throw new RouteError('BAD_REQUEST', 'unified diff required');
@@ -84,8 +106,10 @@ export class WorkspaceService {
     await fs.writeFile(temporary, patch, { mode: 0o600 });
     try {
       await this.runGit(['apply', '--check', '--whitespace=error', temporary]);
+      const paths = parseApplyNumstat(await this.runGit(['apply', '--numstat', '-z', temporary]));
+      for (const relativePath of paths) this.resolve(relativePath);
       await this.runGit(['apply', '--whitespace=error', temporary]);
-      return { applied: true, bytes: Buffer.byteLength(patch) };
+      return { applied: true, bytes: Buffer.byteLength(patch), paths };
     } finally {
       await fs.rm(temporary, { force: true });
     }

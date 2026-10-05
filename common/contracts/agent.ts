@@ -146,12 +146,15 @@ export const AgentToolResultEvent = z.object({
   output: z.string()
 }).strict();
 
-// Content-free notification that a governed AgentLoop file mutation may have
-// changed workspace state. Subscribers must re-read through the canonical
-// file route; this event is not document content or a filesystem authority.
+// Content-free notification that a canonical workspace mutation may have
+// changed file state. AgentLoop mutations include their session id; HTTP
+// workspace mutations identify their owning route instead. Subscribers must
+// re-read through the canonical file route; this event is not file content or
+// a filesystem authority.
 export const AgentFileMutationEvent = z.object({
   event: z.literal('file_mutation'),
-  session_id: z.string().min(1),
+  session_id: z.string().min(1).optional(),
+  origin: z.enum(['agent_loop', 'file_write', 'search_replace', 'patch_apply']),
   paths: z.array(z.string().min(1).max(1024)).min(1).max(20),
   outcome: z.enum(['observed', 'uncertain'])
 }).strict();

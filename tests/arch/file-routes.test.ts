@@ -16,6 +16,7 @@ let server: ArchServer;
 let httpServer: http.Server;
 let base: string;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
+const mutationEvents: Array<{ data: unknown; audience: ((identity?: { id: string; kind: string }) => boolean) | undefined }> = [];
 
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-fs-'));
@@ -24,7 +25,13 @@ before(async () => {
   await fs.writeFile(path.join(dir, 'big.bin'), big, 'utf8');
   const service = new WorkspaceService(dir);
   server = new ArchServer(dir, path.join(dir, '.aide', 'arch-test.log'));
-  server.route(routeForFileRead(service)).route(routeForFileWrite(service));
+  const publish = server.events.publish.bind(server.events);
+  server.events.publish = (channel, data, audience) => {
+    const result = publish(channel, data, audience);
+    if (result.accepted && channel === 'agent' && (data as { event?: string })?.event === 'file_mutation') mutationEvents.push({ data, audience });
+    return result;
+  };
+  server.route(routeForFileRead(service)).route(routeForFileWrite(service, server.events));
   httpServer = await server.listen(0);
   const address = httpServer.address();
   assert.ok(address && typeof address === 'object');
@@ -127,6 +134,23 @@ test('file write round-trips and rejects escapes', async () => {
   assert.equal(badEnvelope.success, true);
   if (!badEnvelope.success || badEnvelope.data.ok) return;
   assert.equal(badEnvelope.data.error.code, 'FORBIDDEN');
+});
+
+test('authorized file write publishes a content-free mutation event to the same actor', async () => {
+  mutationEvents.length = 0;
+  const body = { path: 'event-write.txt', content: 'private body stays off the event channel', approved: true };
+  const headers = await owner.approve('POST', '/api/file/write', body, 'file-write-event');
+  const response = await owner.request('/api/file/write', {
+    method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify(body)
+  });
+  assert.equal(response.status, 200);
+  assert.equal(mutationEvents.length, 1);
+  const emitted = mutationEvents.at(0);
+  assert.ok(emitted);
+  assert.deepEqual(emitted.data, { event: 'file_mutation', origin: 'file_write', paths: ['event-write.txt'], outcome: 'observed' });
+  assert.equal(JSON.stringify(emitted.data).includes(body.content), false);
+  assert.equal(emitted.audience?.({ id: owner.actorId, kind: 'operator' }), true);
+  assert.equal(emitted.audience?.({ id: 'another-actor', kind: 'operator' }), false);
 });
 
 test('workspace realpath containment rejects linked escapes and preserves internal links', async () => {

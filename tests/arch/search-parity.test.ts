@@ -12,6 +12,7 @@ let server: ArchServer;
 let httpServer: http.Server;
 let base: string;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
+const mutationEvents: unknown[] = [];
 
 interface SearchHit {
   line: number;
@@ -45,6 +46,12 @@ before(async () => {
   server = new ArchServer(workspace, path.join(workspace, '.aide', 'search-parity.log'));
   const { buildRoutes } = await import('../../node/src/openapi.ts');
   const routes = await buildRoutes(workspace, 'test', { authority: server.authority, events: server.events, logger: server.logger });
+  const publish = server.events.publish.bind(server.events);
+  server.events.publish = (channel, data, audience) => {
+    const result = publish(channel, data, audience);
+    if (result.accepted && channel === 'agent' && (data as { event?: string })?.event === 'file_mutation') mutationEvents.push(data);
+    return result;
+  };
   for (const route of routes) server.route(route);
   httpServer = await server.listen(0);
   const address = httpServer.address();
@@ -95,6 +102,7 @@ test('GET /api/search returns the legacy-compatible response shape', async () =>
 });
 
 test('POST /api/search/replace writes bytes and reports parity counts', async () => {
+  mutationEvents.length = 0;
   const body = { query: 'quick', regex: false, icase: true, word: false, replacement: 'slow', approved: true };
   const headers = await owner.approve('POST', '/api/search/replace', body, 'search-parity-replace');
   const response = await owner.request('/api/search/replace', {
@@ -109,6 +117,7 @@ test('POST /api/search/replace writes bytes and reports parity counts', async ()
   assert.match(needle, /The slow brown fox/, 'replacement bytes must land on disk');
   const other = await fs.readFile(path.join(workspace, 'src', 'other.md'), 'utf8');
   assert.match(other, /slow as can be/);
+  assert.deepEqual(mutationEvents, [{ event: 'file_mutation', origin: 'search_replace', paths: ['needle.txt', 'src/other.md'], outcome: 'observed' }]);
 });
 
 test('GET /api/search rejects an oversized query with a typed error', async () => {

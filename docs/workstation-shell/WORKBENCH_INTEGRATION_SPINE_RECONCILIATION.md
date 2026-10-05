@@ -164,13 +164,40 @@ All HTTP responses, pairing exchange, and WebSocket server events in this browse
 
 ## Current acceptance status
 
-The editor's local dirty-buffer conflict behavior is **FIXTURE-VERIFIED**. The complete requirement in addendum 39—pair, open and dirty a document, then have the real governed AgentLoop mutate that same document through the real authenticated event channel—remains **OPEN**. Do not call the DocumentService seam or unsaved-edit acceptance complete.
+The editor's local dirty-buffer conflict behavior is **FIXTURE-VERIFIED**. The direct AgentLoop producer is **AUTHENTICATED-WEBSOCKET-VERIFIED** in a backend architecture test. The complete requirement in addendum 39—pair, open and dirty a document, then have the real governed AgentLoop mutate that same document through the real authenticated event channel into that browser—remains **OPEN**. Do not call the DocumentService seam or unsaved-edit acceptance complete.
+
+## Canonical workspace-route mutation events — 2026-10-05
+
+### Finding and bounded repair
+
+The first event slice observed only governed AgentLoop `write_file` and `replace_in_file`. Source mapping found three other canonical workspace-writing routes: `/api/file/write`, `/api/search/replace`, and `/api/patch/apply`. These routes already pass through Execution Authority and `WorkspaceService`; the repair adds no write route, authority state, or event transport.
+
+The existing content-free `file_mutation` payload now identifies `origin` (`agent_loop`, `file_write`, `search_replace`, or `patch_apply`). Only AgentLoop events carry `session_id`; route events do not invent one. Each route publishes only after its write owner succeeds, on the existing `agent` EventHub channel, scoped to the authenticated actor's sockets. Search/replace reports paths whose atomic writes completed even if a later file fails. Patch apply obtains its affected paths from `git apply --numstat -z`, validates those paths against the workspace root, and keeps the existing HTTP response contract unchanged. Events are split into batches capped at 20 paths and 6 KiB to bound event fanout and frame size.
+
+### Verification
+
+- `node --experimental-strip-types --no-warnings --test --test-concurrency=1 tests/arch/file-routes.test.ts tests/arch/search-parity.test.ts tests/arch/terminal-patch-routes.test.ts tests/arch/agent-execution-integrity.test.ts tests/arch/agent-routes.test.ts` — **56 passed, 0 failed, 0 skipped**. Covers the three API mutation origins, route actor audience selection, content-free payloads, existing real AgentLoop WebSocket producer, and Authority protections.
+- `npx tsc -p tsconfig.node.json --noEmit` — passed.
+- `npx tsc -p browser/tsconfig.browser.json --noEmit` — passed.
+- Focused ESLint across changed contract, route/service, and test files — passed.
+- `npm run build:frontend` — passed, 1,432 modules; the existing main bundle remains 4,682.11 kB (1,209.11 kB gzip) and Vite reports the existing >500 kB warning.
+- `$env:AIDE_PLAYWRIGHT_CHANNEL='msedge'; npx playwright test tests/e2e/workstation-shell.spec.ts --config playwright.config.ts` — **2 passed, 0 failed, 0 skipped**, 12.4 s. The conflict test still uses fixture HTTP/pairing/WebSocket responses.
+- `node scripts/egress-audit.mjs` — **PASS**, no remote fetch/WebSocket/EventSource call sites or remote socket literals in the 97-file bundle. Non-localhost URL strings remain Monaco documentation/license data.
+- `git diff --check` — passed.
+
+The first Node typecheck found that TypeScript could not see the E2E fixture's callback-assigned sender and narrowed it to `null`; the runtime assertion and synchronization were already present. An explicit local function union now communicates the callback mutation to the checker without weakening the runtime assertion. A subsequent typecheck caught `exactOptionalPropertyTypes` and unchecked array-index errors in the new route-event assertion; the capture type now represents present-but-undefined predicates explicitly and the test narrows the indexed event before use. Both follow-up typechecks passed. The callback repair pattern is recorded in `C:\Users\Grey_\.agents\skills\failure-node-typescript-callback-closure-narrowing\SKILL.md`; the strict optional-property correction followed `failure-typescript-exact-optional-and-discriminants`.
+
+A separate temporary-Git diagnostic confirmed rename numstat framing as `0\t0\t\0old-name.txt\0new-name.txt\0`; the parser retains both paths. The automated patch-route case covers a normal modified file, so a real rename-through-route regression case remains future coverage.
+
+### Remaining boundary
+
+This closes notifications for the three canonical HTTP file-mutation routes, not every possible disk writer. Terminal/PTY commands, LSP/DAP tools, task child processes, and external applications can still change files without publishing this event. A same-browser, real pairing → real AgentLoop → real WebSocket → Monaco conflict/reconciliation journey also remains **OPEN**; backend producer and browser receiver are still separate tests. Do not infer whole-workspace change observation from these route tests.
 
 ## Sequencing decision
 
 1. Finish and verify this isolated shell foundation without claiming a complete workstation integration.
 2. Use the canonical backend/Authority owners; do not add `WorkbenchSession`, `InteractionService`, `DocumentService`, universal `ToolRegistry`, or another event bus until each existing equivalent is mapped to a concrete gap and an owner-approved contract.
-3. Extend the file-mutation seam to other canonical write paths and add the integrated unsaved-buffer browser acceptance before calling document editing safe.
+3. Complete same-browser, real AgentLoop-to-Monaco mutation acceptance. Separately decide how terminal/PTY and external process writes are observed; API route coverage does not close that gap.
 4. Then implement Cipher ASK/PLAN/ACT presentation by composing the current direct-chat and governed AgentLoop paths, preserving conversation binding, exact Model Access identity, Context Control, and the same Execution Authority. No direct mutation route from a window or speech adapter.
 5. Prove the prescribed journeys in dependency order: editor/context; ACT/Authority; document/model/LSP/Git; test/verification; process and model lifetime; layout restore; provider failure/offline; extension only after its ecosystem lane is integrated.
 

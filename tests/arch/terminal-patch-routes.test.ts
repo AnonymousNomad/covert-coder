@@ -20,10 +20,17 @@ let server: ArchServer;
 let httpServer: http.Server;
 let base: string;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
+const mutationEvents: unknown[] = [];
 
 before(async () => {
   server = new ArchServer(workspace, path.join(workspace, 'arch-test.log'));
   const routes = await buildRoutes(workspace, 'test', { authority: server.authority, events: server.events });
+  const publish = server.events.publish.bind(server.events);
+  server.events.publish = (channel, data, audience) => {
+    const result = publish(channel, data, audience);
+    if (result.accepted && channel === 'agent' && (data as { event?: string })?.event === 'file_mutation') mutationEvents.push(data);
+    return result;
+  };
   for (const route of routes) server.route(route);
   httpServer = await server.listen(0);
   const address = httpServer.address();
@@ -158,6 +165,7 @@ test('POST /api/patch/apply rejects a non-unified-diff body', async () => {
 });
 
 test('POST /api/patch/apply applies a valid unified diff', async () => {
+  mutationEvents.length = 0;
   await fs.writeFile(path.join(workspace, 'target.txt'), 'line A\nline B\n', 'utf8');
   await runExec('git', ['init', '-q'], { cwd: workspace });
   await runExec('git', ['add', '.'], { cwd: workspace });
@@ -189,6 +197,7 @@ test('POST /api/patch/apply applies a valid unified diff', async () => {
   if (!payload.success) return;
   assert.equal(payload.data.applied, true);
   assert.ok(payload.data.bytes > 0);
+  assert.deepEqual(mutationEvents, [{ event: 'file_mutation', origin: 'patch_apply', paths: ['target.txt'], outcome: 'observed' }]);
   const applied = await fs.readFile(path.join(workspace, 'target.txt'), 'utf8');
   assert.match(applied, /line A1/);
 });

@@ -277,7 +277,7 @@ test('paired AgentLoop publishes a content-free file mutation event over the exi
     await approveAllPending(id);
     await terminal(id);
     const envelope = await eventually(() => received.find(message => message.channel === 'agent' && message.data.session_id === id && message.data.event === 'file_mutation') ?? null);
-    assert.deepEqual(envelope.data, { event: 'file_mutation', session_id: id, paths: [target], outcome: 'observed' });
+    assert.deepEqual(envelope.data, { event: 'file_mutation', origin: 'agent_loop', session_id: id, paths: [target], outcome: 'observed' });
     assert.equal(JSON.stringify(envelope.data).includes('secret file contents'), false);
     assert.equal(AgentStreamEvent.safeParse(envelope.data).success, true);
   } finally {
@@ -324,7 +324,7 @@ test('legitimate session approval is one-shot and preserves approved writes', as
   await assert.rejects(() => fixture.decideAgent(loop, id, pending.approval_id, 'approve'));
   const final = await eventually(() => loop.status(id).state === 'done' ? loop.status(id) : null);
   assert.equal(await fs.readFile(path.join(workspace, 'approved.txt'), 'utf8'), 'trusted session');
-  assert.deepEqual(mutationEvents, [{ event: 'file_mutation', session_id: id, paths: ['approved.txt'], outcome: 'observed' }]);
+  assert.deepEqual(mutationEvents, [{ event: 'file_mutation', origin: 'agent_loop', session_id: id, paths: ['approved.txt'], outcome: 'observed' }]);
   assert.equal(AgentStreamEvent.safeParse(mutationEvents[0]).success, true);
   assert.equal(final.verification?.execution, 'succeeded');
   assert.equal(final.verification?.state, 'unavailable');

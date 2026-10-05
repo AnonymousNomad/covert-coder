@@ -631,7 +631,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
         ? await authority.execute(session.actor, toolOperation, toolInput, (_, execution) => tool.execute(args, execution, session.controller.signal))
         : await tool.execute(args, undefined, session.controller.signal);
       if (result?.ok === true && mutationPath !== null) {
-        emit({ event: 'file_mutation', session_id: session.id, paths: [mutationPath], outcome: 'observed' });
+        emit({ event: 'file_mutation', origin: 'agent_loop', session_id: session.id, paths: [mutationPath], outcome: 'observed' });
       }
       assertNotCancelled(session);
       if (result?.ok !== true) throw new Error(String(result?.output ?? 'tool returned no successful result'));
@@ -667,7 +667,7 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       }
     } catch (error) {
       if (toolDispatchStarted && mutationPath !== null && result?.ok !== true) {
-        emit({ event: 'file_mutation', session_id: session.id, paths: [mutationPath], outcome: 'uncertain' });
+        emit({ event: 'file_mutation', origin: 'agent_loop', session_id: session.id, paths: [mutationPath], outcome: 'uncertain' });
       }
       if (cancellationPending(session)) throw error;
       const code = error?.code ? `[${error.code}] ` : '';
