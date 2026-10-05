@@ -83,10 +83,10 @@ export const INITIAL_STATE: AppState = {
   session: { version: 1, tabs: [] },
   error: null,
 
-  panel: 'command-center',
+  panel: 'editor',
   bottomTab: 'workspace',
   dockOpen: true,
-  bottomStripOpen: true,
+  bottomStripOpen: false,
   topbar: {
     engineLabel: 'NO MODEL READY',
     engineReady: false,

@@ -18,6 +18,7 @@ import {
   type SearchReplaceResponseT
 } from '../../../common/contracts/search.ts';
 import { HealthResponse, type HealthResponseT } from '../../../common/contracts/health.ts';
+import { ReadinessResponse, type ReadinessResponseT } from '../../../common/contracts/readiness.ts';
 import {
   WorkspaceListResponse,
   type WorkspaceListResponseT
@@ -269,6 +270,9 @@ export async function call<T>(path: string, opts: { query?: unknown; body?: unkn
 export const api = {
   health(): Promise<HealthResponseT> {
     return call('/api/health', { schema: HealthResponse });
+  },
+  readiness(): Promise<ReadinessResponseT> {
+    return call('/api/readiness', { schema: ReadinessResponse });
   },
   workspaceList(): Promise<WorkspaceListResponseT> {
     return call('/api/workspace', { schema: WorkspaceListResponse });

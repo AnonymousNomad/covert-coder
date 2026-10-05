@@ -177,7 +177,7 @@ function renderPortrait(titleMount: HTMLElement, initialProfile: OperatorProfile
     portrait.dataset.assetSlot = slots.portrait.relativePath;
     portrait.dataset.assetState = slots.portrait.status;
     portrait.dataset.variant = profile.id;
-    portrait.setAttribute('aria-label', `${profile.name} Resident appearance; presentation only`);
+    portrait.setAttribute('aria-label', `${profile.name} Cipher appearance; presentation only`);
     const asset = localAsset(profile.asset.portrait);
     if (asset === null && hasApprovedPortrait) {
       portrait.dataset.artworkState = 'required';
@@ -313,10 +313,10 @@ export function createOperatorIdentity(parent: HTMLElement, options: OperatorIde
   root.dataset.reducedMotion = String(state.reducedMotion);
 
   const header = el('div', 'cockpit-operator-header');
-  header.appendChild(el('div', 'cockpit-operator-kicker', 'RESIDENT APPEARANCE'));
+  header.appendChild(el('div', 'cockpit-operator-kicker', 'CIPHER APPEARANCE'));
   const appearance = document.createElement('select');
   appearance.className = 'cockpit-operator-select';
-  appearance.setAttribute('aria-label', 'Resident appearance');
+  appearance.setAttribute('aria-label', 'Cipher appearance');
   appearance.title = 'Presentation configuration only; does not change models, workflows, authority, or permissions';
   for (const id of OPERATOR_VARIANTS) {
     const variant = getOperatorProfile(id);
@@ -341,7 +341,7 @@ export function createOperatorIdentity(parent: HTMLElement, options: OperatorIde
   const hide = document.createElement('input');
   hide.type = 'checkbox';
   hide.className = 'cockpit-operator-hide';
-  hide.setAttribute('aria-label', 'Hide Resident artwork');
+  hide.setAttribute('aria-label', 'Hide Cipher artwork');
   hideLabel.appendChild(hide);
   hideLabel.appendChild(document.createTextNode(' HIDE ARTWORK'));
   controls.appendChild(hideLabel);

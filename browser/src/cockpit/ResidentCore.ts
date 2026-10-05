@@ -69,20 +69,20 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
 
   const header = el('header', 'cockpit-resident-header');
   const titleRow = el('div', 'cockpit-resident-title-row');
-  const title = el('h1', 'cockpit-resident-title', 'RESIDENT');
+  const title = el('h1', 'cockpit-resident-title', 'CIPHER');
   const presence = el('div', 'cockpit-resident-presence');
   presence.dataset.authority = 'none';
   presence.dataset.presentationState = 'unknown';
   presence.setAttribute('role', 'img');
-  presence.setAttribute('aria-label', 'Resident presentation seam; advisory only');
+  presence.setAttribute('aria-label', 'Cipher presence; advisory only');
   presence.appendChild(el('span', 'cockpit-resident-presence-visor', '\u25c8'));
-  presence.appendChild(el('span', 'cockpit-resident-presence-label', 'ADVISORY \u00b7 UNKNOWN'));
+  presence.appendChild(el('span', 'cockpit-resident-presence-label', 'CIPHER \u00b7 UNKNOWN'));
   const stateBadge = el('span', 'cockpit-resident-state', 'UNKNOWN');
   titleRow.appendChild(title);
   titleRow.appendChild(presence);
   titleRow.appendChild(stateBadge);
   header.appendChild(titleRow);
-  header.appendChild(el('p', 'cockpit-resident-subtitle', 'Workspace advice and governed tasks · execution requires operator approval through Authority.'));
+  header.appendChild(el('p', 'cockpit-resident-subtitle', 'Cipher is Covert’s Resident intelligence. Advice and governed requests still pass through Context Control and Execution Authority.'));
   root.appendChild(header);
 
   const residentWorkspace = el('div', 'cockpit-resident-workspace');
@@ -91,18 +91,26 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   residentWorkspace.appendChild(operatorMount);
 
   const conversation = el('div', 'cockpit-resident-conversation');
-  conversation.appendChild(el('div', 'cockpit-resident-empty', 'Loading Resident summary, context, workspace verdict, and decisions\u2026'));
+  const contextDisclosure = document.createElement('details');
+  contextDisclosure.className = 'cockpit-resident-context-disclosure';
+  const contextDisclosureSummary = document.createElement('summary');
+  contextDisclosureSummary.className = 'cockpit-resident-disclosure-summary';
+  contextDisclosureSummary.textContent = 'WORKSPACE STATUS \u00b7 CHECKING SOURCES';
+  const contextDisclosureContent = el('div', 'cockpit-resident-context-detail');
+  contextDisclosureContent.appendChild(el('div', 'cockpit-resident-empty', 'Loading Cipher summary, context, workspace verdict, and decisions\u2026'));
+  contextDisclosure.append(contextDisclosureSummary, contextDisclosureContent);
+  conversation.appendChild(contextDisclosure);
 
   const chatMount = el('section', 'cockpit-resident-chat');
   const residentContent = el('div', 'cockpit-resident-content');
-  residentContent.appendChild(conversation);
   residentContent.appendChild(chatMount);
+  residentContent.appendChild(conversation);
   residentWorkspace.appendChild(residentContent);
   root.appendChild(residentWorkspace);
 
   const quickActions = el('div', 'cockpit-resident-quick');
   quickActions.appendChild(el('h2', 'cockpit-resident-section-title', 'QUICK ACTIONS'));
-  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'GOVERNED TASKS · one owned task at a time. Project ACT worker comes from Model Access; dispatch requires exact target approval.'));
+  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'GOVERNED TASKS · one owned task at a time. The Project ACT worker comes from Model Access; dispatch requires exact target approval.'));
   const actionsRow = el('div', 'cockpit-resident-actions');
   for (const action of QUICK_ACTIONS) {
     const btn = document.createElement('button');
@@ -111,7 +119,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     btn.textContent = action.label;
     btn.disabled = true;
     btn.dataset.maturity = 'ADVISORY ONLY';
-    btn.title = `ADVISORY ONLY: ${action.intent} is not connected to the Resident composer.`;
+    btn.title = `ADVISORY ONLY: ${action.intent} is not connected to the Cipher composer.`;
     btn.setAttribute('aria-label', `${action.label}; advisory only, unavailable`);
     actionsRow.appendChild(btn);
   }
@@ -119,11 +127,11 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   root.appendChild(quickActions);
 
   const composer = el('form', 'cockpit-resident-composer');
-  composer.setAttribute('aria-label', 'Resident governed composer');
-  composer.appendChild(el('div', 'cockpit-resident-composer-note', 'GOVERNED RESIDENT COMPOSER · requests enter the existing AgentLoop and remain subject to operator approval.'));
+  composer.setAttribute('aria-label', 'Cipher governed composer');
+  composer.appendChild(el('div', 'cockpit-resident-composer-note', 'GOVERNED CIPHER COMPOSER · requests enter the existing AgentLoop and remain subject to operator approval.'));
   const input = document.createElement('textarea');
   input.className = 'cockpit-resident-input';
-  input.placeholder = 'Describe a task for the governed Resident workflow…';
+  input.placeholder = 'Describe a task for Cipher…';
   input.rows = 2;
   composer.appendChild(input);
   const sendBtn = document.createElement('button');
@@ -131,7 +139,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   sendBtn.className = 'cockpit-resident-send';
   sendBtn.textContent = 'START GOVERNED TASK';
   composer.appendChild(sendBtn);
-  const agentStatusMount = el('div', 'cockpit-resident-composer-status', 'No governed Resident task is running.');
+  const agentStatusMount = el('div', 'cockpit-resident-composer-status', 'No governed Cipher task is running.');
   composer.appendChild(agentStatusMount);
   root.appendChild(composer);
 
@@ -199,7 +207,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     if (projection?.phase === 'unknown') action('RECOVER START RESULT', recoverStart);
     if (projection?.sessionId && !busy) action('REFRESH TASK STATUS', pollAgent);
     if (status === null) {
-      if (projection === undefined) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', 'No governed Resident task is running.'));
+      if (projection === undefined) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', 'No governed Cipher task is running.'));
       else if (projection.sessionId !== null) agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `SESSION ${projection.sessionId} · STATUS UNKNOWN`));
     } else {
     agentStatusMount.appendChild(el('div', 'cockpit-resident-composer-note', `SESSION ${status.session_id} · ${status.state.toUpperCase()} · ${status.mode.toUpperCase()}`));
@@ -225,7 +233,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     }
     if (projection?.sessionId && (!terminal(status) || projection.message !== null)) {
       const id = projection.sessionId;
-      action('STOP TASK', () => cancelAgent(id), 'Stop the running governed Resident task');
+      action('STOP TASK', () => cancelAgent(id), 'Stop the running governed Cipher task');
     }
   }
 
@@ -246,7 +254,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
         pollTimer = window.setTimeout(() => { void pollAgent(); }, 1000);
       }
     } catch (error) {
-      if (ownsPresentation(ticket)) save({ ...projection, message: `Resident task status unavailable · ${String((error as Error).message ?? error).slice(0, 180)}` });
+      if (ownsPresentation(ticket)) save({ ...projection, message: `Cipher task status unavailable · ${String((error as Error).message ?? error).slice(0, 180)}` });
     } finally {
       if (ownsPresentation(ticket)) { pollController = null; paintAgentStatus(); }
     }
@@ -273,11 +281,11 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   }
 
   async function decideAgent(id: string, approvalId: string, decision: 'approve' | 'reject'): Promise<void> {
-    await taskAction(id, () => call('/api/agent/decision', { method: 'POST', body: AgentDecisionRequest.parse({ session_id: id, approval_id: approvalId, decision }), schema: AgentDecisionResponse }), 'Resident decision');
+    await taskAction(id, () => call('/api/agent/decision', { method: 'POST', body: AgentDecisionRequest.parse({ session_id: id, approval_id: approvalId, decision }), schema: AgentDecisionResponse }), 'Cipher decision');
   }
 
   async function cancelAgent(id: string): Promise<void> {
-    await taskAction(id, () => call('/api/agent/cancel', { method: 'POST', body: AgentCancelRequest.parse({ session_id: id }), schema: AgentCancelResponse }), 'Resident cancellation');
+    await taskAction(id, () => call('/api/agent/cancel', { method: 'POST', body: AgentCancelRequest.parse({ session_id: id }), schema: AgentCancelResponse }), 'Cipher cancellation');
   }
 
   async function recoverStart(): Promise<void> {
@@ -347,8 +355,8 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     const quickButton = action;
     quickButton.disabled = false;
     quickButton.dataset.maturity = 'GOVERNED';
-    quickButton.title = `Start a governed Resident task: ${label}`;
-    quickButton.setAttribute('aria-label', `${label}; starts a governed Resident task`);
+    quickButton.title = `Start a governed Cipher task: ${label}`;
+    quickButton.setAttribute('aria-label', `${label}; starts a governed Cipher task`);
     quickButton.addEventListener('click', () => { void startAgent(`${label} for the current workspace.`); });
   }
   paintAgentStatus();
@@ -402,10 +410,13 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   }
 
   function paintConversation(data: ResidentData): void {
-    conversation.innerHTML = '';
+    const availableSources = [data.summary, data.context, data.push, data.decisions]
+      .filter(source => source !== null).length;
+    contextDisclosureSummary.textContent = `WORKSPACE STATUS \u00b7 ${availableSources}/4 SOURCES RETURNING DATA`;
+    contextDisclosureContent.innerHTML = '';
     if (data.summary !== null) {
       const summary = el('section', 'cockpit-resident-summary');
-      summary.appendChild(el('h2', 'cockpit-resident-section-title', 'RESIDENT SUMMARY'));
+      summary.appendChild(el('h2', 'cockpit-resident-section-title', 'CIPHER SUMMARY'));
       summary.appendChild(el('div', 'cockpit-resident-recommendation', data.summary.recommendation));
       const details = el('div', 'cockpit-resident-summary-grid');
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Workspace \u00b7 ${data.summary.workspace}`));
@@ -415,9 +426,9 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Model \u00b7 ${data.summary.model.runtime_available ? `${data.summary.model.ready_count} active` : 'unavailable'}`));
       details.appendChild(el('div', 'cockpit-resident-summary-item', `Tests \u00b7 ${data.summary.hasTestScript ? 'script present' : 'not detected'}`));
       summary.appendChild(details);
-      conversation.appendChild(summary);
+      contextDisclosureContent.appendChild(summary);
     } else {
-      conversation.appendChild(el('div', 'cockpit-resident-empty', 'Resident summary unavailable \u00b7 GET /api/resident/summary failed.'));
+      contextDisclosureContent.appendChild(el('div', 'cockpit-resident-empty', 'Cipher summary unavailable. Pair the workstation to read project context.'));
     }
 
     if (data.context !== null) {
@@ -427,9 +438,9 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
       context.appendChild(el('div', 'cockpit-resident-context-line', data.context.model_status));
       if (data.context.changed_files.length > 0) context.appendChild(el('div', 'cockpit-resident-context-line', `${data.context.changed_files.length} changed file(s) in context`));
       if (data.context.diagnostics.length > 0) context.appendChild(el('div', 'cockpit-resident-context-line', `${data.context.diagnostics.length} diagnostic(s) in context`));
-      conversation.appendChild(context);
+      contextDisclosureContent.appendChild(context);
     } else {
-      conversation.appendChild(el('div', 'cockpit-resident-empty', 'Resident context unavailable \u00b7 GET /api/resident/context failed.'));
+      contextDisclosureContent.appendChild(el('div', 'cockpit-resident-empty', 'Cipher context unavailable. Pair the workstation to read project context.'));
     }
 
     if (data.push !== null) {
@@ -440,9 +451,9 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
         for (const reason of data.push.reasons.slice(0, 6)) reasons.appendChild(el('li', 'cockpit-resident-reason', reason));
         push.appendChild(reasons);
       }
-      conversation.appendChild(push);
+      contextDisclosureContent.appendChild(push);
     } else {
-      conversation.appendChild(el('div', 'cockpit-resident-empty', 'Workspace verdict unavailable \u00b7 GET /api/resident/push-summary failed.'));
+      contextDisclosureContent.appendChild(el('div', 'cockpit-resident-empty', 'Workspace verdict unavailable \u00b7 GET /api/resident/push-summary failed.'));
     }
 
     if (data.decisions !== null && data.decisions.length > 0) {
@@ -458,11 +469,11 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
         list.appendChild(li);
       }
       recent.appendChild(list);
-      conversation.appendChild(recent);
+      contextDisclosureContent.appendChild(recent);
     } else if (data.decisions !== null) {
-      conversation.appendChild(el('div', 'cockpit-resident-empty', 'No recent Resident decisions on the audit bus.'));
+      contextDisclosureContent.appendChild(el('div', 'cockpit-resident-empty', 'No recent Cipher decisions on the audit bus.'));
     } else {
-      conversation.appendChild(el('div', 'cockpit-resident-empty', 'Resident decisions unavailable \u00b7 GET /api/resident/decisions failed.'));
+      contextDisclosureContent.appendChild(el('div', 'cockpit-resident-empty', 'Cipher decisions unavailable. Pair the workstation to read the audit bus.'));
     }
   }
 

@@ -11,7 +11,7 @@ export default [
     ignores: [
       "**/node_modules/",
       "**/dist/",
-      "**/desktop/",
+      "desktop/**",
       "**/skills/packs/",
       "**/.aide/",
       "**/logs/",

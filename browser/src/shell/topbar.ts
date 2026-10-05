@@ -15,6 +15,7 @@ export interface TopbarMode {
 
 export interface TopbarHandles {
   root: HTMLElement;
+  setAuthority(opts: { label: string; paired: boolean }): void;
   setEngine(opts: { label: string; ready: boolean }): void;
   setDaemon(opts: { label: string; reachable: boolean }): void;
   setVerification(state: VerificationState): void;
@@ -37,6 +38,9 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
         <span class="topbar-mode" data-mode="verifiable" title="Verifiable: audit bus reachable">VERIFIABLE</span>
       </nav>
       <nav class="topbar-chips" aria-label="system status">
+        <button class="topbar-chip" data-chip="authority" data-state="warn" type="button" title="Pair this browser session before protected operations" aria-label="Pair this browser session">
+          <span data-chip-label="authority">AUTHORITY: PAIRING REQUIRED</span>
+        </button>
         <button class="topbar-chip" data-chip="daemon" type="button" title="Daemon reachability on the local facade" aria-label="Daemon reachability">
           <span class="topbar-chip-dot" data-chip-dot="daemon"></span>
           <span data-chip-label="daemon">DAEMON: UNKNOWN</span>
@@ -57,7 +61,7 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
         </button>
       </nav>
       <span class="topbar-spacer"></span>
-      <button class="topbar-hint" type="button" disabled title="Command palette unavailable in this cockpit phase" aria-label="Command palette unavailable">
+      <button class="topbar-hint" type="button" data-command-palette title="Open command palette" aria-label="Open command palette">
         <kbd>Ctrl</kbd><kbd>K</kbd>
       </button>
       <button class="topbar-hint" type="button" disabled title="Terminal shortcut is not wired; open TERMINAL for approved interactive sessions" aria-label="Terminal keyboard shortcut unavailable">
@@ -68,8 +72,12 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
 
   const root = parent.querySelector<HTMLElement>('.topbar');
   if (root === null) throw new Error('topbar mount failed');
+  const commandPalette = parent.querySelector<HTMLButtonElement>('[data-command-palette]');
+  commandPalette?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('covert:open-command-palette')));
 
   const daemon = chip(parent, 'daemon');
+  const authority = chip(parent, 'authority');
+  authority.root.addEventListener('click', () => document.dispatchEvent(new CustomEvent('covert:pair-authority')));
   const engine = chip(parent, 'engine');
   const verify = chip(parent, 'verify');
   const harness = chip(parent, 'harness');
@@ -83,6 +91,14 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
   function setEngine(opts: { label: string; ready: boolean }): void {
     engine.label.textContent = opts.label;
     setDataState(engine.root, opts.ready ? 'ok' : null);
+  }
+
+  function setAuthority(opts: { label: string; paired: boolean }): void {
+    authority.label.textContent = `AUTHORITY: ${opts.label}`;
+    setDataState(authority.root, opts.paired ? 'ok' : 'warn');
+    authority.root.setAttribute('aria-label', `Authority ${opts.paired ? 'paired' : 'not paired'}: ${opts.label}`);
+    authority.root.title = opts.paired ? 'This browser session is paired for operator-authorized operations' : 'Pair this browser session before protected operations';
+    if (authority.root instanceof HTMLButtonElement) authority.root.disabled = opts.paired || opts.label === 'PAIRING…';
   }
 
   function setDaemon(opts: { label: string; reachable: boolean }): void {
@@ -132,7 +148,7 @@ export function createTopbar(parent: HTMLElement, _store: Store<AppState>): Topb
     apply('verifiable', modes.verifiable);
   }
 
-  return { root, setEngine, setDaemon, setVerification, setHarness, setCloud, setModes };
+  return { root, setAuthority, setEngine, setDaemon, setVerification, setHarness, setCloud, setModes };
 }
 
 function chip(parent: HTMLElement, name: string): { root: HTMLElement; label: HTMLElement; dot: HTMLElement | null } {

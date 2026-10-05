@@ -20,6 +20,7 @@ import { getSharedEvents } from '../services/ws.ts';
 import type { TerminalProviderInfoT, TerminalEventT } from '../../../common/contracts/terminal.ts';
 import { TerminalEvent } from '../../../common/contracts/terminal.ts';
 import type { TaskStatusResponseT, TaskJobT } from '../../../common/contracts/tasks.ts';
+import { DEFAULT_APPEARANCE, terminalThemeFor, type ThemeEngine } from '../desktop/theme.ts';
 
 export interface PanelHandles {
   dispose(): void;
@@ -39,7 +40,7 @@ function statusClass(status: TaskJobT['status']): string {
   return 'dim';
 }
 
-export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>): PanelHandles {
+export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>, theme?: ThemeEngine): PanelHandles {
   parent.innerHTML = '';
   const root = el('div', 'panel-content terminal-panel');
   const header = el('header', 'panel-header');
@@ -174,7 +175,15 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     stage.appendChild(termHost);
     sessionShell.appendChild(stage);
 
-    const refreshedTerm = new XTerm({ cursorBlink: true, fontSize: 13 });
+    const appearance = theme?.preferences() ?? DEFAULT_APPEARANCE;
+    const refreshedTerm = new XTerm({
+      cursorBlink: appearance.cursorBlink,
+      cursorStyle: appearance.cursorStyle,
+      fontSize: appearance.fontSize,
+      lineHeight: appearance.lineHeight,
+      fontFamily: `'${appearance.terminalFont.replaceAll("'", '')}', Consolas, monospace`,
+      theme: terminalThemeFor(appearance)
+    });
     const addon = new FitAddon();
     refreshedTerm.loadAddon(addon);
     refreshedTerm.open(termHost);
@@ -312,6 +321,18 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       xterm.write(`\r\n[terminal: ${event.message}]\r\n`);
     }
   });
+  const appearanceChanged = (): void => {
+    const current = theme?.preferences();
+    if (xterm === null || current === undefined) return;
+    xterm.options.cursorBlink = current.cursorBlink;
+    xterm.options.cursorStyle = current.cursorStyle;
+    xterm.options.fontSize = current.fontSize;
+    xterm.options.lineHeight = current.lineHeight;
+    xterm.options.fontFamily = `'${current.terminalFont.replaceAll("'", '')}', Consolas, monospace`;
+    xterm.options.theme = terminalThemeFor(current);
+    fitAddon?.fit();
+  };
+  document.addEventListener('covert:appearance-changed', appearanceChanged);
 
   // --- read-only task history projection ----------------------------------------
   function renderJob(j: TaskJobT): HTMLElement {
@@ -362,6 +383,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     dispose() {
       alive = false;
       window.clearInterval(interval);
+      document.removeEventListener('covert:appearance-changed', appearanceChanged);
       if (windowsResizeHandler) window.removeEventListener('resize', windowsResizeHandler);
       unsubscribe?.();
       if (xterm) {

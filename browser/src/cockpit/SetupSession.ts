@@ -60,7 +60,7 @@ export function createSetupSession(
   const root = el('div', 'cockpit-setup');
   root.hidden = true;
   root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-label', 'Resident adaptive setup session');
+  root.setAttribute('aria-label', 'Cipher adaptive setup session');
   const card = el('div', 'cockpit-setup-card');
   const header = el('div', 'cockpit-setup-header');
   const stageLabel = el('span', 'cockpit-setup-stage', '');
@@ -323,7 +323,7 @@ export function createSetupSession(
       rerun.type = 'button';
       rerun.addEventListener('click', () => { if (busy) return; stopIdentityMonitor(); validatedIdentityFingerprint = null; validation.invalidate(); completion = 'NOT_RUN'; setupError = ''; stage = 10; renderStage(); });
       body.appendChild(rerun);
-      body.appendChild(el('p', 'cockpit-setup-detail', 'Talk to Resident to begin.'));
+      body.appendChild(el('p', 'cockpit-setup-detail', 'Talk to Cipher to begin.'));
       const actions = el('div', 'cockpit-setup-actions');
       const makeAction = (label: string, panel: Panel): HTMLElement => {
         const button = el('button', 'cockpit-setup-btn', label) as HTMLButtonElement;
@@ -331,7 +331,7 @@ export function createSetupSession(
         button.addEventListener('click', () => { close(); opts.onNavigate(panel); });
         return button;
       };
-      actions.append(makeAction('OPEN PROJECT', 'projects'), makeAction('OPEN EDITOR TO PASTE CODE', 'editor'), makeAction('DESCRIBE TO RESIDENT', 'resident'), makeAction('OPEN COMMAND CENTER', 'command-center'));
+      actions.append(makeAction('OPEN PROJECT', 'projects'), makeAction('OPEN EDITOR TO PASTE CODE', 'editor'), makeAction('DESCRIBE TO CIPHER', 'resident'), makeAction('OPEN COMMAND CENTER', 'command-center'));
       body.appendChild(actions);
     }
   }

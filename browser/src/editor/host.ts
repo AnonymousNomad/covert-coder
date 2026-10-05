@@ -7,7 +7,8 @@ import type { SessionFileT, SessionTabT } from '../../../common/contracts/sessio
 import type { SessionService } from '../services/session.ts';
 import { api } from '../services/api.ts';
 import { openModel, disposeModel, markClean, isDirty, openPaths, getModel, metaFor, onModelChange } from './models.ts';
-import { createView, disposeViewFor, focusView, restoreViewState, saveViewState, revealLine, disposeAllViews } from './views.ts';
+import { createView, disposeViewFor, focusView, restoreViewState, saveViewState, revealLine, disposeAllViews, setEditorAppearance } from './views.ts';
+import type { AppearancePreferences } from '../desktop/theme.ts';
 import type { GroupsManager, EditorGroup } from './groups.ts';
 import { applyEol, restoreBom } from './text-io.ts';
 import type { LspBridge } from './lsp-bridge.ts';
@@ -31,6 +32,7 @@ export interface EditorHost {
   tabsIn(splitId: string): string[];
   captureSession(): SessionFileT;
   restoreSession(session: SessionFileT): Promise<void>;
+  setAppearance(preferences: AppearancePreferences): void;
 }
 
 export function createEditorHost(
@@ -278,7 +280,8 @@ for (const tab of tabsList) {
     groups: () => groups.list().map(g => ({ id: g.id, tabBar: g.tabBar })),
     tabsIn: splitId => [...(tabs.get(splitId) ?? [])],
     captureSession,
-    restoreSession
+    restoreSession,
+    setAppearance: setEditorAppearance
   };
 }
 

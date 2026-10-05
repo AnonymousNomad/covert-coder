@@ -8,6 +8,7 @@ import { api } from './services/api.ts';
 import { SessionService } from './services/session.ts';
 import { mountCockpit, type CockpitHandles } from './cockpit/CockpitShell.ts';
 import './cockpit/cockpit.css';
+import './desktop/desktop.css';
 import { createEditorHost, type EditorHost } from './editor/host.ts';
 import { createGroups } from './editor/groups.ts';
 import { createSearchPanel } from './editor/search.ts';
@@ -58,12 +59,35 @@ function renderAllTabs(host: EditorHost): void {
   for (const group of host.groups()) renderTabBar(group.tabBar, group.id, host);
 }
 
+function createWorkspacePairingGate(parent: HTMLElement): HTMLElement {
+  const gate = document.createElement('section');
+  gate.className = 'desktop-workspace-gate';
+  gate.setAttribute('role', 'status');
+  const mark = document.createElement('span');
+  mark.className = 'desktop-workspace-gate-mark';
+  mark.setAttribute('aria-hidden', 'true');
+  mark.textContent = '◇';
+  const heading = document.createElement('h2');
+  heading.textContent = 'Pair this workstation';
+  const detail = document.createElement('p');
+  detail.textContent = 'Local workspace access is protected. Pair this browser session to load files; the normal operation-specific Authority checks remain in force.';
+  const pair = document.createElement('button');
+  pair.type = 'button';
+  pair.className = 'desktop-workspace-gate-action';
+  pair.textContent = 'Pair browser session';
+  pair.addEventListener('click', () => document.dispatchEvent(new CustomEvent('covert:pair-authority')));
+  gate.append(mark, heading, detail, pair);
+  parent.appendChild(gate);
+  return gate;
+}
+
 async function boot(): Promise<void> {
-  await initializeAuthority();
   const app = document.getElementById('app');
   if (app === null) throw new Error('#app missing');
   const store = new Store(INITIAL_STATE);
   const shell: CockpitHandles = mountCockpit(app, store);
+  let paired = false;
+  shell.topbar.setAuthority({ label: 'PAIRING REQUIRED', paired });
   const session = new SessionService();
 
   // Editor mounts inside the cockpit center column.
@@ -90,11 +114,7 @@ async function boot(): Promise<void> {
   onDirtyChange(() => renderAllTabs(host));
   groups.onGroupsChange(() => renderAllTabs(host));
 
-  const events = connectEvents(facadeWebSocketUrl('/ws'), {
-    onStatus: connected => {
-      shell.topbar.setDaemon({ label: connected ? 'ONLINE' : 'OFFLINE', reachable: connected });
-    }
-  });
+  const events = connectEvents(facadeWebSocketUrl('/ws'));
   setSharedEvents(events);
   const lspStates: Record<string, string> = {};
   events.subscribe('log', data => {
@@ -111,6 +131,44 @@ async function boot(): Promise<void> {
     lspStates[event.languageId] = event.status;
     renderLspStatus(shell, lspStates);
   });
+
+  let workspaceGate: HTMLElement | null = null;
+  let pairingInProgress = false;
+  const pairRequested = async (): Promise<void> => {
+    if (paired || pairingInProgress) return;
+    pairingInProgress = true;
+    shell.topbar.setAuthority({ label: 'PAIRING…', paired: false });
+    try {
+      await initializeAuthority();
+      paired = true;
+      shell.topbar.setAuthority({ label: 'PAIRED', paired: true });
+      document.dispatchEvent(new CustomEvent('covert:authority-paired'));
+      shell.notify('AUTHORITY_PAIRED', 'This browser session is paired. Protected operations still require their normal per-operation authorization.');
+      void shell.cipherVoice.speakStartupGreeting().then(result => {
+        if (result === 'unknown') shell.notify('READINESS_UNKNOWN', 'Cipher did not speak a readiness greeting because the canonical readiness read was unavailable.');
+      });
+    } catch {
+      shell.topbar.setAuthority({ label: 'PAIRING REQUIRED', paired: false });
+      shell.notify('AUTHORITY_REQUIRED', 'Pairing was not completed. Protected operations remain unavailable.');
+      pairingInProgress = false;
+      return;
+    }
+    pairingInProgress = false;
+
+    try {
+      const workspace = await api.workspaceList();
+      store.set(prev => ({ ...prev, workspace }));
+      workspaceGate?.remove();
+      workspaceGate = null;
+      await session.restore();
+      await host.restoreSession(session.current);
+      store.set(prev => ({ ...prev, session: session.current }));
+      renderAllTabs(host);
+    } catch (error) {
+      shell.notify('WORKSPACE_UNAVAILABLE', error instanceof Error ? error.message : 'Workspace access unavailable.');
+    }
+  };
+  document.addEventListener('covert:pair-authority', pairRequested);
 
   try {
     const health = await api.health();
@@ -134,8 +192,9 @@ async function boot(): Promise<void> {
   try {
     const workspace = await api.workspaceList();
     store.set(prev => ({ ...prev, workspace }));
-  } catch {
-    // workspace listing is best-effort
+  } catch (error) {
+    if (!paired) workspaceGate = createWorkspacePairingGate(shell.editorWorkspace);
+    else shell.notify('WORKSPACE_UNAVAILABLE', error instanceof Error ? error.message : 'Workspace access unavailable.');
   }
 
   void wireTopbarToBackends(shell);
@@ -144,8 +203,10 @@ async function boot(): Promise<void> {
   window.addEventListener('pagehide', () => {
     session.set(() => host.captureSession());
     void session.flush();
+    document.removeEventListener('covert:pair-authority', pairRequested);
+    shell.dispose();
     events.dispose();
-  });
+  }, { once: true });
 }
 
 async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
@@ -155,8 +216,14 @@ async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
     return { byok, connections };
   }, state => shell.topbar.setCloud(state));
   void cloud.refresh();
+  const refreshCloudAfterPairing = (): void => { void cloud.refresh(); };
+  document.addEventListener('covert:authority-paired', refreshCloudAfterPairing);
   const cloudTimer = window.setInterval(() => { void cloud.refresh(); }, 30000);
-  window.addEventListener('pagehide', () => { window.clearInterval(cloudTimer); cloud.dispose(); }, { once: true });
+  window.addEventListener('pagehide', () => {
+    window.clearInterval(cloudTimer);
+    document.removeEventListener('covert:authority-paired', refreshCloudAfterPairing);
+    cloud.dispose();
+  }, { once: true });
   void refreshHarnessChip(shell);
   void refreshVerificationChip(shell);
   void refreshModes(shell);

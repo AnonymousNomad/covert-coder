@@ -2,6 +2,7 @@
 /// <reference lib="webworker" />
 
 import * as monaco from 'monaco-editor/editor/editor.api';
+import type { AppearancePreferences } from '../desktop/theme.ts';
 
 export interface EditorView {
   relPath: string;
@@ -11,6 +12,9 @@ export interface EditorView {
 
 const views = new Map<string, EditorView>();
 let nextId = 0;
+let appearance: Pick<AppearancePreferences, 'editorFont' | 'fontSize' | 'lineHeight'> = {
+  editorFont: 'Cascadia Mono', fontSize: 13, lineHeight: 1.45
+};
 
 function key(relPath: string, splitId: string): string {
   return `${relPath}@${splitId}#${nextId++}`;
@@ -20,8 +24,9 @@ export function createView(container: HTMLElement, relPath: string, splitId: str
   const editor = monaco.editor.create(container, {
     model,
     theme: 'vs-dark',
-    fontSize: 13,
-    fontFamily: "'Cascadia Mono', Consolas, 'Courier New', monospace",
+    fontSize: appearance.fontSize,
+    lineHeight: Math.round(appearance.fontSize * appearance.lineHeight),
+    fontFamily: `'${appearance.editorFont.replaceAll("'", '')}', Consolas, 'Courier New', monospace`,
     automaticLayout: true,
     minimap: { enabled: true },
     scrollBeyondLastLine: false,
@@ -33,6 +38,16 @@ export function createView(container: HTMLElement, relPath: string, splitId: str
   const view: EditorView = { relPath, splitId, editor };
   views.set(key(relPath, splitId), view);
   return view;
+}
+
+export function setEditorAppearance(next: AppearancePreferences): void {
+  appearance = { editorFont: next.editorFont, fontSize: next.fontSize, lineHeight: next.lineHeight };
+  const options = {
+    fontSize: appearance.fontSize,
+    lineHeight: Math.round(appearance.fontSize * appearance.lineHeight),
+    fontFamily: `'${appearance.editorFont.replaceAll("'", '')}', Consolas, 'Courier New', monospace`
+  };
+  for (const view of views.values()) view.editor.updateOptions(options);
 }
 
 export function saveViewState(relPath: string, splitId: string): monaco.editor.ICodeEditorViewState | null {

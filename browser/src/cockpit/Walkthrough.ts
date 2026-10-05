@@ -21,7 +21,7 @@ interface Step {
 
 const STEPS: Step[] = [
   { id: 'command-center', title: 'COMMAND CENTER', detail: 'Your operator overview: daemon, engine, resident, git, cloud, harness, verification and task state in one surface.' },
-  { id: 'resident', title: 'RESIDENT', detail: 'Your persistent partner. It describes, plans and proposes; every action still crosses the approval gate.' },
+  { id: 'resident', title: 'CIPHER', detail: 'Covert’s Resident intelligence. Cipher describes, plans and proposes; every action still crosses the approval gate.' },
   { id: 'projects', title: 'PROJECTS', detail: 'Open the workspace, inspect files and workbench state.' },
   { id: 'editor', title: 'EDITOR', detail: 'The source surface with search. Saves are explicitly approved operations.' },
   { id: 'terminal', title: 'TERMINAL', detail: 'Process IO: commands run as approved operations with real output.' },
