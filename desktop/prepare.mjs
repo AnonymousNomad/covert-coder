@@ -6,7 +6,6 @@ const desktop = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(desktop, '..');
 const resources = path.join(desktop, 'resources');
 const frontend = path.join(root, 'browser', 'dist');
-const includeWeights = process.env.AIDE_INCLUDE_MODEL_WEIGHTS === '1';
 const resourceDirectories = [
   'common',
   'node',
@@ -28,36 +27,23 @@ const resourceDirectories = [
 ];
 const runtimePackages = ['zod', 'ws', 'typescript', 'typescript-language-server'];
 const weightExtensions = new Set(['.gguf', '.safetensors', '.bin']);
-const llamaName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-const engineSource = process.env.AIDE_ENGINE_SOURCE?.trim();
-const serverAllowlist = ['llama-server.exe', 'llama-server', 'llama-server-impl.dll', 'llama.dll', 'llama-common.dll', 'ggml-base.dll', 'ggml.dll', 'ggml-rpc.dll', 'ggml-rpc-server.exe', 'libomp140.x86_64.dll', 'mtmd.dll'];
-const isServerRuntimeFile = file => serverAllowlist.includes(file) || /^ggml-cpu-.+\.dll$/.test(file);
 
-let engineFiles = [];
-if (engineSource) {
-  try {
-    engineFiles = await readdir(engineSource);
-  } catch (error) {
-    throw new Error(`desktop prepare: AIDE_ENGINE_SOURCE is configured but cannot be read: ${engineSource}`, { cause: error });
-  }
-  if (!engineFiles.includes(llamaName)) {
-    throw new Error(`desktop prepare: AIDE_ENGINE_SOURCE does not contain ${llamaName}: ${engineSource}`);
-  }
-} else if (process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') {
-  throw new Error(`desktop prepare: ${llamaName} is required; set AIDE_ENGINE_SOURCE to a verified llama.cpp build`);
+function isDevelopmentArtifact(name) {
+  return /\.(?:map|pdb)$/i.test(name) || /^test[-.]|\.test\./i.test(name);
 }
 
-async function copyTree(source, target, { allowWeights = false } = {}) {
+async function copyTree(source, target) {
   await mkdir(target, { recursive: true });
   for (const entry of await readdir(source, { withFileTypes: true })) {
+    if (isDevelopmentArtifact(entry.name)) continue;
     const sourcePath = path.join(source, entry.name);
     const targetPath = path.join(target, entry.name);
     if (entry.isDirectory()) {
-      await copyTree(sourcePath, targetPath, { allowWeights });
+      await copyTree(sourcePath, targetPath);
       continue;
     }
     if (entry.name.endsWith('.corrupt')) continue;
-    if (!allowWeights && weightExtensions.has(path.extname(entry.name).toLowerCase())) continue;
+    if (weightExtensions.has(path.extname(entry.name).toLowerCase())) continue;
     await cp(sourcePath, targetPath);
   }
 }
@@ -87,34 +73,39 @@ for (const packageName of runtimePackages) {
   const version = JSON.parse(await readFile(path.join(source, 'package.json'), 'utf8')).version;
   stagedVersions.push(`${packageName}@${version}`);
 }
+const nodePtySource = path.join(root, 'node_modules', 'node-pty');
+const nodePtyTarget = path.join(nodeModulesTarget, 'node-pty');
+const nodePtyPrebuildName = `${process.platform}-${process.arch}`;
+const nodePtyPrebuildSource = path.join(nodePtySource, 'prebuilds', nodePtyPrebuildName);
+if (!(await exists(nodePtySource))) throw new Error('desktop stack dependency node-pty missing from node_modules; run npm install');
+if (!(await exists(nodePtyPrebuildSource))) {
+  throw new Error(`node-pty prebuilt assets missing for ${nodePtyPrebuildName}; install a package with the matching prebuild`);
+}
+await mkdir(nodePtyTarget, { recursive: true });
+await cp(path.join(nodePtySource, 'package.json'), path.join(nodePtyTarget, 'package.json'));
+const keepNodePtyRuntimeFile = sourcePath => !isDevelopmentArtifact(path.basename(sourcePath));
+await cp(path.join(nodePtySource, 'lib'), path.join(nodePtyTarget, 'lib'), {
+  recursive: true,
+  filter: keepNodePtyRuntimeFile
+});
+await cp(
+  nodePtyPrebuildSource,
+  path.join(nodePtyTarget, 'prebuilds', nodePtyPrebuildName),
+  { recursive: true, filter: sourcePath => !/\.(?:map|pdb)$/i.test(sourcePath) }
+);
+const nodePtyVersion = JSON.parse(await readFile(path.join(nodePtySource, 'package.json'), 'utf8')).version;
+stagedVersions.push(`node-pty@${nodePtyVersion} (${nodePtyPrebuildName})`);
 console.log(`staged stack dependencies (${stagedVersions.join(', ')})`);
 
 const modelSource = path.join(root, 'models');
 const runtimeModelDir = path.join(resources, 'models');
 await mkdir(runtimeModelDir, { recursive: true });
 await cp(path.join(modelSource, 'manifest.json'), path.join(runtimeModelDir, 'manifest.json'));
-const bootstrapModel = 'smollm2-360m-instruct-q8_0.gguf';
-if (await exists(path.join(modelSource, bootstrapModel))) {
-  await cp(path.join(modelSource, bootstrapModel), path.join(runtimeModelDir, bootstrapModel));
-  console.log(`staged bootstrap model ${bootstrapModel}`);
-} else if (process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') {
-  throw new Error(`desktop prepare: bootstrap model missing at ${path.join(modelSource, bootstrapModel)}`);
-} else {
-  console.warn(`desktop prepare: optional legacy bootstrap model not staged (${bootstrapModel}); canonical Unsloth runtime and qualified GGUF are external and require fresh-user validation`);
-}
-if (includeWeights) {
-  for (const file of await readdir(modelSource)) {
-    if (!file.endsWith('.gguf') || file === bootstrapModel) continue;
-    await cp(path.join(modelSource, file), path.join(runtimeModelDir, file));
-  }
-}
 
 const engineTarget = path.join(resources, 'runtime');
 await mkdir(engineTarget, { recursive: true });
-if (engineSource) {
-  for (const file of engineFiles.filter(isServerRuntimeFile)) await cp(path.join(engineSource, file), path.join(engineTarget, file));
-}
 await cp(process.execPath, path.join(engineTarget, process.platform === 'win32' ? 'node.exe' : 'node'));
 
 console.log(`canonical typed frontend remains at ${frontend}`);
+console.log('model weights and model runtime remain external to application resources');
 console.log(`prepared desktop resources at ${resources}`);

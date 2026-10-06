@@ -2,6 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+test('native package keeps model weights and runtime outside installed resources', async () => {
+  const config = JSON.parse(await readFile(new URL('../../desktop/tauri.conf.json', import.meta.url), 'utf8'));
+  const prepare = await readFile(new URL('../../desktop/prepare.mjs', import.meta.url), 'utf8');
+  const verify = await readFile(new URL('../../desktop/verify-prepare.mjs', import.meta.url), 'utf8');
+  const native = await readFile(new URL('../../desktop/src/main.rs', import.meta.url), 'utf8');
+  const launcher = await readFile(new URL('../../desktop/stack-launcher.mjs', import.meta.url), 'utf8');
+  assert.equal(config.bundle.targets, 'nsis');
+  assert.doesNotMatch(prepare, /AIDE_INCLUDE_MODEL_WEIGHTS|AIDE_ENGINE_SOURCE|bootstrapModel/);
+  assert.ok(prepare.includes("path.join(modelSource, 'manifest.json')"));
+  assert.match(prepare, /nodePtyPrebuildName\s*=\s*`\$\{process\.platform\}-\$\{process\.arch\}`/);
+  assert.ok(prepare.includes('keepNodePtyRuntimeFile'));
+  assert.ok(verify.includes('forbiddenWeights'));
+  assert.ok(verify.includes('forbiddenDevelopmentFiles'));
+  assert.ok(verify.includes("'node-pty', 'prebuilds'"));
+  assert.ok(verify.includes("'conpty', 'conpty.dll'"));
+  assert.ok(verify.includes('forbiddenNodePtyFiles'));
+  assert.ok(verify.includes('nodePtySelectedPrebuildPrefix'));
+  assert.ok(verify.includes('model runtime binaries were staged into immutable resources'));
+  assert.ok(native.includes('app_local_data_dir()'));
+  assert.ok(native.includes('AIDE_MODEL_DIR'));
+  assert.ok(native.includes('CovertData'));
+  assert.ok(native.includes('E: is unavailable; set AIDE_MODEL_DIR'));
+  assert.ok(native.includes('default_model_dir(app_data_root)?'));
+  assert.ok(native.includes('.env("AIDE_WORKSPACE", &data_roots.workspace)'));
+  assert.doesNotMatch(native, /\.env\("AIDE_WORKSPACE",\s*&resource_root\)/);
+  assert.ok(launcher.includes('AIDE_MODEL_DIRS: modelDirs.join(path.delimiter)'));
+  assert.ok(launcher.includes("const node = path.join(root, 'runtime', nodeName);"));
+  assert.doesNotMatch(launcher, /AIDE_LLAMA_SERVER:.*path\.join\(root, 'runtime'/);
+});
+
 test('MSI repair flags are confined to explicit upgrade and hosted command regression is required', async () => {
   const lifecycle = await readFile(new URL('../../scripts/desktop-lifecycle-smoke.ps1', import.meta.url), 'utf8');
   const workflow = await readFile(new URL('../../.github/workflows/desktop.yml', import.meta.url), 'utf8');

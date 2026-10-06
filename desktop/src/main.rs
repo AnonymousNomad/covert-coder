@@ -298,6 +298,177 @@ fn terminate_tree(child: &mut Child) {
     let _ = child.wait();
 }
 
+struct DataRoots {
+    workspace: PathBuf,
+    model_dir: PathBuf,
+    runtime_dir: PathBuf,
+    llama_server: PathBuf,
+}
+
+fn is_within(path: &Path, parent: &Path) -> bool {
+    path == parent || path.starts_with(parent)
+}
+
+fn paths_overlap(left: &Path, right: &Path) -> bool {
+    is_within(left, right) || is_within(right, left)
+}
+
+fn canonicalize_future_path(path: &Path) -> Result<PathBuf, String> {
+    let mut cursor = path.to_path_buf();
+    let mut missing = Vec::new();
+    loop {
+        match dunce::canonicalize(&cursor) {
+            Ok(mut canonical) => {
+                for component in missing.iter().rev() {
+                    canonical.push(component);
+                }
+                return Ok(canonical);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let parent = cursor
+                    .parent()
+                    .ok_or_else(|| format!("resolve path failed: {}", path.display()))?;
+                let name = cursor
+                    .file_name()
+                    .ok_or_else(|| format!("resolve path failed: {}", path.display()))?;
+                missing.push(name.to_os_string());
+                cursor = parent.to_path_buf();
+            }
+            Err(error) => {
+                return Err(format!(
+                    "resolve path failed at {}: {error}",
+                    cursor.display()
+                ))
+            }
+        }
+    }
+}
+
+fn ensure_writable_dir(
+    path: PathBuf,
+    resource_root: &Path,
+    label: &str,
+) -> Result<PathBuf, String> {
+    let resources = dunce::canonicalize(resource_root)
+        .map_err(|error| format!("resolve application resources failed: {error}"))?;
+    let prospective = canonicalize_future_path(&path)?;
+    if is_within(&prospective, &resources) {
+        return Err(format!(
+            "{label} directory must be outside immutable application resources"
+        ));
+    }
+    std::fs::create_dir_all(&path).map_err(|error| {
+        format!(
+            "create {label} directory failed at {}: {error}",
+            path.display()
+        )
+    })?;
+    let canonical = dunce::canonicalize(&path)
+        .map_err(|error| format!("resolve {label} directory failed: {error}"))?;
+    if is_within(&canonical, &resources) {
+        return Err(format!(
+            "{label} directory resolved into immutable application resources"
+        ));
+    }
+    Ok(canonical)
+}
+
+fn default_model_dir(_app_data_root: &Path) -> Result<PathBuf, String> {
+    #[cfg(windows)]
+    {
+        if Path::new(r"E:\").is_dir() {
+            Ok(PathBuf::from(r"E:\CovertData\CovertCoder\models"))
+        } else {
+            Err("E: is unavailable; set AIDE_MODEL_DIR to an absolute model-storage path before launching Covert".to_string())
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(_app_data_root.join("models"))
+    }
+}
+
+fn configured_absolute_path(name: &str, fallback: PathBuf) -> Result<PathBuf, String> {
+    let Some(value) = std::env::var_os(name) else {
+        return Ok(fallback);
+    };
+    let path = PathBuf::from(value);
+    if !path.is_absolute() {
+        return Err(format!("{name} must be an absolute path"));
+    }
+    Ok(path)
+}
+
+fn resolve_data_roots(app_data_root: &Path, resource_root: &Path) -> Result<DataRoots, String> {
+    let workspace = ensure_writable_dir(
+        app_data_root.join("workspace"),
+        resource_root,
+        "persistent state",
+    )?;
+    let model_candidate = if std::env::var_os("AIDE_MODEL_DIR").is_some() {
+        configured_absolute_path("AIDE_MODEL_DIR", app_data_root.join("models"))?
+    } else {
+        default_model_dir(app_data_root)?
+    };
+    let model_dir = ensure_writable_dir(model_candidate, resource_root, "model storage")?;
+    if paths_overlap(&workspace, &model_dir) {
+        return Err("persistent state and model storage must use separate directories".to_string());
+    }
+
+    let runtime_candidate =
+        configured_absolute_path("AIDE_RUNTIME_DIR", model_dir.join("runtime"))?;
+    let runtime_dir = ensure_writable_dir(runtime_candidate, resource_root, "model runtime")?;
+    if paths_overlap(&workspace, &runtime_dir)
+        || runtime_dir == model_dir
+        || model_dir.starts_with(&runtime_dir)
+    {
+        return Err(
+            "model runtime must remain separate from persistent state and model files".to_string(),
+        );
+    }
+
+    let server_name = if cfg!(windows) {
+        "llama-server.exe"
+    } else {
+        "llama-server"
+    };
+    let server_candidate =
+        configured_absolute_path("AIDE_LLAMA_SERVER", runtime_dir.join(server_name))?;
+    let server_parent = server_candidate
+        .parent()
+        .ok_or("model runtime executable path has no parent")?;
+    let server_parent = dunce::canonicalize(server_parent)
+        .map_err(|error| format!("resolve model runtime executable directory failed: {error}"))?;
+    let resources = dunce::canonicalize(resource_root)
+        .map_err(|error| format!("resolve application resources failed: {error}"))?;
+    if is_within(&server_parent, &resources) {
+        return Err(
+            "model runtime executable must be outside immutable application resources".to_string(),
+        );
+    }
+    let file_name = server_candidate
+        .file_name()
+        .ok_or("model runtime executable path has no filename")?;
+    let mut llama_server = server_parent.join(file_name);
+    if llama_server.exists() {
+        llama_server = dunce::canonicalize(&llama_server)
+            .map_err(|error| format!("resolve model runtime executable failed: {error}"))?;
+        if is_within(&llama_server, &resources) {
+            return Err(
+                "model runtime executable must be outside immutable application resources"
+                    .to_string(),
+            );
+        }
+    }
+
+    Ok(DataRoots {
+        workspace,
+        model_dir,
+        runtime_dir,
+        llama_server,
+    })
+}
+
 fn main() {
     install_startup_panic_diagnostics();
     #[cfg(windows)]
@@ -311,6 +482,11 @@ fn main() {
             let node_name = if cfg!(windows) { "node.exe" } else { "node" };
             let resource_dir = app.path().resource_dir().map_err(|error| error.to_string())?;
             let resource_root = resource_root::resolve_resource_root(&resource_dir, node_name)?;
+            let app_data_root = app
+                .path()
+                .app_local_data_dir()
+                .map_err(|error| error.to_string())?;
+            let data_roots = resolve_data_roots(&app_data_root, &resource_root)?;
             let node = resource_root.join("runtime").join(node_name);
             let launcher = resource_root.join("stack-launcher.mjs");
             if node.exists() && launcher.exists() {
@@ -323,12 +499,14 @@ fn main() {
                     .stdin(Stdio::null())
                     .stdout(Stdio::piped())
                     .current_dir(&resource_root)
-                    .env("AIDE_WORKSPACE", &resource_root)
-                    .env("AIDE_MODEL_DIR", resource_root.join("models"))
+                    .env("AIDE_WORKSPACE", &data_roots.workspace)
+                    .env("AIDE_MODEL_DIR", &data_roots.model_dir)
+                    .env("AIDE_MODEL_DIRS", &data_roots.model_dir)
+                    .env("AIDE_RUNTIME_DIR", &data_roots.runtime_dir)
                     .env("AIDE_ARCH_PORT", "4778")
                     .env("AIDE_LEGACY_PORT", "4779")
                     .env("AIDE_FACADE_PORT", "4777")
-                    .env("AIDE_LLAMA_SERVER", resource_root.join("runtime").join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" }))
+                    .env("AIDE_LLAMA_SERVER", &data_roots.llama_server)
                     .spawn()
                     .map_err(|error| error.to_string())?;
                 let proof = match read_pairing(&mut child) {

@@ -13,6 +13,9 @@ if (!nativeBootstrap || !['http://127.0.0.1:5173', 'http://tauri.localhost', 'ht
 }
 const workspace = path.resolve(process.env.AIDE_WORKSPACE || path.join(root, 'workspace'));
 const modelDir = path.resolve(process.env.AIDE_MODEL_DIR || path.join(workspace, 'models'));
+const runtimeDir = path.resolve(process.env.AIDE_RUNTIME_DIR || path.join(modelDir, 'runtime'));
+const llamaServer = path.resolve(process.env.AIDE_LLAMA_SERVER || path.join(runtimeDir, process.platform === 'win32' ? 'llama-server.exe' : 'llama-server'));
+const modelDirs = [...new Set([modelDir, ...(process.env.AIDE_MODEL_DIRS || '').split(path.delimiter).map(value => value.trim()).filter(Boolean).map(value => path.resolve(value))])];
 const logsDir = path.join(workspace, '.aide', 'logs');
 const nodeName = process.platform === 'win32' ? 'node.exe' : 'node';
 const node = path.join(root, 'runtime', nodeName);
@@ -29,7 +32,9 @@ const env = {
   AIDE_LEGACY_PORT: ports.legacy,
   AIDE_DAEMON_PORT: ports.legacy,
   AIDE_FACADE_PORT: ports.facade,
-  AIDE_LLAMA_SERVER: process.env.AIDE_LLAMA_SERVER || path.join(root, 'runtime', process.platform === 'win32' ? 'llama-server.exe' : 'llama-server')
+  AIDE_MODEL_DIRS: modelDirs.join(path.delimiter),
+  AIDE_RUNTIME_DIR: runtimeDir,
+  AIDE_LLAMA_SERVER: llamaServer
 };
 
 const children = new Set();

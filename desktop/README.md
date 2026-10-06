@@ -9,11 +9,11 @@ The production desktop target is a lightweight native shell around the existing 
 - **Model runtimes:** separate localhost processes using the Covert Coder model contract.
 - **Community transports:** optional direct peers or user-selected relays; disabled by default.
 
-Tauri is the intended shell because it can provide a smaller offline desktop package than an Electron-only implementation. This environment does not currently have Rust/Tauri installed, so the daemon is the runnable first boundary. Do not label a Tauri binary available until it is compiled and smoke-tested on each target platform.
+Tauri is the native shell around the independently runnable daemon. The Windows path is buildable with the pinned Tauri CLI and Rust toolchain; do not claim other platform builds or release readiness until each target is built and its installed lifecycle is tested.
 
-The Tauri CLI is now pinned in the root package and the Rust project lives in `desktop/`. `desktop/prepare.mjs` stages only approved frontend assets, avoiding `node_modules` and build artifacts. Use `npm run desktop:dev` after installing platform prerequisites, or `npm run desktop:build` for a release build. A compiled binary is not claimed until that command succeeds on the target platform.
+The Tauri CLI is pinned in the root package and the Rust project lives in `desktop/`. `desktop/prepare.mjs` stages the typed frontend, approved backend files, bundled Node runtime, and declared runtime packages, including only the host-architecture `node-pty` prebuild. Development-only files are excluded. Use `npm run desktop:dev` for development or `npm run desktop:build` for the canonical Windows NSIS build.
 
-The core desktop package includes the model manifest but does not bundle GGUF weights. For a local weight-inclusive pack, set `AIDE_INCLUDE_MODEL_WEIGHTS=1` before `desktop:prepare` or `desktop:build`; this is intentionally not used by the release CI workflow.
+The immutable desktop resources include the model manifest but never model weights or a model server binary. On Windows, model storage defaults to `E:\CovertData\CovertCoder\models`; set an absolute `AIDE_MODEL_DIR` to choose another external path. If E: is unavailable and no override is configured, startup fails with configuration guidance. See `STORAGE.md` for workspace, credential, log, and runtime paths.
 
 ## Shell Acceptance Gates
 

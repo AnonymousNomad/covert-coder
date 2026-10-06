@@ -10,6 +10,7 @@ const config = JSON.parse(await readFile(path.join(desktop, 'tauri.conf.json'), 
 const expectedProductName = 'Covert Coder';
 const stableIdentifier = 'org.ferrellsyntheticintelligence.aide';
 if (config.productName !== expectedProductName) throw new Error('desktop productName must remain ' + expectedProductName);
+if (config.bundle?.targets !== 'nsis') throw new Error('desktop bundle target must be NSIS Setup.exe');
 if (config.identifier !== stableIdentifier) {
   throw new Error('desktop identifier changed from ' + stableIdentifier + '; review WebView data-directory migration before changing it');
 }
@@ -25,6 +26,7 @@ const assetFiles = await readdir(path.join(frontend, 'assets'));
 if (!assetFiles.some(file => file.endsWith('.js'))) throw new Error('typed frontend JavaScript asset missing');
 if (!assetFiles.some(file => file.endsWith('.css'))) throw new Error('typed frontend CSS asset missing');
 
+const nodePtyPrebuild = path.join(resources, 'node_modules', 'node-pty', 'prebuilds', `${process.platform}-${process.arch}`);
 const required = [
   path.join(resources, 'academy', 'courses', 'python-foundations.json'),
   path.join(resources, 'plugins', 'README.md'),
@@ -44,29 +46,60 @@ const required = [
   path.join(resources, 'node_modules', 'zod', 'package.json'),
   path.join(resources, 'node_modules', 'ws', 'package.json'),
   path.join(resources, 'node_modules', 'typescript', 'package.json'),
-  path.join(resources, 'node_modules', 'typescript-language-server', 'lib', 'cli.mjs')
+  path.join(resources, 'node_modules', 'typescript-language-server', 'lib', 'cli.mjs'),
+  path.join(resources, 'node_modules', 'node-pty', 'package.json'),
+  path.join(nodePtyPrebuild, process.platform === 'win32' ? 'conpty.node' : 'pty.node')
 ];
+if (process.platform === 'win32') {
+  required.push(
+    path.join(nodePtyPrebuild, 'pty.node'),
+    path.join(nodePtyPrebuild, 'winpty-agent.exe'),
+    path.join(nodePtyPrebuild, 'winpty.dll'),
+    path.join(nodePtyPrebuild, 'conpty', 'conpty.dll'),
+    path.join(nodePtyPrebuild, 'conpty', 'OpenConsole.exe')
+  );
+}
 for (const file of required) await access(file);
 
 const sourceLauncher = await readFile(path.join(desktop, 'stack-launcher.mjs'));
 const stagedLauncher = await readFile(path.join(resources, 'stack-launcher.mjs'));
 if (!sourceLauncher.equals(stagedLauncher)) throw new Error('staged stack launcher differs from its tracked source authority');
 
-const runtimeModelFiles = (await readdir(path.join(resources, 'models'))).filter(file => file.endsWith('.gguf'));
-if (process.env.AIDE_INCLUDE_MODEL_WEIGHTS === '1') {
-  if (!runtimeModelFiles.length) throw new Error('weight-inclusive desktop preparation requested but no GGUF files were staged');
-} else if (await access(path.join(root, 'models', 'smollm2-360m-instruct-q8_0.gguf')).then(() => true).catch(() => false)) {
-  if (!runtimeModelFiles.includes('smollm2-360m-instruct-q8_0.gguf')) throw new Error(`bootstrap model was not staged: ${runtimeModelFiles.join(', ')}`);
+async function collectFiles(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await collectFiles(file));
+    else files.push(file);
+  }
+  return files;
 }
-
-const llamaName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-const hasLlama = await access(path.join(resources, 'runtime', llamaName)).then(() => true).catch(() => false);
-const engineSourceConfigured = Boolean(process.env.AIDE_ENGINE_SOURCE?.trim());
-if (engineSourceConfigured !== hasLlama) {
-  throw new Error(engineSourceConfigured
-    ? `AIDE_ENGINE_SOURCE was configured but ${llamaName} was not staged`
-    : `unexpected ${llamaName} was staged without an explicit AIDE_ENGINE_SOURCE`);
+const packagedFiles = await collectFiles(resources);
+const forbiddenWeights = packagedFiles.filter(file => ['.gguf', '.safetensors', '.bin'].includes(path.extname(file).toLowerCase()));
+if (forbiddenWeights.length) throw new Error('model weights were staged into immutable resources: ' + forbiddenWeights.join(', '));
+const forbiddenDevelopmentFiles = packagedFiles.filter(file => {
+  const name = path.basename(file);
+  return /\.(?:map|pdb)$/i.test(name) || /^test[-.]|\.test\./i.test(name);
+});
+if (forbiddenDevelopmentFiles.length) {
+  throw new Error('development-only test/debug files were staged into immutable resources: ' + forbiddenDevelopmentFiles.join(', '));
 }
-if (!hasLlama && process.env.AIDE_REQUIRE_MODEL_RUNTIME === '1') throw new Error(`desktop preparation is missing required model runtime: ${llamaName}`);
-
-console.log(`desktop resources verified (frontend: typed browser/dist; optional direct llama.cpp recovery binary: ${hasLlama ? 'staged' : 'not supplied'}; canonical Unsloth runtime: external, not checked)`);
+const nodePtyRoot = path.join(resources, 'node_modules', 'node-pty');
+const nodePtyRuntimeLibPrefix = `lib${path.sep}`;
+const nodePtySelectedPrebuildPrefix = path.join('prebuilds', `${process.platform}-${process.arch}`) + path.sep;
+const forbiddenNodePtyFiles = packagedFiles.filter(file => {
+  const relative = path.relative(nodePtyRoot, file);
+  const isNodePtyFile = relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  if (!isNodePtyFile) return false;
+  return relative !== 'package.json' &&
+    !relative.startsWith(nodePtyRuntimeLibPrefix) &&
+    !relative.startsWith(nodePtySelectedPrebuildPrefix);
+});
+if (forbiddenNodePtyFiles.length) {
+  throw new Error('unexpected node-pty files or architectures were staged into immutable resources: ' + forbiddenNodePtyFiles.join(', '));
+}
+const packagedNames = packagedFiles.map(file => path.basename(file).toLowerCase());
+if (packagedNames.some(name => name === 'llama-server' || name === 'llama-server.exe' || name.startsWith('ggml-'))) {
+  throw new Error('model runtime binaries were staged into immutable resources');
+}
+console.log('desktop resources verified (typed frontend; per-user writable state at launch; model weights and model runtime external)');
