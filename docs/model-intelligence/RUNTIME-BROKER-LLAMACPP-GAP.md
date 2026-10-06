@@ -1,9 +1,8 @@
 # Runtime Broker — llama.cpp Composition Gap Analysis (MI-1C §6)
 
-Status: **SEAM IDENTIFIED — COMPOSITION NOT YET MUTATED.** Repository truth classifies this wiring as
-the PR #41 candidate family (`docs/nightshift/evidence/runtime-backend-gap-audit-reconciliation-2026-10-04.md`),
-not canonical. This document records the exact missing seam so the owning lane can compose it without
-inventing an execution path.
+Status: **STATIC REPRODUCTION COMPLETE — NO SAFE COMPOSITION MUTATION YET.** Repository truth classifies
+this wiring as the PR #41 candidate family (`docs/nightshift/evidence/runtime-backend-gap-audit-reconciliation-2026-10-04.md`),
+not canonical. This document records the verified callback, ownership, selection, and qualification gaps.
 
 ## Canonical start path today
 
@@ -33,27 +32,44 @@ POST /api/models/start (facade → ts, capability.execute approved op)
 - `BrokerModelRuntime.start` has **no recovery branch**: with the recovery slot null it is structurally
   incapable of starting a non-Unsloth artifact, and with the slot composed it would still need an explicit
   policy branch (see missing seam §2).
+- `LlamaCppRuntimeAdapterOptions` delegates process lifecycle and inference to `ModelRuntime` callbacks.
+  Production's `BrokerModelRuntime` extends `ModelRuntime` and overrides `start`, `stop`, `chat`, and
+  `chatStream`. Passing those virtual methods back into the adapter would recurse through the same broker.
+  Constructing a second `ModelRuntime` avoids recursion only by splitting the model registry and private
+  process-ownership map, which would make stop/status ownership ambiguous. A supported composition therefore
+  needs an explicit base lifecycle-host seam over the **same** runtime instance; neither seam exists today.
+- The base lifecycle has no public owned-process/PID/engine observation contract for the adapter. Its
+  process map is private. The adapter currently reports `version: null`, while the checked-in Unsloth
+  passport is exact to its backend version, artifact hash, and host profile. An LLAMA_CPP runtime profile
+  cannot inherit that Unsloth qualification.
+- Repository search found no production route that invokes `activateLlamaRecovery`; current call sites are
+  the Runtime Broker tests. Selection is therefore explicit in the broker abstraction, but not currently
+  operator-reachable through the product path.
+- `BrokerModelRuntime`'s `start`, `isLoaded`, status projection, and saved-profile validation are all
+  Unsloth-specific. Separately, base `ModelRuntime.start` rejects any runtime-bound sidecar. Simply adding
+  the recovery adapter does not yield a governed LLAMA_CPP start path.
 
-## The exact missing seam (ordered)
+## Missing seams (ordered)
 
-1. **Composition point** — `openapi.ts:257`: replace `null` with a constructed `LlamaCppRuntimeAdapter`
-   using the same option injection ModelRuntime uses (binary resolution incl. `E:\llama-cpp`, workspace,
-   observation seam). No other file needs to change for construction.
-2. **Recovery-selection semantics in `BrokerModelRuntime.start`** — today the method *requires* the Unsloth
-   passport before admission. Composition alone is inert: `start` must gain an explicit branch that is
-   reachable **only** when llama.cpp recovery has been activated through `broker.activateLlamaRecovery`
-   (operator decision, journaled). Unsloth remains canonical: no silent fallback on Unsloth failure.
-3. **Admission ordering** — the admission call at line 274 already precedes `broker.load`, so the recovery
-   branch must keep the same order: admission → `broker.load(recovery)` — never spawn first.
-4. **Identity/passport requirements differ by adapter** — Unsloth binds the accepted V1 tuple; llama.cpp
-   must instead bind the **observed artifact sha256 + runtime identity** into the served identity/status
-   (`RUNTIME_REPORTED` vs `REQUESTED_ARTIFACT` evidence classes in `common/contracts/runtime.ts:8-14`)
-   so worker evidence carries truthful provenance.
-5. **Ownership and cleanup** — the recovery load must retain the owned child and reuse the same
-   failed-start cleanup (`cleanupOwnedRuntimeAfterFailedStart`) and stop/cancel semantics; no
-   special-case spawn outside the broker.
-6. **Observable adapter identity** — status must expose which adapter served the model
-   (`UNSLOTH | LLAMA_CPP`) for UI/evidence; `RuntimeStatusResponse.reported_backend` already models this.
+1. **Same-instance lifecycle host** — provide an explicit adapter host over the single
+   `BrokerModelRuntime` model registry and child-process ledger. The host must expose only owned lifecycle,
+   wait-ready, inference, and verified ownership/PID/engine observations; it must not create a second
+   `ModelRuntime` or route back through the overridden broker methods.
+2. **Operator selection** — add a product-reachable, Authority-protected selection operation that calls
+   `activateLlamaRecovery` only on explicit operator intent and records the existing append-only event.
+   Unsloth remains default; its failures must never select llama.cpp automatically.
+3. **Backend-specific start and stop policy** — retain the common order admission → broker load, prove the
+   selected backend and its owned runtime before reporting running, and keep one cleanup/stop/cancel owner.
+4. **Independent llama runtime identity** — observe a pinned executable/build identity and version (or
+   preserve UNKNOWN and block qualification). `version: null` is not a passport identity. The configured
+   external executable must remain portable and operator-selected.
+5. **Separate qualification passport/profile** — bind the exact artifact hash, runtime build digest/version,
+   runtime-affecting profile digest, hardware/driver/environment facts, admission evidence, and qualification
+   evidence. Missing facts remain UNKNOWN and cannot inherit the Unsloth V1 passport. The existing Unsloth
+   passport and `UNSLOTH_V1_QUALIFICATION` stay unchanged.
+6. **Truthful status and recovery evidence** — distinguish loaded/requested artifact identity from runtime-
+   reported identity, preserve backend identity and fallback event, and keep unqualified LLAMA_CPP in a
+   non-READY state.
 
 ## Required tests when the owning lane composes it
 
@@ -63,14 +79,16 @@ llama.cpp only when activated and requirements hold; unsupported artifact → fa
 route; stop/cancel ends exactly the owned process and state returns truthfully. Fixture acceptance must not
 be presented as real-model qualification.
 
-## Why staged, not done here
+## Current disposition
 
-- The wiring is a canonical-composition decision for the PR #41 candidate lane, not an additive model-
-  intelligence slice; mutating `BrokerModelRuntime.start` semantics belongs to that owner.
-- The full architecture suite currently cannot certify a broker change: `tests/arch/adapter-request-input.test.ts`
-  wedges (>1 h, 0.5 s CPU, pre-existing; transcript preserved) — `FULL_ARCH_GATE = PARTIAL`.
-- Real worker inference additionally requires the host to clear the admission floor (see below), so no
-  end-to-end runtime proof is claimable tonight regardless of composition.
+- No source code was changed and no model/runtime was started during this static follow-up. The verified
+  callbacks show that construction-only wiring is unsafe; the integration contract must be made explicit
+  before mutation. This conclusion does not reject llama.cpp or supersede PR #41 review.
+- The full architecture suite currently cannot certify a broker change:
+  `tests/arch/adapter-request-input.test.ts` wedges (>1 h, 0.5 s CPU, pre-existing; transcript preserved) —
+  `FULL_ARCH_GATE = PARTIAL`.
+- Live worker inference additionally requires the host to clear the applicable admission floors. No local
+  runtime qualification or release claim follows from this static trace.
 
 ## Adjacent truthful state (same slice)
 
