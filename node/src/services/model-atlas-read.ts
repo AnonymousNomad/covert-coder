@@ -28,9 +28,14 @@ export function createModelAtlasRead(options: ModelAtlasReadOptions) {
   const now = options.now ?? (() => new Date());
 
   async function modelsResponse(models: AtlasReadModelInput[]): Promise<ModelAtlasModelsResponseT> {
+    // One store scan for the whole list; per-model semantics come from the
+    // canonical state composition in the store.
+    const basisByModel = new Map(models.map(model => [model.model_id, model.basis]));
+    const states = await options.atlas.statesFor(models.map(model => model.model_id), modelId => basisByModel.get(modelId)!);
     const entries: ModelAtlasModelsResponseT['models'] = [];
     for (const model of models) {
-      const state = await options.atlas.stateFor(model.model_id, model.basis);
+      const state = states.get(model.model_id);
+      if (state === undefined) continue;
       const candidate = await options.atlas.readCandidate(model.model_id);
       const latest: AtlasRecordedEvaluationT | null = state.latest;
       entries.push({

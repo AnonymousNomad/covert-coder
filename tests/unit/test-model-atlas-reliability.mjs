@@ -240,3 +240,30 @@ test('concurrent reads during writes never observe a half-written record', async
   const final = await atlas.historyFor('local:reliability-model');
   assert.equal(final.length, 8);
 });
+
+test('batch state resolution matches per-model resolution exactly, including anomalies', async () => {
+  const { evaluationsDir, atlas } = await setup();
+  await atlas.recordEvaluation(record());
+  await atlas.recordEvaluation(record({ evaluated_at: new Date(Date.UTC(2026, 9, 5, 11)).toISOString() }));
+  const otherFingerprint = { ...record().fingerprint, model_id: 'local:other-model' };
+  await atlas.recordEvaluation(record({ model_id: 'local:other-model', fingerprint: otherFingerprint }));
+  await fs.mkdir(evaluationsDir, { recursive: true });
+  await fs.writeFile(path.join(evaluationsDir, 'damaged.json'), '{broken', 'utf8');
+
+  const ids = ['local:reliability-model', 'local:other-model', 'local:ghost-model'];
+  const batch = await atlas.statesFor(ids, () => basis());
+  const strip = value => value === null ? null : {
+    ...value,
+    freshness: { ...value.freshness, checked_at: 'volatile' },
+    latest: value.latest === null ? null : { ...value.latest, freshness: { ...value.latest.freshness, checked_at: 'volatile' } }
+  };
+  for (const id of ids) {
+    const single = await atlas.stateFor(id, basis());
+    assert.deepEqual(strip(batch.get(id)), strip(single), id);
+  }
+  assert.equal(batch.get('local:reliability-model').state, 'INCOMPLETE');
+  assert.ok(batch.get('local:reliability-model').stale_reasons.includes('corrupt_evidence'));
+  assert.equal(batch.get('local:other-model').state, 'INCOMPLETE');
+  assert.equal(batch.get('local:ghost-model').state, 'INCOMPLETE');
+  assert.equal(batch.get('local:ghost-model').latest, null);
+});
