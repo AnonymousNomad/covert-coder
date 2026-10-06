@@ -53,6 +53,9 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await second.getByRole('button', { name: 'OPEN SESSION', exact: true }).click();
     await expect.poll(() => opened.length).toBe(2);
     expect(new Set(opened).size).toBe(2);
+    const [firstSessionId, secondSessionId] = opened;
+    if (!firstSessionId || !secondSessionId) throw new Error('Both canonical session IDs are required');
+    const sessionIds = [firstSessionId, secondSessionId] as const;
     await expect(first.locator('.terminal-session-state')).toContainText('RUNNING');
     await expect(second.locator('.terminal-session-state')).toContainText('RUNNING');
     const suffixA = randomUUID().replaceAll('-', '');
@@ -68,12 +71,12 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await expect(first.locator('.xterm-screen')).not.toContainText(b);
     await expect(second.locator('.xterm-screen')).not.toContainText(a);
     await first.getByRole('button', { name: 'REFRESH', exact: true }).click();
-    await expect.poll(() => geometry.get(opened[0])?.cols ?? 0).toBeGreaterThan(0);
-    const beforeCols = geometry.get(opened[0])!.cols;
+    await expect.poll(() => geometry.get(firstSessionId)?.cols ?? 0).toBeGreaterThan(0);
+    const beforeCols = geometry.get(firstSessionId)!.cols;
     await first.getByRole('button', { name: 'Maximize or restore window', exact: true }).click();
     await expect.poll(async () => {
       await first.getByRole('button', { name: 'REFRESH', exact: true }).click();
-      return geometry.get(opened[0])?.cols ?? beforeCols;
+      return geometry.get(firstSessionId)?.cols ?? beforeCols;
     }).not.toBe(beforeCols);
     await first.getByRole('button', { name: 'Maximize or restore window', exact: true }).click();
     await first.getByRole('button', { name: 'Minimize window', exact: true }).click();
@@ -84,7 +87,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await expect(second).toHaveCount(0);
     await page.getByRole('button', { name: 'New terminal window', exact: true }).click();
     await expect(second).toBeVisible();
-    await expect(second.locator('.terminal-session-meta')).toContainText(opened[1].slice(0, 8));
+    await expect(second.locator('.terminal-session-meta')).toContainText(secondSessionId.slice(0, 8));
     expect(opened.length).toBe(2);
     const suffixC = randomUUID().replaceAll('-', '');
     const c = `COVERT_REOPEN_${suffixC}`;
@@ -97,9 +100,11 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await page.getByRole('button', { name: 'Pair browser session', exact: true }).click();
     await expect(page.locator('[aria-label="Authority paired: PAIRED"]')).toBeVisible();
     for (const [index, frame] of [first, second].entries()) {
-      await frame.getByRole('button', { name: `Reattach terminal session ${opened[index]}`, exact: true }).click();
+      const sessionId = sessionIds[index];
+      if (!sessionId) throw new Error('Unexpected terminal window index');
+      await frame.getByRole('button', { name: `Reattach terminal session ${sessionId}`, exact: true }).click();
       await expect(frame.locator('.terminal-session-state')).toContainText('RUNNING');
-      await expect(frame.locator('.terminal-session-meta')).toContainText(opened[index].slice(0, 8));
+      await expect(frame.locator('.terminal-session-meta')).toContainText(sessionId.slice(0, 8));
     }
     const suffixD = randomUUID().replaceAll('-', '');
     const d = `COVERT_RESTORE_${suffixD}`;
