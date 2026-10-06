@@ -283,31 +283,33 @@ export function createModelAtlas(options: ModelAtlasOptions) {
     return latest === undefined ? null : withFreshness(latest, current);
   }
 
-  async function stateFor(modelId: string, current: AtlasFreshnessBasis): Promise<{
+  function composeState(
+    latest: AtlasEvaluationRecordT | undefined,
+    corruptCount: number,
+    integrityFailures: number,
+    current: AtlasFreshnessBasis
+  ): {
     state: 'NEVER_EVALUATED' | 'CURRENT' | 'STALE' | 'INCOMPLETE';
     stale_reasons: string[];
     scope: 'NONE' | 'RESOURCE' | 'FULL';
     latest: AtlasRecordedEvaluationT | null;
     corrupt_count: number;
-  }> {
-    const { records, corrupt, integrity_failures: integrityFailures } = await readAll(modelId);
-    const latest = records.at(-1);
+  } {
+    const anomalyReasons: string[] = [];
+    if (corruptCount > 0) anomalyReasons.push('corrupt_evidence');
+    if (integrityFailures > 0) anomalyReasons.push('integrity_mismatch');
+    const anomalyCount = corruptCount + integrityFailures;
     if (latest === undefined) {
-      const reasons: string[] = [];
-      if (corrupt.length > 0) reasons.push('corrupt_evidence');
-      if (integrityFailures.length > 0) reasons.push('integrity_mismatch');
-      if (reasons.length > 0) {
-        return { state: 'INCOMPLETE', stale_reasons: reasons.sort(), scope: 'FULL', latest: null, corrupt_count: corrupt.length + integrityFailures.length };
+      if (anomalyReasons.length > 0) {
+        return { state: 'INCOMPLETE', stale_reasons: anomalyReasons.sort(), scope: 'FULL', latest: null, corrupt_count: anomalyCount };
       }
       return { state: 'NEVER_EVALUATED', stale_reasons: [], scope: 'NONE', latest: null, corrupt_count: 0 };
     }
-    const incompleteReasons: string[] = [];
-    if (latest.native === null) incompleteReasons.push('native_missing');
-    if (latest.harnessed === null) incompleteReasons.push('harnessed_missing');
-    if (corrupt.length > 0) incompleteReasons.push('corrupt_evidence');
-    if (integrityFailures.length > 0) incompleteReasons.push('integrity_mismatch');
-    if (incompleteReasons.length > 0) {
-      return { state: 'INCOMPLETE', stale_reasons: incompleteReasons.sort(), scope: 'FULL', latest: withFreshness(latest, current), corrupt_count: corrupt.length + integrityFailures.length };
+    const reasons = [...anomalyReasons];
+    if (latest.native === null) reasons.push('native_missing');
+    if (latest.harnessed === null) reasons.push('harnessed_missing');
+    if (reasons.length > 0) {
+      return { state: 'INCOMPLETE', stale_reasons: reasons.sort(), scope: 'FULL', latest: withFreshness(latest, current), corrupt_count: anomalyCount };
     }
     const verdict = compareFingerprints(latest.fingerprint, current);
     return {
@@ -315,8 +317,31 @@ export function createModelAtlas(options: ModelAtlasOptions) {
       stale_reasons: verdict.stale_reasons,
       scope: verdict.scope,
       latest: withFreshness(latest, current),
-      corrupt_count: corrupt.length
+      corrupt_count: anomalyCount
     };
+  }
+
+  async function stateFor(modelId: string, current: AtlasFreshnessBasis) {
+    const { records, corrupt, integrity_failures: integrityFailures } = await readAll(modelId);
+    return composeState(records.at(-1), corrupt.length, integrityFailures.length, current);
+  }
+
+  // Batch state resolution scans the store exactly once for many models instead
+  // of rescanning per model. It shares composeState with the single-model path,
+  // so semantics are identical; only filesystem access is reduced.
+  async function statesFor(modelIds: string[], currentFor: (modelId: string) => AtlasFreshnessBasis) {
+    const inspection = await inspectStore(null);
+    const byModel = new Map<string, AtlasEvaluationRecordT[]>();
+    for (const record of inspection.records) {
+      const list = byModel.get(record.model_id) ?? [];
+      list.push(record);
+      byModel.set(record.model_id, list);
+    }
+    const results = new Map<string, ReturnType<typeof composeState>>();
+    for (const modelId of modelIds) {
+      results.set(modelId, composeState(byModel.get(modelId)?.at(-1), inspection.corrupt.length, inspection.integrity_failures.length, currentFor(modelId)));
+    }
+    return results;
   }
 
   async function historyFor(modelId: string): Promise<ModelAtlasHistoryEntryT[]> {
@@ -435,6 +460,7 @@ export function createModelAtlas(options: ModelAtlasOptions) {
     recordEvaluation,
     latestFor,
     stateFor,
+    statesFor,
     historyFor,
     createCandidate,
     readCandidate,
