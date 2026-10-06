@@ -31,6 +31,7 @@ function harness() {
   let nextFrame = 1; let fits = 0; let openCalls = 0; let resumeCalls = 0;
   const opening = deferred(), resuming = deferred();
   let subscribed, connectionChanged; let snapshotCalls = 0; let snapshotProvider = null;
+  let deferParserWrites = false; const parserCallbacks = [];
   const sessions = ['session:a', 'session:b'].map(sessionId => ({ sessionId, state: 'running', provider: 'native', shell: 'pwsh', owner: 'operator', createdAt: 1, exitCode: null, cleanup: 'clean' }));
   const api = {
     terminalProviders: async () => ({ providers: [{ id: 'native', label: 'Native PTY', state: 'available', detail: 'fixture', shells: [{ id: 'pwsh', label: 'PowerShell' }] }] }),
@@ -44,7 +45,7 @@ function harness() {
     constructor(options) { this.options = options; this.cols = 90; this.rows = 20; this.output = ''; terminals.push(this); }
     loadAddon() {} open(host) { this.host = host; } onData(listener) { this.input = listener; } focus() {}
     reset() { this.output = ''; }
-    write(data) { this.output += data; } dispose() { this.disposed = true; }
+    write(data, callback) { this.output += data; if (callback) { if (deferParserWrites) parserCallbacks.push(callback); else callback(); } } dispose() { this.disposed = true; }
   }
   const document = { createElement: tag => new Element(tag), addEventListener() {}, removeEventListener() {} };
   const window = { addEventListener() {}, removeEventListener() {}, setInterval: () => 1, clearInterval() {}, requestAnimationFrame: callback => { const id = nextFrame++; frames.set(id, callback); return id; }, cancelAnimationFrame: id => frames.delete(id) };
@@ -63,6 +64,7 @@ function harness() {
     create(viewId) { const root = new Element(); const handle = exports.createTerminalPanel(root, {}, undefined, { viewId, bindings }); return { root, handle }; },
     bindings, terminals, sent, opening, resuming, sessions, observers,
     subscriptionReady() { subscribed?.(); }, connection(connected) { connectionChanged?.(connected); }, setSnapshotProvider(provider) { snapshotProvider = provider; }, get snapshotCalls() { return snapshotCalls; },
+    deferParsing(value) { deferParserWrites = value; }, finishParsing() { for (const callback of parserCallbacks.splice(0)) callback(); },
     get openCalls() { return openCalls; }, get resumeCalls() { return resumeCalls; }, get fits() { return fits; },
     event(data) { for (const listener of subscriptions) listener(data); },
     flushFrames() { const pending = [...frames.values()]; frames.clear(); for (const callback of pending) callback(); }
@@ -137,5 +139,18 @@ test('active sessions retain a read-only refresh control without opening another
   refresh.click(); await tick();
   assert.ok(h.snapshotCalls > before);
   assert.equal(h.openCalls, 0); assert.equal(h.resumeCalls, 1);
+  view.handle.dispose();
+});
+
+test('historical terminal parser replies and operator input cannot reach the PTY before asynchronous replay parsing completes', async () => {
+  const h = harness(); const view = h.create('terminal'); await tick(); h.deferParsing(true);
+  find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+  h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: '\u001b[c', endOffset: 3, truncated: false } }); await tick();
+  h.terminals[0].input('\u001b[?1;2c'); h.terminals[0].input('operator input while restoring');
+  assert.deepEqual(h.sent, [], 'historical parser replies must never become live stdin');
+  assert.equal(h.terminals[0].options.disableStdin, true);
+  h.deferParsing(false); h.finishParsing(); await tick();
+  h.terminals[0].input('after parse');
+  assert.equal(h.sent.at(-1)?.data, 'after parse');
   view.handle.dispose();
 });

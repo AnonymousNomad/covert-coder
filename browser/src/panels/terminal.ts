@@ -76,6 +76,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let resumeInProgress = false;
   let openInProgress = false;
   let controlConfirmed = false;
+  let outputReplayInProgress = false;
+  let outputReplayGeneration = 0;
+  let finishReplay: (() => void) | null = null;
   let outputProjection = new TerminalOutputProjection();
   let outputRecoveryGeneration = 0;
   let outputRecoveryInProgress = false;
@@ -87,6 +90,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let stopButton: HTMLButtonElement | null = null;
   let windowsResizeHandler: (() => void) | null = null;
   const bus = getSharedEvents();
+  let transportConnected = bus?.connected?.() !== false;
+
+  function synchronizeInput(): void {
+    if (xterm) xterm.options.disableStdin = !alive || !controlConfirmed || resumeInProgress || outputReplayInProgress || !transportConnected;
+  }
 
   const providerEls = new Map<string, HTMLElement>();
   let providers: TerminalProviderInfoT[] = [];
@@ -233,14 +241,14 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       lineHeight: appearance.lineHeight,
       fontFamily: `'${appearance.terminalFont.replaceAll("'", '')}', Consolas, monospace`,
       scrollback: 5000,
-      disableStdin: !controlConfirmed || bus?.connected?.() === false,
+      disableStdin: !controlConfirmed || resumeInProgress || outputReplayInProgress || !transportConnected,
       theme: terminalThemeFor(appearance)
     });
     const addon = new FitAddon();
     refreshedTerm.loadAddon(addon);
     refreshedTerm.open(termHost);
     refreshedTerm.onData(data => {
-      if (alive && controlConfirmed && !resumeInProgress && bus?.connected?.() !== false && activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
+      if (alive && xterm === refreshedTerm && controlConfirmed && !resumeInProgress && !outputReplayInProgress && transportConnected && activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
     });
     xterm = refreshedTerm;
     fitAddon = addon;
@@ -258,11 +266,23 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     status.textContent = message;
   }
 
-  function restoreOutput(snapshot: TerminalOutputSnapshotT): boolean {
+  async function restoreOutput(snapshot: TerminalOutputSnapshotT): Promise<boolean> {
     if (snapshot.sessionId !== activeSessionId || !xterm) throw new Error('output snapshot session identity mismatch');
+    const terminal = xterm, generation = ++outputReplayGeneration;
     const result = outputProjection.restore(snapshot);
-    xterm.reset();
-    xterm.write(result.reset + result.append);
+    outputReplayInProgress = true;
+    synchronizeInput();
+    terminal.reset();
+    // xterm parses asynchronously and can emit device-query replies through onData.
+    // Historical output is display data; it must not manufacture live PTY input.
+    await new Promise<void>(resolve => {
+      finishReplay = resolve;
+      terminal.write(result.reset + result.append, resolve);
+    });
+    if (!alive || xterm !== terminal || generation !== outputReplayGeneration || activeSessionId !== snapshot.sessionId) return false;
+    finishReplay = null;
+    outputReplayInProgress = false;
+    synchronizeInput();
     outputStatus(snapshot.truncated ? 'RESTORED · bounded history was truncated' : 'OUTPUT SYNCHRONIZED');
     return result.needsSnapshot;
   }
@@ -279,7 +299,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       const snapshot = await api.terminalSessionOutput(id);
       if (!alive || activeSessionId !== id || generation !== outputRecoveryGeneration) return;
       legacyOutput = false;
-      retryNeeded = restoreOutput(snapshot);
+      retryNeeded = await restoreOutput(snapshot);
     } catch (error) {
       if (!alive || activeSessionId !== id || generation !== outputRecoveryGeneration) return;
       if ((error as { code?: string }).code === 'FORBIDDEN') {
@@ -315,6 +335,10 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   }
 
   function disposeSessionView(): void {
+    outputReplayGeneration++;
+    outputReplayInProgress = false;
+    finishReplay?.();
+    finishReplay = null;
     resizeObserver?.disconnect();
     resizeObserver = null;
     termElement = null;
@@ -445,10 +469,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       if (resumed.session.sessionId !== candidate.sessionId || resumed.session.state !== 'running') {
         throw new Error('resume response identity or state mismatch');
       }
-      if (resumed.output) restoreOutput(resumed.output);
+      if (resumed.output) await restoreOutput(resumed.output);
       else { legacyOutput = true; outputStatus('LIVE OUTPUT ONLY · replay snapshot unsupported'); }
+      if (!alive || activeSessionId !== candidate.sessionId || !xterm) return;
       controlConfirmed = true;
-      if (xterm) xterm.options.disableStdin = bus?.connected?.() === false;
+      synchronizeInput();
       if (stopButton) stopButton.disabled = false;
       const stage = sessionShell.querySelector('.terminal-stage');
       stage?.classList.remove('awaiting-approval');
@@ -461,7 +486,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       }
     } finally {
       resumeInProgress = false;
-      if (alive) { renderOpenControls(); scheduleFit(); if (controlConfirmed) void recoverOutput(); }
+      if (alive) { synchronizeInput(); renderOpenControls(); scheduleFit(); if (controlConfirmed) void recoverOutput(); }
     }
   }
 
@@ -550,8 +575,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   });
   const unsubscribeSubscribed = bus?.onSubscribed?.('terminal', () => { if (controlConfirmed) void recoverOutput(); });
   const unsubscribeStatus = bus?.subscribeStatus?.(connected => {
+    transportConnected = connected;
     if (!xterm || !controlConfirmed) return;
-    xterm.options.disableStdin = !connected;
+    synchronizeInput();
     if (!connected) outputStatus('OUTPUT STALE · event socket disconnected; input paused');
   });
   const appearanceChanged = (): void => {
