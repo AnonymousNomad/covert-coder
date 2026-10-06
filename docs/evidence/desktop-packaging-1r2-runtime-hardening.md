@@ -52,7 +52,7 @@ Local package and bundle inspection established:
 - `browser/src/editor/lsp-providers.ts` registers a Monaco hover provider using language-server content; Monaco's markdown renderer sanitizes that rendered content. The sanitizer path is therefore reachable in Covert's build.
 - The root `dompurify` override to `3.4.13` does not replace Monaco's vendored copy.
 
-Repository rule R9 prohibits cloud access. The local npm cache has no verified fixed Monaco candidate or complete primary advisory metadata for this vendored configuration. Because the code is included and reachable, this review cannot claim the finding is inapplicable. No dependency upgrade was guessed, and `npm audit fix` was not run. The production sanitizer concern remains a release blocker until an offline, source-verifiable fixed dependency path is available.
+Repository rule R9 prohibits cloud access. The prior local [1R1 dependency record](desktop-dogfood-2026-10-06.md) preserves GHSA-p98j-92pf-mc4p and GHSA-6688-9rhm-gjv2, both affecting DOMPurify through `3.4.15`; it also records that Monaco `0.57.0` embeds DOMPurify `3.4.15`. That Monaco version is therefore not a demonstrated safe fix. The local npm cache has no verified Monaco candidate embedding a fixed DOMPurify release. Because the code is included and reachable, this review cannot claim the finding is inapplicable. No dependency upgrade was guessed, and `npm audit fix` was not run. The production sanitizer concern remains a release blocker until an offline, source-verifiable fixed dependency path is available.
 
 ## Verification at this checkpoint
 
@@ -71,6 +71,8 @@ Exit: `0`.
 Source commit: `5e9b993350dd8045043434455423320c7d37fa8c`
 Branch: `codex/desktop-dogfood-integrated-20261006`
 Tree at build: clean; no tracked or untracked source changes.
+
+`package.json` and `package-lock.json` are unchanged from starting HEAD `318b4ba9af8ff081ec25c17d4b24a5b6d3331b7d`. `package-lock.json` SHA-256: `655A77AA57CB701F8E762B4D7E3D6C89406DEFA07D4739D8093CF99F22E193A3`.
 
 Commands and results, in order:
 
@@ -102,7 +104,7 @@ The installed launcher has the same size as the release launcher (`11,761,152` b
 - Workspace and logs were outside the install root at `C:\Users\Grey_\AppData\Local\org.ferrellsyntheticintelligence.aide\workspace` and `.aide\logs`.
 - The launcher shell had no `AIDE_MODEL_DIR` override. The installed Rust bootstrap's Windows default selects `E:\CovertData\CovertCoder\models` when E: is present and passes the resolved path to child processes. That model directory existed with 0 model files; its runtime directory, `E:\CovertData\CovertCoder\models\runtime`, existed with 0 runtime files. No model was downloaded or bundled.
 - At launch, listeners were PID `15548` on 4779, PID `20744` on 4778, and PID `11388` on 4777. `CloseMainWindow()` returned `true`; the app exited within 20 s. Exact app/backend process identities were absent afterward, and ports 4777–4779 had no listeners. Exit code was unavailable from the process wrapper.
-- Available physical RAM after shutdown was `3,010,711,552` bytes, below the required `3,221,225,472`-byte floor. No second app launch or terminal probe was started below that floor.
+- Available physical RAM after shutdown was `3,010,711,552` bytes, below the required `3,221,225,472`-byte floor. Later serial samples were `3,203,428,352` bytes at `13:38:45 CDT`, `3,208,232,960` bytes at `13:39:31 CDT`, and `3,186,876,416` bytes at `13:40:13 CDT`; none met the floor. No second app launch or terminal probe was started below that floor, and no process was terminated to obtain headroom.
 
 The exact installed artifact launched and served the base app, but the raw executable hash difference is unresolved, and an operator-paired terminal was not opened. Packaging remains partial; no release or dogfood acceptance is claimed.
 
