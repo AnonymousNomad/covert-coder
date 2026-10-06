@@ -51,6 +51,7 @@ const HTTP_POLICY = new Map([
   // authority accounting stays central and the waiver count is untouched.
   ['GET /api/terminal/providers', 'terminal.read'],
   ['GET /api/terminal/sessions', 'terminal.read'],
+  ['GET /api/terminal/sessions/output', 'terminal.read'],
   ['POST /api/terminal/sessions', 'terminal.session.start'],
   ['POST /api/terminal/sessions/stop', 'terminal.session.stop'],
   ['POST /api/terminal/sessions/resume', 'terminal.session.resume'],

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
-import { TerminalControlMessage, type TerminalEventT, type TerminalSessionCleanupT, type TerminalSessionInfoT, type TerminalSessionStateT } from '../../../common/contracts/terminal.ts';
+import { TerminalControlMessage, type TerminalEventT, type TerminalSessionCleanupT, type TerminalSessionInfoT, type TerminalSessionStateT, type TerminalOutputSnapshotT } from '../../../common/contracts/terminal.ts';
 import { createRuntimeProviderRegistry, createDefaultProviderDeps, translateCwd, type RuntimeProviderDeps, type RuntimeProviderRegistry, type PtyProcess, type SpawnPtyFn } from './runtime-providers.ts';
 import type { WsActorIdentity } from '../events.ts';
 
@@ -82,6 +82,7 @@ interface Session {
   queuedBytes: number;
   truncated: boolean;
   scrollback: string;
+  outputOffset: number;
   scrollbackTruncated: boolean;
   drainTimer: ReturnType<typeof setInterval> | null;
   stopTimer: ReturnType<typeof setTimeout> | null;
@@ -180,6 +181,7 @@ export class TerminalSessionService {
       queuedBytes: 0,
       truncated: false,
       scrollback: '',
+      outputOffset: 0,
       scrollbackTruncated: false,
       drainTimer: null,
       stopTimer: null
@@ -217,7 +219,7 @@ export class TerminalSessionService {
     return { sessionId: session.id, state: session.state, cleanup: session.cleanup };
   }
 
-  resume(owner: string, sessionId: string, expectedOwner: string): { session: TerminalSessionInfoT; scrollbackTruncated: boolean } | { error: string } {
+  resume(owner: string, sessionId: string, expectedOwner: string): { session: TerminalSessionInfoT; scrollbackTruncated: boolean; output: TerminalOutputSnapshotT } | { error: string } {
     const session = this.sessions.get(sessionId);
     if (!session) return { error: 'unknown session' };
     if (session.owner !== expectedOwner) return { error: 'session owner changed' };
@@ -230,9 +232,19 @@ export class TerminalSessionService {
     if (session.scrollbackTruncated) {
       this.onEvent({ sessionId: session.id, kind: 'error', message: 'restored terminal scrollback was truncated' }, session.owner);
     }
-    this.emitOutput(session.id, session.scrollback, session.owner);
+    // Replay travels in the owner-bound HTTP response, not an unacknowledged event socket.
     this.onEvent({ sessionId: session.id, kind: 'state', state: session.state, exitCode: session.exitCode }, session.owner);
-    return { session: this.info(session), scrollbackTruncated: session.scrollbackTruncated };
+    return { session: this.info(session), scrollbackTruncated: session.scrollbackTruncated, output: this.snapshotOutput(session) };
+  }
+
+  outputSnapshot(owner: string, sessionId: string): TerminalOutputSnapshotT | { error: string } {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.owner !== owner) return { error: 'session output is unavailable to this actor' };
+    return this.snapshotOutput(session);
+  }
+
+  private snapshotOutput(session: Session): TerminalOutputSnapshotT {
+    return { sessionId: session.id, output: session.scrollback, endOffset: session.outputOffset, truncated: session.scrollbackTruncated };
   }
 
   // Control is activity inside an already-admitted session, never a new
@@ -273,6 +285,7 @@ export class TerminalSessionService {
 
   private enqueue(session: Session, data: string): void {
     if (!data) return;
+    session.outputOffset += data.length;
     this.rememberOutput(session, data);
     session.queue.push(data);
     session.queuedBytes += data.length;
@@ -318,19 +331,6 @@ export class TerminalSessionService {
     session.scrollback = text;
   }
 
-  private emitOutput(sessionId: string, text: string, owner: string): void {
-    for (let offset = 0; offset < text.length;) {
-      let end = Math.min(offset + CHUNK_CHARS, text.length);
-      if (end < text.length) {
-        const last = text.charCodeAt(end - 1);
-        const next = text.charCodeAt(end);
-        if (last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end -= 1;
-      }
-      this.onEvent({ sessionId, kind: 'output', data: text.slice(offset, end) }, owner);
-      offset = end;
-    }
-  }
-
   private drain(session: Session): void {
     if (session.truncated && session.queuedBytes === 0) {
       session.truncated = false;
@@ -349,7 +349,7 @@ export class TerminalSessionService {
       }
       session.queuedBytes -= out.length;
       budget -= out.length;
-      if (out) this.onEvent({ sessionId: session.id, kind: 'output', data: out }, session.owner);
+      if (out) this.onEvent({ sessionId: session.id, kind: 'output', data: out, endOffset: session.outputOffset - session.queuedBytes }, session.owner);
     }
   }
 
@@ -376,6 +376,10 @@ export class TerminalSessionService {
     session.state = 'stopped';
     // Flush anything still buffered before announcing exit.
     this.drain(session);
+    session.scrollback = '';
+    session.scrollbackTruncated = false;
+    session.queue = [];
+    session.queuedBytes = 0;
     this.onEvent({ sessionId: session.id, kind: 'exit', exitCode, cleanup }, session.owner);
     this.onEvent({ sessionId: session.id, kind: 'state', state: 'stopped', exitCode }, session.owner);
     this.logger.info('terminal session stopped', { sessionId: session.id, exitCode, cleanup });

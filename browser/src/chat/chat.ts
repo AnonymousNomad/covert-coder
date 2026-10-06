@@ -148,14 +148,14 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
       if (latest !== undefined) {
         conversationId = latest.id;
         history = latest.messages;
-        timeline = history.map(message => ({ kind: 'chat', message }));
+        timeline = [...history.map(message => ({ kind: 'chat' as const, message })), ...timeline.filter(entry => entry.kind !== 'chat')];
         boundModelId = restoreConversationRouteId(latest.modelId, routes);
       } else {
         let actTarget: RoleTargetT = 'local';
         try { actTarget = (await api.connections()).routed_roles.coder; }
         catch { /* the safe default remains local */ }
         boundModelId = initialConversationRouteId(orderedRoutes(), actTarget);
-        timeline = [];
+        timeline = timeline.filter(entry => entry.kind !== 'chat');
       }
 
       initialized = true;
@@ -227,6 +227,8 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
         reask.disabled = streaming;
         reask.addEventListener('click', () => {
           if (streaming) return;
+          const route = routeById(boundModelId);
+          if (!route || route.status === 'down' || route.status === 'starting') { showBanner('The pinned conversation route is unavailable; the previous answer is retained.'); return; }
           const index = history.indexOf(message);
           if (index >= 0) {
             const entryIndex = timeline.findIndex(candidate => candidate.kind === 'chat' && candidate.message === message);
@@ -234,7 +236,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
             history.splice(index);
             timeline.splice(entryIndex);
             renderAll();
-            void send();
+            void sendAsk('');
           }
         });
         labelRow.appendChild(reask);
@@ -314,6 +316,10 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   async function submitGoverned(nextMode: 'plan' | 'act', task: string): Promise<void> {
     const content = task.trim();
     if (content.length === 0) return;
+    if (streaming) {
+      showBanner('Finish or stop the current ASK response before starting a governed task.');
+      return;
+    }
     if (!governedAvailable || governedSubmitting) {
       showBanner('A governed Cipher task is already active or unavailable. The existing task remains the source of status.');
       return;
@@ -375,6 +381,17 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
       await submitGoverned(dispatch.mode, content);
       return;
     }
+    await sendAsk(content);
+  }
+
+  function removeChatMessage(message: ChatMessageT): void {
+    const historyIndex = history.indexOf(message);
+    if (historyIndex >= 0) history.splice(historyIndex, 1);
+    const timelineIndex = timeline.findIndex(entry => entry.kind === 'chat' && entry.message === message);
+    if (timelineIndex >= 0) timeline.splice(timelineIndex, 1);
+  }
+
+  async function sendAsk(content: string): Promise<void> {
     if (content.length === 0 && history[history.length - 1]?.role !== 'user') return;
     if (streaming) return;
     if (boundModelId.length === 0) {
@@ -453,17 +470,15 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
         }
       }
       if (assistant.content.length === 0) {
-        history.pop();
-        timeline.pop();
+        removeChatMessage(assistant);
         opts.onToast?.('NOT_READY', 'the model returned an empty response');
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        if (assistant.content.length === 0) { history.pop(); timeline.pop(); }
+        if (assistant.content.length === 0) removeChatMessage(assistant);
         else assistant.content += '\n[stopped]';
       } else {
-        history.pop();
-        timeline.pop();
+        removeChatMessage(assistant);
         opts.onToast?.('INTERNAL', error instanceof Error ? error.message : 'chat failed');
       }
     } finally {

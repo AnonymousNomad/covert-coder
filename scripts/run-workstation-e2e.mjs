@@ -12,6 +12,7 @@ const runId = randomUUID();
 const tempRoot = path.resolve(os.tmpdir());
 const workspace = path.join(tempRoot, `covert-workstation-e2e-${runId}`);
 const pairingProof = path.join(tempRoot, `covert-workstation-e2e-pair-${runId}.txt`);
+const proofFiles = [pairingProof, ...['terminal-refresh', 'dual-terminals', 'dual-restart'].map(suffix => `${pairingProof}.${suffix}`)];
 
 function assertOwnedTempPath(target) {
   const relative = path.relative(tempRoot, target);
@@ -43,7 +44,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function cleanupFixture() {
   assertOwnedTempPath(workspace);
-  assertOwnedTempPath(pairingProof);
+  for (const proof of proofFiles) assertOwnedTempPath(proof);
   const exists = async target => {
     try {
       await fs.access(target);
@@ -53,7 +54,7 @@ async function cleanupFixture() {
       throw error;
     }
   };
-  const ownedArtifactExists = await Promise.all([workspace, pairingProof].map(exists));
+  const ownedArtifactExists = await Promise.all([workspace, ...proofFiles].map(exists));
   if (!ownedArtifactExists.some(Boolean)) return;
 
   let portsClosed = false;
@@ -66,7 +67,7 @@ async function cleanupFixture() {
 
   for (let attempt = 0; attempt < 10; attempt++) {
     try {
-      await fs.rm(pairingProof, { force: true });
+      for (const proof of proofFiles) await fs.rm(proof, { force: true });
       await fs.rm(workspace, { recursive: true, force: true });
       return;
     } catch (error) {

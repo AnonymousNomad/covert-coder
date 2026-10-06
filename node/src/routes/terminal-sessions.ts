@@ -1,6 +1,8 @@
 import { type Route, RouteError } from '../server.ts';
 import {
   TerminalProviderListResponse,
+  TerminalOutputSnapshot,
+  TerminalOutputQuery,
   TerminalSessionListResponse,
   TerminalSessionOpenRequest,
   TerminalSessionOpenResponse,
@@ -30,6 +32,18 @@ export function routesForTerminalSessions(service: TerminalSessionService): Rout
       path: '/api/terminal/sessions',
       response: TerminalSessionListResponse,
       handler: () => ({ sessions: service.list() })
+    },
+    {
+      method: 'GET',
+      path: '/api/terminal/sessions/output',
+      response: TerminalOutputSnapshot,
+      query: TerminalOutputQuery,
+      handler: ({ query, actor }) => {
+        if (!actor) throw new RouteError('FORBIDDEN', 'authenticated output owner required');
+        const result = service.outputSnapshot(actor.id, query.sessionId ?? '');
+        if ('error' in result) throw new RouteError('FORBIDDEN', result.error);
+        return result;
+      }
     },
     {
       method: 'POST',

@@ -149,7 +149,7 @@ async function connectWs(fixture: Awaited<ReturnType<typeof pairFixture>>, origi
   socket.send(JSON.stringify({ type: 'authenticate', token: tokenOf(fixture) }));
   await waitFor(messages, message => (message as { type?: string }).type === 'authenticated');
   socket.send(JSON.stringify({ type: 'subscribe', channels }));
-  await new Promise(resolve => setTimeout(resolve, 30));
+  await waitFor(messages, message => (message as { type?: string }).type === 'subscribed');
   sockets.push(socket);
   return { socket, messages };
 }
@@ -423,12 +423,13 @@ test('a newly paired operator needs an approved exact-session resume before reat
   assert.equal(resumedPayload.data.scrollbackTruncated, true, 'bounded scrollback reports its truncation state');
   assert.equal(pty.killed, false, 'reattachment preserves the existing PTY process');
   assert.equal(spawnCount, beforeCount + 1, 'reattachment must not create a duplicate PTY');
-  await waitFor(newOwnerClient.messages, message => terminalEvent(message, data => data.sessionId === sessionId && data.kind === 'output') !== null);
-  const replay = newOwnerClient.messages
-    .map(message => terminalEvent(message, data => data.sessionId === sessionId && data.kind === 'output'))
-    .filter((event): event is NonNullable<typeof event> => event !== null)
-    .map(event => String((event.data as { data?: string }).data ?? ''))
-    .join('');
+  assert.ok(resumedPayload.data.output, 'approved resume carries canonical replay independent of the event socket');
+  const replay = resumedPayload.data.output.output;
+  assert.equal(resumedPayload.data.output.endOffset, priorOutput.length);
+  const deniedOutput = await owner.request(`/api/terminal/sessions/output?sessionId=${encodeURIComponent(sessionId)}`);
+  assert.equal(deniedOutput.status, 403, 'former owner cannot fetch replay snapshots');
+  const availableOutput = await peer.request(`/api/terminal/sessions/output?sessionId=${encodeURIComponent(sessionId)}`);
+  assert.equal(availableOutput.status, 200, 'current owner can recover output without another PTY or control transfer');
   assert.match(replay, /CW05C_HISTORY_5000/, 'the latest terminal output is replayed to the approved actor');
   assert.doesNotMatch(replay, /CW05C_HISTORY_0\r?\n/, 'old output outside the bounded history is not replayed');
   assert.ok(newOwnerClient.messages.some(message => {

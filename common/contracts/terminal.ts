@@ -131,8 +131,18 @@ export const TerminalSessionResumeRequest = z
   .strict();
 export type TerminalSessionResumeRequestT = z.infer<typeof TerminalSessionResumeRequest>;
 
+// Offsets count UTF-16 code units produced by the canonical PTY, including queued output.
+export const TerminalOutputQuery = z.object({ sessionId: z.string().min(1).max(128) }).strict();
+export const TerminalOutputSnapshot = z.object({
+  sessionId: z.string().min(1),
+  output: z.string().max(262144),
+  endOffset: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  truncated: z.boolean()
+}).strict().refine(value => value.output.length <= value.endOffset);
+export type TerminalOutputSnapshotT = z.infer<typeof TerminalOutputSnapshot>;
+
 export const TerminalSessionResumeResponse = z
-  .object({ session: TerminalSessionInfo, scrollbackTruncated: z.boolean() })
+  .object({ session: TerminalSessionInfo, scrollbackTruncated: z.boolean(), output: TerminalOutputSnapshot.optional() })
   .strict();
 export type TerminalSessionResumeResponseT = z.infer<typeof TerminalSessionResumeResponse>;
 
@@ -178,7 +188,7 @@ export const TerminalControlMessage = z.discriminatedUnion('action', [
 export type TerminalControlMessageT = z.infer<typeof TerminalControlMessage>;
 
 export const TerminalEvent = z.discriminatedUnion('kind', [
-  z.object({ sessionId: z.string().min(1), kind: z.literal('output'), data: z.string() }).strict(),
+  z.object({ sessionId: z.string().min(1), kind: z.literal('output'), data: z.string(), endOffset: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional() }).strict(),
   z
     .object({
       sessionId: z.string().min(1),

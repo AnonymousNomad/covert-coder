@@ -43,6 +43,9 @@ for (const route of routes) server.route(route);
 // fixture proof is scoped to the test origin and stays in the OS temp directory.
 const proof = server.authority.control.createPairing(origin);
 await fs.writeFile(proofFile, proof, { encoding: 'utf8', mode: 0o600 });
+for (const suffix of ['terminal-refresh', 'dual-terminals', 'dual-restart']) {
+  await fs.writeFile(`${proofFile}.${suffix}`, server.authority.control.createPairing(origin), { encoding: 'utf8', mode: 0o600 });
+}
 
 const listener = await server.listen(port);
 listener.on('error', error => {

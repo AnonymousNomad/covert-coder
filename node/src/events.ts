@@ -178,6 +178,7 @@ export class EventHub {
     if (message.type === 'subscribe' && Array.isArray(message.channels)) {
       const channels = message.channels.filter((name: unknown): name is ChannelName => typeof name === 'string' && name in SCHEMAS);
       client.channels = new Set(channels);
+      client.socket.send(JSON.stringify({ type: 'subscribed', channels: [...client.channels] }));
       return;
     }
     if (message.type === 'terminal' && this.control) {

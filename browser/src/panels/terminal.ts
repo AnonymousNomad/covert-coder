@@ -17,9 +17,10 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { api } from '../services/api.ts';
 import { getSharedEvents } from '../services/ws.ts';
-import type { TerminalProviderInfoT, TerminalEventT, TerminalSessionInfoT } from '../../../common/contracts/terminal.ts';
+import type { TerminalProviderInfoT, TerminalEventT, TerminalSessionInfoT, TerminalOutputSnapshotT } from '../../../common/contracts/terminal.ts';
 import { TerminalEvent } from '../../../common/contracts/terminal.ts';
 import type { TaskStatusResponseT, TaskJobT } from '../../../common/contracts/tasks.ts';
+import { TerminalOutputProjection } from '../desktop/terminal-output-projection.ts';
 import type { TerminalViewBindings } from '../desktop/terminal-view-bindings.ts';
 import { DEFAULT_APPEARANCE, terminalThemeFor, type ThemeEngine } from '../desktop/theme.ts';
 
@@ -75,6 +76,10 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let resumeInProgress = false;
   let openInProgress = false;
   let controlConfirmed = false;
+  let outputProjection = new TerminalOutputProjection();
+  let outputRecoveryGeneration = 0;
+  let outputRecoveryInProgress = false;
+  let legacyOutput = false;
   let resizeObserver: ResizeObserver | null = null;
   let termElement: HTMLElement | null = null;
   let fitFrame: number | null = null;
@@ -99,6 +104,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     void refreshProviders();
     void refreshSessions();
     void refreshHistory();
+    if (controlConfirmed) void recoverOutput();
   });
 
   const openButton = document.createElement('button');
@@ -229,14 +235,14 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       lineHeight: appearance.lineHeight,
       fontFamily: `'${appearance.terminalFont.replaceAll("'", '')}', Consolas, monospace`,
       scrollback: 5000,
-      disableStdin: !controlConfirmed,
+      disableStdin: !controlConfirmed || bus?.connected?.() === false,
       theme: terminalThemeFor(appearance)
     });
     const addon = new FitAddon();
     refreshedTerm.loadAddon(addon);
     refreshedTerm.open(termHost);
     refreshedTerm.onData(data => {
-      if (alive && controlConfirmed && !resumeInProgress && activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
+      if (alive && controlConfirmed && !resumeInProgress && bus?.connected?.() !== false && activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
     });
     xterm = refreshedTerm;
     fitAddon = addon;
@@ -246,6 +252,52 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     resizeObserver.observe(termHost);
     scheduleFit();
     refreshedTerm.focus();
+  }
+
+  function outputStatus(message: string): void {
+    let status = sessionShell.querySelector('.terminal-output-status');
+    if (!status) { status = el('div', 'terminal-output-status'); sessionShell.firstElementChild?.prepend(status); }
+    status.textContent = message;
+  }
+
+  function restoreOutput(snapshot: TerminalOutputSnapshotT): boolean {
+    if (snapshot.sessionId !== activeSessionId || !xterm) throw new Error('output snapshot session identity mismatch');
+    const result = outputProjection.restore(snapshot);
+    xterm.reset();
+    xterm.write(result.reset + result.append);
+    outputStatus(snapshot.truncated ? 'RESTORED · bounded history was truncated' : 'OUTPUT SYNCHRONIZED');
+    return result.needsSnapshot;
+  }
+
+  async function recoverOutput(attempt = 0): Promise<void> {
+    if (!alive || !controlConfirmed || resumeInProgress || activeSessionId === null || !xterm || outputRecoveryInProgress) return;
+    if (typeof api.terminalSessionOutput !== 'function') { legacyOutput = true; outputStatus('LIVE OUTPUT ONLY · replay snapshot unsupported'); return; }
+    const id = activeSessionId, generation = ++outputRecoveryGeneration;
+    let retryNeeded = false;
+    outputRecoveryInProgress = true;
+    outputProjection.beginSnapshot();
+    outputStatus('RESTORING OUTPUT');
+    try {
+      const snapshot = await api.terminalSessionOutput(id);
+      if (!alive || activeSessionId !== id || generation !== outputRecoveryGeneration) return;
+      legacyOutput = false;
+      retryNeeded = restoreOutput(snapshot);
+    } catch (error) {
+      if (!alive || activeSessionId !== id || generation !== outputRecoveryGeneration) return;
+      if ((error as { code?: string }).code === 'FORBIDDEN') {
+        renderSessionEnded('Session output denied. Refresh to request governed reattachment.');
+        void refreshSessions();
+      } else if ((error as { code?: string }).code === 'NOT_FOUND') {
+        legacyOutput = true;
+        outputStatus('LIVE OUTPUT ONLY · replay snapshot unsupported');
+      } else outputStatus('OUTPUT STALE · recovery failed; use REFRESH to retry');
+    } finally {
+      if (generation === outputRecoveryGeneration) {
+        outputRecoveryInProgress = false;
+        if (retryNeeded && attempt < 2) void recoverOutput(attempt + 1);
+        else if (retryNeeded) outputStatus('OUTPUT STALE · buffer gap persists; use REFRESH to retry');
+      }
+    }
   }
 
   function scheduleFit(): void {
@@ -289,6 +341,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     releaseBinding();
     activeSessionId = null;
     controlConfirmed = false;
+    outputRecoveryGeneration++;
+    outputRecoveryInProgress = false;
+    outputProjection = new TerminalOutputProjection();
     sessionsInitialized = false;
     renderOpenControls();
   }
@@ -349,12 +404,15 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       if (view && !view.bindings.claim(view.viewId, opened.session.sessionId)) throw new Error('Session is already displayed in another terminal window');
       activeSessionId = opened.session.sessionId;
       controlConfirmed = true;
+      outputProjection = new TerminalOutputProjection();
+      legacyOutput = false;
       renderResumeCandidates([]);
       renderOpenControls();
       sessionsInitialized = opened.session.state === 'running';
       if (sessionsInitialized) renderSessionShell();
       else renderSessionLoading();
       void refreshSessions();
+      if (sessionsInitialized) void recoverOutput();
     } catch (e) {
       if (!alive) return;
       releaseBinding();
@@ -374,6 +432,8 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     if (!alive || activeSessionId !== null || resumeInProgress || openInProgress || candidate.state !== 'running') return;
     if (view && !view.bindings.claim(view.viewId, candidate.sessionId)) return;
     controlConfirmed = false;
+    legacyOutput = false;
+    outputProjection = new TerminalOutputProjection();
     resumeInProgress = true;
     activeSessionId = candidate.sessionId;
     renderResumeCandidates([]);
@@ -387,8 +447,10 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       if (resumed.session.sessionId !== candidate.sessionId || resumed.session.state !== 'running') {
         throw new Error('resume response identity or state mismatch');
       }
+      if (resumed.output) restoreOutput(resumed.output);
+      else { legacyOutput = true; outputStatus('LIVE OUTPUT ONLY · replay snapshot unsupported'); }
       controlConfirmed = true;
-      if (xterm) xterm.options.disableStdin = false;
+      if (xterm) xterm.options.disableStdin = bus?.connected?.() === false;
       if (stopButton) stopButton.disabled = false;
       const stage = sessionShell.querySelector('.terminal-stage');
       stage?.classList.remove('awaiting-approval');
@@ -401,7 +463,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       }
     } finally {
       resumeInProgress = false;
-      if (alive) { renderOpenControls(); scheduleFit(); }
+      if (alive) { renderOpenControls(); scheduleFit(); if (controlConfirmed) void recoverOutput(); }
     }
   }
 
@@ -449,6 +511,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     if (mine.state === 'running' && !sessionsInitialized) {
       sessionsInitialized = true;
       renderSessionShell();
+      if (controlConfirmed) void recoverOutput();
     }
     const stateLab = `${controlConfirmed ? mine.state.toUpperCase() : 'REATTACH APPROVAL REQUIRED'}${mine.exitCode !== null ? ` \u00b7 exit ${mine.exitCode}` : ''}${mine.cleanup !== 'clean' ? ` \u00b7 cleanup=${mine.cleanup}` : ''}`;
     let chip = sessionShell.querySelector('.terminal-session-state');
@@ -464,10 +527,19 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     const parsed = TerminalEvent.safeParse(data);
     if (!parsed.success || parsed.data.sessionId !== activeSessionId) return;
     const event = parsed.data as TerminalEventT;
-    if (event.kind === 'output' && xterm) xterm.write(event.data);
+    if (event.kind === 'output' && xterm) {
+      if (event.endOffset === undefined) {
+        if (legacyOutput || controlConfirmed) { legacyOutput = true; xterm.write(event.data); outputStatus('LIVE OUTPUT ONLY · stream offsets unavailable'); }
+      } else {
+        const result = outputProjection.accept({ data: event.data, endOffset: event.endOffset });
+        if (result.append) xterm.write(result.append);
+        if (result.needsSnapshot && controlConfirmed) void recoverOutput();
+      }
+    }
     else if (event.kind === 'state' && event.state === 'running' && !sessionsInitialized) {
       sessionsInitialized = true;
       renderSessionShell();
+      if (controlConfirmed) void recoverOutput();
     } else if (event.kind === 'state' && (event.state === 'stopped' || event.state === 'disposed')) {
       sessionsInitialized = true;
       void refreshSessions();
@@ -477,6 +549,12 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     } else if (event.kind === 'error' && xterm) {
       xterm.write(`\r\n[terminal: ${event.message}]\r\n`);
     }
+  });
+  const unsubscribeSubscribed = bus?.onSubscribed?.('terminal', () => { if (controlConfirmed) void recoverOutput(); });
+  const unsubscribeStatus = bus?.subscribeStatus?.(connected => {
+    if (!xterm || !controlConfirmed) return;
+    xterm.options.disableStdin = !connected;
+    if (!connected) outputStatus('OUTPUT STALE · event socket disconnected; input paused');
   });
   const appearanceChanged = (): void => {
     const current = theme?.preferences();
@@ -556,6 +634,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       document.removeEventListener('covert:authority-paired', refreshAfterAuthorityPairing);
       document.removeEventListener('covert:appearance-changed', appearanceChanged);
       unsubscribe?.();
+      unsubscribeSubscribed?.();
+      unsubscribeStatus?.();
+      outputRecoveryGeneration++;
       releaseBinding();
       controlConfirmed = false;
       disposeSessionView();

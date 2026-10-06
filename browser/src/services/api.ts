@@ -198,7 +198,9 @@ import {
   TerminalSessionStopResponse,
   TerminalSessionResumeRequest,
   type TerminalSessionResumeResponseT,
-  TerminalSessionResumeResponse
+  TerminalSessionResumeResponse,
+  TerminalOutputSnapshot,
+  type TerminalOutputSnapshotT
 } from '../../../common/contracts/terminal.ts';
 
 export const API_FORMAT_HEADER = 'X-AIDE-API-Format';
@@ -545,6 +547,9 @@ export const api = {
   },
   terminalProviders(): Promise<TerminalProviderListResponseT> {
     return call('/api/terminal/providers', { schema: TerminalProviderListResponse });
+  },
+  terminalSessionOutput(sessionId: string): Promise<TerminalOutputSnapshotT> {
+    return call(`/api/terminal/sessions/output?sessionId=${encodeURIComponent(sessionId)}`, { schema: TerminalOutputSnapshot });
   },
   terminalSessions(): Promise<TerminalSessionListResponseT> {
     return call('/api/terminal/sessions', { schema: TerminalSessionListResponse });

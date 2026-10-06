@@ -5,7 +5,7 @@ const pairingProofFile = process.env.AIDE_WORKSTATION_E2E_PAIRING_PROOF;
 if (!pairingProofFile) throw new Error('workstation pairing proof path is unavailable');
 
 test('Terminal discovers and reattaches to a running session after Authority pairing', async ({ page }) => {
-  const pairingProof = await fs.readFile(pairingProofFile, 'utf8');
+  const pairingProof = await fs.readFile(`${pairingProofFile}.terminal-refresh`, 'utf8');
   const sessionId = 'controlled-running-session';
   let resumeResponseReturned = false;
   let resumeRequestBody: { sessionId?: string; expectedOwner?: string } | null = null;
@@ -111,9 +111,13 @@ test('Terminal discovers and reattaches to a running session after Authority pai
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: ok({ session: { ...session, owner: sessionOwner }, scrollbackTruncated: false })
+      body: ok({ session: { ...session, owner: sessionOwner }, scrollbackTruncated: false, output: { sessionId, output: '', endOffset: 0, truncated: false } })
     });
     resumeResponseReturned = true;
+  });
+
+  await page.route('**/api/terminal/sessions/output?*', async route => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: ok({ sessionId, output: '', endOffset: 0, truncated: false }) });
   });
 
   await page.route('**/api/terminal/sessions/stop', async route => {
