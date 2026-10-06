@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import {
   AtlasEvaluationCandidate,
   AtlasEvaluationRecord,
+  MODEL_ATLAS_SCHEMA,
   type AtlasEvaluationCandidateT,
   type AtlasEvaluationRecordT,
   type AtlasFingerprintT,
@@ -119,6 +120,27 @@ function safeSegment(modelId: string): string {
 export interface ModelAtlasOptions {
   workspace: string;
   now?: () => Date;
+}
+
+export interface AtlasAuditIssue {
+  file: string;
+  kind: 'CORRUPT' | 'INTEGRITY_MISMATCH' | 'UNVERIFIED';
+}
+
+export interface AtlasAuditReport {
+  schema: 'covert.model-atlas.audit.v1';
+  checked_at: string;
+  healthy: boolean;
+  totals: { records: number; corrupt: number; integrity_mismatch: number; unverified: number; models: number };
+  issues: AtlasAuditIssue[];
+  duplicate_evaluation_ids: string[];
+  dangling_recommendation_refs: Array<{ evaluation_id: string; role: string; missing_ref: string }>;
+  unsupported_schema_files: string[];
+  evidence_refs: { checked: boolean; total: number; dangling: number };
+}
+
+export interface AtlasAuditOptions {
+  evidenceResolver?: (ref: string) => Promise<boolean> | boolean;
 }
 
 export function createModelAtlas(options: ModelAtlasOptions) {
@@ -340,6 +362,74 @@ export function createModelAtlas(options: ModelAtlasOptions) {
     }
   }
 
+  // Read-only integrity audit. It reports; it never repairs, rewrites, or
+  // deletes evidence. A missing integrity sidecar counts as unverified (not
+  // corruption); a contradicting sidecar or an unbound recommendation reference
+  // makes the store unhealthy.
+  async function audit(options: AtlasAuditOptions = {}): Promise<AtlasAuditReport> {
+    const inspection = await inspectStore(null);
+    const issues: AtlasAuditIssue[] = [
+      ...inspection.corrupt.map(file => ({ file, kind: 'CORRUPT' as const })),
+      ...inspection.integrity_failures.map(file => ({ file, kind: 'INTEGRITY_MISMATCH' as const })),
+      ...inspection.unverified.map(file => ({ file, kind: 'UNVERIFIED' as const }))
+    ];
+    const idCounts = new Map<string, number>();
+    for (const record of inspection.records) idCounts.set(record.evaluation_id, (idCounts.get(record.evaluation_id) ?? 0) + 1);
+    const duplicateIds = [...idCounts.entries()].filter(([, count]) => count > 1).map(([id]) => id);
+    const dangling: AtlasAuditReport['dangling_recommendation_refs'] = [];
+    for (const record of inspection.records) {
+      const refs = new Set(record.evidence_refs);
+      for (const recommendation of record.recommended_roles) {
+        for (const ref of recommendation.evidence_refs) {
+          if (!refs.has(ref)) dangling.push({ evaluation_id: record.evaluation_id, role: recommendation.role, missing_ref: ref });
+        }
+      }
+    }
+    const unsupported: string[] = [];
+    for (const file of inspection.corrupt.slice(0, 20)) {
+      try {
+        const raw = JSON.parse(await fs.readFile(path.join(evaluationsDir, file), 'utf8'));
+        if (raw !== null && typeof raw === 'object' && typeof raw.schema === 'string' && raw.schema !== MODEL_ATLAS_SCHEMA) unsupported.push(file);
+      } catch {
+        // not JSON at all - already counted as corrupt
+      }
+    }
+    let refsChecked = false;
+    let refsTotal = 0;
+    let refsDangling = 0;
+    if (options.evidenceResolver !== undefined) {
+      refsChecked = true;
+      const allRefs = new Set<string>();
+      for (const record of inspection.records) for (const ref of record.evidence_refs) allRefs.add(ref);
+      refsTotal = allRefs.size;
+      for (const ref of allRefs) {
+        try {
+          if (!(await options.evidenceResolver(ref))) refsDangling += 1;
+        } catch {
+          refsDangling += 1;
+        }
+      }
+    }
+    return {
+      schema: 'covert.model-atlas.audit.v1',
+      checked_at: now().toISOString(),
+      healthy: inspection.corrupt.length === 0 && inspection.integrity_failures.length === 0 &&
+        duplicateIds.length === 0 && dangling.length === 0 && refsDangling === 0 && unsupported.length === 0,
+      totals: {
+        records: inspection.records.length,
+        corrupt: inspection.corrupt.length,
+        integrity_mismatch: inspection.integrity_failures.length,
+        unverified: inspection.unverified.length,
+        models: new Set(inspection.records.map(record => record.model_id)).size
+      },
+      issues,
+      duplicate_evaluation_ids: duplicateIds,
+      dangling_recommendation_refs: dangling,
+      unsupported_schema_files: unsupported,
+      evidence_refs: { checked: refsChecked, total: refsTotal, dangling: refsDangling }
+    };
+  }
+
   return {
     root,
     recordEvaluation,
@@ -348,6 +438,7 @@ export function createModelAtlas(options: ModelAtlasOptions) {
     historyFor,
     createCandidate,
     readCandidate,
+    audit,
     compareFingerprints,
     deriveQualification,
     validateRecord
