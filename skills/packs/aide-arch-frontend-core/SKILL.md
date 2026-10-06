@@ -120,3 +120,11 @@ TypeScript strict (Phase 0 gates), zod shared from common/, Vite dev proxy. Mona
 4. Session save/restore ported with shared schema; pagehide flush works.
 5. Error translation: envelope codes → user messages (toast/status bar).
 6. `npm run check` green; store/session/api tests pass; live UI check at 127.0.0.1:4173 after wiring.
+
+## 2026-10-06 workstation presentation addendum
+
+The owner now directs a classic retro developer desktop, superseding this skill's historical LEARN/MAP/EXP/RUN shell-preservation advice. Keep browser-only typed services, store, local assets, scoped session data and disposal rules; rehost functioning internals instead of retaining the old cockpit composition.
+
+Use covert-workstation-ui for internal window management, state-truth and verification procedures, and covert-resident-experience for Cipher/Buddy. These two focused skills cover the five evaluated procedural domains without five redundant packs. Canonical contracts are in docs/design/workstation/. The older example that maps NOT_READY to warming up is valid only with an actual warming-up owner reason; unknown/refused/disconnected must keep their true reason.
+
+Read WORKSTATION_SOURCE_TRUTH.md before replacement. Reconcile unavailable dirty Luna/packaging work; do not create a second implementation from older source. Profile/disclosure/appearance changes never grant permissions or execution. Return truthful unavailable states for missing owner wiring.

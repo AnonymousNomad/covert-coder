@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-28T18:36:32.579Z",
-  "count": 309,
+  "generated_at": "2026-10-06T21:29:59Z",
+  "count": 311,
   "categories": [
     "academy",
     "aide-core",
@@ -1278,11 +1278,25 @@
       "path": "skills/packs/covert-real-model-harness-pilot/SKILL.md"
     },
     {
+      "name": "covert-resident-experience",
+      "title": "covert-resident-experience",
+      "description": "Keep Cipher identity, Buddy presence, personality and capture routes independently governed.",
+      "category": "architecture",
+      "path": "skills/packs/covert-resident-experience/SKILL.md"
+    },
+    {
       "name": "covert-unsloth-product-wiring",
       "title": "covert-unsloth-product-wiring",
       "description": "Connect Covert's production model, chat, and agent paths to the frozen canonical Unsloth Runtime Broker while preserving inventory, Authority, qualification, and explicit recovery boundaries. Use when product routes still execute the legacy direct llama.cpp ModelRuntime or a local dogfood run cannot reach Unsloth.",
       "category": "general",
       "path": "skills/packs/covert-unsloth-product-wiring/SKILL.md"
+    },
+    {
+      "name": "covert-workstation-ui",
+      "title": "covert-workstation-ui",
+      "description": "Build and verify retro desktop windows, scoped restoration and truthful state projections.",
+      "category": "architecture",
+      "path": "skills/packs/covert-workstation-ui/SKILL.md"
     },
     {
       "name": "cross-synthesis-generation",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Covert Resident Experience"
+  short_description: "Keep Cipher identity, Buddy presence and capture scopes separate"
+  default_prompt: "Implement a scoped Cipher or Buddy interaction from canonical platform truth without changing authority."

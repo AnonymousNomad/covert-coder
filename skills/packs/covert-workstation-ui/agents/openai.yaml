@@ -1,0 +1,4 @@
+interface:
+  display_name: "Covert Workstation UI"
+  short_description: "Preserve scoped retro workstation behavior and state truth"
+  default_prompt: "Implement a bounded Covert workstation slice from the pinned contract and verify real behavior."
