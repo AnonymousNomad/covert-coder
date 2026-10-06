@@ -70,6 +70,15 @@ function safeFilename(filename) {
   }
 }
 
+// Hugging Face resolve URLs address artifacts by repository-relative path. A
+// nested artifact ("Q4_K_M/model.gguf") must keep its separators: encoding the
+// whole path with encodeURIComponent would emit %2F and break the request.
+// Each safe segment is encoded independently; the contract (HubFilename)
+// already rejects drives, backslashes, and traversal segments.
+export function encodeArtifactPath(filename) {
+  return String(filename).split('/').map(segment => encodeURIComponent(segment)).join('/');
+}
+
 export function createHubService({
   workspace,
   modelsDir,
@@ -305,7 +314,7 @@ export function createHubService({
   async function runDownload(job, urlTemplate) {
     const partPath = path.join(modelsDirLexical, `${job.filename}.part`);
     const finalPath = path.join(modelsDirLexical, job.filename);
-    const finalUrl = urlTemplate.replace('{filename}', encodeURIComponent(job.filename));
+    const finalUrl = urlTemplate.replace('{filename}', encodeArtifactPath(job.filename));
     let idleTimer = null;
     let idleTimedOut = false;
     let idleController = null;
