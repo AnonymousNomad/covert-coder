@@ -1,0 +1,74 @@
+{
+  "gate": "covert.model-dogfood-1.v1",
+  "started_at": "2026-10-06T14:07:30.390Z",
+  "finished_at": "2026-10-06T14:07:54.222Z",
+  "workspace": "E:\\covert-dogfood-1-workspace",
+  "steps": [
+    {
+      "step": "00-workspace",
+      "ok": true,
+      "at": "2026-10-06T14:07:36.749Z",
+      "detail": {
+        "workspace": "E:\\covert-dogfood-1-workspace",
+        "disk_free_gb": 81.3,
+        "free_ram_mb": 991,
+        "commit_free_mb": 6750,
+        "llama_binary_exists": true
+      }
+    },
+    {
+      "step": "01-stack",
+      "ok": true,
+      "at": "2026-10-06T14:07:53.627Z",
+      "detail": {
+        "bases": [
+          "facade",
+          "ts",
+          "legacy"
+        ],
+        "boot_ms": 16877
+      }
+    },
+    {
+      "step": "02-hf-reachable",
+      "ok": true,
+      "at": "2026-10-06T14:07:53.829Z",
+      "detail": {
+        "status": 200,
+        "sample": [
+          "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+          "bartowski/Qwen2.5-0.5B-Instruct-GGUF",
+          "second-state/Qwen2.5-0.5B-Instruct-GGUF"
+        ]
+      }
+    },
+    {
+      "step": "03-search",
+      "ok": false,
+      "at": "2026-10-06T14:07:54.198Z",
+      "detail": {
+        "status": 200,
+        "repos": []
+      }
+    },
+    {
+      "step": "99-harness",
+      "ok": false,
+      "at": "2026-10-06T14:07:54.199Z",
+      "detail": {
+        "error": "no GGUF repository found in search results"
+      }
+    },
+    {
+      "step": "15-cleanup",
+      "ok": true,
+      "at": "2026-10-06T14:07:54.222Z",
+      "detail": {
+        "engine_pid": null,
+        "engine_port_free": true
+      }
+    }
+  ],
+  "pass": 4,
+  "fail": 2
+}

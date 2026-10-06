@@ -1,0 +1,79 @@
+{
+  "gate": "covert.model-dogfood-1.v1",
+  "started_at": "2026-10-06T14:10:30.734Z",
+  "finished_at": "2026-10-06T14:11:07.528Z",
+  "workspace": "E:\\covert-dogfood-1-workspace",
+  "steps": [
+    {
+      "step": "00-workspace",
+      "ok": true,
+      "at": "2026-10-06T14:10:37.615Z",
+      "detail": {
+        "workspace": "E:\\covert-dogfood-1-workspace",
+        "disk_free_gb": 81.3,
+        "free_ram_mb": 473,
+        "commit_free_mb": 4500,
+        "llama_binary_exists": true
+      }
+    },
+    {
+      "step": "01-stack",
+      "ok": true,
+      "at": "2026-10-06T14:11:06.354Z",
+      "detail": {
+        "bases": [
+          "facade",
+          "ts",
+          "legacy"
+        ],
+        "boot_ms": 28738
+      }
+    },
+    {
+      "step": "02-hf-reachable",
+      "ok": true,
+      "at": "2026-10-06T14:11:06.595Z",
+      "detail": {
+        "status": 200,
+        "sample": [
+          "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+          "bartowski/Qwen2.5-0.5B-Instruct-GGUF",
+          "second-state/Qwen2.5-0.5B-Instruct-GGUF"
+        ]
+      }
+    },
+    {
+      "step": "03-search",
+      "ok": false,
+      "at": "2026-10-06T14:11:07.479Z",
+      "detail": {
+        "status": 200,
+        "repos": [],
+        "body_keys": [
+          "ok",
+          "data"
+        ],
+        "raw_sample": "{\"ok\":true,\"data\":{\"models\":[{\"repo_id\":\"Qwen/Qwen2.5-0.5B-Instruct-GGUF\",\"downloads\":223987,\"likes\":141,\"tags\":[\"gguf\",\"chat\",\"text-generation\",\"en\",\"arxiv:2407.10671\",\"base_model:Qwen/Qwen2.5-0.5B-Instruct\",\"base_model:quantized:Qwen/Qwen2.5-0.5B-Instruct\",\"license:apache-2.0\",\"endpoints_compatibl"
+      }
+    },
+    {
+      "step": "99-harness",
+      "ok": false,
+      "at": "2026-10-06T14:11:07.480Z",
+      "detail": {
+        "error": "no GGUF repository found in search results"
+      }
+    },
+    {
+      "step": "15-cleanup",
+      "ok": true,
+      "at": "2026-10-06T14:11:07.528Z",
+      "detail": {
+        "engine_pid": null,
+        "engine_port_free": true
+      }
+    }
+  ],
+  "pass": 4,
+  "fail": 2
+}
