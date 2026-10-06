@@ -52,6 +52,68 @@
   --ck-font-sans: var(--desktop-font-interface);
 }
 
+/* A running terminal is an interactive surface; setup/history stay reachable in DETAILS. */
+.covert-desktop-shell .terminal-session-focused {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 6px 8px;
+  overflow: hidden;
+}
+.covert-desktop-shell .terminal-session-focused .panel-intro,
+.covert-desktop-shell .terminal-session-focused .terminal-providers,
+.covert-desktop-shell .terminal-session-focused .terminal-history,
+.covert-desktop-shell .terminal-session-focused .terminal-open {
+  display: none;
+}
+.covert-desktop-shell .terminal-session-focused .panel-header {
+  flex: 0 0 auto;
+  gap: 8px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+.covert-desktop-shell .terminal-session-focused .terminal-session {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
+}
+.covert-desktop-shell .terminal-session-focused .terminal-stage {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  padding: 3px;
+  border-radius: 0;
+  background: var(--desktop-inset);
+}
+.covert-desktop-shell .terminal-session-focused .terminal-xterm {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: var(--desktop-inset);
+}
+.covert-desktop-shell .terminal-details-btn,
+.covert-desktop-shell .terminal-refresh-btn,
+.covert-desktop-shell .terminal-open-btn {
+  padding: 3px 6px;
+  border: 1px solid var(--desktop-border-focus);
+  border-radius: 0;
+  color: var(--desktop-text);
+  background: var(--desktop-surface);
+  font: inherit;
+  font-size: 10px;
+}
+.covert-desktop-shell .terminal-details-btn[hidden] { display: none; }
+.covert-desktop-shell .terminal-provider,
+.covert-desktop-shell .terminal-open-bar {
+  border-radius: 0;
+  background: var(--desktop-inset);
+}
+
 html,
 body,
 #app {

@@ -79,6 +79,15 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await expect(second.locator('.xterm-screen')).toContainText(b);
     await expect(first.locator('.xterm-screen')).not.toContainText(b);
     await expect(second.locator('.xterm-screen')).not.toContainText(a);
+    for (const frame of [first, second]) {
+      await expect(frame.locator('.terminal-providers')).toBeHidden();
+      await frame.getByRole('button', { name: 'Show terminal details', exact: true }).click();
+      await expect(frame.locator('.terminal-providers')).toBeVisible();
+      await expect(frame.locator('.terminal-history')).toBeVisible();
+      await frame.getByRole('button', { name: 'Hide terminal details', exact: true }).click();
+      await expect(frame.locator('.terminal-providers')).toBeHidden();
+    }
+    await page.screenshot({ path: test.info().outputPath('covert-retro-coding-native-terminals.png'), fullPage: true });
     await first.getByRole('button', { name: 'REFRESH', exact: true }).click();
     await expect.poll(() => geometry.get(firstSessionId)?.cols ?? 0).toBeGreaterThan(0);
     const beforeCols = geometry.get(firstSessionId)!.cols;

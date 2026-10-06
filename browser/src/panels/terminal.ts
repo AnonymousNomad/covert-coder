@@ -103,6 +103,14 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let sessionRefreshGeneration = 0;
   let providerSelect: HTMLSelectElement | null = null;
   let shellSelect: HTMLSelectElement | null = null;
+  let detailsExpanded = false;
+  const detailsBtn = document.createElement('button');
+  detailsBtn.type = 'button';
+  detailsBtn.className = 'terminal-details-btn';
+  detailsBtn.textContent = 'DETAILS';
+  detailsBtn.hidden = true;
+  detailsBtn.addEventListener('click', () => { detailsExpanded = !detailsExpanded; renderOpenControls(); scheduleFit(); });
+  header.appendChild(detailsBtn);
 
   const refreshBtn = document.createElement('button');
   refreshBtn.type = 'button';
@@ -138,6 +146,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   }
 
   function renderOpenControls(): void {
+    const hasSession = activeSessionId !== null;
+    root.classList.toggle('terminal-session-focused', hasSession && !detailsExpanded);
+    detailsBtn.hidden = !hasSession;
+    detailsBtn.setAttribute('aria-expanded', String(detailsExpanded));
+    detailsBtn.setAttribute('aria-label', `${detailsExpanded ? 'Hide' : 'Show'} terminal details`);
     openControls.innerHTML = '';
     if (activeSessionId !== null || resumeInProgress || openInProgress) {
       openControls.appendChild(el('div', 'panel-empty', 'A terminal session is active. Stop it before opening another session.'));
