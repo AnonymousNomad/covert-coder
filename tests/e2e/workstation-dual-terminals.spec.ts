@@ -11,11 +11,20 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
   const errors: string[] = [];
   const opened: string[] = [];
   const geometry = new Map<string, { cols: number; rows: number }>();
+  page.setDefaultTimeout(10000);
   page.on('pageerror', error => errors.push(`${error.name}: ${error.message}`));
   page.on('dialog', async dialog => {
     if (dialog.type() === 'prompt') await dialog.accept(proof);
-    else if (dialog.message().startsWith('Approve this operation once?') && /POST \/api\/terminal\/sessions(?:\/(?:stop|resume))?(?:\s|$)/.test(dialog.message())) await dialog.accept();
-    else await dialog.dismiss();
+    else {
+      const prefix = 'Approve this operation once?\n';
+      let requiredTerminalOperation = false;
+      if (dialog.type() === 'confirm' && dialog.message().startsWith(prefix)) {
+        const decision = JSON.parse(dialog.message().slice(prefix.length)) as { operation?: string };
+        requiredTerminalOperation = ['terminal.session.start', 'terminal.session.resume', 'terminal.session.stop'].includes(decision.operation ?? '');
+      }
+      if (requiredTerminalOperation) await dialog.accept();
+      else await dialog.dismiss();
+    }
   });
   page.on('response', response => {
     if (response.request().method() === 'GET' && new URL(response.url()).pathname === '/api/terminal/sessions') {
@@ -116,7 +125,8 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await page.screenshot({ path: test.info().outputPath('covert-retro-dual-native-terminals.png'), fullPage: true });
     expect(errors).toEqual([]);
   } finally {
-    for (const frame of [first, second]) {
+    // Isolated fixture shutdown owns cleanup if timeout has already closed the page.
+    for (const frame of page.isClosed() ? [] : [first, second]) {
       const stop = frame.getByRole('button', { name: 'STOP SESSION', exact: true });
       if (await stop.isVisible()) {
         await stop.click();

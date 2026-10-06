@@ -40,7 +40,13 @@ test('Terminal discovers and reattaches to a running session after Authority pai
       }
     } else {
       pairingObservations.push(`dialog-${dialog.type()}`);
-      if (dialog.message().includes('POST /api/terminal/sessions/resume') || dialog.message().includes('POST /api/terminal/sessions/stop')) await dialog.accept();
+      const prefix = 'Approve this operation once?\n';
+      let requiredTerminalOperation = false;
+      if (dialog.type() === 'confirm' && dialog.message().startsWith(prefix)) {
+        const decision = JSON.parse(dialog.message().slice(prefix.length)) as { operation?: string };
+        requiredTerminalOperation = ['terminal.session.resume', 'terminal.session.stop'].includes(decision.operation ?? '');
+      }
+      if (requiredTerminalOperation) await dialog.accept();
       else await dialog.dismiss();
     }
   });

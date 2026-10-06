@@ -126,3 +126,16 @@ test('reattach without a subscribed socket recovers canonical history; reconnect
   view.handle.dispose(); recovered.resolve({ sessionId: 'session:a', output: 'new snapshot', endOffset: 12, truncated: false }); await tick();
   assert.equal(h.terminals[0].output, 'snapshot'); assert.equal(view.root.children.length, 0);
 });
+
+test('active sessions retain a read-only refresh control without opening another session or repeating Authority reattach', async () => {
+  const h = harness(); const view = h.create('terminal'); await tick();
+  find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+  h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false } }); await tick();
+  const refresh = find(view.root, e => e.className === 'terminal-refresh-btn');
+  assert.ok(refresh, 'operator can refresh a running or degraded terminal');
+  const before = h.snapshotCalls;
+  refresh.click(); await tick();
+  assert.ok(h.snapshotCalls > before);
+  assert.equal(h.openCalls, 0); assert.equal(h.resumeCalls, 1);
+  view.handle.dispose();
+});

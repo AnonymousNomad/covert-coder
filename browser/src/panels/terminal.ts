@@ -106,6 +106,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     void refreshHistory();
     if (controlConfirmed) void recoverOutput();
   });
+  header.appendChild(refreshBtn);
 
   const openButton = document.createElement('button');
   openButton.type = 'button';
@@ -167,9 +168,6 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     bar.appendChild(shellWrap);
     const btnRow = el('div', 'terminal-open-actions');
     btnRow.appendChild(openButton);
-    const spacing = el('div', 'terminal-open-spacer');
-    spacing.appendChild(refreshBtn);
-    btnRow.appendChild(spacing);
     bar.appendChild(btnRow);
     openControls.appendChild(bar);
   }
