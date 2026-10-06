@@ -35,7 +35,7 @@ const view = await binding.read();                // ResidentBindingT
 | `runtime_state` | `RUNNING \| LOADABLE \| NOT_LOADABLE \| UNKNOWN` | observed runtime |
 | `execution_node` | string | node that would execute the Resident (e.g. `local-windows`) |
 | `degraded_reason` | stable code \| null | never prose; render a friendly message per code |
-| `last_verified_at` | ISO time \| null | when runtime evidence was observed |
+| `last_verified_at` | ISO time \| null | when the backend last derived the projection from canonical inputs; null only when no observation time is available |
 
 Degraded reason codes: `resident_model_not_registered`, `resident_model_artifact_unavailable`,
 `resident_runtime_unavailable`, `resident_runtime_unverified`, `multiple_resident_candidates`,
@@ -55,50 +55,93 @@ Degraded reason codes: `resident_model_not_registered`, `resident_model_artifact
 3. A UI reload re-reads the same canonical state; the view has no client cache to lose.
 4. Render `resident_model_id`/`degraded_reason` from the payload only; never recompute binding in the UI.
 
-## Integration seam
+## Canonical consumer route
 
-The service is composed in the backend process that owns Model Manager (same process as Model Access).
-Route/event exposure for the workstation shell is the next backend integration step (owned by Model
-Intelligence); until then Main Luna consumes the service through the backend composition layer, not by
-importing inventory internals.
+The Main Luna/Cipher UI must consume the projection from `GET /api/resident/binding`, owned by the backend
+process that composes Model Manager and Runtime Broker. The route returns only `covert.resident-binding.v1`;
+it does not expose raw Model Manager inventory. The backend derives the projection on every read from
+canonical inventory and runtime observations. The UI must not infer Cipher from Model Manager data,
+the active worker model, or its own persisted model ID. It must display stable `degraded_reason` codes
+as user-facing state without parsing backend prose.
 
-## Canonical transport (available now)
+## Example payloads
+
+### Bound Resident
+
+```json
+{
+  "schema": "covert.resident-binding.v1",
+  "resident_id": "cipher",
+  "resident_model_id": "local:liquid-2.6b",
+  "resident_model_family": "liquid",
+  "binding_state": "BOUND",
+  "availability_state": "AVAILABLE",
+  "runtime_state": "RUNNING",
+  "execution_node": "local-windows",
+  "degraded_reason": null,
+  "last_verified_at": "2026-10-06T09:00:00.000Z"
+}
+```
+
+### Resident absent
+
+```json
+{
+  "schema": "covert.resident-binding.v1",
+  "resident_id": "cipher",
+  "resident_model_id": null,
+  "resident_model_family": null,
+  "binding_state": "UNBOUND",
+  "availability_state": "UNAVAILABLE",
+  "runtime_state": "UNKNOWN",
+  "execution_node": "local-windows",
+  "degraded_reason": "resident_model_not_registered",
+  "last_verified_at": "2026-10-06T09:00:00.000Z"
+}
+```
+
+### Resident identity present, artifact unavailable
+
+```json
+{
+  "schema": "covert.resident-binding.v1",
+  "resident_id": "cipher",
+  "resident_model_id": "local:liquid-2.6b",
+  "resident_model_family": "liquid",
+  "binding_state": "DEGRADED",
+  "availability_state": "UNAVAILABLE",
+  "runtime_state": "UNKNOWN",
+  "execution_node": "local-windows",
+  "degraded_reason": "resident_model_artifact_unavailable",
+  "last_verified_at": "2026-10-06T09:00:00.000Z"
+}
+```
+
+### Runtime unavailable or unverified
+
+```json
+{
+  "schema": "covert.resident-binding.v1",
+  "resident_id": "cipher",
+  "resident_model_id": "local:liquid-2.6b",
+  "resident_model_family": "liquid",
+  "binding_state": "DEGRADED",
+  "availability_state": "AVAILABLE",
+  "runtime_state": "UNKNOWN",
+  "execution_node": "local-windows",
+  "degraded_reason": "resident_runtime_unverified",
+  "last_verified_at": "2026-10-06T09:00:00.000Z"
+}
+```
+
+An observed `NOT_LOADABLE` runtime uses `resident_runtime_unavailable`. Runtime readiness is not
+inferred from the existence of a model selection or a worker assignment.
+
+## Canonical transport
 
 ```text
 GET /api/resident/binding        (capability.read — auto-approved read; no approval dialog)
 → covert.resident-binding.v1     (the frozen projection; derived on every read)
-```
-
-Example payloads:
-
-```jsonc
-// BOUND — Liquid resident registered, runtime observed running
-{ "schema": "covert.resident-binding.v1", "resident_id": "cipher",
-  "resident_model_id": "local:liquid-2.6b", "resident_model_family": "liquid",
-  "binding_state": "BOUND", "availability_state": "AVAILABLE", "runtime_state": "RUNNING",
-  "execution_node": "local-windows", "degraded_reason": null,
-  "last_verified_at": "2026-10-06T09:00:00.000Z" }
-
-// UNBOUND — no Liquid resident registered (fresh or worker-only inventory)
-{ "schema": "covert.resident-binding.v1", "resident_id": "cipher",
-  "resident_model_id": null, "resident_model_family": null,
-  "binding_state": "UNBOUND", "availability_state": "UNAVAILABLE", "runtime_state": "UNKNOWN",
-  "execution_node": "local-windows", "degraded_reason": "resident_model_not_registered",
-  "last_verified_at": "2026-10-06T09:00:00.000Z" }
-
-// DEGRADED — registered but artifact missing
-{ "schema": "covert.resident-binding.v1", "resident_id": "cipher",
-  "resident_model_id": "local:liquid-2.6b", "resident_model_family": "liquid",
-  "binding_state": "DEGRADED", "availability_state": "UNAVAILABLE", "runtime_state": "LOADABLE",
-  "execution_node": "local-windows", "degraded_reason": "resident_model_artifact_unavailable",
-  "last_verified_at": "2026-10-06T09:00:00.000Z" }
-
-// DEGRADED — runtime unverified
-{ "schema": "covert.resident-binding.v1", "resident_id": "cipher",
-  "resident_model_id": "local:liquid-2.6b", "resident_model_family": "liquid",
-  "binding_state": "DEGRADED", "availability_state": "AVAILABLE", "runtime_state": "UNKNOWN",
-  "execution_node": "local-windows", "degraded_reason": "resident_runtime_unverified",
-  "last_verified_at": "2026-10-06T09:00:00.000Z" }
 ```
 
 Transport law: the route returns the projection only — never Model Manager inventory; it holds no cache
