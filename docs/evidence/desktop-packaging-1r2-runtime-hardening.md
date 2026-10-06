@@ -7,11 +7,11 @@ Starting HEAD: `318b4ba9af8ff081ec25c17d4b24a5b6d3331b7d`
 
 ## Scope and status
 
-This record covers the Windows ConPTY shutdown investigation, the bounded node-pty adapter change, and the separate Monaco/DOMPurify release-security review. Packaging from the resulting clean source checkpoint and installed-product verification remain pending in this record.
+This record covers the Windows ConPTY shutdown investigation, the bounded node-pty adapter change, the clean-source NSIS build/install, and the separate Monaco/DOMPurify release-security review. The installed app launched, reported truthful health, resolved external model storage, left its installation tree unchanged, and closed through its main window. The integrated terminal route, a second app launch after restart, and paired dogfood remain open.
 
 Verdicts at this checkpoint:
 
-- `CONPTY-LIFECYCLE — IMPLEMENTED; packaged-asset PTY path verified; installed Covert integration pending.`
+- `CONPTY-LIFECYCLE — PARTIAL; packaged-asset PTY lifecycle passed; installed authorized terminal route and post-restart second session pending.`
 - `DESKTOP-SECURITY-DEPENDENCY — BLOCKED / UNRESOLVED.`
 - `DESKTOP-PACKAGING-1R2 — PARTIAL.`
 - `DESKTOP-DOGFOOD-1R — PARTIAL.`
@@ -66,4 +66,44 @@ Exit: `0`.
 Command: `git diff --check`
 Exit: `0`.
 
-The previous 1R1 packaging evidence remains as documented in `desktop-dogfood-2026-10-06.md`; its dirty-worktree installer is not an artifact of this checkpoint. A new exact-clean-SHA build and install has not yet been run.
+## Exact-source packaging sequence
+
+Source commit: `5e9b993350dd8045043434455423320c7d37fa8c`
+Branch: `codex/desktop-dogfood-integrated-20261006`
+Tree at build: clean; no tracked or untracked source changes.
+
+Commands and results, in order:
+
+1. `npm run build:frontend` — exit `0`; Vite `8.3.0`, 30.21 s. It reported the existing `index` chunk at `4,682.37 kB` and the `500 kB` chunk-size warning.
+2. `node desktop/prepare.mjs` — exit `0`; staged `node-pty@1.1.0 (win32-x64)` and the existing pinned stack dependencies. It confirmed model weights and model runtime remain external.
+3. `node desktop/verify-prepare.mjs` — exit `0`; resource verification passed.
+4. Rust/native checks: `cargo fmt --manifest-path desktop/Cargo.toml -- --check` — exit `1` on pre-existing formatting in `desktop/src/main.rs`; no whole-file formatting was applied. `cargo check --manifest-path desktop/Cargo.toml` — exit `0` in 1m23s, no warnings. `cargo test --manifest-path desktop/Cargo.toml` — exit `0`, 16 passed, 0 failed, 0 ignored; compile 1m31s, tests 11.98s.
+5. `npx tauri build --config desktop/tauri.conf.json --no-bundle` — exit `0`; release compile 2m41s, output `desktop/target/release/aide-sovereign-workbench.exe`. Tauri's canonical `beforeBuildCommand` repeated the frontend build (4.08s) and resource preparation; the same chunk-size warning appeared.
+6. `npx tauri bundle --config desktop/tauri.conf.json --bundles nsis` — exit `0`; `makensis` generated the canonical NSIS setup installer.
+
+Artifact identity:
+
+- Installer: `E:\covert-desktop-dogfood-20261006\desktop\target\release\bundle\nsis\Covert Coder_0.1.0_x64-setup.exe`
+- Size: `36,843,073` bytes.
+- SHA-256: `D3C6E5DAD94D0A0CD01B143BD6FCD8251B3D700E66B3D65E41570BA36556A0C0`.
+- `node scripts/desktop-artifact-smoke.mjs` — exit `0`.
+- Installer invoked with `Start-Process -FilePath <installer> -ArgumentList '/S' -Wait -PassThru`; exit `0`.
+
+The installed launcher has the same size as the release launcher (`11,761,152` bytes), but its SHA-256 is `014795B2C4E4F78F16BFC75507D43419670270E76477ED07DA7559DF31FFF9CF`, while `desktop/target/release/aide-sovereign-workbench.exe` is `A39F824A479E133260944063DBD748F8E3930A3952B49DBE1385433C24CC5CB2`. Cause of this raw executable hash difference is **UNKNOWN**. The installed resource copy of `node/src/services/runtime-providers.ts` does match the committed source SHA-256 `48B8B231ADB3524DC6816A3D7DD956C172E7FB23F7A3288BD4B55F89B2DAEB35`. This resource match does not explain the executable mismatch.
+
+## Installed launch and shutdown
+
+- Install root: `C:\Users\Grey_\AppData\Local\Covert Coder`.
+- Installed tree: 1,233 files, `182,247,415` bytes.
+- Before launch, after launch, and after controlled shutdown, the metadata manifest SHA-256 remained `EBE9624660C026950442090DB4490895E181016932F682616322F4BEE638D5CB`; no file count, size, or last-write metadata changed during ordinary app use.
+- Installed launch PID `16308` came from `C:\Users\Grey_\AppData\Local\Covert Coder\aide-sovereign-workbench.exe`, created `2026-10-06T13:31:08.599282-05:00`. The window title was `Covert Coder`, its window handle was nonzero, and it responded after startup.
+- `GET http://127.0.0.1:4777/api/health` returned HTTP `200` after 3.1 s. State was `DEGRADED`; backend `HEALTHY`; facade, resident, workers, and remote bridge `UNKNOWN`; model engines `STOPPED`. No model was reported ready.
+- Runtime command lines used the installed Covert executable and the Codex package's virtualized installed-resource tree under `E:\WpSystem\...\LocalCache\Local\Covert Coder\resources`. No process command line referenced the source worktree.
+- Workspace and logs were outside the install root at `C:\Users\Grey_\AppData\Local\org.ferrellsyntheticintelligence.aide\workspace` and `.aide\logs`.
+- The launcher shell had no `AIDE_MODEL_DIR` override. The installed Rust bootstrap's Windows default selects `E:\CovertData\CovertCoder\models` when E: is present and passes the resolved path to child processes. That model directory existed with 0 model files; its runtime directory, `E:\CovertData\CovertCoder\models\runtime`, existed with 0 runtime files. No model was downloaded or bundled.
+- At launch, listeners were PID `15548` on 4779, PID `20744` on 4778, and PID `11388` on 4777. `CloseMainWindow()` returned `true`; the app exited within 20 s. Exact app/backend process identities were absent afterward, and ports 4777–4779 had no listeners. Exit code was unavailable from the process wrapper.
+- Available physical RAM after shutdown was `3,010,711,552` bytes, below the required `3,221,225,472`-byte floor. No second app launch or terminal probe was started below that floor.
+
+The exact installed artifact launched and served the base app, but the raw executable hash difference is unresolved, and an operator-paired terminal was not opened. Packaging remains partial; no release or dogfood acceptance is claimed.
+
+The previous 1R1 evidence remains in `desktop-dogfood-2026-10-06.md`; its dirty-worktree installer is not the artifact recorded here.
