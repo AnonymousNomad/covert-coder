@@ -90,8 +90,22 @@ export function deriveQualification(record: AtlasEvaluationRecordT): {
   state: 'UNTESTED' | 'TESTED' | 'INVALID_EVIDENCE';
   stale_reasons: string[];
 } {
+  const hasNative = record.native !== null;
+  const hasHarnessed = record.harnessed !== null;
+  if (!hasNative && !hasHarnessed) return { state: 'UNTESTED', stale_reasons: ['no_condition_recorded'] };
+  // The Atlas evaluation definition is a paired native+harnessed run: a single
+  // completed condition is honest evidence but cannot certify the pair as
+  // TESTED. Missing-condition records stay INVALID_EVIDENCE until both sides
+  // exist (stateStore additionally reports native_missing/harnessed_missing).
+  if (!hasNative || !hasHarnessed) {
+    const present = [record.native, record.harnessed].filter(value => value !== null);
+    const reasons = ['condition_missing'];
+    if (present.some(condition => condition.outcome === 'CANCELLED')) return { state: 'UNTESTED', stale_reasons: ['evaluation_cancelled', ...reasons].sort() };
+    if (present.some(condition => condition.outcome === 'FAILED')) return { state: 'INVALID_EVIDENCE', stale_reasons: ['evaluation_failed', ...reasons].sort() };
+    if (present.some(condition => condition.outcome === 'PARTIAL')) return { state: 'INVALID_EVIDENCE', stale_reasons: ['evaluation_incomplete', ...reasons].sort() };
+    return { state: 'INVALID_EVIDENCE', stale_reasons: reasons };
+  }
   const conditions = [record.native, record.harnessed].filter(value => value !== null);
-  if (conditions.length === 0) return { state: 'UNTESTED', stale_reasons: ['no_condition_recorded'] };
   if (conditions.some(condition => condition.outcome === 'CANCELLED')) return { state: 'UNTESTED', stale_reasons: ['evaluation_cancelled'] };
   if (conditions.some(condition => condition.outcome === 'FAILED')) return { state: 'INVALID_EVIDENCE', stale_reasons: ['evaluation_failed'] };
   if (conditions.some(condition => condition.outcome === 'PARTIAL')) return { state: 'INVALID_EVIDENCE', stale_reasons: ['evaluation_incomplete'] };
