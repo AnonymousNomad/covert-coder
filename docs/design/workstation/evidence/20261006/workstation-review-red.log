@@ -1,0 +1,202 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> aide-sovereign-workbench@0.1.0-preflight test:workstation-foundation
+> node --test tests/unit/test-workstation-drop-intent.mjs tests/unit/test-workstation-environment-profile.mjs tests/unit/test-workstation-presence.mjs tests/unit/test-workstation-media-lifecycle.mjs
+
+✔ file drops form a scoped preview intent without approving execution (3.23234ms)
+✔ project dispatches only its appropriate target (0.793736ms)
+✔ file dispatches only its appropriate target (0.441105ms)
+✔ model-artifact dispatches only its appropriate target (0.384349ms)
+✔ profile dispatches only its appropriate target (0.335305ms)
+✔ tool dispatches only its appropriate target (0.347744ms)
+✔ application dispatches only its appropriate target (0.33847ms)
+✔ native file metadata requests inspection without revealing a host path (0.446062ms)
+✔ HTML is not a resource refuses before owner inspection (0.419191ms)
+✔ URI does not trigger fetch refuses before owner inspection (0.420714ms)
+✔ invalid JSON refuses before owner inspection (0.535307ms)
+✔ oversized input refuses before owner inspection (0.266541ms)
+✔ command field refuses before owner inspection (1.607902ms)
+✔ prototype field refuses before owner inspection (0.159089ms)
+✔ path field refuses before owner inspection (0.167592ms)
+✔ foreign project refuses before owner inspection (0.170286ms)
+✔ stale root refuses before owner inspection (0.349026ms)
+✔ invalid geometry-free project binding and resource revisions reject (0.460073ms)
+✔ no registered owner yields unavailable rather than a successful preview (0.551091ms)
+✔ owner inspection is still effect-disabled and immutable (0.722929ms)
+✔ project changes while an owner read is in flight discard the result (0.668327ms)
+✔ root changes while an owner read is in flight discard the result (0.434254ms)
+✔ invalidate cancels a hung owner read instead of resurrecting its preview (0.678502ms)
+✔ dispose rejects new requests and cancels the previous one (0.57726ms)
+✖ transfer accessors are rejected without invoking their getters (1.498068ms)
+✖ native file element accessors are rejected before indexing (0.564561ms)
+✔ owner cannot substitute resource identity or leak arbitrary fields (1.116082ms)
+✔ concurrent inspection count is bounded and can be cancelled (0.998074ms)
+✔ an unresponsive owner times out without any implicit fallback (22.957921ms)
+✔ native metadata cannot masquerade as an authenticated file selection (0.323718ms)
+✔ cancelled owner reads retain capacity until the owner actually settles (0.638331ms)
+✔ complete profile preserves distinct references and layout without execution (4.545479ms)
+✔ missing capabilities are listed without installation, grants or cloud routing (1.279828ms)
+✔ catalog absence and owner errors stay unknown rather than missing or ready (1.220949ms)
+✔ present catalog entry is not an authenticated or qualified route (0.604892ms)
+✔ minimal profile supplies empty declarations without inventing defaults that run (0.500585ms)
+✔ profile field command is rejected rather than silently activated (0.893446ms)
+✔ profile field install is rejected rather than silently activated (0.447645ms)
+✔ profile field credentials is rejected rather than silently activated (0.222345ms)
+✔ profile field permissions is rejected rather than silently activated (0.317589ms)
+✔ profile field cloudRouting is rejected rather than silently activated (0.286452ms)
+✔ profile field hooks is rejected rather than silently activated (1.810829ms)
+✔ terminal declarations cannot carry commands or raw shell strings (0.869179ms)
+✔ duplicate window, terminal and role identities are rejected (1.094038ms)
+✔ negative, oversized and nonfinite geometry cannot be restored (0.615077ms)
+✔ resource array and total payload sizes are bounded (0.81617ms)
+✔ prototype metadata and changed versions are not accepted (0.851243ms)
+✔ inspection snapshots cannot be changed by later caller mutation (0.717701ms)
+✔ invalid or absent project binding cannot apply a profile (1.603857ms)
+✔ stopping both owned paths confirms observation without a model dependency (3.837602ms)
+✔ a returned acknowledgment cannot overrule an active observed capture (1.091535ms)
+✔ capture failure does not prevent stopping output (1.312778ms)
+✔ unavailable observation cannot be called confirmed containment (0.870571ms)
+✔ hanging stop is bounded while other path still stops (11.577209ms)
+✔ concurrent stop reasons share one in-flight operation (1.588073ms)
+✔ repeat attempts do not multiply a stop that has not actually settled (20.898063ms)
+✔ hanging observation remains bounded and does not multiply (22.508755ms)
+✔ operator stops optional media without restoring or starting it (1.051795ms)
+✔ buddy-off stops optional media without restoring or starting it (0.598201ms)
+✔ lock stops optional media without restoring or starting it (0.366142ms)
+✔ sleep stops optional media without restoring or starting it (0.208985ms)
+✔ restart stops optional media without restoring or starting it (0.170827ms)
+✔ project-switch stops optional media without restoring or starting it (0.322155ms)
+✔ dispose stops optional media without restoring or starting it (0.292521ms)
+✔ renderer failure cannot prevent deterministic media teardown (0.636879ms)
+✔ missing adapters are explicitly not configured rather than active devices (0.181503ms)
+✔ an unrelated action is not accepted as a teardown reason (1.704569ms)
+✔ malformed observed state remains unknown instead of coercing true to inactive (0.257769ms)
+✖ an old inactive observation cannot confirm a later failed teardown (16.648636ms)
+✔ idle requires fresh owner facts rather than a cosmetic gesture (2.116479ms)
+✔ actual running task projects working but never verified success (0.765574ms)
+✔ media dimensions coexist with an offline Resident (0.372251ms)
+✔ stale facts become unknown, not inactive or ready (0.604371ms)
+✔ foreign project or root generation cannot manufacture work or recording state (0.674135ms)
+✔ future timestamps and task without identity are unknown (1.112766ms)
+✔ pending decision is waiting, not delegated or verified (2.20354ms)
+✔ warning and active capture retain distinct visible truth (1.237294ms)
+✔ all four families preserve Resident identity, task and media facts (3.476398ms)
+✔ cosmetic laptop or personality fields cannot overwrite operational truth (2.011521ms)
+✔ hidden presence cancels optional rendering and timers; show reconciles freshness (0.811543ms)
+✔ reduced motion is static; only one bounded freshness timer exists (1.620181ms)
+✔ input mutation cannot change stored facts or skip expiry (1.701954ms)
+✔ same semantic observation does not generate avatar chatter (18.189927ms)
+✔ unbound and absent owner truth stay distinct (0.470989ms)
+✔ unknown family and malformed owner records cannot execute contributions (0.43795ms)
+✖ disposal cleans timers and remains terminal when the final renderer throws (1.817709ms)
+✖ hiding cancels expiry even when rendering fails and a queued callback arrives late (0.554465ms)
+ℹ tests 87
+ℹ suites 0
+ℹ pass 82
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 276.423875
+
+✖ failing tests:
+
+test at tests/unit/test-workstation-drop-intent.mjs:113:1
+✖ transfer accessors are rejected without invoking their getters (1.498068ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 0
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/a9eeb25c9b6a/covert-workstation-preparation/tests/unit/test-workstation-drop-intent.mjs:117:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unit/test-workstation-drop-intent.mjs:120:1
+✖ native file element accessors are rejected before indexing (0.564561ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///workspace/scratch/a9eeb25c9b6a/covert-workstation-preparation/tests/unit/test-workstation-drop-intent.mjs:124:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: { code: 'INVALID_TRANSFER' },
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at tests/unit/test-workstation-media-lifecycle.mjs:131:1
+✖ an old inactive observation cannot confirm a later failed teardown (16.648636ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'STOPPED'
+  - 'UNKNOWN'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/a9eeb25c9b6a/covert-workstation-preparation/tests/unit/test-workstation-media-lifecycle.mjs:148:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'STOPPED',
+    expected: 'UNKNOWN',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unit/test-workstation-presence.mjs:185:1
+✖ disposal cleans timers and remains terminal when the final renderer throws (1.817709ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/a9eeb25c9b6a/covert-workstation-preparation/tests/unit/test-workstation-presence.mjs:191:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unit/test-workstation-presence.mjs:198:1
+✖ hiding cancels expiry even when rendering fails and a queued callback arrives late (0.554465ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/a9eeb25c9b6a/covert-workstation-preparation/tests/unit/test-workstation-presence.mjs:206:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

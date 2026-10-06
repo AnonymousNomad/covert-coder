@@ -1,0 +1,10 @@
+{"workspace":"/tmp/phase2a-panic-rBL0pJ","captured":[],"result":{"ok":true,"children_killed":0,"unowned_handlers":0,"outcomes":[],"revoked_at":"2026-10-06T22:29:55.050Z","latency_ms":1},"realProcessesTerminated":0}
+✔ panic never treats an allowlisted image as an owned process (27.531184ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 188.390753

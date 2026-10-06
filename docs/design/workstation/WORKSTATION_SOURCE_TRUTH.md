@@ -1,6 +1,16 @@
 # Workstation source truth and reconciliation
 
-2026-10-06. Phase A preparation; no application code changed. The latest supplied workstation directive authorizes staged implementation but requires reconciliation before destructive UI replacement.
+2026-10-06. Execution checkpoint. The accepted preparation below remains the design basis. Independent application leaf modules have now been implemented on `feat/workstation-intent-foundation-20261006`; they are unmounted and effect-disabled. Dirty-shell reconciliation remains required before shell integration or replacement.
+
+## Current execution evidence
+
+Desktop Commander became available and its actual device inventory was read repeatedly during execution. Device NEURO-MIRROR (`3da504a7-5692-4574-98b6-3bed662b0f2c`) reports **OFFLINE**, last seen 15 hours ago, application 0.2.52. Consequently there is still no direct read of `E:\covert-sovereign-workstation-shell`. Its current worktree/branch/HEAD/upstream, dirty tracked status, complete textual/binary diff, untracked UI/assets, Luna implementation, packaging-owned paths and live integration relationship are **UNKNOWN**. No reset, clean, overwrite, merge or host operation was attempted against it.
+
+Authenticated convergence read remains `ca8527e565b62326fd940f574d9964413e3c6751`. Published preparation is `1dd2b1729e470713156da821679a46c5583daac4`; its tree matches local preparation `502f3db5fd3baf56bc16dd57f9afb402cf490c4c`. Packaging branches were read at `07d360953cda54f547a9ace71aa22f5368c3128e` and `72053e3b0787c30160457fec3968e6793f24994a`. Their historical audit is not a current Windows ownership manifest. Neither packaging nor desktop paths were modified. The fresh issue-38 handoff still identifies PR41 as experimental/draft, not merge-ready.
+
+The existing linked preparation worktree was used for a new isolated candidate branch. It is **not the selected integration worktree**. No competing shell was created. Only additive interaction/profile/presence/media modules, their tests, the root test command and execution evidence were changed. Live app mounting, current UI/chrome/tokens, terminals, credentials, backend ownership and packaging remain untouched. All four companion manifests explicitly report artwork `UNQUALIFIED`.
+
+See [implementation checkpoint](WORKSTATION_IMPLEMENTATION_CHECKPOINT.md) for code commit identities, measured results, review repairs and the exact source-access dependency. The original preparation inventory follows as historical inspected-base evidence, not present Luna truth.
 
 ## Evidence
 
@@ -43,7 +53,7 @@ Every Luna implementation cell remains UNKNOWN, not presumed absent. The accessi
 
 Needed: Luna's current branch/HEAD/dirty status, changed-file list, complete diff including untracked UI assets, and packaging lane's owned paths. A base SHA cannot reveal dirty work. Nominate the integration worktree, reconcile rows and run the full frontend baseline before activation.
 
-Independent work completed: research, contracts, companion concepts, reusable skills and acceptance preparation. No push to convergence, merge, deployment, provider auth, model start or communication to collaborators. No release acceptance.
+Preparation work completed: research, contracts, companion concepts, reusable skills and acceptance preparation. Execution has now added the isolated source modules described above. No push to convergence, merge, deployment, provider auth or model start. No release acceptance.
 
 Security preparation: 28 complete eleven-field threat rows and eight seven-field owner handoffs. No security row is PASS. Source-confirmed localhost widening and missing live app enforcement remain open, as do exact Windows native ownership, trusted updates and whole-workstation containment proof. Prepared structural checks: both new skill validators pass, registry has 311 unique entries, relative contract links resolve, and candidate normal/muted text tokens exceed 4.5:1 on all three proposed dark surfaces. These are not product/runtime results.
 

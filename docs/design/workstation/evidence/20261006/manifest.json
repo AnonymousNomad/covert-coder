@@ -1,0 +1,78 @@
+{
+  "scope": "Linux Node source-only evidence; isolated unmounted candidate; no Windows/UI/security acceptance",
+  "codeLocalHead": "f028b4dd64ed74dad83018518c176331606c0223",
+  "codePublishedHead": "7b967d2112bca73e802543a0425ee221b1986bc3",
+  "focused": {
+    "passed": 87,
+    "failed": 0,
+    "skipped": 0
+  },
+  "existingRegression": {
+    "passed": 1,
+    "failed": 0,
+    "realProcessesTerminated": 0
+  },
+  "fullSuite": {
+    "exit": 1,
+    "reason": "sparse checkout missing existing tests/unit/test-facade.mjs"
+  },
+  "frontendBuild": {
+    "exit": 127,
+    "reason": "vite not installed"
+  },
+  "architectureCheck": {
+    "exit": 127,
+    "reason": "tsc not installed"
+  },
+  "reviewRed": {
+    "failedAssertions": 5,
+    "importantDefects": 3
+  },
+  "files": [
+    {
+      "path": "workstation-baseline-full.log",
+      "bytes": 2174,
+      "sha256": "c8ba7c8bbe238022e2ed6a94b445f2e4348dd14cf545cea4f91e7c864827548f"
+    },
+    {
+      "path": "workstation-baseline-owned-process.log",
+      "bytes": 408,
+      "sha256": "51b419d7911641c886d600d51baa2e9e94355489fa89341784e317fd18b4b7c9"
+    },
+    {
+      "path": "workstation-review-red.log",
+      "bytes": 11806,
+      "sha256": "c33eb5d8cc85988e0476c8cad552f7242bc7ac0ddc8003272a1fd0b2ce322148"
+    },
+    {
+      "path": "workstation-review-green.log",
+      "bytes": 7341,
+      "sha256": "cf85b428fd6164d012e62714bfb2eccb8c7194227ccb0f2d4c65a9d65f7bf88b"
+    },
+    {
+      "path": "workstation-review-regression.log",
+      "bytes": 408,
+      "sha256": "f3797b2afb589a3eef4c8c5b196a96dec96d86a82a4bd98889adce5da394d556"
+    },
+    {
+      "path": "workstation-final-full.log",
+      "bytes": 9557,
+      "sha256": "962105b304ec6af26426d0fb3cac6b72c21a300e92926b63512d4afab422ffa3"
+    },
+    {
+      "path": "workstation-final-build.log",
+      "bytes": 227,
+      "sha256": "93b45e43044d9e9fb6d5b5d8336968b866ff5bd8ec8da3838ac87c4511f0f01c"
+    },
+    {
+      "path": "workstation-final-arch.log",
+      "bytes": 286,
+      "sha256": "97f241d701376bbe4e43d267cc5aabf272dd4920b095394b8564aea925502985"
+    },
+    {
+      "path": "workstation-source-measurements.json",
+      "bytes": 1566,
+      "sha256": "e50ac47adfc4e199e891ae1b2d01a29bcec0b9ab34f6f02978303a83ff9d3b50"
+    }
+  ]
+}

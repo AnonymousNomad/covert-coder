@@ -1,0 +1,59 @@
+{
+  "measuredAt": "2026-10-06T22:30:37.301Z",
+  "scope": "Linux Node source modules only; no WebView, renderer, model, media device, or Windows acceptance",
+  "node": "v24.19.0",
+  "platform": "linux",
+  "timings": {
+    "dropParse": {
+      "iterations": 10000,
+      "elapsedMs": 78.719155,
+      "meanMicroseconds": 7.8719155
+    },
+    "profileInspect": {
+      "iterations": 10000,
+      "elapsedMs": 110.43171000000001,
+      "meanMicroseconds": 11.043171000000001
+    },
+    "presenceProjection": {
+      "iterations": 10000,
+      "elapsedMs": 173.896025,
+      "meanMicroseconds": 17.389602500000002
+    },
+    "presenceRepeatedOwnerUpdate": {
+      "iterations": 10000,
+      "elapsedMs": 211.31203400000004,
+      "meanMicroseconds": 21.131203400000004
+    },
+    "presenceHiddenOwnerUpdate": {
+      "iterations": 10000,
+      "elapsedMs": 155.85286900000006,
+      "meanMicroseconds": 15.585286900000007
+    }
+  },
+  "presence": {
+    "renderedBeforeRepeat": 2,
+    "renderedAfterRepeat": 2,
+    "visibleTimers": 1,
+    "hiddenFrames": 0,
+    "hiddenTimers": 0,
+    "disposedTimers": 0
+  },
+  "memoryBytes": {
+    "before": {
+      "rss": 41385984,
+      "heapTotal": 12316672,
+      "heapUsed": 6959832,
+      "external": 3803719,
+      "arrayBuffers": 212102
+    },
+    "after": {
+      "rss": 51826688,
+      "heapTotal": 13103104,
+      "heapUsed": 7314688,
+      "external": 3800737,
+      "arrayBuffers": 212102
+    },
+    "retainedHeapDelta": 354856,
+    "note": "Whole Node process, JIT and harness included; not incremental UI footprint"
+  }
+}
