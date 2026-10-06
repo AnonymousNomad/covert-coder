@@ -93,7 +93,10 @@ async function boot(): Promise<void> {
   const shell: CockpitHandles = mountCockpit(app, store);
   let paired = false;
   shell.topbar.setAuthority({ label: 'PAIRING REQUIRED', paired });
-  const session = new SessionService();
+  const session = new SessionService(() => shell.notify(
+    'SESSION_SAVE_FAILED',
+    'Workbench session was not saved. Current workstation state remains in memory until this session closes.'
+  ));
 
   // Editor mounts inside the cockpit center column.
   const groups = createGroups(shell.editorWorkspace, {
@@ -217,7 +220,7 @@ async function boot(): Promise<void> {
 
   window.addEventListener('pagehide', () => {
     session.set(() => host.captureSession());
-    void session.flush();
+    void session.flush().catch(() => { /* SessionService already reports a failed persistence attempt. */ });
     document.removeEventListener('covert:pair-authority', pairRequested);
     shell.dispose();
     events.dispose();

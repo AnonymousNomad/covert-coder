@@ -57,6 +57,22 @@ export const SERVER_REQUEST_TIMEOUT_MS = 120_000;
 export const SERVER_HEADERS_TIMEOUT_MS = 66_000;
 export const SERVER_KEEP_ALIVE_TIMEOUT_MS = 65_000;
 
+function requestOrigin(request: Pick<http.IncomingMessage, 'method' | 'headers'>): string {
+  const origin = request.headers.origin;
+  if (typeof origin === 'string') return origin;
+  if (request.method !== 'GET' && request.method !== 'HEAD') return '';
+  // Fetch may omit Origin on a same-origin safe read; retain the paired-origin check via Referer.
+  const referer = request.headers.referer;
+  if (typeof referer !== 'string') return '';
+  try {
+    const parsed = new URL(referer);
+    if (parsed.origin === 'null' || parsed.username || parsed.password) return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
 export class ArchServer {
   readonly authority: ExecutionAuthority;
   readonly logger: Logger;
@@ -147,7 +163,7 @@ export class ArchServer {
       return this.send(response, 404, fail('NOT_FOUND', 'route not found'));
     }
     try {
-      const origin = typeof request.headers.origin === 'string' ? request.headers.origin : '';
+      const origin = requestOrigin(request);
       const publicHealth = route.method === 'GET' && route.path === '/api/health';
       let actor: ActorHandle | undefined;
       if (!publicHealth && route.authorityMode !== 'pair') {

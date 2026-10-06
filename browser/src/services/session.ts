@@ -7,8 +7,10 @@ export class SessionService {
   current: SessionFileT;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private saving: Promise<SessionFileT> | null = null;
+  private readonly onSaveFailure: (error: unknown) => void;
 
-  constructor(initial: SessionFileT = { version: 1, tabs: [] }) {
+  constructor(onSaveFailure: (error: unknown) => void, initial: SessionFileT = { version: 1, tabs: [] }) {
+    this.onSaveFailure = onSaveFailure;
     this.current = initial;
   }
 
@@ -24,7 +26,7 @@ export class SessionService {
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.flush();
+      void this.flush().catch(() => { /* flush reports the failure through onSaveFailure. */ });
     }, SAVE_DEBOUNCE_MS);
   }
 
@@ -33,6 +35,11 @@ export class SessionService {
     const snapshot = this.current;
     this.saving = api
       .sessionPut(snapshot)
+      .catch(error => {
+        try { this.onSaveFailure(error); }
+        catch { /* Preserve the original save failure if the reporter also fails. */ }
+        throw error;
+      })
       .then(saved => {
         this.current = saved;
         return saved;

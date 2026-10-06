@@ -84,6 +84,100 @@ test('GET /api/workspace lists dot-filtered entries with name+kind (parity: buil
   assert.ok(data.entries.every(entry => entry.kind === 'file' || entry.kind === 'directory'));
 });
 
+test('browser same-origin workspace read remains authenticated when GET omits Origin', async () => {
+  const response = await fetch(`${base}/api/workspace`, {
+    headers: {
+      Authorization: owner.headers.Authorization,
+      Referer: 'http://fixture.local/',
+      'X-AIDE-API-Format': 'envelope-v1'
+    }
+  });
+  const envelope = await response.json() as { ok: boolean; data?: WorkspaceListData; error?: { code?: string } };
+  assert.equal(response.status, 200, envelope.error?.code ?? 'browser workspace read denied');
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.data?.workspace, workspace);
+});
+
+test('same-origin Referer cannot supply the missing Origin for an Authority mutation', async () => {
+  const response = await fetch(`${base}/api/authority/prepare`, {
+    method: 'POST',
+    headers: {
+      Authorization: owner.headers.Authorization,
+      Referer: 'http://fixture.local/',
+      'Content-Type': 'application/json',
+      'X-AIDE-API-Format': 'envelope-v1'
+    },
+    body: JSON.stringify({
+      method: 'PUT',
+      path: '/api/session',
+      task_id: '00000000-0000-4000-8000-000000000000',
+      body: { version: 1, tabs: [] }
+    })
+  });
+  const envelope = await response.json() as { ok: boolean; error?: { code?: string } };
+  assert.equal(response.status, 403);
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error?.code, 'FORBIDDEN');
+});
+
+test('workspace bearer cannot be replayed through a cross-origin Referer when Origin is absent', async () => {
+  const response = await fetch(`${base}/api/workspace`, {
+    headers: {
+      Authorization: owner.headers.Authorization,
+      Referer: 'https://attacker.example/',
+      'X-AIDE-API-Format': 'envelope-v1'
+    }
+  });
+  const envelope = await response.json() as { ok: boolean; error?: { code?: string } };
+  assert.equal(response.status, 403);
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error?.code, 'FORBIDDEN');
+});
+
+test('workspace bearer remains denied for malformed or credential-bearing Referer', async () => {
+  for (const referer of ['not a URL', 'http://user:pass@fixture.local/']) {
+    const response = await fetch(`${base}/api/workspace`, {
+      headers: {
+        Authorization: owner.headers.Authorization,
+        Referer: referer,
+        'X-AIDE-API-Format': 'envelope-v1'
+      }
+    });
+    const envelope = await response.json() as { ok: boolean; error?: { code?: string } };
+    assert.equal(response.status, 403, `referer form must stay denied: ${referer === 'not a URL' ? 'malformed' : 'credentials'}`);
+    assert.equal(envelope.ok, false);
+    assert.equal(envelope.error?.code, 'FORBIDDEN');
+  }
+});
+
+test('explicit mismatched Origin is never replaced by a matching Referer', async () => {
+  const response = await fetch(`${base}/api/workspace`, {
+    headers: {
+      Authorization: owner.headers.Authorization,
+      Origin: 'https://attacker.example',
+      Referer: 'http://fixture.local/',
+      'X-AIDE-API-Format': 'envelope-v1'
+    }
+  });
+  const envelope = await response.json() as { ok: boolean; error?: { code?: string } };
+  assert.equal(response.status, 403);
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error?.code, 'FORBIDDEN');
+});
+
+test('workspace bearer remains denied when both Origin and Referer are absent', async () => {
+  const response = await fetch(`${base}/api/workspace`, {
+    headers: {
+      Authorization: owner.headers.Authorization,
+      'X-AIDE-API-Format': 'envelope-v1'
+    }
+  });
+  const envelope = await response.json() as { ok: boolean; error?: { code?: string } };
+  assert.equal(response.status, 403);
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error?.code, 'FORBIDDEN');
+});
+
 test('GET /api/workspace/tree is parity with legacy - nested posix nodes, dot/build dirs excluded', async () => {
   const data = await dataOf<WorkspaceTreeData>(await owner.request('/api/workspace/tree'));
   assert.equal(data.workspace, workspace);

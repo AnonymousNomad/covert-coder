@@ -202,3 +202,46 @@ This closes notifications for the three canonical HTTP file-mutation routes, not
 5. Prove the prescribed journeys in dependency order: editor/context; ACT/Authority; document/model/LSP/Git; test/verification; process and model lifetime; layout restore; provider failure/offline; extension only after its ecosystem lane is integrated.
 
 **Release / product claim:** UNKNOWN. A movable UI shell with live surfaces is not the integrated workstation acceptance defined by this addendum.
+
+## Coupled real-browser mutation attempt — 2026-10-05
+
+### Preserved first failure: fixture identity mismatch
+
+The first run of `npx playwright test --config playwright.workstation.config.ts` failed before browser interaction with `ENOENT` reading the one-use pairing proof. The config generated a new UUID during module evaluation, while the fixture server had created the workspace and proof under a different UUID. The failure report captured expected run ID `131cc4cd-5af9-4aeb-8c44-965dbd8442bb`; the exact test-owned fixture artifacts were under `3c508ecf-85ff-4478-93b7-6446d22e2dc8`. The proof contents were never read into command output or logs.
+
+The launcher now generates one run ID before starting Playwright, passes it through the inherited environment, and the config fails closed if it is missing. Both fixture processes derive their paths from that ID. The focused TypeScript, lint, and JavaScript syntax checks passed after this harness repair. The recovery procedure is captured in `C:\Users\Grey_\.agents\skills\failure-playwright-cross-process-fixture-identity\SKILL.md`.
+
+### Current preserved red: pairing-to-workspace transition
+
+The browser rendered `Authority paired: PAIRED`, but the test failed because `.desktop-workspace-gate` remained visible. The sanitized trace captured four `GET /api/workspace` results with status `403` and code `FORBIDDEN`; the paired read had a bearer header, no `Origin`, no `Sec-Fetch-Site`, and a `Referer` whose origin matched the app. A focused `tests/arch/workspace-routes.test.ts` reproduction then produced **3 passed / 1 failed**: a same-origin read with no `Origin` was rejected, while a cross-site read without `Origin` stayed denied. The server passed only `request.headers.origin` (or the empty string) to `ExecutionAuthority.authenticate`, which requires exact equality with the origin stored at pairing. This is the confirmed root cause of the protected browser GET failure.
+
+The bounded repair keeps that exact actor-origin comparison. An explicit `Origin` remains authoritative; only `GET`/`HEAD` requests with no Origin may derive it from a valid `Referer` origin. Missing, malformed, opaque, credential-bearing, or mismatched referrers remain denied. The recovery skill records why `Sec-Fetch-Site` cannot be a prerequisite on this supported browser path.
+
+The Playwright `afterAll` removed that run's exact workspace and proof artifacts. No process remained on ports 4174/4878, and the test-owned server and preview processes had exited. The saved Playwright failure context and this record preserve the red before the next diagnostic run.
+
+### Next integration boundary and teardown red
+
+After the browser-origin repair, the next Edge run passed pairing, the workspace gate, and the editor-session visibility checks, then started the scripted AgentLoop task. The test expected the first pending approval to be `write_file` but observed `checkpoint.snapshot`; the run is **FAILED**, and the AgentLoop step order is not yet proven by this one observation. The test must account for canonical checkpoint approval before it can assert the subsequent file-write approval.
+
+That run's test-level `afterAll` also received `ENOTEMPTY` while removing the active fixture workspace's `.aide` directory. The test attempted cleanup while its Playwright `webServer` was still serving requests, so cleanup ordering was unsafe; whether pending AgentLoop persistence was the concurrent writer is **CAUSE NOT PROVEN**. The follow-up launcher now owns run-scoped cleanup after Playwright exits and refuses deletion while ports 4174/4878 are open or unknown.
+
+### Same-page browser mutation run — 2026-10-05
+
+`npm run test:workstation` ran with the installed Edge channel. The test's Authority prepare/decision, AgentLoop status, and task execution requests were moved into the same browser page that held the Monaco draft. The browser test reached the final assertions: the real fixture file contained the AgentLoop edit, the Monaco draft remained dirty and showed an external conflict, Ctrl+S did not issue `/api/file/write`, and the disk content remained unchanged after that refusal. Those assertions passed in this run.
+
+The run was **FAILED**: the final `pageErrors` assertion observed two uncaught `Error: Operation denied; no execution authorized.` errors. A diagnostic run then captured two declined `authority-confirm` dialogs during the AgentLoop phase, both correlated with `PUT /api/session`, and matching browser error stacks. The route was reached by `SessionService.flush()`; it was invoked by the debounced `SessionService.set()` timer as an unawaited promise. `api.sessionPut()` received the expected Authority refusal and rejected; the timer had no rejection handler. The cause is **CONFIRMED**: a normal operator denial of a session save surfaced as an unhandled browser error.
+
+The bounded repair adds an explicit save-failure callback to `SessionService`, reports a truthful “not saved; remains in memory” notice through the existing shell notification surface, and consumes fire-and-forget rejections after reporting. It grants no authority and does not persist a denied save. The dirty-draft Ctrl+S confirmation remains a separate, deliberately declined conflict prompt.
+
+After repair, the Edge journey passed **1/1** (13.3 s test / 24.5 s total including build). It proved same-page pairing, AgentLoop execution through the canonical test fixture and Authority decisions, the disk edit, preserved dirty Monaco draft, visible external-conflict state, denied browser `/api/file/write`, truthful session-save denial notice, and zero unhandled page errors. The focused workspace route suite passed **7/7**; Node and browser TypeScript checks, focused ESLint, JavaScript syntax checks, and `git diff --check` passed. The local Vite build completed with the existing >500 kB chunk warning.
+
+After both red and green runs, the runner's post-teardown check found no listeners on ports 4174/4878 and no UUID-scoped `covert-workstation-e2e-*` fixture under the configured temp root. The original failed `error-context.md` was preserved in the ignored `test-results` directory until Playwright's successful run replaced it; the failure, cause, and repair are recorded here and in `C:\Users\Grey_\.agents\skills\failure-workstation-e2e-authority-refusal-unhandled\SKILL.md`. No error was suppressed or permission broadened.
+
+### Verification reconciliation — 2026-10-05
+
+- The first full `npm run check:arch` failed **981 passed / 1 failed / 11 skipped** (993 tests). The sole failure was C1-02 generated decision-artifact drift. Before regeneration, both generated decision files were copied to `E:\pip_temp\c1-02-route-decisions-before-f71626596aa840078dd7fcc7399fb1b2`; the frozen `C1-02-ROUTE-DRIFT` artifacts were untouched.
+- Canonical regeneration added the existing typed frontend caller for `GET /api/readiness`, recorded its settings-surface text reference as unresolved, and updated shifted `browser/src/services/api.ts` line references. I reviewed the complete generated delta. Focused `tests/arch/route-drift.test.ts` then passed **5/5**.
+- `npm run veritas` subsequently exited **0**. Its six checks all reported true: path boundary, secret scan, manifest validation, full `npm run check`, full `npm test`, and Git diff check. The Veritas decision was `verified`, score **1.0 / 0.9 threshold**, sufficient evidence, no failed checks or oaths. The full test chain appended a truthful Desktop Control generic battery result of **9/9** to `docs/evidence/desktop-battery.md`; Office COM acceptance was not run.
+- After that Veritas run, one additional security regression case was added to verify that a matching Referer cannot supply a missing Origin on `POST /api/authority/prepare`. The final focused workspace-route suite passed **8/8**; Node and browser typechecks, focused ESLint, and `git diff --check` passed after this test-only addition. No production source changed after the successful Veritas run.
+
+The local shell integration remains incomplete and unqualified. This lane has no configured upstream; no push or exact-SHA CI claim is made. The browser task used a scripted AgentLoop response and does not qualify a model/provider or close terminal, Git, LSP/DAP, task lifetime, layout restore, or the complete Cipher ASK/PLAN/ACT workflow.
