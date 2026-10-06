@@ -12,10 +12,10 @@ function memoryStorage(initial = null) {
   };
 }
 
-test('first launch opens the shared coding workstation with Workspace, Cipher, and Terminal', () => {
+test('first launch opens the shared coding workstation with Workspace and two terminal views', () => {
   const state = createDefaultLayoutState();
   assert.equal(state.selectedLayout, 'CODING');
-  assert.deepEqual(state.windows.map(window => window.appId), ['editor', 'resident', 'terminal']);
+  assert.deepEqual(state.windows.map(window => window.appId), ['editor', 'terminal', 'terminal']);
   assert.ok(state.windows.every(window => window.bounds.x >= 0 && window.bounds.y >= 0));
 });
 
@@ -75,7 +75,7 @@ test('named layouts, custom save, startup restore, and reset remain separate fro
   assert.equal(manager.snapshot().windows.some(window => window.appId === 'terminal'), true);
   manager.resetLayout();
   assert.equal(manager.snapshot().selectedLayout, 'CODING');
-  assert.deepEqual(manager.snapshot().windows.map(window => window.appId), ['editor', 'resident', 'terminal']);
+  assert.deepEqual(manager.snapshot().windows.map(window => window.appId), ['editor', 'terminal', 'terminal']);
 });
 
 test('storage write errors are reported as unavailable rather than escaping', () => {

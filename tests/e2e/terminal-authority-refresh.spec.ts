@@ -152,7 +152,7 @@ test('Terminal discovers and reattaches to a running session after Authority pai
 
   try {
     await page.goto('/');
-    const terminalWindow = page.locator('.desktop-window[data-app-id="terminal"]');
+    const terminalWindow = page.locator('.desktop-window[data-instance-id="terminal"]');
     const nativeProvider = terminalWindow.locator('.terminal-provider.available').filter({ hasText: 'Native terminal' });
     if (await terminalWindow.count() === 0) {
       await page.getByRole('button', { name: 'Terminal application' }).click();

@@ -20,9 +20,11 @@ import { getSharedEvents } from '../services/ws.ts';
 import type { TerminalProviderInfoT, TerminalEventT, TerminalSessionInfoT } from '../../../common/contracts/terminal.ts';
 import { TerminalEvent } from '../../../common/contracts/terminal.ts';
 import type { TaskStatusResponseT, TaskJobT } from '../../../common/contracts/tasks.ts';
+import type { TerminalViewBindings } from '../desktop/terminal-view-bindings.ts';
 import { DEFAULT_APPEARANCE, terminalThemeFor, type ThemeEngine } from '../desktop/theme.ts';
 
 export interface PanelHandles {
+  activate(): void;
   dispose(): void;
 }
 
@@ -40,7 +42,7 @@ function statusClass(status: TaskJobT['status']): string {
   return 'dim';
 }
 
-export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>, theme?: ThemeEngine): PanelHandles {
+export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>, theme?: ThemeEngine, view?: { viewId: string; bindings: TerminalViewBindings }): PanelHandles {
   parent.innerHTML = '';
   const root = el('div', 'panel-content terminal-panel');
   const header = el('header', 'panel-header');
@@ -71,6 +73,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let activeSessionId: string | null = null;
   let sessionsInitialized = false;
   let resumeInProgress = false;
+  let openInProgress = false;
+  let controlConfirmed = false;
+  let resizeObserver: ResizeObserver | null = null;
+  let termElement: HTMLElement | null = null;
+  let fitFrame: number | null = null;
   let activeProvider: TerminalProviderInfoT | null = null;
   let stopButton: HTMLButtonElement | null = null;
   let windowsResizeHandler: (() => void) | null = null;
@@ -117,7 +124,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
 
   function renderOpenControls(): void {
     openControls.innerHTML = '';
-    if (activeSessionId !== null || resumeInProgress) {
+    if (activeSessionId !== null || resumeInProgress || openInProgress) {
       openControls.appendChild(el('div', 'panel-empty', 'A terminal session is active. Stop it before opening another session.'));
       return;
     }
@@ -164,7 +171,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   function renderResumeCandidates(sessions: TerminalSessionInfoT[]): void {
     resumeStrip.innerHTML = '';
     if (activeSessionId !== null) return;
-    const running = sessions.filter(session => session.state === 'running');
+    const running = sessions.filter(session => session.state === 'running' && (!view || view.bindings.availableTo(view.viewId, session.sessionId)));
     if (running.length === 0) return;
     resumeStrip.appendChild(el('div', 'panel-section-title', 'RUNNING SESSIONS · AUTHORITY REATTACH REQUIRED'));
     for (const session of running) {
@@ -194,7 +201,8 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   function renderSessionShell(): void {
     sessionShell.innerHTML = '';
     if (activeSessionId === null) return;
-    const stage = el('div', 'terminal-stage running');
+    const stage = el('div', `terminal-stage ${controlConfirmed ? 'running' : 'awaiting-approval'}`);
+    if (!controlConfirmed) stage.appendChild(el('div', 'terminal-session-state', 'REATTACH APPROVAL REQUIRED'));
     const metaRow = el('div', 'terminal-session-meta-row');
     const meta = el('div', 'terminal-session-meta');
     meta.appendChild(el('span', 'terminal-session-meta-item', activeProvider?.label ?? 'session'));
@@ -204,10 +212,12 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     stopButton.type = 'button';
     stopButton.className = 'terminal-stop-btn';
     stopButton.textContent = 'STOP SESSION';
+    stopButton.disabled = !controlConfirmed;
     stopButton.addEventListener('click', () => { void stopSession(); });
     metaRow.appendChild(stopButton);
     stage.appendChild(metaRow);
     const termHost = el('div', 'terminal-xterm');
+    termElement = termHost;
     stage.appendChild(termHost);
     sessionShell.appendChild(stage);
 
@@ -218,28 +228,48 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       fontSize: appearance.fontSize,
       lineHeight: appearance.lineHeight,
       fontFamily: `'${appearance.terminalFont.replaceAll("'", '')}', Consolas, monospace`,
+      scrollback: 5000,
+      disableStdin: !controlConfirmed,
       theme: terminalThemeFor(appearance)
     });
     const addon = new FitAddon();
     refreshedTerm.loadAddon(addon);
     refreshedTerm.open(termHost);
-    addon.fit();
     refreshedTerm.onData(data => {
-      if (activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
+      if (alive && controlConfirmed && !resumeInProgress && activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
     });
     xterm = refreshedTerm;
     fitAddon = addon;
-    windowsResizeHandler = () => {
-      if (xterm && fitAddon) fitAddon.fit();
-      if (xterm && activeSessionId !== null) {
-        bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'resize', cols: xterm.cols, rows: xterm.rows });
-      }
-    };
+    windowsResizeHandler = scheduleFit;
     window.addEventListener('resize', windowsResizeHandler);
+    resizeObserver = new ResizeObserver(scheduleFit);
+    resizeObserver.observe(termHost);
+    scheduleFit();
     refreshedTerm.focus();
   }
 
+  function scheduleFit(): void {
+    if (!alive || fitFrame !== null) return;
+    fitFrame = window.requestAnimationFrame(() => {
+      fitFrame = null;
+      if (!alive || !termElement?.isConnected || termElement.clientWidth <= 0 || termElement.clientHeight <= 0 || !xterm || !fitAddon) return;
+      fitAddon.fit();
+      if (controlConfirmed && !resumeInProgress && activeSessionId !== null) {
+        bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'resize', cols: xterm.cols, rows: xterm.rows });
+      }
+    });
+  }
+
+  function releaseBinding(): void {
+    if (activeSessionId !== null && view) view.bindings.release(view.viewId, activeSessionId);
+  }
+
   function disposeSessionView(): void {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    termElement = null;
+    if (fitFrame !== null) window.cancelAnimationFrame(fitFrame);
+    fitFrame = null;
     if (windowsResizeHandler) window.removeEventListener('resize', windowsResizeHandler);
     windowsResizeHandler = null;
     if (xterm) {
@@ -256,7 +286,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     const stage = el('div', 'terminal-stage gone');
     stage.appendChild(el('div', 'panel-empty', message));
     sessionShell.appendChild(stage);
+    releaseBinding();
     activeSessionId = null;
+    controlConfirmed = false;
     sessionsInitialized = false;
     renderOpenControls();
   }
@@ -301,7 +333,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   }
 
   async function openSession(): Promise<void> {
-    if (activeProvider === null || activeSessionId !== null || resumeInProgress) return;
+    if (!alive || activeProvider === null || activeSessionId !== null || resumeInProgress || openInProgress) return;
+    openInProgress = true;
+    openButton.disabled = true;
     const body: { provider: string; shell: string | null; cols: number; rows: number } = {
       provider: providerSelect?.value ?? activeProvider.id,
       shell: shellSelect?.value ?? null,
@@ -311,7 +345,10 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     setBusy('Approval required \u2014 opening approved session\u2026');
     try {
       const opened = await api.terminalSessionOpen(body);
+      if (!alive) return; // Canonical service retains the admitted session for governed recovery.
+      if (view && !view.bindings.claim(view.viewId, opened.session.sessionId)) throw new Error('Session is already displayed in another terminal window');
       activeSessionId = opened.session.sessionId;
+      controlConfirmed = true;
       renderResumeCandidates([]);
       renderOpenControls();
       sessionsInitialized = opened.session.state === 'running';
@@ -319,15 +356,24 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       else renderSessionLoading();
       void refreshSessions();
     } catch (e) {
+      if (!alive) return;
+      releaseBinding();
       activeSessionId = null;
+      controlConfirmed = false;
       sessionShell.innerHTML = '';
       sessionShell.appendChild(el('div', 'panel-error', `Session not opened: ${e instanceof Error ? e.message : String(e)}`));
       renderOpenControls();
+    } finally {
+      openInProgress = false;
+      openButton.disabled = false;
+      if (alive) renderOpenControls();
     }
   }
 
   async function resumeSession(candidate: TerminalSessionInfoT): Promise<void> {
-    if (!alive || activeSessionId !== null || resumeInProgress || candidate.state !== 'running') return;
+    if (!alive || activeSessionId !== null || resumeInProgress || openInProgress || candidate.state !== 'running') return;
+    if (view && !view.bindings.claim(view.viewId, candidate.sessionId)) return;
+    controlConfirmed = false;
     resumeInProgress = true;
     activeSessionId = candidate.sessionId;
     renderResumeCandidates([]);
@@ -341,6 +387,12 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       if (resumed.session.sessionId !== candidate.sessionId || resumed.session.state !== 'running') {
         throw new Error('resume response identity or state mismatch');
       }
+      controlConfirmed = true;
+      if (xterm) xterm.options.disableStdin = false;
+      if (stopButton) stopButton.disabled = false;
+      const stage = sessionShell.querySelector('.terminal-stage');
+      stage?.classList.remove('awaiting-approval');
+      stage?.classList.add('running');
       await refreshSessions();
     } catch (error) {
       if (alive && activeSessionId === candidate.sessionId) {
@@ -349,19 +401,22 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       }
     } finally {
       resumeInProgress = false;
+      if (alive) { renderOpenControls(); scheduleFit(); }
     }
   }
 
   async function stopSession(): Promise<void> {
-    if (activeSessionId === null) return;
+    if (!alive || !controlConfirmed || resumeInProgress || activeSessionId === null) return;
     const id = activeSessionId;
     disposeSessionView();
     setBusy('Stopping session\u2026');
     try {
       const stopped = await api.terminalSessionStop(id);
+      if (!alive || activeSessionId !== id) return;
       if (stopped.sessionId !== id) throw new Error('stop response session identity mismatch');
       await refreshSessions();
     } catch (e) {
+      if (!alive || activeSessionId !== id) return;
       sessionShell.innerHTML = '';
       sessionShell.appendChild(el('div', 'panel-error', `Stop failed: ${e instanceof Error ? e.message : String(e)}`));
       if (activeSessionId !== null) renderSessionShell();
@@ -395,7 +450,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       sessionsInitialized = true;
       renderSessionShell();
     }
-    const stateLab = `${mine.state.toUpperCase()}${mine.exitCode !== null ? ` \u00b7 exit ${mine.exitCode}` : ''}${mine.cleanup !== 'clean' ? ` \u00b7 cleanup=${mine.cleanup}` : ''}`;
+    const stateLab = `${controlConfirmed ? mine.state.toUpperCase() : 'REATTACH APPROVAL REQUIRED'}${mine.exitCode !== null ? ` \u00b7 exit ${mine.exitCode}` : ''}${mine.cleanup !== 'clean' ? ` \u00b7 cleanup=${mine.cleanup}` : ''}`;
     let chip = sessionShell.querySelector('.terminal-session-state');
     if (chip) { chip.textContent = stateLab; return; }
     chip = el('div', 'terminal-session-state', stateLab);
@@ -432,7 +487,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     xterm.options.lineHeight = current.lineHeight;
     xterm.options.fontFamily = `'${current.terminalFont.replaceAll("'", '')}', Consolas, monospace`;
     xterm.options.theme = terminalThemeFor(current);
-    fitAddon?.fit();
+    scheduleFit();
   };
   document.addEventListener('covert:appearance-changed', appearanceChanged);
 
@@ -489,20 +544,21 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     void refreshSessions();
   };
   document.addEventListener('covert:authority-paired', refreshAfterAuthorityPairing);
-  const interval = window.setInterval(() => { void refreshHistory(); }, 5000);
+  const interval = window.setInterval(() => {
+    if (parent.isConnected && !parent.closest<HTMLElement>('.desktop-window')?.hidden) void refreshHistory();
+  }, 5000);
 
   return {
+    activate: scheduleFit,
     dispose() {
       alive = false;
       window.clearInterval(interval);
       document.removeEventListener('covert:authority-paired', refreshAfterAuthorityPairing);
       document.removeEventListener('covert:appearance-changed', appearanceChanged);
-      if (windowsResizeHandler) window.removeEventListener('resize', windowsResizeHandler);
       unsubscribe?.();
-      if (xterm) {
-        try { xterm.dispose(); } catch { /* already disposed */ }
-        xterm = null;
-      }
+      releaseBinding();
+      controlConfirmed = false;
+      disposeSessionView();
       parent.innerHTML = '';
     }
   };

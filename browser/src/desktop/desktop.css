@@ -26,7 +26,7 @@
   --ck-bg-primary: var(--desktop-background);
   --ck-bg-secondary: var(--desktop-surface);
   --ck-bg-panel: var(--desktop-surface);
-  --ck-bg-glass: rgba(16, 22, 25, 0.96);
+  --ck-bg-glass: var(--desktop-surface);
   --ck-bg-elevated: var(--desktop-raised);
   --ck-bg-deepest: #06090a;
   --ck-cyan: var(--desktop-accent-cyan);
@@ -215,7 +215,7 @@ body,
   overflow: visible;
   border: 1px solid var(--desktop-border);
   border-radius: 0;
-  background: rgba(13, 19, 21, 0.94);
+  background: var(--desktop-surface);
   box-shadow: none;
   transition: border-color 120ms ease, box-shadow 120ms ease;
   isolation: isolate;
@@ -282,7 +282,7 @@ body,
   min-height: 0;
   overflow: auto;
   border-radius: 0;
-  background: rgba(9, 14, 16, 0.90);
+  background: var(--desktop-inset);
 }
 
 .covert-desktop-shell .desktop-app-root {

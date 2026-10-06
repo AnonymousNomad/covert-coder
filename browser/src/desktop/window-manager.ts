@@ -1,5 +1,6 @@
 import { APP_BY_ID } from './app-registry.ts';
-import { createDefaultLayoutState, persistLayoutState, type StorageLike } from './layout.ts';
+import { createDefaultLayoutState, decodeLayoutState, validInstanceId, persistLayoutState, type StorageLike } from './layout.ts';
+import { MAX_INSTANCES_PER_APP, windowInstanceId } from './types.ts';
 import type { DesktopAppId, DesktopLayoutState, DesktopWindowState, LayoutId, NormalizedBounds, SnapState } from './types.ts';
 
 export type SnapTarget = Exclude<SnapState, 'none' | 'maximized'>;
@@ -43,7 +44,7 @@ export class WindowManager {
     initial: DesktopLayoutState = createDefaultLayoutState(),
     storage: StorageLike | null = null
   ) {
-    this.state = initial;
+    this.state = decodeLayoutState(initial) ?? createDefaultLayoutState();
     this.storage = storage;
   }
 
@@ -60,20 +61,21 @@ export class WindowManager {
     return () => this.listeners.delete(listener);
   }
 
-  open(appId: DesktopAppId): boolean {
+  open(appId: DesktopAppId, instanceId = appId as string): boolean {
     const manifest = APP_BY_ID.get(appId);
-    if (!manifest || manifest.maturity !== 'AVAILABLE') return false;
-    const current = this.state.windows.find(window => window.appId === appId);
+    if (!manifest || manifest.maturity !== 'AVAILABLE' || !validInstanceId(appId, instanceId)) return false;
+    const current = this.state.windows.find(window => windowInstanceId(window) === instanceId);
     if (current) {
       this.commit({
         ...this.state,
-        windows: this.state.windows.map(window => window.appId === appId ? { ...window, minimized: false, zIndex: this.nextZ() } : window)
+        windows: this.state.windows.map(window => windowInstanceId(window) === instanceId ? { ...window, minimized: false, zIndex: this.nextZ() } : window)
       });
       return true;
     }
     const zIndex = this.nextZ();
     const window: DesktopWindowState = {
       appId,
+      instanceId,
       bounds: copyBounds(manifest.defaultBounds),
       zIndex,
       minimized: false,
@@ -84,39 +86,53 @@ export class WindowManager {
     return true;
   }
 
-  focus(appId: DesktopAppId): void {
-    if (!this.state.windows.some(window => window.appId === appId)) return;
+  openNew(appId: DesktopAppId): string | null {
+    const manifest = APP_BY_ID.get(appId);
+    if (!manifest || manifest.maturity !== 'AVAILABLE') return null;
+    if (manifest.singleton) return this.open(appId) ? appId : null;
+    for (let index = 1; index <= MAX_INSTANCES_PER_APP; index++) {
+      const instanceId = index === 1 ? appId : `${appId}:${index}`;
+      if (!this.state.windows.some(window => windowInstanceId(window) === instanceId)) {
+        return this.open(appId, instanceId) ? instanceId : null;
+      }
+    }
+    return null;
+  }
+
+  focus(instanceId: string): void {
+    if (!this.state.windows.some(window => windowInstanceId(window) === instanceId)) return;
     this.commit({
       ...this.state,
-      windows: this.state.windows.map(window => window.appId === appId ? { ...window, minimized: false, zIndex: this.nextZ() } : window)
+      windows: this.state.windows.map(window => windowInstanceId(window) === instanceId ? { ...window, minimized: false, zIndex: this.nextZ() } : window)
     });
   }
 
-  close(appId: DesktopAppId): void {
-    if (!this.state.windows.some(window => window.appId === appId)) return;
-    this.commit({ ...this.state, windows: this.state.windows.filter(window => window.appId !== appId) });
+  close(instanceId: string): void {
+    if (!this.state.windows.some(window => windowInstanceId(window) === instanceId)) return;
+    this.commit({ ...this.state, windows: this.state.windows.filter(window => windowInstanceId(window) !== instanceId) });
   }
 
-  minimize(appId: DesktopAppId): void {
-    this.patchWindow(appId, window => ({ ...window, minimized: true }));
+  minimize(instanceId: string): void {
+    this.patchWindow(instanceId, window => ({ ...window, minimized: true }));
   }
 
-  restore(appId: DesktopAppId): void {
-    this.patchWindow(appId, window => ({ ...window, minimized: false, zIndex: this.nextZ() }));
+  restore(instanceId: string): void {
+    this.patchWindow(instanceId, window => ({ ...window, minimized: false, zIndex: this.nextZ() }));
   }
 
-  toggleMaximize(appId: DesktopAppId): void {
-    this.patchWindow(appId, window => window.snap === 'maximized' && window.restoreBounds
+  toggleMaximize(instanceId: string): void {
+    this.patchWindow(instanceId, window => window.snap === 'maximized' && window.restoreBounds
       ? { ...window, bounds: window.restoreBounds, restoreBounds: null, snap: 'none', minimized: false, zIndex: this.nextZ() }
       : { ...window, restoreBounds: copyBounds(window.bounds), bounds: { x: 0, y: 0, width: 1, height: 1 }, snap: 'maximized', minimized: false, zIndex: this.nextZ() });
   }
 
-  snap(appId: DesktopAppId, target: SnapTarget): void {
-    this.patchWindow(appId, window => ({ ...window, bounds: snapBounds(target), snap: target, restoreBounds: null, minimized: false, zIndex: this.nextZ() }));
+  snap(instanceId: string, target: SnapTarget): void {
+    this.patchWindow(instanceId, window => ({ ...window, bounds: snapBounds(target), snap: target, restoreBounds: null, minimized: false, zIndex: this.nextZ() }));
   }
 
-  setBounds(appId: DesktopAppId, bounds: NormalizedBounds): void {
-    this.patchWindow(appId, window => ({ ...window, bounds: normalizeBounds(bounds), snap: 'none', restoreBounds: null }));
+  setBounds(instanceId: string, bounds: NormalizedBounds): void {
+    if (![bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)) return;
+    this.patchWindow(instanceId, window => ({ ...window, bounds: normalizeBounds(bounds), snap: 'none', restoreBounds: null }));
   }
 
   selectLayout(layoutId: Exclude<LayoutId, 'CUSTOM'>): void {
@@ -149,9 +165,9 @@ export class WindowManager {
     this.commit({ ...createDefaultLayoutState('CODING'), startupLayout });
   }
 
-  private patchWindow(appId: DesktopAppId, update: (window: DesktopWindowState) => DesktopWindowState): void {
-    if (!this.state.windows.some(window => window.appId === appId)) return;
-    this.commit({ ...this.state, windows: this.state.windows.map(window => window.appId === appId ? update(window) : window) });
+  private patchWindow(instanceId: string, update: (window: DesktopWindowState) => DesktopWindowState): void {
+    if (!this.state.windows.some(window => windowInstanceId(window) === instanceId)) return;
+    this.commit({ ...this.state, windows: this.state.windows.map(window => windowInstanceId(window) === instanceId ? update(window) : window) });
   }
 
   private nextZ(): number {

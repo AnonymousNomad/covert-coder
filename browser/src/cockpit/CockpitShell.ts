@@ -12,6 +12,7 @@ import { createActivityTimeline, type ActivityTimelineHandles } from './Activity
 import { createBottomStrip, type BottomStripHandles } from './BottomStrip.ts';
 import { createCommandCenterPanel } from '../panels/command-center.ts';
 import { createModelsPanel } from '../panels/models.ts';
+import { TerminalViewBindings } from '../desktop/terminal-view-bindings.ts';
 import { createTerminalPanel } from '../panels/terminal.ts';
 import { createVerificationPanel } from '../panels/verification.ts';
 import { createSkillsPanel } from '../panels/skills.ts';
@@ -31,6 +32,7 @@ import { createThemeEngine, type ThemeEngine } from '../desktop/theme.ts';
 import { createCipherVoiceService, type CipherSpeechState, type CipherVoiceService } from '../desktop/cipher-voice.ts';
 
 interface DisposablePanel {
+  activate?(): void;
   dispose(): void;
 }
 
@@ -83,7 +85,7 @@ function lazyPanel(root: HTMLElement, factory: () => DisposablePanel, activate: 
     mount(): void {
       if (handle === null) handle = factory();
     },
-    activate,
+    activate(): void { handle?.activate?.(); activate(); },
     dispose(): void {
       handle?.dispose();
       handle = null;
@@ -218,7 +220,9 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     if (editorHost !== null) projects.setEditorHost(editorHost);
     return projects;
   });
-  const terminal = lazyPanel(terminalRoot, () => createTerminalPanel(terminalRoot, store, theme));
+  const terminalBindings = new TerminalViewBindings();
+  const terminal = lazyPanel(terminalRoot, () => createTerminalPanel(terminalRoot, store, theme, { viewId: 'terminal', bindings: terminalBindings }));
+  const terminalInstances = new Map<string, PanelRegistration>([['terminal', terminal]]);
   const models = lazyPanel(modelsRoot, () => createModelsPanel(modelsRoot, store));
   const skills = lazyPanel(skillsRoot, () => createSkillsPanel(skillsRoot, store));
   const memory = lazyPanel(memoryRoot, () => createMemoryPanel(memoryRoot, store));
@@ -284,8 +288,18 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     dock,
     paletteHost,
     manager,
-    onAttach(appId: DesktopAppId, content: HTMLElement): void {
-      const registration = panels[appId];
+    onAttach(appId: DesktopAppId, content: HTMLElement, instanceId: string): void {
+      let registration = panels[appId];
+      if (appId === 'terminal') {
+        let terminalInstance = terminalInstances.get(instanceId);
+        if (!terminalInstance) {
+          const root = appRoot('terminal');
+          root.dataset.instanceId = instanceId;
+          terminalInstance = lazyPanel(root, () => createTerminalPanel(root, store, theme, { viewId: instanceId, bindings: terminalBindings }));
+          terminalInstances.set(instanceId, terminalInstance);
+        }
+        registration = terminalInstance;
+      }
       registration.mount();
       registration.activate();
       registration.root.hidden = false;
@@ -341,7 +355,9 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
       document.removeEventListener('covert:appearance-changed', appearanceChanged);
       unsubscribePanel();
       view.dispose();
-      for (const registration of Object.values(panels)) registration.dispose();
+      for (const [id, registration] of Object.entries(panels)) if (id !== 'terminal') registration.dispose();
+      for (const registration of terminalInstances.values()) registration.dispose();
+      terminalInstances.clear();
       theme.dispose();
       cipherVoice.dispose();
       bottom.dispose();

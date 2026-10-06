@@ -1,6 +1,8 @@
 import { APP_REGISTRY, type CovertAppManifest } from './app-registry.ts';
 import type { WindowManager } from './window-manager.ts';
+import { MAX_INSTANCES_PER_APP, windowInstanceId } from './types.ts';
 import type { DesktopAppId, DesktopLayoutState, NormalizedBounds, PixelBounds } from './types.ts';
+import { windowPixelBounds } from './layout.ts';
 import { bindWindowInteractions } from './window-interactions.ts';
 
 export interface WindowManagerViewOptions {
@@ -8,7 +10,7 @@ export interface WindowManagerViewOptions {
   dock: HTMLElement;
   paletteHost: HTMLElement;
   manager: WindowManager;
-  onAttach(appId: DesktopAppId, content: HTMLElement): void;
+  onAttach(appId: DesktopAppId, content: HTMLElement, instanceId: string): void;
 }
 
 interface WindowElements {
@@ -47,9 +49,9 @@ function pixelsFromNormalized(bounds: NormalizedBounds, layer: HTMLElement): Pix
 
 export class WindowManagerView {
   private readonly options: WindowManagerViewOptions;
-  private readonly windows = new Map<DesktopAppId, WindowElements>();
+  private readonly windows = new Map<string, WindowElements>();
   private readonly launcherButtons = new Map<DesktopAppId, HTMLButtonElement>();
-  private readonly taskButtons = new Map<DesktopAppId, HTMLButtonElement>();
+  private readonly taskButtons = new Map<string, HTMLButtonElement>();
   private readonly unsubscribe: () => void;
   private readonly palette: HTMLDialogElement;
   private readonly paletteInput: HTMLInputElement;
@@ -172,13 +174,16 @@ export class WindowManagerView {
     startup.addEventListener('click', () => this.options.manager.setStartupLayout());
     const palette = button('Open command palette', '⌕', 'desktop-palette-trigger', 'Open command palette (Ctrl+K)');
     palette.addEventListener('click', () => this.openPalette());
-    layoutTools.append(layoutSelect, save, restore, reset, startup, palette);
+    const newTerminal = button('New terminal window', '>_+', 'desktop-layout-action');
+    newTerminal.dataset.action = 'new-terminal';
+    newTerminal.addEventListener('click', () => this.options.manager.openNew('terminal'));
+    layoutTools.append(newTerminal, layoutSelect, save, restore, reset, startup, palette);
     this.options.dock.append(launcher, tasks, layoutTools);
     this.renderWindowTasks(this.options.manager.snapshot());
   }
 
   private renderWindows(state: DesktopLayoutState): void {
-    const visibleIds = new Set(state.windows.map(window => window.appId));
+    const visibleIds = new Set(state.windows.map(windowInstanceId));
     for (const [appId, elements] of this.windows) {
       if (!visibleIds.has(appId)) {
         elements.disposeInteractions();
@@ -186,18 +191,20 @@ export class WindowManagerView {
         this.windows.delete(appId);
       }
     }
-    const focused = state.windows.filter(window => !window.minimized).sort((left, right) => right.zIndex - left.zIndex)[0]?.appId ?? null;
+    const focusedWindow = state.windows.filter(window => !window.minimized).sort((left, right) => right.zIndex - left.zIndex)[0];
+    const focused = focusedWindow ? windowInstanceId(focusedWindow) : null;
     for (const windowState of state.windows) {
       const manifest = APP_REGISTRY.find(app => app.id === windowState.appId);
       if (!manifest) continue;
-      let elements = this.windows.get(windowState.appId);
+      const instanceId = windowInstanceId(windowState);
+      let elements = this.windows.get(instanceId);
       if (!elements) {
-        elements = this.createWindow(manifest);
-        this.windows.set(windowState.appId, elements);
-        this.options.onAttach(windowState.appId, elements.content);
+        elements = this.createWindow(manifest, instanceId);
+        this.windows.set(instanceId, elements);
+        this.options.onAttach(windowState.appId, elements.content, instanceId);
         this.options.layer.appendChild(elements.root);
       }
-      const pixels = pixelsFromNormalized(windowState.bounds, this.options.layer);
+      const pixels = windowPixelBounds(windowState.bounds, { width: this.options.layer.clientWidth, height: this.options.layer.clientHeight }, { width: manifest.minWidth, height: manifest.minHeight });
       elements.root.style.left = `${pixels.x}px`;
       elements.root.style.top = `${pixels.y}px`;
       elements.root.style.width = `${pixels.width}px`;
@@ -206,13 +213,13 @@ export class WindowManagerView {
       elements.root.style.setProperty('--window-min-width', `${manifest.minWidth}px`);
       elements.root.style.setProperty('--window-min-height', `${manifest.minHeight}px`);
       elements.root.hidden = windowState.minimized;
-      elements.root.classList.toggle('is-focused', focused === windowState.appId);
+      elements.root.classList.toggle('is-focused', focused === instanceId);
       elements.root.classList.toggle('is-maximized', windowState.snap === 'maximized');
       elements.root.dataset.snap = windowState.snap;
-      elements.content.setAttribute('aria-label', `${manifest.title} content`);
+      elements.content.setAttribute('aria-label', `${instanceId === manifest.id ? manifest.title : `${manifest.title} ${instanceId.split(':')[1]}`} content`);
       const launcher = this.launcherButtons.get(windowState.appId);
       launcher?.classList.toggle('is-running', true);
-      launcher?.setAttribute('aria-pressed', focused === windowState.appId ? 'true' : 'false');
+      launcher?.setAttribute('aria-pressed', focusedWindow?.appId === windowState.appId ? 'true' : 'false');
     }
     for (const manifest of APP_REGISTRY) {
       const launcher = this.launcherButtons.get(manifest.id);
@@ -222,15 +229,22 @@ export class WindowManagerView {
     }
     const layoutSelect = this.options.dock.querySelector<HTMLSelectElement>('.desktop-layout-select');
     if (layoutSelect) layoutSelect.value = state.selectedLayout;
+    const newTerminal = this.options.dock.querySelector<HTMLButtonElement>('[data-action="new-terminal"]');
+    if (newTerminal) {
+      newTerminal.disabled = state.windows.filter(window => window.appId === 'terminal').length >= MAX_INSTANCES_PER_APP;
+      newTerminal.title = newTerminal.disabled ? 'Eight terminal windows are already open' : 'New terminal window; starting a session still requires Authority approval';
+    }
     this.renderWindowTasks(state);
   }
 
-  private createWindow(manifest: CovertAppManifest): WindowElements {
+  private createWindow(manifest: CovertAppManifest, instanceId: string): WindowElements {
     const root = document.createElement('section');
     root.className = 'desktop-window';
     root.tabIndex = 0;
     root.dataset.appId = manifest.id;
-    root.setAttribute('aria-label', `${manifest.title} window`);
+    root.dataset.instanceId = instanceId;
+    const displayTitle = instanceId === manifest.id ? manifest.title : `${manifest.title} ${instanceId.split(':')[1]}`;
+    root.setAttribute('aria-label', `${displayTitle} window`);
 
     const titlebar = document.createElement('header');
     titlebar.className = 'desktop-window-titlebar';
@@ -242,7 +256,7 @@ export class WindowManagerView {
     icon.textContent = manifest.icon;
     const title = document.createElement('span');
     title.className = 'desktop-window-title';
-    title.textContent = manifest.title;
+    title.textContent = displayTitle;
     const maturity = document.createElement('span');
     maturity.className = 'desktop-window-maturity';
     maturity.textContent = manifest.maturity;
@@ -255,6 +269,10 @@ export class WindowManagerView {
     const minimize = button(`Minimize ${manifest.title}`, '−', 'desktop-window-control', 'Minimize window');
     const maximize = button(`Maximize ${manifest.title}`, '□', 'desktop-window-control', 'Maximize or restore window');
     const close = button(`Close ${manifest.title}`, '×', 'desktop-window-control desktop-window-close', 'Close window');
+    if (manifest.id === 'terminal') {
+      close.title = 'Close window; the running session continues. Use STOP SESSION to terminate it.';
+      close.setAttribute('aria-description', close.title);
+    }
     const snapMenu = document.createElement('div');
     snapMenu.className = 'desktop-snap-menu';
     snapMenu.hidden = true;
@@ -267,7 +285,7 @@ export class WindowManagerView {
       item.addEventListener('click', event => {
         event.stopPropagation();
         snapMenu.hidden = true;
-        this.options.manager.snap(manifest.id, target);
+        this.options.manager.snap(instanceId, target);
       });
       snapMenu.appendChild(item);
     }
@@ -275,9 +293,9 @@ export class WindowManagerView {
       event.stopPropagation();
       snapMenu.hidden = !snapMenu.hidden;
     });
-    minimize.addEventListener('click', event => { event.stopPropagation(); this.options.manager.minimize(manifest.id); });
-    maximize.addEventListener('click', event => { event.stopPropagation(); this.options.manager.toggleMaximize(manifest.id); });
-    close.addEventListener('click', event => { event.stopPropagation(); this.options.manager.close(manifest.id); });
+    minimize.addEventListener('click', event => { event.stopPropagation(); this.options.manager.minimize(instanceId); });
+    maximize.addEventListener('click', event => { event.stopPropagation(); this.options.manager.toggleMaximize(instanceId); });
+    close.addEventListener('click', event => { event.stopPropagation(); this.options.manager.close(instanceId); });
     controls.append(snap, minimize, maximize, close);
     titlebar.append(identity, controls);
     root.append(titlebar, snapMenu);
@@ -291,14 +309,14 @@ export class WindowManagerView {
       handle.setAttribute('aria-hidden', 'true');
       root.appendChild(handle);
     }
-    root.addEventListener('pointerdown', () => this.options.manager.focus(manifest.id));
+    root.addEventListener('pointerdown', () => this.options.manager.focus(instanceId));
     const disposeInteractions = bindWindowInteractions({
       element: root,
       canvas: this.options.layer,
       titlebar,
       minimum: { width: manifest.minWidth, height: manifest.minHeight },
       onFocus: () => {},
-      onCommit: bounds => this.options.manager.setBounds(manifest.id, normalizedFromPixels(bounds, this.options.layer))
+      onCommit: bounds => this.options.manager.setBounds(instanceId, normalizedFromPixels(bounds, this.options.layer))
     });
     return { root, content, disposeInteractions };
   }
@@ -306,7 +324,7 @@ export class WindowManagerView {
   private renderWindowTasks(state: DesktopLayoutState): void {
     const taskHost = this.options.dock.querySelector<HTMLElement>('.desktop-window-tasks');
     if (!taskHost) return;
-    const openIds = new Set(state.windows.map(window => window.appId));
+    const openIds = new Set(state.windows.map(windowInstanceId));
     for (const [appId, task] of this.taskButtons) {
       if (!openIds.has(appId)) {
         task.remove();
@@ -316,15 +334,17 @@ export class WindowManagerView {
     for (const window of state.windows) {
       const manifest = APP_REGISTRY.find(app => app.id === window.appId);
       if (!manifest) continue;
-      let task = this.taskButtons.get(manifest.id);
+      const instanceId = windowInstanceId(window);
+      const displayTitle = instanceId === manifest.id ? manifest.title : `${manifest.title} ${instanceId.split(':')[1]}`;
+      let task = this.taskButtons.get(instanceId);
       if (!task) {
         task = button(`Restore ${manifest.title}`, manifest.icon, 'desktop-window-task', `${manifest.title} window`);
-        task.addEventListener('click', () => this.options.manager.restore(manifest.id));
-        this.taskButtons.set(manifest.id, task);
+        task.addEventListener('click', () => this.options.manager.restore(instanceId));
+        this.taskButtons.set(instanceId, task);
       }
       if (task.parentElement !== taskHost) taskHost.appendChild(task);
-      task.title = `${manifest.title}${window.minimized ? ', minimized' : ', open'}`;
-      task.setAttribute('aria-label', `Focus or restore ${manifest.title}${window.minimized ? ', minimized' : ', open'}`);
+      task.title = `${displayTitle}${window.minimized ? ', minimized' : ', open'}`;
+      task.setAttribute('aria-label', `Focus or restore ${displayTitle}${window.minimized ? ', minimized' : ', open'}`);
       task.classList.toggle('is-minimized', window.minimized);
     }
   }
@@ -342,7 +362,7 @@ export class WindowManagerView {
     const layouts = [
       ['CODING', 'Coding'], ['DEBUGGING', 'Debugging'], ['MODEL_WORK', 'Model work'], ['VERIFICATION', 'Verification'], ['MINIMAL', 'Minimal']
     ] as const;
-    return [...apps, ...layouts.map(([id, label]) => ({ label: `Switch layout: ${label}`, detail: 'Layout', run: () => this.options.manager.selectLayout(id) }))];
+    return [...apps, { label: 'New terminal window', detail: 'Independent session view', run: () => { this.options.manager.openNew('terminal'); } }, ...layouts.map(([id, label]) => ({ label: `Switch layout: ${label}`, detail: 'Layout', run: () => this.options.manager.selectLayout(id) }))];
   }
 
   private renderPaletteItems(): void {
@@ -422,7 +442,7 @@ export class WindowManagerView {
         ? { ...pixels, width: pixels.width + direction * 24, height: pixels.height + vertical * 24 }
         : { ...pixels, x: pixels.x + direction * 24, y: pixels.y + vertical * 24 };
       event.preventDefault();
-      this.options.manager.setBounds(focused.appId, normalizedFromPixels(next, this.options.layer));
+      this.options.manager.setBounds(windowInstanceId(focused), normalizedFromPixels(next, this.options.layer));
     }
   };
 

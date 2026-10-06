@@ -14,6 +14,8 @@ export interface NormalizedBounds {
 
 export interface DesktopWindowState {
   appId: DesktopAppId;
+  /** Presentation identity only; never a terminal session or Authority principal. */
+  instanceId?: string;
   bounds: NormalizedBounds;
   zIndex: number;
   minimized: boolean;
@@ -34,4 +36,9 @@ export interface PixelBounds {
   y: number;
   width: number;
   height: number;
+}
+export const MAX_INSTANCES_PER_APP = 8;
+
+export function windowInstanceId(window: DesktopWindowState): string {
+  return window.instanceId ?? window.appId;
 }

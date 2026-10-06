@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ArchServer } from '../../node/src/server.ts';
+import { TerminalSessionService } from '../../node/src/services/terminal-sessions.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
 
 const workspaceValue = process.env.AIDE_WORKSTATION_E2E_WORKSPACE;
@@ -20,10 +21,16 @@ await fs.writeFile(path.join(workspace, '.aide', 'session.json'), JSON.stringify
 }), 'utf8');
 
 const server = new ArchServer(workspace, path.join(workspace, '.aide', 'logs', 'workstation-e2e.log'));
+const terminalSessions = new TerminalSessionService({
+  defaultCwd: workspace,
+  onEvent: (event, owner) => server.events.publish('terminal', event, identity => identity?.id === owner)
+});
+server.registerControlHandler((message, context) => terminalSessions.handleControl(message, context.identity));
 let modelTurn = 0;
 const routes = await buildRoutes(workspace, 'workstation-e2e', {
   authority: server.authority,
   events: server.events,
+  terminalSessions,
   agentChatFn: async () => {
     modelTurn++;
     if (modelTurn === 1) return '<write_file><path>fixture.ts</path><content>export const value = "agent edit";\n</content></write_file>';
@@ -43,3 +50,13 @@ listener.on('error', error => {
   process.exitCode = 1;
 });
 process.stdout.write('workstation E2E fixture ready\n');
+let stopping = false;
+const shutdown = async () => {
+  if (stopping) return;
+  stopping = true;
+  terminalSessions.stopAll(); // Only sessions created by this isolated fixture.
+  server.events.close();
+  await new Promise(resolve => listener.close(resolve));
+};
+process.once('SIGINT', () => { void shutdown(); });
+process.once('SIGTERM', () => { void shutdown(); });

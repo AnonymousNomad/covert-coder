@@ -8,6 +8,7 @@ test('Cipher console prioritizes chat and progressively discloses workspace stat
   const shell = page.locator('.covert-desktop-shell');
   await expect(shell).toBeVisible();
 
+  await shell.getByRole('button', { name: 'Open Cipher Console', exact: true }).click();
   const resident = shell.locator('.desktop-window[data-app-id="resident"]');
   await expect(resident).toBeVisible();
   const chat = resident.locator('.cockpit-resident-chat');

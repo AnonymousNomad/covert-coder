@@ -18,7 +18,7 @@ export interface CovertAppManifest {
 
 export const APP_REGISTRY: readonly CovertAppManifest[] = [
   { id: 'editor', title: 'Workspace', icon: '⌂', component: 'editor', singleton: true, defaultBounds: { x: 0.03, y: 0.04, width: 0.64, height: 0.70 }, minWidth: 520, minHeight: 320, persistWindowState: true, keyboardShortcut: 'Alt+1', maturity: 'AVAILABLE' },
-  { id: 'terminal', title: 'Terminal', icon: '>_', component: 'terminal', singleton: true, defaultBounds: { x: 0.33, y: 0.48, width: 0.63, height: 0.46 }, minWidth: 460, minHeight: 240, persistWindowState: true, keyboardShortcut: 'Alt+2', maturity: 'AVAILABLE' },
+  { id: 'terminal', title: 'Terminal', icon: '>_', component: 'terminal', singleton: false, defaultBounds: { x: 0.33, y: 0.48, width: 0.63, height: 0.46 }, minWidth: 460, minHeight: 240, persistWindowState: true, keyboardShortcut: 'Alt+2', maturity: 'AVAILABLE' },
   { id: 'resident', title: 'Cipher Console', icon: '◈', component: 'resident', singleton: true, defaultBounds: { x: 0.69, y: 0.08, width: 0.29, height: 0.78 }, minWidth: 320, minHeight: 340, persistWindowState: true, keyboardShortcut: 'Alt+3', maturity: 'AVAILABLE' },
   { id: 'projects', title: 'Projects', icon: '▤', component: 'projects', singleton: true, defaultBounds: { x: 0.10, y: 0.10, width: 0.56, height: 0.72 }, minWidth: 440, minHeight: 300, persistWindowState: true, keyboardShortcut: 'Alt+4', maturity: 'AVAILABLE' },
   { id: 'command-center', title: 'Command Center', icon: '⌁', component: 'command-center', singleton: true, defaultBounds: { x: 0.08, y: 0.08, width: 0.78, height: 0.76 }, minWidth: 520, minHeight: 360, persistWindowState: true, keyboardShortcut: 'Alt+5', maturity: 'AVAILABLE' },

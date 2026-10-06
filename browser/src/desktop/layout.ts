@@ -1,5 +1,6 @@
+import { MAX_INSTANCES_PER_APP, windowInstanceId } from './types.ts';
 import { APP_BY_ID, APP_REGISTRY } from './app-registry.ts';
-import type { DesktopAppId, DesktopLayoutState, DesktopWindowState, LayoutId, NormalizedBounds, SnapState } from './types.ts';
+import type { DesktopAppId, DesktopLayoutState, DesktopWindowState, LayoutId, NormalizedBounds, PixelBounds, SnapState } from './types.ts';
 
 export const DESKTOP_LAYOUT_STORAGE_KEY = 'covert.desktop.layout.v1';
 const LAYOUT_IDS: readonly LayoutId[] = ['CODING', 'DEBUGGING', 'MODEL_WORK', 'VERIFICATION', 'MINIMAL', 'CUSTOM'];
@@ -7,14 +8,15 @@ const SNAP_STATES: readonly SnapState[] = ['none', 'left', 'right', 'top-left', 
 
 interface PresetWindow {
   appId: DesktopAppId;
+  instanceId?: string;
   bounds: NormalizedBounds;
 }
 
 const PRESETS: Record<Exclude<LayoutId, 'CUSTOM'>, readonly PresetWindow[]> = {
   CODING: [
-    { appId: 'editor', bounds: { x: 0.02, y: 0.025, width: 0.66, height: 0.64 } },
-    { appId: 'resident', bounds: { x: 0.69, y: 0.025, width: 0.29, height: 0.64 } },
-    { appId: 'terminal', bounds: { x: 0.02, y: 0.69, width: 0.96, height: 0.30 } }
+    { appId: 'editor', bounds: { x: 0.02, y: 0.025, width: 0.96, height: 0.64 } },
+    { appId: 'terminal', bounds: { x: 0.02, y: 0.69, width: 0.47, height: 0.30 } },
+    { appId: 'terminal', instanceId: 'terminal:2', bounds: { x: 0.51, y: 0.69, width: 0.47, height: 0.30 } }
   ],
   DEBUGGING: [
     { appId: 'editor', bounds: { x: 0.02, y: 0.03, width: 0.56, height: 0.91 } },
@@ -48,14 +50,14 @@ function copyBounds(bounds: NormalizedBounds): NormalizedBounds {
   return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
 }
 
-function windowState(appId: DesktopAppId, bounds: NormalizedBounds, zIndex: number): DesktopWindowState {
-  return { appId, bounds: copyBounds(bounds), zIndex, minimized: false, snap: 'none', restoreBounds: null };
+function windowState(appId: DesktopAppId, bounds: NormalizedBounds, zIndex: number, instanceId = appId as string): DesktopWindowState {
+  return { appId, instanceId, bounds: copyBounds(bounds), zIndex, minimized: false, snap: 'none', restoreBounds: null };
 }
 
 export function createPresetWindows(layoutId: Exclude<LayoutId, 'CUSTOM'>): DesktopWindowState[] {
   return PRESETS[layoutId]
     .filter(window => APP_BY_ID.get(window.appId)?.maturity === 'AVAILABLE')
-    .map((window, index) => windowState(window.appId, window.bounds, index + 1));
+    .map((window, index) => windowState(window.appId, window.bounds, index + 1, window.instanceId));
 }
 
 export function createDefaultLayoutState(layoutId: Exclude<LayoutId, 'CUSTOM'> = 'CODING'): DesktopLayoutState {
@@ -79,8 +81,18 @@ function validBounds(value: unknown): value is NormalizedBounds {
     && x + width <= 1.001 && y + height <= 1.001;
 }
 
+export function validInstanceId(appId: DesktopAppId, instanceId: unknown): instanceId is string {
+  if (instanceId === appId) return true;
+  const manifest = APP_BY_ID.get(appId);
+  if (!manifest || manifest.singleton || typeof instanceId !== 'string') return false;
+  return Array.from({ length: MAX_INSTANCES_PER_APP - 1 }, (_, index) => `${appId}:${index + 2}`).includes(instanceId);
+}
+
 function validWindow(value: unknown): value is DesktopWindowState {
   if (!isRecord(value)) return false;
+  const keys = ['appId', 'instanceId', 'bounds', 'zIndex', 'minimized', 'snap', 'restoreBounds'];
+  if (Object.keys(value).some(key => !keys.includes(key))) return false;
+  if (value.instanceId !== undefined && !validInstanceId(value.appId as DesktopAppId, value.instanceId)) return false;
   return typeof value.appId === 'string'
     && APP_BY_ID.has(value.appId as DesktopAppId)
     && APP_BY_ID.get(value.appId as DesktopAppId)?.maturity === 'AVAILABLE'
@@ -92,11 +104,11 @@ function validWindow(value: unknown): value is DesktopWindowState {
 }
 
 function validWindows(value: unknown): value is DesktopWindowState[] {
-  if (!Array.isArray(value) || value.length > APP_REGISTRY.length) return false;
+  if (!Array.isArray(value) || value.length > APP_REGISTRY.length + MAX_INSTANCES_PER_APP - 1) return false;
   const ids = new Set<string>();
   for (const entry of value) {
-    if (!validWindow(entry) || ids.has(entry.appId)) return false;
-    ids.add(entry.appId);
+    if (!validWindow(entry) || ids.has(windowInstanceId(entry))) return false;
+    ids.add(windowInstanceId(entry));
   }
   return true;
 }
@@ -111,8 +123,8 @@ export function decodeLayoutState(input: unknown): DesktopLayoutState | null {
     version: 1,
     selectedLayout: input.selectedLayout as LayoutId,
     startupLayout: input.startupLayout as LayoutId,
-    windows: input.windows.map(window => ({ ...window, bounds: copyBounds(window.bounds), restoreBounds: window.restoreBounds ? copyBounds(window.restoreBounds) : null })),
-    customWindows: input.customWindows === null ? null : input.customWindows.map(window => ({ ...window, bounds: copyBounds(window.bounds), restoreBounds: window.restoreBounds ? copyBounds(window.restoreBounds) : null }))
+    windows: input.windows.map(window => ({ ...window, instanceId: windowInstanceId(window), bounds: copyBounds(window.bounds), restoreBounds: window.restoreBounds ? copyBounds(window.restoreBounds) : null })),
+    customWindows: input.customWindows === null ? null : input.customWindows.map(window => ({ ...window, instanceId: windowInstanceId(window), bounds: copyBounds(window.bounds), restoreBounds: window.restoreBounds ? copyBounds(window.restoreBounds) : null }))
   };
 }
 
@@ -138,4 +150,15 @@ export function persistLayoutState(storage: StorageLike | null, state: DesktopLa
   } catch {
     return false;
   }
+}
+/** Enforce app minima within the real work area; never hide controls behind the dock. */
+export function windowPixelBounds(bounds: NormalizedBounds, viewport: { width: number; height: number }, minimum: { width: number; height: number }): PixelBounds {
+  const width = Math.min(viewport.width, Math.max(bounds.width * viewport.width, minimum.width));
+  const height = Math.min(viewport.height, Math.max(bounds.height * viewport.height, minimum.height));
+  return {
+    x: Math.max(0, Math.min(bounds.x * viewport.width, viewport.width - width)),
+    y: Math.max(0, Math.min(bounds.y * viewport.height, viewport.height - height)),
+    width,
+    height
+  };
 }
