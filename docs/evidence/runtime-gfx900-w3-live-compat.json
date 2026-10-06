@@ -1,0 +1,151 @@
+{
+  "gate": "covert.runtime-compat-live.v1",
+  "finished_at": "2026-10-06T17:29:00.595Z",
+  "workspace": "E:\\covert-compat-live-workspace",
+  "steps": [
+    {
+      "step": "00-prepare",
+      "ok": true,
+      "at": "2026-10-06T17:26:13.075Z",
+      "detail": {
+        "source_sha": "3e50cb4ce6ee800145b8152a7ec7c3e267349972",
+        "workspace": "E:\\covert-compat-live-workspace",
+        "artifact": "E:\\covert-compat-live-workspace\\models\\smollm2-360m-instruct-q8_0.gguf",
+        "bytes": 386404992,
+        "sha256": "48ab3034d0dd401fbc721eb1df3217902fee7dab9078992d66431f09b7750201",
+        "binary": "E:\\llama-cpp\\llama-server.exe",
+        "binary_sha256": "e3f35520ca9dcb448fc5471c881dc55059a0e5622b832213745c8e5bb71a560e"
+      }
+    },
+    {
+      "step": "01-stack",
+      "ok": true,
+      "at": "2026-10-06T17:26:14.577Z",
+      "detail": {
+        "boot_ms": 1500,
+        "backend_selection": "AIDE_LOCAL_RUNTIME_BACKEND=llama-cpp (explicit; Unsloth remains default when unset)"
+      }
+    },
+    {
+      "step": "02-register",
+      "ok": true,
+      "at": "2026-10-06T17:26:15.837Z",
+      "detail": {
+        "status": 200,
+        "model_id": "smollm2-360m-instruct-q8_0"
+      }
+    },
+    {
+      "step": "03-admission-preflight",
+      "ok": true,
+      "at": "2026-10-06T17:26:18.802Z",
+      "detail": {
+        "free_ram_bytes": 6091194368,
+        "total_ram_bytes": 17099075584,
+        "commit_limit_bytes": 27834572800,
+        "committed_bytes": 24105603072,
+        "commit_free_bytes": 3728969728,
+        "sampled_at": "2026-10-06T17:26:18.802Z",
+        "compatibility_floor_bytes": 2684354560,
+        "canonical_floor_note": "canonical runtime floor 6656MB is separate and not implied"
+      }
+    },
+    {
+      "step": "04-start",
+      "ok": false,
+      "at": "2026-10-06T17:26:20.905Z",
+      "detail": {
+        "status": 409,
+        "body": {
+          "ok": false,
+          "error": {
+            "code": "NOT_READY",
+            "message": "local model start refused by Resource Admission: free physical memory 5826MB is below the 6656MB local runtime start floor; free commit 3582MB is below the 5120MB local runtime start floor",
+            "detail": {
+              "decision": "REFUSE_RESOURCE",
+              "kind": "model_start",
+              "reason": "free physical memory 5826MB is below the 6656MB local runtime start floor; free commit 3582MB is below the 5120MB local runtime start floor",
+              "evidence": {
+                "free_memory_mb": 5826,
+                "safety_mb": 512,
+                "resident_reserve_mb": 1024,
+                "required_memory_mb": null,
+                "vram_free_mb": 5193,
+                "vram_required_mb": null,
+                "load_1m": 0,
+                "cores": 12,
+                "disposable": false,
+                "load_probe": "unknown (platform reports no load average)",
+                "minimum_free_physical_memory_mb": 6656,
+                "free_commit_mb": 3582,
+                "minimum_free_commit_mb": 5120,
+                "minimum_free_vram_mb": 4608,
+                "gpu_utilization_percent": 4,
+                "gpu_utilization_must_be_below_percent": 50
+              },
+              "checked_at": "2026-10-06T17:26:18.988Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "step": "05-identity-observation",
+      "ok": false,
+      "at": "2026-10-06T17:28:52.573Z",
+      "detail": {
+        "ready": false,
+        "endpoint": null,
+        "port": null,
+        "owned_engine": [],
+        "reported_backend": null,
+        "accelerator": null,
+        "pid": null
+      }
+    },
+    {
+      "step": "06-inference",
+      "ok": false,
+      "at": "2026-10-06T17:28:52.574Z",
+      "detail": null
+    },
+    {
+      "step": "07-stream-cancel",
+      "ok": false,
+      "at": "2026-10-06T17:28:52.574Z",
+      "detail": {
+        "attempted": false
+      }
+    },
+    {
+      "step": "08-recovery-after-cancel",
+      "ok": false,
+      "at": "2026-10-06T17:28:55.074Z",
+      "detail": null
+    },
+    {
+      "step": "09-stop-cleanup",
+      "ok": true,
+      "at": "2026-10-06T17:29:00.579Z",
+      "detail": {
+        "stop": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "data": {
+              "id": "smollm2-360m-instruct-q8_0",
+              "status": "stopped"
+            }
+          }
+        },
+        "owned_pid": null,
+        "pid_dead": null,
+        "port_closed": null,
+        "remaining_owned_engines": [],
+        "foreign_llama_servers_observed": 2
+      }
+    }
+  ],
+  "pass": 5,
+  "fail": 5
+}
