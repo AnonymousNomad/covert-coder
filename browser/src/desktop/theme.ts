@@ -80,17 +80,17 @@ export interface TerminalTheme {
 export const APPEARANCE_STORAGE_KEY = 'covert.desktop.appearance.v1';
 
 export const COVERT_PHOSPHOR: SemanticThemeTokens = {
-  desktopBackground: '#080d0d',
-  surfaceBackground: '#101817',
-  surfaceRaised: '#192420',
-  surfaceInset: '#0a1010',
-  windowBorder: '#31433d',
-  windowBorderFocused: '#43c99a',
-  textPrimary: '#e3ece7',
-  textSecondary: '#b3c1ba',
-  textMuted: '#87968e',
-  accentPrimary: '#40d5a2',
-  accentSecondary: '#76c9c2',
+  desktopBackground: '#060807',
+  surfaceBackground: '#0c110d',
+  surfaceRaised: '#131b15',
+  surfaceInset: '#090e0a',
+  windowBorder: '#314a37',
+  windowBorderFocused: '#b0ffc1',
+  textPrimary: '#96daa1',
+  textSecondary: '#85bf90',
+  textMuted: '#78aa81',
+  accentPrimary: '#86f59b',
+  accentSecondary: '#a0dcae',
   stateSuccess: '#74d6a5',
   stateWarning: '#e6b963',
   stateFailure: '#e27f7f',
@@ -98,13 +98,13 @@ export const COVERT_PHOSPHOR: SemanticThemeTokens = {
   stateUnknown: '#a1aaa5',
   selectionBackground: '#174436',
   selectionForeground: '#e4fff2',
-  cursor: '#50dfa9',
-  terminalForeground: '#d7e7de',
-  terminalBackground: '#080d0d',
-  terminalCursor: '#50dfa9',
+  cursor: '#86f59b',
+  terminalForeground: '#96daa1',
+  terminalBackground: '#060807',
+  terminalCursor: '#86f59b',
   terminalColors: [
-    '#101817', '#df777b', '#6fca8e', '#d4b35f', '#72a8cf', '#bd8bc7', '#66b9b2', '#c5d0ca',
-    '#64726c', '#ee888c', '#85dc9f', '#f0cb70', '#8abce2', '#d09bd8', '#7bc8c1', '#e3ece7'
+    '#0c110d', '#df777b', '#6fca8e', '#d4b35f', '#72a8cf', '#bd8bc7', '#66b9b2', '#c5d0ca',
+    '#64726c', '#ee888c', '#85dc9f', '#f0cb70', '#8abce2', '#d09bd8', '#7bc8c1', '#96daa1'
   ]
 };
 
@@ -112,15 +112,15 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   version: 1,
   theme: 'COVERT_PHOSPHOR',
   importedTermux: null,
-  interfaceFont: 'Segoe UI',
+  interfaceFont: 'Cascadia Mono',
   editorFont: 'Cascadia Mono',
   terminalFont: 'Cascadia Mono',
   fontSize: 13,
-  lineHeight: 1.45,
+  lineHeight: 1.3,
   cursorStyle: 'block',
   cursorBlink: false,
-  density: 'comfortable',
-  glow: 'low',
+  density: 'compact',
+  glow: 'off',
   scanlines: false,
   reducedMotion: 'system'
 };

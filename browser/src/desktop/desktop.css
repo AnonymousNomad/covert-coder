@@ -1,12 +1,12 @@
 :root {
-  --desktop-background: #080b0d;
-  --desktop-surface: #101619;
-  --desktop-raised: #172126;
-  --desktop-inset: #0c1113;
-  --desktop-text: #e1e9e7;
-  --desktop-text-secondary: #a5b5b0;
-  --desktop-text-muted: #71827d;
-  --desktop-accent: #39d39f;
+  --desktop-background: #060807;
+  --desktop-surface: #0c110d;
+  --desktop-raised: #131b15;
+  --desktop-inset: #090e0a;
+  --desktop-text: #96daa1;
+  --desktop-text-secondary: #85bf90;
+  --desktop-text-muted: #78aa81;
+  --desktop-accent: #86f59b;
   --desktop-accent-soft: rgba(57, 211, 159, 0.16);
   --desktop-accent-cyan: #66c8c1;
   --desktop-success: #76d6a7;
@@ -16,10 +16,10 @@
   --desktop-unknown: #96a19f;
   --desktop-border: rgba(151, 178, 168, 0.16);
   --desktop-border-focus: rgba(57, 211, 159, 0.56);
-  --desktop-shadow: 0 20px 55px rgba(0, 0, 0, 0.52);
-  --desktop-radius: 15px;
-  --desktop-radius-small: 9px;
-  --desktop-font-interface: 'Segoe UI', system-ui, sans-serif;
+  --desktop-shadow: none;
+  --desktop-radius: 0px;
+  --desktop-radius-small: 0px;
+  --desktop-font-interface: 'Cascadia Mono', Consolas, monospace;
   --desktop-font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, monospace;
 
   /* Compatibility aliases for the existing surface components. */
@@ -45,9 +45,9 @@
   --ck-glow-purple: 0 0 10px rgba(122, 167, 162, 0.15);
   --ck-glow-green: 0 0 10px rgba(57, 211, 159, 0.20);
   --ck-glow-amber: 0 0 10px rgba(230, 185, 99, 0.18);
-  --ck-radius-sharp: 7px;
-  --ck-radius: 10px;
-  --ck-radius-soft: 12px;
+  --ck-radius-sharp: 0px;
+  --ck-radius: 0px;
+  --ck-radius-soft: 0px;
   --ck-font-mono: var(--desktop-font-mono);
   --ck-font-sans: var(--desktop-font-interface);
 }
@@ -74,9 +74,7 @@ body,
   color: var(--desktop-text);
   font-size: var(--desktop-font-size);
   line-height: var(--desktop-line-height);
-  background:
-    radial-gradient(ellipse at 52% 28%, rgba(43, 116, 94, 0.12), transparent 49%),
-    linear-gradient(155deg, #0b1012 0%, var(--desktop-background) 62%, #06090a 100%);
+  background: var(--desktop-background);
   font-family: var(--desktop-font-interface);
   isolation: isolate;
 }
@@ -97,8 +95,8 @@ body,
   flex: 0 0 auto;
   min-width: 0;
   border-bottom: 1px solid var(--desktop-border);
-  background: rgba(8, 12, 14, 0.94);
-  backdrop-filter: blur(18px);
+  background: var(--desktop-surface);
+  backdrop-filter: none;
 }
 
 .desktop-systembar .topbar {
@@ -106,8 +104,8 @@ body,
   align-items: center;
   gap: 20px;
   width: 100%;
-  min-height: 54px;
-  padding: 0 22px;
+  min-height: 32px;
+  padding: 0 10px;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -162,7 +160,7 @@ body,
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   color: var(--desktop-text-secondary);
   font: 600 10px/1 var(--desktop-font-mono);
@@ -187,7 +185,7 @@ body,
 .desktop-systembar .topbar-hint kbd {
   padding: 3px 5px;
   border: 1px solid var(--desktop-border);
-  border-radius: 5px;
+  border-radius: 0;
   color: var(--desktop-text-muted);
   font: inherit;
 }
@@ -216,16 +214,16 @@ body,
   max-height: 100%;
   overflow: visible;
   border: 1px solid var(--desktop-border);
-  border-radius: var(--desktop-radius);
+  border-radius: 0;
   background: rgba(13, 19, 21, 0.94);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.37);
+  box-shadow: none;
   transition: border-color 120ms ease, box-shadow 120ms ease;
   isolation: isolate;
 }
 
 .desktop-window.is-focused {
   border-color: var(--desktop-border-focus);
-  box-shadow: var(--desktop-shadow), 0 0 0 1px rgba(57, 211, 159, 0.12);
+  box-shadow: none;
 }
 
 .desktop-window[hidden] { display: none !important; }
@@ -237,12 +235,12 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex: 0 0 39px;
+  flex: 0 0 32px;
   min-width: 0;
   padding: 0 7px 0 14px;
   border-bottom: 1px solid var(--desktop-border);
-  border-radius: var(--desktop-radius) var(--desktop-radius) 0 0;
-  background: linear-gradient(90deg, rgba(28, 42, 42, 0.92), rgba(17, 25, 27, 0.94));
+  border-radius: 0;
+  background: var(--desktop-raised);
   color: var(--desktop-text-secondary);
   cursor: grab;
   touch-action: none;
@@ -261,7 +259,7 @@ body,
   height: 26px;
   place-items: center;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   color: var(--desktop-text-secondary);
   cursor: pointer;
@@ -283,7 +281,7 @@ body,
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  border-radius: 0 0 var(--desktop-radius) var(--desktop-radius);
+  border-radius: 0;
   background: rgba(9, 14, 16, 0.90);
 }
 
@@ -312,7 +310,7 @@ body,
   justify-items: center;
   gap: 10px;
   padding: clamp(18px, 5vw, 48px);
-  background: linear-gradient(145deg, rgba(9, 15, 16, 0.94), rgba(10, 18, 18, 0.88));
+  background: var(--desktop-surface);
   color: var(--desktop-text-secondary);
   text-align: center;
 }
@@ -324,7 +322,7 @@ body,
   margin-top: 4px;
   padding: 0 14px;
   border: 1px solid var(--desktop-border-focus);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--desktop-accent-soft);
   color: var(--desktop-text);
   font: 600 12px var(--desktop-font-interface);
@@ -356,12 +354,12 @@ body,
   min-width: 178px;
   padding: 7px;
   border: 1px solid var(--desktop-border-focus);
-  border-radius: var(--desktop-radius-small);
+  border-radius: 0;
   background: var(--desktop-raised);
   box-shadow: var(--desktop-shadow);
 }
 .desktop-snap-menu[hidden] { display: none; }
-.desktop-snap-option { padding: 7px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--desktop-text-secondary); text-align: left; cursor: pointer; }
+.desktop-snap-option { padding: 7px 9px; border: 0; border-radius: 0; background: transparent; color: var(--desktop-text-secondary); text-align: left; cursor: pointer; }
 .desktop-snap-option:hover { background: var(--desktop-accent-soft); color: var(--desktop-text); }
 
 .desktop-resident-anchor { position: absolute; z-index: 2; left: 20px; bottom: 18px; pointer-events: none; }
@@ -374,15 +372,15 @@ body,
   min-width: 164px;
   padding: 8px 12px;
   border: 1px solid var(--desktop-border);
-  border-radius: 12px;
-  background: rgba(11, 17, 19, 0.86);
+  border-radius: 0;
+  background: var(--desktop-surface);
   color: var(--desktop-text);
   text-align: left;
   cursor: pointer;
   pointer-events: auto;
-  backdrop-filter: blur(12px);
+  backdrop-filter: none;
 }
-.desktop-resident-glyph { grid-row: 1 / span 2; display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--desktop-border); border-radius: 50%; color: var(--desktop-accent); font-size: 18px; }
+.desktop-resident-glyph { grid-row: 1 / span 2; display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--desktop-border); border-radius: 0; color: var(--desktop-accent); font-size: 18px; }
 .desktop-resident-label { align-self: end; font: 650 10px var(--desktop-font-mono); letter-spacing: 0.12em; }
 .desktop-resident-open { align-self: start; color: var(--desktop-text-muted); font-size: 10px; }
 .desktop-resident-presence:hover { border-color: var(--desktop-border-focus); background: rgba(16, 25, 27, 0.96); }
@@ -394,23 +392,23 @@ body,
   align-items: center;
   gap: 12px;
   flex: 0 0 auto;
-  min-height: 58px;
+  min-height: 42px;
   padding: 7px 14px;
   border-top: 1px solid var(--desktop-border);
-  background: rgba(8, 12, 14, 0.96);
-  backdrop-filter: blur(18px);
+  background: var(--desktop-surface);
+  backdrop-filter: none;
 }
 .desktop-launcher { display: flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
 .desktop-launcher-app,
 .desktop-window-task {
   position: relative;
   display: inline-grid;
-  flex: 0 0 39px;
-  width: 39px;
-  height: 39px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: 0;
   background: transparent;
   color: var(--desktop-text-secondary);
   cursor: pointer;
@@ -420,7 +418,7 @@ body,
 .desktop-window-task:hover,
 .desktop-launcher-app.is-running,
 .desktop-window-task:not(.is-minimized) { border-color: var(--desktop-border); background: rgba(255, 255, 255, 0.045); color: var(--desktop-accent); }
-.desktop-launcher-app.is-running::after { position: absolute; bottom: 2px; width: 4px; height: 4px; border-radius: 50%; background: var(--desktop-accent); content: ''; }
+.desktop-launcher-app.is-running::after { position: absolute; bottom: 2px; width: 4px; height: 4px; border-radius: 0; background: var(--desktop-accent); content: ''; }
 .desktop-launcher-app:disabled { color: var(--desktop-text-muted); opacity: 0.42; cursor: not-allowed; }
 .desktop-window-tasks { display: flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; overflow-x: auto; }
 .desktop-window-task { color: var(--desktop-text); }
@@ -431,7 +429,7 @@ body,
   min-height: 32px;
   padding: 0 9px;
   border: 1px solid var(--desktop-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--desktop-inset);
   color: var(--desktop-text-secondary);
   font: 10px var(--desktop-font-interface);
@@ -452,17 +450,17 @@ body,
   max-height: 70vh;
   padding: 14px;
   border: 1px solid var(--desktop-border-focus);
-  border-radius: 16px;
+  border-radius: 0;
   background: rgba(13, 19, 21, 0.98);
   color: var(--desktop-text);
-  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.72);
+  box-shadow: none;
 }
-.desktop-command-palette::backdrop { background: rgba(2, 4, 5, 0.62); backdrop-filter: blur(3px); }
+.desktop-command-palette::backdrop { background: rgba(2, 4, 5, 0.62); backdrop-filter: none; }
 .desktop-command-title { margin-bottom: 10px; color: var(--desktop-accent); font: 10px var(--desktop-font-mono); letter-spacing: 0.16em; }
-.desktop-command-palette input { width: 100%; min-height: 44px; padding: 0 13px; border: 1px solid var(--desktop-border); border-radius: 10px; outline: 0; background: var(--desktop-inset); color: var(--desktop-text); font: 14px var(--desktop-font-interface); }
+.desktop-command-palette input { width: 100%; min-height: 44px; padding: 0 13px; border: 1px solid var(--desktop-border); border-radius: 0; outline: 0; background: var(--desktop-inset); color: var(--desktop-text); font: 14px var(--desktop-font-interface); }
 .desktop-command-palette input:focus { border-color: var(--desktop-border-focus); box-shadow: 0 0 0 3px var(--desktop-accent-soft); }
 .desktop-command-results { display: grid; gap: 4px; max-height: 49vh; overflow-y: auto; margin-top: 9px; }
-.desktop-command-result { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 42px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--desktop-text-secondary); text-align: left; cursor: pointer; }
+.desktop-command-result { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 42px; padding: 0 11px; border: 1px solid transparent; border-radius: 0; background: transparent; color: var(--desktop-text-secondary); text-align: left; cursor: pointer; }
 .desktop-command-result:hover,
 .desktop-command-result[aria-selected='true'] { border-color: var(--desktop-border); background: rgba(57, 211, 159, 0.08); color: var(--desktop-text); }
 .desktop-command-detail { color: var(--desktop-text-muted); font: 10px var(--desktop-font-mono); }
@@ -505,7 +503,7 @@ body,
   .desktop-resident-presence { grid-template-columns: 28px auto; grid-template-rows: 15px 13px; min-width: 130px; padding: 5px 8px; }
   .desktop-resident-glyph { width: 26px; height: 26px; font-size: 15px; }
   .desktop-resident-open { display: none; }
-  .desktop-dock-wrap { min-height: 54px; gap: 4px; padding: 5px 7px; }
+  .desktop-dock-wrap { min-height: 32px; gap: 4px; padding: 5px 7px; }
   .desktop-launcher { flex: 1 1 auto; }
   .desktop-launcher-app, .desktop-window-task { flex-basis: 34px; width: 34px; height: 36px; }
   .desktop-layout-tools { flex: 0 0 auto; }
@@ -539,7 +537,7 @@ body,
   min-height: 30px;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--desktop-warning) 42%, transparent);
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--desktop-warning) 12%, var(--desktop-surface));
   color: var(--desktop-warning);
   font: 700 10px/1 var(--desktop-font-mono);
@@ -549,7 +547,7 @@ body,
 .desktop-stop-speech[hidden] { display: none; }
 .desktop-stop-speech:focus-visible { outline: 2px solid var(--desktop-warning); outline-offset: 2px; }
 
-.covert-desktop-shell[data-density='compact'] .desktop-window-titlebar { flex-basis: 33px; }
+.covert-desktop-shell[data-density='compact'] .desktop-window-titlebar { flex-basis: 30px; }
 .covert-desktop-shell[data-density='compact'] .desktop-window-control { width: 24px; height: 22px; }
 .covert-desktop-shell[data-glow='off'] .desktop-window.is-focused { box-shadow: var(--desktop-shadow); }
 .covert-desktop-shell[data-scanlines='true'] .desktop-ambient {
@@ -576,7 +574,7 @@ body,
   min-height: 38px;
   padding: 7px 10px;
   border: 1px solid var(--desktop-border);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--desktop-inset);
   color: var(--desktop-text);
   font: 13px var(--desktop-font-interface);
@@ -648,3 +646,8 @@ body,
   .desktop-settings-actions > button { flex: 1 1 100%; }
   .desktop-settings-control { width: 100%; }
 }
+/* Opaque, rectangular workstation chrome. Status color retains its meaning. */
+.covert-desktop-shell .desktop-window-control { min-width: 28px; min-height: 28px; }
+.covert-desktop-shell[data-density="compact"] .desktop-window-titlebar { flex-basis: 30px; }
+.covert-desktop-shell[data-glow="off"] .topbar-chip-dot { box-shadow: none; }
+.covert-desktop-shell[data-glow="off"] { --ck-glow-cyan: none; --ck-glow-blue: none; --ck-glow-purple: none; --ck-glow-green: none; --ck-glow-amber: none; }
