@@ -89,10 +89,12 @@ async function get<T>(pathName: string): Promise<{ status: number; body: Envelop
 // that a real operator approves as they surface; the job only advances through
 // explicit decisions, never through a blanket credential.
 async function waitForTerminal(rootJobId: string): Promise<StatusJob> {
+  let lastObserved: StatusJob | null = null;
   for (let attempt = 0; attempt < 200; attempt++) {
     const { body } = await get<{ jobs: StatusJob[] }>('/api/tasks/status');
     const job = body.data?.jobs.find(candidate => candidate.job_id === rootJobId);
     assert.ok(job, 'root job must exist while waiting');
+    lastObserved = job;
     if (job.status !== 'running') return job;
     const pending = job.authority_state;
     if (pending?.state === 'pending' && pending.operation_id) {
@@ -101,7 +103,13 @@ async function waitForTerminal(rootJobId: string): Promise<StatusJob> {
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  throw new Error('job never reached terminal state');
+  const diagnostic = lastObserved === null ? null : {
+    status: lastObserved.status,
+    exitCode: lastObserved.exitCode,
+    authorityPhase: lastObserved.authority_state?.phase ?? null,
+    authorityState: lastObserved.authority_state?.state ?? null
+  };
+  throw new Error(`job never reached terminal state; last observed state=${JSON.stringify(diagnostic)}`);
 }
 
 test('b5 arch: second run restores with honest flag and stats/clear routes hold shape', async () => {
