@@ -93,7 +93,7 @@ async function setup() {
 }
 
 test('aftermath of interrupted writes: temp files are invisible and healthy records survive', async () => {
-  const { workspace, evaluationsDir, atlas } = await setup();
+  const { evaluationsDir, atlas } = await setup();
   const good = await atlas.recordEvaluation(record());
   // Simulate a crash during a later write: leftover temp in the canonical pattern.
   await fs.mkdir(evaluationsDir, { recursive: true });

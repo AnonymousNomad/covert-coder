@@ -80,7 +80,7 @@ function record(index) {
   };
 }
 
-function basisFor(modelId) {
+function basisFor() {
   return {
     source_revision: 'rev1', artifact_sha256: HASH_A, quantization: 'Q8_0', runtime_id: 'llama.cpp',
     runtime_version: '9940', harness_version: '2.1.0', benchmark_id: 'covert-scaffold-context-ablation',
