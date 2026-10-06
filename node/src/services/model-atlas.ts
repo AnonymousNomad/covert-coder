@@ -114,6 +114,11 @@ export function createModelAtlas(options: ModelAtlasOptions) {
   const evaluationsDir = path.join(root, 'evaluations');
   const candidatesDir = path.join(root, 'candidates');
   const candidateFile = (modelId: string) => path.join(candidatesDir, `${safeSegment(modelId)}.json`);
+  // Integrity sidecars live beside their evidence record and deliberately do
+  // not end in `.json`, so record enumeration never parses them. A missing
+  // sidecar means "unverified"; a contradicting sidecar means "tampered" and
+  // surfaces as an integrity anomaly - evidence is never silently trusted.
+  const integrityFile = (evaluationId: string) => path.join(evaluationsDir, `${evaluationId}.sha256`);
 
   async function ensureDirs(): Promise<void> {
     await fs.mkdir(evaluationsDir, { recursive: true });
@@ -156,6 +161,13 @@ export function createModelAtlas(options: ModelAtlasOptions) {
         throw new AtlasRefusalError('ATLAS_IMMUTABILITY_VIOLATION', `evaluation ${record.evaluation_id} is already recorded and immutable`);
       }
       await atomicWriteJson(target, record);
+      const bytes = await fs.readFile(target);
+      await atomicWriteJson(integrityFile(record.evaluation_id), {
+        schema: 'covert.model-atlas.integrity.v1',
+        evaluation_id: record.evaluation_id,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        bytes: bytes.length
+      });
     });
     return withFreshness(record);
   }
@@ -175,28 +187,58 @@ export function createModelAtlas(options: ModelAtlasOptions) {
     };
   }
 
-  async function readAll(modelId: string): Promise<{ records: AtlasEvaluationRecordT[]; corrupt: string[] }> {
+  interface Inspection {
+    records: AtlasEvaluationRecordT[];
+    corrupt: string[];
+    integrity_failures: string[];
+    unverified: string[];
+  }
+
+  async function inspectStore(modelId: string | null): Promise<Inspection> {
     const records: AtlasEvaluationRecordT[] = [];
     const corrupt: string[] = [];
+    const integrityFailures: string[] = [];
+    const unverified: string[] = [];
     let names: string[];
     try {
       names = await fs.readdir(evaluationsDir);
     } catch {
-      return { records, corrupt };
+      return { records, corrupt, integrity_failures: integrityFailures, unverified };
     }
     for (const name of names.filter(entry => entry.endsWith('.json'))) {
       const full = path.join(evaluationsDir, name);
+      let raw: string;
       try {
-        const raw = JSON.parse(await fs.readFile(full, 'utf8'));
-        const parsed = AtlasEvaluationRecord.safeParse(raw);
-        if (!parsed.success) { corrupt.push(name); continue; }
-        if (parsed.data.model_id === modelId) records.push(parsed.data);
+        raw = await fs.readFile(full, 'utf8');
       } catch {
         corrupt.push(name);
+        continue;
       }
+      let parsed;
+      try {
+        parsed = AtlasEvaluationRecord.safeParse(JSON.parse(raw));
+      } catch {
+        corrupt.push(name);
+        continue;
+      }
+      if (!parsed.success) { corrupt.push(name); continue; }
+      if (name !== `${parsed.data.evaluation_id}.json`) { corrupt.push(name); continue; }
+      const sidecar = `${parsed.data.evaluation_id}.sha256`;
+      try {
+        const digest = JSON.parse(await fs.readFile(path.join(evaluationsDir, sidecar), 'utf8'));
+        if (digest?.sha256 !== createHash('sha256').update(raw).digest('hex')) integrityFailures.push(name);
+      } catch {
+        unverified.push(name);
+      }
+      if (modelId === null || parsed.data.model_id === modelId) records.push(parsed.data);
     }
     records.sort((a, b) => Date.parse(a.evaluated_at) - Date.parse(b.evaluated_at) || a.evaluation_id.localeCompare(b.evaluation_id));
-    return { records, corrupt };
+    return { records, corrupt, integrity_failures: integrityFailures, unverified };
+  }
+
+  async function readAll(modelId: string): Promise<{ records: AtlasEvaluationRecordT[]; corrupt: string[]; integrity_failures: string[] }> {
+    const inspection = await inspectStore(modelId);
+    return { records: inspection.records, corrupt: inspection.corrupt, integrity_failures: inspection.integrity_failures };
   }
 
   async function latestFor(modelId: string, current?: AtlasFreshnessBasis): Promise<AtlasRecordedEvaluationT | null> {
@@ -212,11 +254,14 @@ export function createModelAtlas(options: ModelAtlasOptions) {
     latest: AtlasRecordedEvaluationT | null;
     corrupt_count: number;
   }> {
-    const { records, corrupt } = await readAll(modelId);
+    const { records, corrupt, integrity_failures: integrityFailures } = await readAll(modelId);
     const latest = records.at(-1);
     if (latest === undefined) {
-      if (corrupt.length > 0) {
-        return { state: 'INCOMPLETE', stale_reasons: ['corrupt_evidence'], scope: 'FULL', latest: null, corrupt_count: corrupt.length };
+      const reasons: string[] = [];
+      if (corrupt.length > 0) reasons.push('corrupt_evidence');
+      if (integrityFailures.length > 0) reasons.push('integrity_mismatch');
+      if (reasons.length > 0) {
+        return { state: 'INCOMPLETE', stale_reasons: reasons.sort(), scope: 'FULL', latest: null, corrupt_count: corrupt.length + integrityFailures.length };
       }
       return { state: 'NEVER_EVALUATED', stale_reasons: [], scope: 'NONE', latest: null, corrupt_count: 0 };
     }
@@ -224,8 +269,9 @@ export function createModelAtlas(options: ModelAtlasOptions) {
     if (latest.native === null) incompleteReasons.push('native_missing');
     if (latest.harnessed === null) incompleteReasons.push('harnessed_missing');
     if (corrupt.length > 0) incompleteReasons.push('corrupt_evidence');
+    if (integrityFailures.length > 0) incompleteReasons.push('integrity_mismatch');
     if (incompleteReasons.length > 0) {
-      return { state: 'INCOMPLETE', stale_reasons: incompleteReasons.sort(), scope: 'FULL', latest: withFreshness(latest, current), corrupt_count: corrupt.length };
+      return { state: 'INCOMPLETE', stale_reasons: incompleteReasons.sort(), scope: 'FULL', latest: withFreshness(latest, current), corrupt_count: corrupt.length + integrityFailures.length };
     }
     const verdict = compareFingerprints(latest.fingerprint, current);
     return {
