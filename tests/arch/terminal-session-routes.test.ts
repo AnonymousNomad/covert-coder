@@ -8,7 +8,7 @@ import { WebSocket } from 'ws';
 import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
 import { Envelope } from '../../common/errors.ts';
-import { TerminalProviderListResponse, TerminalSessionListResponse, TerminalSessionOpenResponse, TerminalSessionStopResponse } from '../../common/contracts/terminal.ts';
+import { TerminalProviderListResponse, TerminalSessionListResponse, TerminalSessionOpenResponse, TerminalSessionResumeResponse, TerminalSessionStopResponse } from '../../common/contracts/terminal.ts';
 import { pairFixture } from './authority-fixture.ts';
 import { TerminalSessionService, buildTerminalEnv } from '../../node/src/services/terminal-sessions.ts';
 import { translateCwd, createDefaultProviderDeps, type PtySpawnOptions } from '../../node/src/services/runtime-providers.ts';
@@ -357,6 +357,118 @@ test('backpressure: output drains in bounded frames and reports honest truncatio
     const event = terminalEvent(message, data => data.sessionId === sessionId && data.kind === 'error');
     return event !== null && /truncated/i.test(JSON.stringify(event.data));
   }), 'buffer overflow must be reported honestly, not silently dropped');
+});
+
+test('a newly paired operator needs an approved exact-session resume before reattaching to an existing PTY', async () => {
+  const peer = await pairFixture(server, base);
+  assert.notEqual(peer.actorId, owner.actorId, 'a fresh pairing must remain a distinct Authority actor');
+  const beforeCount = spawnCount;
+  const openHeaders = await owner.approve('POST', '/api/terminal/sessions', openBody, 'open-reattach-session');
+  const opened = await owner.request('/api/terminal/sessions', {
+    method: 'POST',
+    headers: { ...openHeaders, 'content-type': 'application/json' },
+    body: JSON.stringify(openBody)
+  });
+  const openedEnvelope = Envelope.safeParse(await opened.json());
+  assert.equal(openedEnvelope.success, true);
+  if (!openedEnvelope.success || !openedEnvelope.data.ok) return;
+  const payload = TerminalSessionOpenResponse.safeParse(openedEnvelope.data.data);
+  assert.equal(payload.success, true);
+  if (!payload.success) return;
+  const sessionId = payload.data.session.sessionId;
+  const pty = ptyInstances[ptyInstances.length - 1];
+  assert.ok(pty);
+  assert.equal(spawnCount, beforeCount + 1);
+  const previousOwnerClient = await connectWs(owner, 'http://fixture.local');
+  const newOwnerClient = await connectWs(peer, 'http://fixture.local');
+  const priorOutput = Array.from({ length: 5_001 }, (_, index) => `CW05C_HISTORY_${index}\r\n`).join('');
+  pty.emitData(priorOutput);
+
+  const resumeBody = { sessionId, expectedOwner: owner.actorId };
+  const unapproved = await peer.request('/api/terminal/sessions/resume', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(resumeBody)
+  });
+  assert.equal(unapproved.status, 409, 'resume without a current Authority operation must fail closed');
+  assert.equal(pty.killed, false, 'an unapproved resume must not disturb the running PTY');
+  assert.equal(spawnCount, beforeCount + 1, 'resume must never spawn a replacement PTY');
+
+  const staleBody = { sessionId, expectedOwner: 'stale-owner-id' };
+  const staleHeaders = await peer.approve('POST', '/api/terminal/sessions/resume', staleBody, `stale-resume-${sessionId}`);
+  const staleResume = await peer.request('/api/terminal/sessions/resume', {
+    method: 'POST',
+    headers: { ...staleHeaders, 'content-type': 'application/json' },
+    body: JSON.stringify(staleBody)
+  });
+  assert.equal(staleResume.status, 409, 'a stale owner snapshot must not transfer the session');
+  assert.equal(pty.killed, false);
+
+  const headers = await peer.approve('POST', '/api/terminal/sessions/resume', resumeBody, `resume-${sessionId}`);
+  const resumed = await peer.request('/api/terminal/sessions/resume', {
+    method: 'POST',
+    headers: { ...headers, 'content-type': 'application/json' },
+    body: JSON.stringify(resumeBody)
+  });
+  assert.equal(resumed.status, 200);
+  const resumedEnvelope = Envelope.safeParse(await resumed.json());
+  assert.equal(resumedEnvelope.success, true);
+  if (!resumedEnvelope.success || !resumedEnvelope.data.ok) return;
+  const resumedPayload = TerminalSessionResumeResponse.safeParse(resumedEnvelope.data.data);
+  assert.equal(resumedPayload.success, true);
+  if (!resumedPayload.success) return;
+  assert.equal(resumedPayload.data.session.sessionId, sessionId, 'reattachment must preserve exact session identity');
+  assert.equal(resumedPayload.data.session.owner, peer.actorId, 'the explicit handoff binds the session to the newly paired actor');
+  assert.equal(resumedPayload.data.session.state, 'running');
+  assert.equal(resumedPayload.data.scrollbackTruncated, true, 'bounded scrollback reports its truncation state');
+  assert.equal(pty.killed, false, 'reattachment preserves the existing PTY process');
+  assert.equal(spawnCount, beforeCount + 1, 'reattachment must not create a duplicate PTY');
+  await waitFor(newOwnerClient.messages, message => terminalEvent(message, data => data.sessionId === sessionId && data.kind === 'output') !== null);
+  const replay = newOwnerClient.messages
+    .map(message => terminalEvent(message, data => data.sessionId === sessionId && data.kind === 'output'))
+    .filter((event): event is NonNullable<typeof event> => event !== null)
+    .map(event => String((event.data as { data?: string }).data ?? ''))
+    .join('');
+  assert.match(replay, /CW05C_HISTORY_5000/, 'the latest terminal output is replayed to the approved actor');
+  assert.doesNotMatch(replay, /CW05C_HISTORY_0\r?\n/, 'old output outside the bounded history is not replayed');
+  assert.ok(newOwnerClient.messages.some(message => {
+    const event = terminalEvent(message, data => data.sessionId === sessionId && data.kind === 'error');
+    return event !== null && /scrollback was truncated/i.test(JSON.stringify(event.data));
+  }), 'history truncation is surfaced honestly');
+  const liveOutput = `CW05C_NEW_OWNER_${sessionId}`;
+  pty.emitData(liveOutput);
+  await waitFor(newOwnerClient.messages, message => {
+    const event = terminalEvent(message, data => data.sessionId === sessionId && data.kind === 'output');
+    return event !== null && JSON.stringify(event.data).includes(liveOutput);
+  });
+  assert.equal(previousOwnerClient.messages.some(message => JSON.stringify(message).includes(liveOutput)), false,
+    'future PTY output is no longer delivered to the former owner');
+
+  const priorWriteCount = pty.written.length;
+  previousOwnerClient.socket.send(JSON.stringify({ type: 'terminal', sessionId, action: 'input', data: 'old-owner\r' }));
+  newOwnerClient.socket.send(JSON.stringify({ type: 'terminal', sessionId, action: 'input', data: 'new-owner\r' }));
+  await pollUntil(() => pty.written.includes('new-owner\r'));
+  assert.equal(pty.written.includes('old-owner\r'), false, 'the former owner cannot send PTY input after handoff');
+  assert.equal(pty.written.length, priorWriteCount + 1);
+
+  const oldOwnerHeaders = await owner.approve('POST', '/api/terminal/sessions/stop', { sessionId }, `old-owner-stop-${sessionId}`);
+  const oldOwnerStop = await owner.request('/api/terminal/sessions/stop', {
+    method: 'POST',
+    headers: { ...oldOwnerHeaders, 'content-type': 'application/json' },
+    body: JSON.stringify({ sessionId })
+  });
+  assert.equal(oldOwnerStop.status, 403, 'the former actor must lose terminal control after approved handoff');
+  assert.equal(pty.killed, false, 'a refused former-owner stop leaves the PTY running');
+
+  const peerStopHeaders = await peer.approve('POST', '/api/terminal/sessions/stop', { sessionId }, `new-owner-stop-${sessionId}`);
+  const peerStop = await peer.request('/api/terminal/sessions/stop', {
+    method: 'POST',
+    headers: { ...peerStopHeaders, 'content-type': 'application/json' },
+    body: JSON.stringify({ sessionId })
+  });
+  assert.equal(peerStop.status, 200, 'the newly authorized actor can stop the reattached session');
+  assert.equal(pty.killed, true);
+  pty.emitExit(0);
 });
 
 test('stop by the owner stops the session; stop by another actor is refused', async () => {

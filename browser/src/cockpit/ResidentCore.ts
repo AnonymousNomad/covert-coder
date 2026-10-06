@@ -17,10 +17,14 @@ import {
   AgentCancelResponse,
   AgentStartRequest,
   AgentStartResponse,
+  AgentStreamEvent,
   AgentStatusQuery,
   AgentStatusResponse,
+  type AgentStreamEventT,
   type AgentStatusResponseT
 } from '../../../common/contracts/agent.ts';
+import { resolveCipherDispatch } from './interaction-mode.ts';
+import { getSharedEvents } from '../services/ws.ts';
 import type {
   ResidentSummaryResponseT,
   ResidentContextT,
@@ -126,25 +130,14 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   quickActions.appendChild(actionsRow);
   root.appendChild(quickActions);
 
-  const composer = el('form', 'cockpit-resident-composer');
-  composer.setAttribute('aria-label', 'Cipher governed composer');
-  composer.appendChild(el('div', 'cockpit-resident-composer-note', 'GOVERNED CIPHER COMPOSER · requests enter the existing AgentLoop and remain subject to operator approval.'));
-  const input = document.createElement('textarea');
-  input.className = 'cockpit-resident-input';
-  input.placeholder = 'Describe a task for Cipher…';
-  input.rows = 2;
-  composer.appendChild(input);
-  const sendBtn = document.createElement('button');
-  sendBtn.type = 'submit';
-  sendBtn.className = 'cockpit-resident-send';
-  sendBtn.textContent = 'START GOVERNED TASK';
-  composer.appendChild(sendBtn);
   const agentStatusMount = el('div', 'cockpit-resident-composer-status', 'No governed Cipher task is running.');
-  composer.appendChild(agentStatusMount);
-  root.appendChild(composer);
 
   parent.appendChild(root);
-  const chatPanel = createChatPanel(chatMount, opts.onToast === undefined ? {} : { onToast: opts.onToast });
+  const chatPanel = createChatPanel(chatMount, {
+    ...(opts.onToast !== undefined ? { onToast: opts.onToast } : {}),
+    governedStatus: agentStatusMount,
+    onGovernedSubmit: (mode, task) => startAgent(task, mode)
+  });
 
   let alive = true;
   const presentationOwner = crypto.randomUUID();
@@ -154,6 +147,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
   let pollTimer: number | null = null;
   let pollController: AbortController | null = null;
   let selectionController: AbortController | null = null;
+  let pendingAgentEvents: AgentStreamEventT[] = [];
   if (projection !== undefined) {
     projection = { ...projection, presentationOwner,
       phase: projection.phase === 'selecting' ? 'not_started' : projection.phase === 'starting' ? 'unknown' : projection.phase,
@@ -170,6 +164,25 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     projection = next;
     store.set(state => ({ ...state, residentTask: next }));
   }
+
+  function bindAgentSession(sessionId: string): void {
+    const matching = pendingAgentEvents.filter(event => event.session_id === sessionId);
+    pendingAgentEvents = [];
+    for (const event of matching) chatPanel.appendAgentEvent(event);
+  }
+
+  const agentEventUnsubscribe = getSharedEvents()?.subscribe('agent', raw => {
+    const parsed = AgentStreamEvent.safeParse(raw);
+    if (!parsed.success) return;
+    const event = parsed.data;
+    if (projection?.sessionId === event.session_id) {
+      chatPanel.appendAgentEvent(event);
+      return;
+    }
+    if (projection?.sessionId === null && ['selecting', 'starting', 'unknown'].includes(projection.phase)) {
+      if (pendingAgentEvents.length < 128) pendingAgentEvents.push(event);
+    }
+  });
 
   function terminal(status: AgentStatusResponseT | null): boolean {
     return status !== null && ['done', 'error', 'aborted'].includes(status.state);
@@ -189,8 +202,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
 
   function paintAgentStatus(): void {
     const blocked = !ownsPresentation() || blocksStart();
-    sendBtn.disabled = blocked;
-    input.disabled = blocked;
+    chatPanel.setGovernedAvailable(!blocked);
     for (const button of actionsRow.querySelectorAll<HTMLButtonElement>('button')) button.disabled = blocked;
     agentStatusMount.innerHTML = '';
     const status = projection?.status ?? null;
@@ -300,22 +312,26 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
       const started = await call('/api/agent/start', { method: 'POST', body: request, schema: AgentStartResponse });
       if (!ownsPresentation(ticket)) return;
       save({ ...projection, phase: 'session', sessionId: started.session_id, status: null, message: null });
+      bindAgentSession(started.session_id);
       busy = false;
       await pollAgent();
     } catch (error) {
       if (!ownsPresentation(ticket)) return;
       const detail = error instanceof ApiError ? error.detail as { start_outcome?: unknown; request_id?: unknown } | undefined : undefined;
       const notStarted = detail?.start_outcome === 'not_started' && detail.request_id === request.client_request_id;
+      if (notStarted) pendingAgentEvents = [];
       busy = false;
       save({ ...projection, phase: notStarted ? 'not_started' : 'unknown', message: `${notStarted ? 'Start refused before dispatch' : 'Start outcome unknown · recover the same request'} · ${String((error as Error).message ?? error).slice(0, 180)}` });
       paintAgentStatus();
     }
   }
 
-  async function startAgent(task: string): Promise<void> {
+  async function startAgent(task: string, requestedMode: 'plan' | 'act'): Promise<void> {
     const trimmed = task.trim();
     if (!ownsPresentation() || blocksStart() || trimmed.length === 0) return;
-    const parsed = AgentStartRequest.safeParse({ task: trimmed, mode: 'act', client_request_id: crypto.randomUUID() });
+    const dispatch = resolveCipherDispatch(requestedMode);
+    if (dispatch.path !== 'agent') return;
+    const parsed = AgentStartRequest.safeParse({ task: trimmed, mode: dispatch.mode, role: dispatch.role, client_request_id: crypto.randomUUID() });
     if (!parsed.success) { opts.onToast?.('BAD_REQUEST', 'Task must contain 1–8000 characters.'); return; }
     const ticket = ++epoch;
     const controller = new AbortController();
@@ -327,7 +343,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     try {
       const view = await api.modelManager(controller.signal);
       if (!ownsPresentation(ticket)) return;
-      const worker = residentWorkerForSelection(view);
+      const worker = residentWorkerForSelection(view, dispatch.role);
       const request = AgentStartRequest.parse({ ...parsed.data, worker, chat_source: worker.provider === 'local' ? 'local' : 'provider' });
       busy = false;
       save({ ...projection!, request, phase: 'unknown', message: null });
@@ -343,11 +359,6 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     }
   }
 
-  composer.addEventListener('submit', event => {
-    event.preventDefault();
-    void startAgent(input.value);
-  });
-
   for (const [button, action] of actionsRow.querySelectorAll<HTMLButtonElement>('button').entries()) {
     const intent = QUICK_ACTIONS[button]?.intent;
     if (intent === undefined) continue;
@@ -357,7 +368,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     quickButton.dataset.maturity = 'GOVERNED';
     quickButton.title = `Start a governed Cipher task: ${label}`;
     quickButton.setAttribute('aria-label', `${label}; starts a governed Cipher task`);
-    quickButton.addEventListener('click', () => { void startAgent(`${label} for the current workspace.`); });
+    quickButton.addEventListener('click', () => { void chatPanel.submitGoverned('act', `${label} for the current workspace.`); });
   }
   paintAgentStatus();
   if (projection?.phase === 'session') void pollAgent();
@@ -496,6 +507,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
       alive = false;
       selectionController?.abort();
       stopAgentPolling();
+      agentEventUnsubscribe?.();
       window.clearInterval(interval);
       chatPanel.dispose();
       operator.dispose();

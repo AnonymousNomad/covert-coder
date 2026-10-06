@@ -90,6 +90,8 @@ async function boot(): Promise<void> {
   const app = document.getElementById('app');
   if (app === null) throw new Error('#app missing');
   const store = new Store(INITIAL_STATE);
+  const events = connectEvents(facadeWebSocketUrl('/ws'));
+  setSharedEvents(events);
   const shell: CockpitHandles = mountCockpit(app, store);
   let paired = false;
   shell.topbar.setAuthority({ label: 'PAIRING REQUIRED', paired });
@@ -123,8 +125,6 @@ async function boot(): Promise<void> {
   onDirtyChange(() => renderAllTabs(host));
   groups.onGroupsChange(() => renderAllTabs(host));
 
-  const events = connectEvents(facadeWebSocketUrl('/ws'));
-  setSharedEvents(events);
   events.subscribe('agent', data => {
     const event = AgentFileMutationEvent.safeParse(data);
     if (!event.success) return;

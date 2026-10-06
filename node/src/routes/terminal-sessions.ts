@@ -5,7 +5,9 @@ import {
   TerminalSessionOpenRequest,
   TerminalSessionOpenResponse,
   TerminalSessionStopRequest,
-  TerminalSessionStopResponse
+  TerminalSessionStopResponse,
+  TerminalSessionResumeRequest,
+  TerminalSessionResumeResponse
 } from '../../../common/contracts/terminal.ts';
 import type { TerminalSessionService } from '../services/terminal-sessions.ts';
 
@@ -51,6 +53,22 @@ export function routesForTerminalSessions(service: TerminalSessionService): Rout
         const result = service.stop(actor!.id, input.sessionId);
         if ('error' in result) {
           if (result.error === 'unknown session') throw new RouteError('NOT_FOUND', result.error);
+          throw new RouteError('FORBIDDEN', result.error);
+        }
+        return result;
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/terminal/sessions/resume',
+      body: TerminalSessionResumeRequest,
+      response: TerminalSessionResumeResponse,
+      handler: ({ body, actor }) => {
+        const input = body as { sessionId: string; expectedOwner: string };
+        const result = service.resume(actor!.id, input.sessionId, input.expectedOwner);
+        if ('error' in result) {
+          if (result.error === 'unknown session') throw new RouteError('NOT_FOUND', result.error);
+          if (result.error === 'session owner changed' || result.error === 'session is not running') throw new RouteError('CONFLICT', result.error);
           throw new RouteError('FORBIDDEN', result.error);
         }
         return result;

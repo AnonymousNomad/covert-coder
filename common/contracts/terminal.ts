@@ -126,6 +126,16 @@ export const TerminalSessionStopResponse = z
   .strict();
 export type TerminalSessionStopResponseT = z.infer<typeof TerminalSessionStopResponse>;
 
+export const TerminalSessionResumeRequest = z
+  .object({ sessionId: z.string().min(1), expectedOwner: z.string().min(1) })
+  .strict();
+export type TerminalSessionResumeRequestT = z.infer<typeof TerminalSessionResumeRequest>;
+
+export const TerminalSessionResumeResponse = z
+  .object({ session: TerminalSessionInfo, scrollbackTruncated: z.boolean() })
+  .strict();
+export type TerminalSessionResumeResponseT = z.infer<typeof TerminalSessionResumeResponse>;
+
 // ---------------------------------------------------------------------------
 // WebSocket control protocol (client -> daemon) and event protocol
 // (daemon -> client).

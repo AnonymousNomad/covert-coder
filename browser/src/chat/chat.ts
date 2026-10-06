@@ -5,17 +5,29 @@ import { api } from '../services/api.ts';
 import type { ChatMessageT } from '../../../common/contracts/chat.ts';
 import type { RoleTargetT } from '../../../common/contracts/byok.ts';
 import type { RouteEntryT } from '../../../common/contracts/routing.ts';
+import type { AgentStreamEventT } from '../../../common/contracts/agent.ts';
 import { MODEL_ACCESS_CHANGED_EVENT } from '../services/model-access-events.ts';
 import { initialConversationRouteId, restoreConversationRouteId } from './model-selection.ts';
+import { DEFAULT_CIPHER_MODE, resolveCipherDispatch, type CipherMode } from '../cockpit/interaction-mode.ts';
 
 export interface ChatPanelOptions {
   onToast?: (code: string, message: string) => void;
+  onGovernedSubmit?: (mode: 'plan' | 'act', task: string) => Promise<void> | void;
+  governedStatus?: HTMLElement;
 }
 
 export interface ChatPanel {
   refreshModels(): Promise<void>;
+  appendAgentEvent(event: AgentStreamEventT): void;
+  submitGoverned(mode: 'plan' | 'act', task: string): Promise<void>;
+  setGovernedAvailable(available: boolean): void;
   dispose(): void;
 }
+
+type TimelineEntry =
+  | { kind: 'chat'; message: ChatMessageT }
+  | { kind: 'governed-prompt'; mode: 'plan' | 'act'; content: string }
+  | { kind: 'agent-event'; event: AgentStreamEventT; label: string; content: string };
 
 const STATUS_ORDER: Record<string, number> = { ready: 0, starting: 1, unverified: 2, down: 3 };
 
@@ -30,15 +42,24 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   container.innerHTML = `
     <div class="chat-panel">
       <div class="chat-toolbar">
-        <label class="chat-model-label" for="chat-model">Conversation model</label>
-        <select id="chat-model" class="chat-model-select" aria-label="Conversation model"></select>
-        <span class="chat-model-scope">Saved with this conversation; it does not change project role defaults.</span>
+        <div class="chat-mode-switch" role="group" aria-label="Cipher interaction mode">
+          <button type="button" class="chat-mode-button" data-mode="ask" aria-pressed="true">ASK</button>
+          <button type="button" class="chat-mode-button" data-mode="plan" aria-pressed="false">PLAN</button>
+          <button type="button" class="chat-mode-button" data-mode="act" aria-pressed="false">ACT</button>
+        </div>
+        <span class="chat-mode-description" aria-live="polite"></span>
+        <div class="chat-model-binding">
+          <label class="chat-model-label" for="chat-model">Conversation model</label>
+          <select id="chat-model" class="chat-model-select" aria-label="Conversation model"></select>
+          <span class="chat-model-scope">Saved with this conversation; it does not change project role defaults.</span>
+        </div>
         <span id="chat-meter" class="chat-meter"></span>
       </div>
       <div id="chat-banner" class="chat-banner"></div>
       <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-governed-status" data-chat-governed-status></div>
       <div class="chat-input-row">
-        <textarea id="chat-input" class="chat-input" rows="2" placeholder="Ask the model…"></textarea>
+        <textarea id="chat-input" class="chat-input" rows="2" placeholder="Ask Cipher…"></textarea>
         <button type="button" id="chat-send" class="chat-send">Send</button>
         <button type="button" id="chat-stop" class="chat-stop hidden">Stop</button>
       </div>
@@ -51,7 +72,11 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   const stopBtnEl = container.querySelector<HTMLButtonElement>('#chat-stop');
   const bannerEl = container.querySelector<HTMLElement>('#chat-banner');
   const meterEl = container.querySelector<HTMLElement>('#chat-meter');
-  if (modelSelectEl === null || messagesEl === null || inputEl === null || sendBtnEl === null || stopBtnEl === null || bannerEl === null || meterEl === null) throw new Error('chat panel mount failed');
+  const modeButtons = [...container.querySelectorAll<HTMLButtonElement>('.chat-mode-button')];
+  const modeDescription = container.querySelector<HTMLElement>('.chat-mode-description');
+  const modelBinding = container.querySelector<HTMLElement>('.chat-model-binding');
+  const governedStatusSlot = container.querySelector<HTMLElement>('[data-chat-governed-status]');
+  if (modelSelectEl === null || messagesEl === null || inputEl === null || sendBtnEl === null || stopBtnEl === null || bannerEl === null || meterEl === null || modeDescription === null || modelBinding === null || governedStatusSlot === null || modeButtons.length !== 3) throw new Error('chat panel mount failed');
   const modelSelect: HTMLSelectElement = modelSelectEl;
   const messages: HTMLElement = messagesEl;
   const input: HTMLTextAreaElement = inputEl;
@@ -64,6 +89,10 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   let boundModelId = '';
   let conversationId: string | undefined;
   let history: ChatMessageT[] = [];
+  let timeline: TimelineEntry[] = [];
+  let mode: CipherMode = DEFAULT_CIPHER_MODE;
+  let governedAvailable = true;
+  let governedSubmitting = false;
   let streaming = false;
   let controller: AbortController | null = null;
   let persistenceQueue: Promise<void> = Promise.resolve();
@@ -119,12 +148,14 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
       if (latest !== undefined) {
         conversationId = latest.id;
         history = latest.messages;
+        timeline = history.map(message => ({ kind: 'chat', message }));
         boundModelId = restoreConversationRouteId(latest.modelId, routes);
       } else {
         let actTarget: RoleTargetT = 'local';
         try { actTarget = (await api.connections()).routed_roles.coder; }
         catch { /* the safe default remains local */ }
         boundModelId = initialConversationRouteId(orderedRoutes(), actTarget);
+        timeline = [];
       }
 
       initialized = true;
@@ -162,16 +193,32 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
 
   function renderAll(): void {
     messages.textContent = '';
-    for (const message of history) {
+    for (const entry of timeline) {
+      if (entry.kind === 'agent-event') {
+        const row = document.createElement('article');
+        row.className = 'chat-timeline-event';
+        row.dataset.event = entry.event.event;
+        const label = document.createElement('div');
+        label.className = 'chat-message-label';
+        label.textContent = entry.label;
+        const body = document.createElement('div');
+        body.className = 'chat-message-body';
+        body.textContent = entry.content;
+        row.append(label, body);
+        messages.appendChild(row);
+        continue;
+      }
+      const message = entry.kind === 'chat' ? entry.message : { role: 'user' as const, content: entry.content };
       const row = document.createElement('div');
       row.className = `chat-message ${message.role}`;
       const labelRow = document.createElement('div');
       labelRow.className = 'chat-message-label-row';
       const label = document.createElement('div');
       label.className = 'chat-message-label';
-      label.textContent = message.role === 'user' ? 'you' : routeById(boundModelId)?.displayName ?? 'assistant';
+      label.textContent = entry.kind === 'governed-prompt' ? `you · ${entry.mode.toUpperCase()}`
+        : message.role === 'user' ? 'you' : routeById(boundModelId)?.displayName ?? 'assistant';
       labelRow.appendChild(label);
-      if (message.role === 'assistant') {
+      if (entry.kind === 'chat' && message.role === 'assistant') {
         const reask = document.createElement('button');
         reask.type = 'button';
         reask.className = 'chat-reask';
@@ -182,7 +229,10 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
           if (streaming) return;
           const index = history.indexOf(message);
           if (index >= 0) {
+            const entryIndex = timeline.findIndex(candidate => candidate.kind === 'chat' && candidate.message === message);
+            if (entryIndex < 0 || timeline.slice(entryIndex + 1).some(candidate => candidate.kind !== 'chat')) return;
             history.splice(index);
+            timeline.splice(entryIndex);
             renderAll();
             void send();
           }
@@ -201,9 +251,33 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
 
   function setStreaming(value: boolean): void {
     streaming = value;
-    sendButton.disabled = value;
     modelSelect.disabled = value;
     stopButton.classList.toggle('hidden', !value);
+    renderMode();
+  }
+
+  function renderMode(): void {
+    for (const button of modeButtons) {
+      const selected = button.dataset.mode === mode;
+      button.setAttribute('aria-pressed', String(selected));
+      button.disabled = !governedAvailable && button.dataset.mode !== 'ask';
+    }
+    const dispatch = resolveCipherDispatch(mode);
+    modeDescription!.textContent = dispatch.path === 'chat'
+      ? 'ASK · direct conversation with this conversation’s pinned model.'
+      : dispatch.mode === 'plan'
+        ? 'PLAN · governed AgentLoop using the exact Planner role; read-only planning.'
+        : 'ACT · governed AgentLoop using the exact Coder role; Authority controls each protected operation.';
+    modelBinding!.hidden = dispatch.path !== 'chat';
+    sendButton.textContent = dispatch.path === 'chat' ? 'Send' : `Start ${dispatch.mode.toUpperCase()}`;
+    input.placeholder = dispatch.path === 'chat' ? 'Ask Cipher…' : `Describe a ${dispatch.mode.toUpperCase()} request for Cipher…`;
+    sendButton.disabled = streaming || (dispatch.path === 'agent' && (!governedAvailable || governedSubmitting));
+  }
+
+  function selectMode(next: CipherMode): void {
+    if ((!governedAvailable && next !== 'ask') || !modeButtons.some(button => button.dataset.mode === next)) return;
+    mode = next;
+    renderMode();
   }
 
   function showBanner(text: string): void {
@@ -215,6 +289,62 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
     banner.textContent = '';
     banner.classList.remove('visible');
   }
+
+  function agentEventText(event: AgentStreamEventT): { label: string; content: string } {
+    switch (event.event) {
+      case 'message': return { label: 'CIPHER · RESPONSE', content: event.text };
+      case 'plan': return { label: `CIPHER · PLAN ${event.cycle}/${event.max_cycles}`, content: event.plan };
+      case 'tool_call': return { label: 'AGENTLOOP · TOOL REQUEST', content: `${event.tool} · approval and execution follow canonical Authority policy.` };
+      case 'tool_result': return { label: `AGENTLOOP · TOOL RESULT · ${event.ok ? 'OK' : 'FAILED'}`, content: `${event.tool}\n${event.output}` };
+      case 'file_mutation': return { label: 'WORKSPACE · MUTATION EVENT', content: `${event.outcome.toUpperCase()} · ${event.paths.length} path(s); editor state is reconciled through the existing workspace event path.` };
+      case 'awaiting_approval': return { label: 'AUTHORITY · OPERATOR DECISION REQUIRED', content: `Approval requested for ${event.approval.tool}. Use the decision controls below.` };
+      case 'context': return { label: `CONTEXT · ${event.source.toUpperCase()}`, content: `${event.status.toUpperCase()}${event.error ? ` · ${event.error}` : ''}` };
+      case 'verification': return { label: 'VERIFICATION · RESULT', content: `${event.status.toUpperCase()} · ${event.passed ? 'passed' : 'not passed'}` };
+      case 'done': return { label: 'AGENTLOOP · COMPLETE', content: event.summary };
+      case 'error': return { label: 'AGENTLOOP · ERROR', content: event.error };
+      case 'aborted': return { label: 'AGENTLOOP · STOPPED', content: 'The governed task was aborted.' };
+    }
+  }
+
+  function appendAgentEvent(event: AgentStreamEventT): void {
+    timeline.push({ kind: 'agent-event', event, ...agentEventText(event) });
+    renderAll();
+  }
+
+  async function submitGoverned(nextMode: 'plan' | 'act', task: string): Promise<void> {
+    const content = task.trim();
+    if (content.length === 0) return;
+    if (!governedAvailable || governedSubmitting) {
+      showBanner('A governed Cipher task is already active or unavailable. The existing task remains the source of status.');
+      return;
+    }
+    const dispatch = resolveCipherDispatch(nextMode);
+    if (dispatch.path !== 'agent') throw new Error('governed mode dispatch contract is invalid');
+    selectMode(nextMode);
+    timeline.push({ kind: 'governed-prompt', mode: dispatch.mode, content });
+    renderAll();
+    input.value = '';
+    governedSubmitting = true;
+    renderMode();
+    try {
+      if (opts.onGovernedSubmit === undefined) throw new Error('governed interaction path is unavailable');
+      await opts.onGovernedSubmit(dispatch.mode, content);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'governed request failed';
+      showBanner(detail);
+      opts.onToast?.('INTERNAL', detail);
+    } finally {
+      governedSubmitting = false;
+      renderMode();
+    }
+  }
+
+  function setGovernedAvailable(available: boolean): void {
+    governedAvailable = available;
+    renderMode();
+  }
+
+  if (opts.governedStatus !== undefined) governedStatusSlot.appendChild(opts.governedStatus);
 
   function persistConversation(): Promise<void> {
     if (history.length === 0) return Promise.resolve();
@@ -240,6 +370,11 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
 
   async function send(): Promise<void> {
     const content = input.value.trim();
+    const dispatch = resolveCipherDispatch(mode);
+    if (dispatch.path === 'agent') {
+      await submitGoverned(dispatch.mode, content);
+      return;
+    }
     if (content.length === 0 && history[history.length - 1]?.role !== 'user') return;
     if (streaming) return;
     if (boundModelId.length === 0) {
@@ -259,12 +394,15 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
     }
     if (content.length > 0) {
       input.value = '';
-      history.push({ role: 'user', content });
+      const userMessage: ChatMessageT = { role: 'user', content };
+      history.push(userMessage);
+      timeline.push({ kind: 'chat', message: userMessage });
     }
-    history.push({ role: 'assistant', content: '' });
+    const assistant: ChatMessageT = { role: 'assistant', content: '' };
+    history.push(assistant);
+    timeline.push({ kind: 'chat', message: assistant });
     renderAll();
     setStreaming(true);
-    const assistant = history[history.length - 1]!;
     const modelId = boundModelId;
     controller = new AbortController();
     try {
@@ -316,14 +454,16 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
       }
       if (assistant.content.length === 0) {
         history.pop();
+        timeline.pop();
         opts.onToast?.('NOT_READY', 'the model returned an empty response');
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        if (assistant.content.length === 0) history.pop();
+        if (assistant.content.length === 0) { history.pop(); timeline.pop(); }
         else assistant.content += '\n[stopped]';
       } else {
         history.pop();
+        timeline.pop();
         opts.onToast?.('INTERNAL', error instanceof Error ? error.message : 'chat failed');
       }
     } finally {
@@ -353,6 +493,13 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
   const refreshAfterModelAccessChange = (): void => { void refreshModels(); };
   window.addEventListener(MODEL_ACCESS_CHANGED_EVENT, refreshAfterModelAccessChange);
 
+  for (const button of modeButtons) {
+    button.addEventListener('click', () => {
+      const requested = button.dataset.mode;
+      if (requested === 'ask' || requested === 'plan' || requested === 'act') selectMode(requested);
+    });
+  }
+  renderMode();
   sendButton.addEventListener('click', () => void send());
   input.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -368,6 +515,9 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
 
   return {
     refreshModels,
+    appendAgentEvent,
+    submitGoverned,
+    setGovernedAvailable,
     dispose() {
       window.removeEventListener(MODEL_ACCESS_CHANGED_EVENT, refreshAfterModelAccessChange);
       controller?.abort();

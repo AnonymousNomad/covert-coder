@@ -457,6 +457,59 @@ body {
   flex: 0 0 auto;
 }
 
+.chat-mode-switch {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.chat-mode-button {
+  border: 0;
+  border-radius: 4px;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chat-mode-button[aria-pressed="true"] {
+  background: var(--accent-soft, rgba(88, 116, 204, 0.2));
+  color: var(--fg);
+}
+
+.chat-mode-button:focus-visible,
+.chat-send:focus-visible,
+.chat-stop:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.chat-mode-button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+.chat-mode-description {
+  flex: 1 1 240px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.chat-model-binding {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 100%;
+}
+
+.chat-model-binding[hidden] { display: none; }
+
 .chat-model-label {
   font-size: 11px;
   color: var(--dim);
@@ -489,6 +542,21 @@ body {
 
 .chat-message {
   margin-bottom: 10px;
+}
+
+.chat-timeline-event {
+  margin: 10px 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--accent);
+  background: var(--bg, rgba(0, 0, 0, 0.12));
+}
+
+.chat-governed-status:empty { display: none; }
+
+.chat-governed-status {
+  flex: 0 0 auto;
+  max-height: 30vh;
+  overflow: auto;
 }
 
 .chat-message-label {
@@ -2050,6 +2118,42 @@ body {
   color: var(--covert-muted);
   margin-top: 4px;
   font-family: var(--covert-mono);
+}
+
+.terminal-resume-list:not(:empty) {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border-left: 2px solid var(--covert-green);
+  background: var(--covert-bg-gunmetal);
+}
+
+.terminal-resume-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.terminal-resume-details {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.terminal-resume-identity {
+  color: var(--covert-text);
+  font: 10px var(--covert-mono);
+}
+
+.terminal-resume-shell {
+  color: var(--covert-muted);
+  font-size: 9px;
+}
+
+.terminal-resume-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .terminal-open {

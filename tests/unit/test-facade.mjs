@@ -124,6 +124,28 @@ test('prefix routes hit the mapped backend on both sides', async () => {
   for (const s of [ts.server, legacy.server]) { s.closeAllConnections?.(); s.close(); }
 });
 
+test('facade-local startup readiness does not query downstream model health', async () => {
+  const ts = fakeBackend('ts');
+  const tsPort = await listen(ts.server);
+  const facade = await createTestFacade({
+    port: 0,
+    routeMap: { prefixes: {}, exact: {}, upgrades: {} },
+    targets: { ts: { host: HOST, port: tsPort }, legacy: { host: HOST, port: 1 } }
+  });
+  const port = facade.server.address().port;
+  try {
+    const response = await get(port, '/api/health/ts');
+    assert.equal(response.status, 200);
+    assert.deepEqual(JSON.parse(response.body), { ok: true, target: 'ts' });
+    assert.equal(ts.seen.length, 0, 'facade startup readiness must not call downstream health/model status');
+  } finally {
+    await facade.close();
+    assert.equal(facade.server.listening, false, 'facade readiness fixture must cleanly release its listener');
+    ts.server.closeAllConnections?.();
+    await new Promise(resolve => ts.server.close(resolve));
+  }
+});
+
 test('longest prefix wins and unknown method/path pairs fail closed', async () => {
   const ts = fakeBackend('ts');
   const legacy = fakeBackend('legacy');

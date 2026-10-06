@@ -17,7 +17,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { api } from '../services/api.ts';
 import { getSharedEvents } from '../services/ws.ts';
-import type { TerminalProviderInfoT, TerminalEventT } from '../../../common/contracts/terminal.ts';
+import type { TerminalProviderInfoT, TerminalEventT, TerminalSessionInfoT } from '../../../common/contracts/terminal.ts';
 import { TerminalEvent } from '../../../common/contracts/terminal.ts';
 import type { TaskStatusResponseT, TaskJobT } from '../../../common/contracts/tasks.ts';
 import { DEFAULT_APPEARANCE, terminalThemeFor, type ThemeEngine } from '../desktop/theme.ts';
@@ -47,11 +47,13 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   header.appendChild(el('h2', 'panel-title', 'TERMINAL'));
   header.appendChild(el('span', 'panel-maturity', 'EXPERIMENTAL'));
   root.appendChild(header);
-  const intro = el('div', 'panel-intro', 'Interactive sessions run as approved operations. Opening a session spawns a real shell; input flows only inside that admitted, actor-bound session.');
+  const intro = el('div', 'panel-intro', 'Interactive sessions run as approved operations. Reattaching transfers control only after an explicit Authority decision.');
   root.appendChild(intro);
 
   const providerStrip = el('div', 'terminal-providers');
   root.appendChild(providerStrip);
+  const resumeStrip = el('div', 'terminal-resume-list');
+  root.appendChild(resumeStrip);
   const openControls = el('div', 'terminal-open');
   root.appendChild(openControls);
   const sessionShell = el('div', 'terminal-session');
@@ -68,6 +70,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let fitAddon: FitAddon | null = null;
   let activeSessionId: string | null = null;
   let sessionsInitialized = false;
+  let resumeInProgress = false;
   let activeProvider: TerminalProviderInfoT | null = null;
   let stopButton: HTMLButtonElement | null = null;
   let windowsResizeHandler: (() => void) | null = null;
@@ -75,6 +78,9 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
 
   const providerEls = new Map<string, HTMLElement>();
   let providers: TerminalProviderInfoT[] = [];
+  let providerRefreshGeneration = 0;
+  let historyRefreshGeneration = 0;
+  let sessionRefreshGeneration = 0;
   let providerSelect: HTMLSelectElement | null = null;
   let shellSelect: HTMLSelectElement | null = null;
 
@@ -82,7 +88,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   refreshBtn.type = 'button';
   refreshBtn.className = 'terminal-refresh-btn';
   refreshBtn.textContent = 'REFRESH';
-  refreshBtn.addEventListener('click', () => { void refreshProviders(); });
+  refreshBtn.addEventListener('click', () => {
+    void refreshProviders();
+    void refreshSessions();
+    void refreshHistory();
+  });
 
   const openButton = document.createElement('button');
   openButton.type = 'button';
@@ -107,6 +117,10 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
 
   function renderOpenControls(): void {
     openControls.innerHTML = '';
+    if (activeSessionId !== null || resumeInProgress) {
+      openControls.appendChild(el('div', 'panel-empty', 'A terminal session is active. Stop it before opening another session.'));
+      return;
+    }
     if (activeProvider === null) {
       const hint = el('div', 'panel-empty', 'No runtime provider is available. Install the prerequisite shown, then refresh.');
       openControls.appendChild(hint);
@@ -145,6 +159,28 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     btnRow.appendChild(spacing);
     bar.appendChild(btnRow);
     openControls.appendChild(bar);
+  }
+
+  function renderResumeCandidates(sessions: TerminalSessionInfoT[]): void {
+    resumeStrip.innerHTML = '';
+    if (activeSessionId !== null) return;
+    const running = sessions.filter(session => session.state === 'running');
+    if (running.length === 0) return;
+    resumeStrip.appendChild(el('div', 'panel-section-title', 'RUNNING SESSIONS · AUTHORITY REATTACH REQUIRED'));
+    for (const session of running) {
+      const row = el('div', 'terminal-resume-row');
+      const details = el('div', 'terminal-resume-details');
+      details.appendChild(el('span', 'terminal-resume-identity', `SESSION ${session.sessionId.slice(0, 8)}`));
+      details.appendChild(el('span', 'terminal-resume-shell', `${session.provider} · ${session.shell} · ${new Date(session.createdAt).toLocaleTimeString()}`));
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'terminal-open-btn terminal-resume-btn';
+      button.textContent = 'REATTACH';
+      button.setAttribute('aria-label', `Reattach terminal session ${session.sessionId}`);
+      button.addEventListener('click', () => { void resumeSession(session); });
+      row.append(details, button);
+      resumeStrip.appendChild(row);
+    }
   }
 
   // --- session rendering ----------------------------------------------------
@@ -203,12 +239,26 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     refreshedTerm.focus();
   }
 
+  function disposeSessionView(): void {
+    if (windowsResizeHandler) window.removeEventListener('resize', windowsResizeHandler);
+    windowsResizeHandler = null;
+    if (xterm) {
+      try { xterm.dispose(); } catch { /* already disposed */ }
+      xterm = null;
+    }
+    fitAddon = null;
+    stopButton = null;
+  }
+
   function renderSessionEnded(message: string): void {
+    disposeSessionView();
     sessionShell.innerHTML = '';
     const stage = el('div', 'terminal-stage gone');
     stage.appendChild(el('div', 'panel-empty', message));
     sessionShell.appendChild(stage);
     activeSessionId = null;
+    sessionsInitialized = false;
+    renderOpenControls();
   }
 
   function setBusy(text: string): void {
@@ -219,15 +269,18 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   // --- actions ----------------------------------------------------------------
   async function refreshProviders(): Promise<void> {
     if (!alive) return;
+    const generation = ++providerRefreshGeneration;
     providerStrip.innerHTML = '<div class="panel-loading">Probing runtime providers\u2026</div>';
     let infos: TerminalProviderInfoT[];
     try {
       infos = (await api.terminalProviders()).providers;
     } catch (e) {
+      if (!alive || generation !== providerRefreshGeneration) return;
       providerStrip.innerHTML = '';
       providerStrip.appendChild(el('div', 'panel-error', `Provider probe failed: ${e instanceof Error ? e.message : String(e)}`));
       return;
     }
+    if (!alive || generation !== providerRefreshGeneration) return;
     providers = infos;
     providerStrip.innerHTML = '';
     providerEls.clear();
@@ -248,7 +301,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   }
 
   async function openSession(): Promise<void> {
-    if (activeProvider === null) return;
+    if (activeProvider === null || activeSessionId !== null || resumeInProgress) return;
     const body: { provider: string; shell: string | null; cols: number; rows: number } = {
       provider: providerSelect?.value ?? activeProvider.id,
       shell: shellSelect?.value ?? null,
@@ -259,8 +312,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     try {
       const opened = await api.terminalSessionOpen(body);
       activeSessionId = opened.session.sessionId;
-      sessionsInitialized = false;
-      renderSessionLoading();
+      renderResumeCandidates([]);
+      renderOpenControls();
+      sessionsInitialized = opened.session.state === 'running';
+      if (sessionsInitialized) renderSessionShell();
+      else renderSessionLoading();
       void refreshSessions();
     } catch (e) {
       activeSessionId = null;
@@ -270,12 +326,41 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     }
   }
 
+  async function resumeSession(candidate: TerminalSessionInfoT): Promise<void> {
+    if (!alive || activeSessionId !== null || resumeInProgress || candidate.state !== 'running') return;
+    resumeInProgress = true;
+    activeSessionId = candidate.sessionId;
+    renderResumeCandidates([]);
+    renderOpenControls();
+    activeProvider = providers.find(provider => provider.id === candidate.provider) ?? null;
+    sessionsInitialized = true;
+    renderSessionShell();
+    try {
+      const resumed = await api.terminalSessionResume(candidate.sessionId, candidate.owner);
+      if (!alive || activeSessionId !== candidate.sessionId) return;
+      if (resumed.session.sessionId !== candidate.sessionId || resumed.session.state !== 'running') {
+        throw new Error('resume response identity or state mismatch');
+      }
+      await refreshSessions();
+    } catch (error) {
+      if (alive && activeSessionId === candidate.sessionId) {
+        renderSessionEnded(`Reattach refused or unavailable · ${String((error as Error).message ?? error).slice(0, 180)}`);
+        void refreshSessions();
+      }
+    } finally {
+      resumeInProgress = false;
+    }
+  }
+
   async function stopSession(): Promise<void> {
     if (activeSessionId === null) return;
     const id = activeSessionId;
+    disposeSessionView();
     setBusy('Stopping session\u2026');
     try {
-      await api.terminalSessionStop(id);
+      const stopped = await api.terminalSessionStop(id);
+      if (stopped.sessionId !== id) throw new Error('stop response session identity mismatch');
+      await refreshSessions();
     } catch (e) {
       sessionShell.innerHTML = '';
       sessionShell.appendChild(el('div', 'panel-error', `Stop failed: ${e instanceof Error ? e.message : String(e)}`));
@@ -284,15 +369,31 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   }
 
   async function refreshSessions(): Promise<void> {
-    if (!alive || activeSessionId === null) return;
-    let mine: { state: string; exitCode: number | null; cleanup: string } | undefined;
+    if (!alive) return;
+    const generation = ++sessionRefreshGeneration;
+    let sessions: TerminalSessionInfoT[];
     try {
-      const res = await api.terminalSessions();
-      mine = res.sessions.find(s => s.sessionId === activeSessionId);
+      sessions = (await api.terminalSessions()).sessions;
     } catch { return; }
+    if (!alive || generation !== sessionRefreshGeneration) return;
+    if (activeSessionId === null) {
+      renderResumeCandidates(sessions);
+      return;
+    }
+    const mine = sessions.find(s => s.sessionId === activeSessionId);
     if (!mine) {
       renderSessionEnded('Session ended. Open a new one from the provider bar.');
+      renderResumeCandidates(sessions);
       return;
+    }
+    if (mine.state === 'stopped' || mine.state === 'disposed') {
+      renderSessionEnded(`Session ${mine.state}. Open a new one from the provider bar.`);
+      renderResumeCandidates(sessions);
+      return;
+    }
+    if (mine.state === 'running' && !sessionsInitialized) {
+      sessionsInitialized = true;
+      renderSessionShell();
     }
     const stateLab = `${mine.state.toUpperCase()}${mine.exitCode !== null ? ` \u00b7 exit ${mine.exitCode}` : ''}${mine.cleanup !== 'clean' ? ` \u00b7 cleanup=${mine.cleanup}` : ''}`;
     let chip = sessionShell.querySelector('.terminal-session-state');
@@ -314,6 +415,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       renderSessionShell();
     } else if (event.kind === 'state' && (event.state === 'stopped' || event.state === 'disposed')) {
       sessionsInitialized = true;
+      void refreshSessions();
     } else if (event.kind === 'exit') {
       sessionsInitialized = true;
       if (xterm) xterm.write(`\r\n[session exited ${event.exitCode}; cleanup=${event.cleanup}]\r\n`);
@@ -353,15 +455,18 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
 
   async function refreshHistory(): Promise<void> {
     if (!alive) return;
+    const generation = ++historyRefreshGeneration;
     body.innerHTML = '<div class="panel-loading">Loading task status\u2026</div>';
     let res: TaskStatusResponseT;
     try {
       res = await api.tasksStatus();
     } catch (e) {
+      if (!alive || generation !== historyRefreshGeneration) return;
       body.innerHTML = '';
       body.appendChild(el('div', 'panel-error', `Failed to load: ${e instanceof Error ? e.message : String(e)}`));
       return;
     }
+    if (!alive || generation !== historyRefreshGeneration) return;
     body.innerHTML = '';
     if (res.jobs.length === 0) {
       body.appendChild(el('div', 'panel-empty', 'No task history yet. One-shot commands remain available through the operator-gated POST /api/terminal/run flow.'));
@@ -377,12 +482,20 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
 
   void refreshProviders();
   void refreshHistory();
+  void refreshSessions();
+  const refreshAfterAuthorityPairing = (): void => {
+    void refreshProviders();
+    void refreshHistory();
+    void refreshSessions();
+  };
+  document.addEventListener('covert:authority-paired', refreshAfterAuthorityPairing);
   const interval = window.setInterval(() => { void refreshHistory(); }, 5000);
 
   return {
     dispose() {
       alive = false;
       window.clearInterval(interval);
+      document.removeEventListener('covert:authority-paired', refreshAfterAuthorityPairing);
       document.removeEventListener('covert:appearance-changed', appearanceChanged);
       if (windowsResizeHandler) window.removeEventListener('resize', windowsResizeHandler);
       unsubscribe?.();

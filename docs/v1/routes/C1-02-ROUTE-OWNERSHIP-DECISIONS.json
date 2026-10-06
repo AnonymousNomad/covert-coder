@@ -7344,7 +7344,7 @@
       "currentFrontendCallers": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 275,
+          "line": 278,
           "methodEvidence": "GET",
           "source": "return call('/api/readiness', { schema: ReadinessResponse });"
         }
@@ -9355,7 +9355,7 @@
         },
         {
           "file": "browser/src/services/api.ts",
-          "line": 283,
+          "line": 286,
           "methodEvidence": "POST",
           "source": "return call('/api/file', { query: query.data, schema: FileReadResponse });"
         }
@@ -9466,7 +9466,7 @@
       "otherFrontendMethodReferences": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 294,
+          "line": 297,
           "methodEvidence": "POST",
           "source": "return call('/api/search', { query: query.data, schema: SearchResponse });"
         }

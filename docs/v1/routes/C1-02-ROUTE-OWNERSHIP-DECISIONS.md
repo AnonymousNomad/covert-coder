@@ -554,7 +554,7 @@ Frozen reproduction SHA: 61f3201d65987531618c671977fe8c5174377a8c. Implementatio
 - **Request shape:** [].
 - **Typed response shape:** {"type":"object","required":["ready","ready_for_golden_mission","items","generated_at"],"properties":{"ready":{"type":"boolean"},"ready_for_golden_mission":{"type":"boolean"},"items":{"type":"array","maxItems":32,"items":{"type":"object","required":["id","state","code","explanation","repair","blocking"],"properties":{"id":{"type":"string","minLength":1,"maxLength":80},"state":{"type":"string","enum":["READY","DEGRADED","BLOCKED","OPTIONAL","UNKNOWN"]},"code":{"type":"string","minLength":1,"maxLength":80},"explanation":{"type":"string","maxLength":500},"repair":{"anyOf":[{"type":"string","maxLength":500},{"type":"null"}]},"blocking":{"type":"boolean"}},"additionalProperties":false}},"generated_at":{"type":"string"}},"additionalProperties":false}.
 - **Legacy response shape:** "NO_MATCHING_LEGACY_HANDLER".
-- **Frontend path references:** browser/src/services/api.ts:275.
+- **Frontend path references:** browser/src/services/api.ts:278.
 - **Backend/internal path references:** none found outside route/handler source by bounded literal scan.
 - **Legacy request shape:** "not applicable".
 

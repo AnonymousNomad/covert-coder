@@ -195,7 +195,10 @@ import {
   TerminalSessionOpenResponse,
   TerminalSessionStopRequest,
   type TerminalSessionStopResponseT,
-  TerminalSessionStopResponse
+  TerminalSessionStopResponse,
+  TerminalSessionResumeRequest,
+  type TerminalSessionResumeResponseT,
+  TerminalSessionResumeResponse
 } from '../../../common/contracts/terminal.ts';
 
 export const API_FORMAT_HEADER = 'X-AIDE-API-Format';
@@ -557,5 +560,10 @@ export const api = {
     const body = TerminalSessionStopRequest.safeParse({ sessionId });
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid terminal stop request');
     return call('/api/terminal/sessions/stop', { method: 'POST', body: body.data, schema: TerminalSessionStopResponse });
+  },
+  async terminalSessionResume(sessionId: string, expectedOwner: string): Promise<TerminalSessionResumeResponseT> {
+    const body = TerminalSessionResumeRequest.safeParse({ sessionId, expectedOwner });
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid terminal resume request');
+    return call('/api/terminal/sessions/resume', { method: 'POST', body: body.data, schema: TerminalSessionResumeResponse });
   }
 };

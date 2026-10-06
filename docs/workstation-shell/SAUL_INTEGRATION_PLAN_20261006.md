@@ -1,0 +1,10 @@
+# Workstation chrome and independent window hosting
+Spec: accepted WORKSTATION_DESIGN_CONTRACT and WINDOW_CONTRACT plus current owner directive (2026-10-06).
+Base: clean packaging da320b96, with exact preserved Luna 22-path snapshot; adoption is not acceptance.
+Global constraints: original shell/worktrees untouched; no privilege/runtime-owner duplication; heavy startup/browser/build/full-suite gates require >=3 GiB physical and >5 GiB commit; no foreign process stop.
+Task 1: Preserve source snapshot; run serial focused baseline; commit copied Luna changes as an unaccepted preservation snapshot.
+Task 2: Retrofit existing theme/chrome to accepted black/phosphor rectangular compact workstation. Preserve appearance import/preferences and all action owners. Test real semantic contrast and safe defaults; no runtime visual PASS inferred.
+Task 3: Extend existing frame/layout/view identity to separate application from window instance. Keep singleton compatibility, bounded terminal instances, old saved-layout decoding. Rehost existing EditorHost unchanged. Allocate independent lazy terminal panel controllers by instance; keep canonical approved creation/resume/stop and shared event bus. Prevent duplicate local view binding without claiming new Authority.
+Interfaces: layout produces immutable window instance IDs; view keys DOM/control/task identities by those IDs; Cockpit resolves app kind to singleton registrations or instance-scoped terminal registration; terminal panel retains actual service session ID, never window ID as authority.
+Verification: actual new negatives RED then GREEN; existing theme/window/document/Cipher focused regressions serial; bounded browser TypeScript/changed-file lint if safe; prepare dual real-PTY browser journey but do not run below established gates. Record raw logs and exact commits.
+Review focus: wrong-window close/resize/focus; duplicate singleton/invalid layout IDs; legacy layouts; view close/reopen preservation without PTY stop; simultaneous terminal claims; replay/input before approved resume; hidden resize cleanup; palette/dock stale IDs; owner observations vs presentation.

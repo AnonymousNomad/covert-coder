@@ -182,5 +182,19 @@ test('real paired AgentLoop mutation reaches the same Monaco session and preserv
   await expect(page.locator('[data-aide-toast-region] .aide-toast').filter({
     hasText: 'Workbench session was not saved. Current workstation state remains in memory'
   }).first()).toBeVisible();
+  phase = 'cipher-interaction-mode-ui';
+  await page.locator('.desktop-resident-presence').click();
+  const interactionModes = page.getByRole('group', { name: 'Cipher interaction mode' });
+  await expect(interactionModes).toBeVisible();
+  await expect(page.locator('.chat-input')).toHaveCount(1);
+  await expect(interactionModes.getByRole('button', { name: 'ASK' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.chat-model-binding')).toBeVisible();
+  await interactionModes.getByRole('button', { name: 'PLAN' }).click();
+  await expect(interactionModes.getByRole('button', { name: 'PLAN' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.chat-model-binding')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Start PLAN' })).toBeVisible();
+  await interactionModes.getByRole('button', { name: 'ACT' }).click();
+  await expect(interactionModes.getByRole('button', { name: 'ACT' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Start ACT' })).toBeVisible();
   expect(pageErrors, `unexpected browser errors; sanitized authority dialogs: ${authorityDialogs.join('; ') || 'none'}`).toEqual([]);
 });

@@ -77,32 +77,40 @@ async function cleanupFixture() {
   }
 }
 
-const child = spawn(process.execPath, [
-  playwrightCli,
-  'test',
-  '--config',
-  path.join(root, 'playwright.workstation.config.ts'),
-  ...process.argv.slice(2)
-], {
-  cwd: root,
-  env: {
-    ...process.env,
-    AIDE_WORKSTATION_E2E_RUN_ID: runId
-  },
-  stdio: 'inherit'
-});
+function runOwnedCommand(command, args, env) {
+  return new Promise(resolve => {
+    const child = spawn(command, args, { cwd: root, env, stdio: 'inherit' });
+    child.once('error', error => resolve({ exitCode: 1, error }));
+    child.once('close', (code, signal) => resolve({ exitCode: code ?? (signal ? 1 : 0), error: null }));
+  });
+}
 
-child.on('error', error => {
-  process.stderr.write(`Unable to start the Workstation Playwright runner: ${error.message}\n`);
-  process.exitCode = 1;
-});
-
-child.on('close', (code, signal) => {
-  const playwrightExitCode = code ?? (signal ? 1 : 0);
-  void cleanupFixture().then(() => {
-    process.exitCode = playwrightExitCode;
-  }).catch(error => {
+async function finish(exitCode) {
+  try {
+    await cleanupFixture();
+    process.exitCode = exitCode;
+  } catch (error) {
     process.stderr.write(`Workstation E2E fixture cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
+  }
+}
+
+const viteCli = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
+const build = await runOwnedCommand(process.execPath, [viteCli, 'build', '--config', 'browser/vite.config.ts'], process.env);
+if (build.error) process.stderr.write(`Unable to start the Workstation frontend build: ${build.error.message}\n`);
+if (build.exitCode !== 0) {
+  await finish(build.exitCode);
+} else {
+  const playwright = await runOwnedCommand(process.execPath, [
+    playwrightCli,
+    'test',
+    '--config',
+    path.join(root, 'playwright.workstation.config.ts'),
+    ...process.argv.slice(2)
+  ], {
+    ...process.env,
+    AIDE_WORKSTATION_E2E_RUN_ID: runId
   });
-});
+  if (playwright.error) process.stderr.write(`Unable to start the Workstation Playwright runner: ${playwright.error.message}\n`);
+  await finish(playwright.exitCode);
+}

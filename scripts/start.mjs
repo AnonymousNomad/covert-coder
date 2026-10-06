@@ -108,6 +108,38 @@ async function waitForHttp(label, url, child, timeoutMs) {
   throw new Error(`${label} did not become ready at ${url}: ${last}`);
 }
 
+async function waitForSupervisorReady(supervisor, children, timeoutMs) {
+  let timer = null;
+  const childListeners = [];
+  const exited = children.map(({ label, child }) => new Promise((_, reject) => {
+    const fail = code => reject(new Error(`${label} exited before readiness (code ${code ?? 'null'})`));
+    const failToStart = error => reject(new Error(`${label} failed before readiness: ${error instanceof Error ? error.message : String(error)}`));
+    if (child.exitCode !== null) {
+      fail(child.exitCode);
+      return;
+    }
+    const onExit = code => fail(code);
+    const onError = error => failToStart(error);
+    child.once('exit', onExit);
+    child.once('error', onError);
+    childListeners.push({ child, onExit, onError });
+    if (child.exitCode !== null) onExit(child.exitCode);
+  }));
+
+  try {
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`backend supervisor did not become ready within ${timeoutMs}ms`)), timeoutMs);
+    });
+    await Promise.race([supervisor.ready(), deadline, ...exited]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+    for (const { child, onExit, onError } of childListeners) {
+      child.removeListener('exit', onExit);
+      child.removeListener('error', onError);
+    }
+  }
+}
+
 function processGroupExists(groupId) {
   try {
     process.kill(-groupId, 0);
@@ -347,17 +379,17 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
     authoritySupervisor = superviseAuthority(arch);
     const legacy = spawnChild('legacy', ['daemon/server.mjs'], { AIDE_DAEMON_PORT: String(ports.legacy), AIDE_LEGACY_PORT: String(ports.legacy) });
     authoritySupervisor.attach('legacy', legacy);
-    await Promise.all([
-      waitForHttp('TypeScript backend', `http://${host}:${ports.arch}/api/health`, arch, timeoutMs),
-      waitForHttp('legacy backend', `http://${host}:${ports.legacy}/health`, legacy, timeoutMs)
-    ]);
+    await waitForSupervisorReady(authoritySupervisor, [
+      { label: 'TypeScript backend', child: arch },
+      { label: 'legacy backend', child: legacy }
+    ], timeoutMs);
     const facade = spawnChild('facade', ['scripts/facade.mjs'], {
       AIDE_FACADE_PORT: String(ports.facade),
       AIDE_ARCH_PORT: String(ports.arch),
       AIDE_LEGACY_PORT: String(ports.legacy)
     });
     authoritySupervisor.attach('facade', facade);
-    await waitForHttp('facade', `http://${host}:${ports.facade}/api/health`, facade, timeoutMs);
+    await waitForHttp('facade readiness', `http://${host}:${ports.facade}/api/health/ts`, facade, timeoutMs);
 
     if (frontend.kind === 'vite') {
       const vite = spawnChild('vite', ['node_modules/vite/bin/vite.js', '--config', 'browser/vite.config.ts', '--port', String(ports.ui), '--host', host]);

@@ -60,6 +60,8 @@ const CHUNK_CHARS = 4096;          // below the 8 KiB WebSocket frame cap
 const MAX_BYTES_PER_TICK = 16_384; // ~320 KiB/s ceiling per session
 const DRAIN_INTERVAL_MS = 50;
 const DEFAULT_BUFFER_BYTES = 1_048_576;
+const MAX_SCROLLBACK_CHARS = 262_144;
+const MAX_SCROLLBACK_LINES = 5_000;
 const STOP_GRACE_MS = 3_000;
 
 interface Session {
@@ -79,6 +81,8 @@ interface Session {
   queue: string[];
   queuedBytes: number;
   truncated: boolean;
+  scrollback: string;
+  scrollbackTruncated: boolean;
   drainTimer: ReturnType<typeof setInterval> | null;
   stopTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -175,6 +179,8 @@ export class TerminalSessionService {
       queue: [],
       queuedBytes: 0,
       truncated: false,
+      scrollback: '',
+      scrollbackTruncated: false,
       drainTimer: null,
       stopTimer: null
     };
@@ -209,6 +215,24 @@ export class TerminalSessionService {
     this.onEvent({ sessionId: session.id, kind: 'state', state: 'stopping', exitCode: null }, session.owner);
     this.killSession(session);
     return { sessionId: session.id, state: session.state, cleanup: session.cleanup };
+  }
+
+  resume(owner: string, sessionId: string, expectedOwner: string): { session: TerminalSessionInfoT; scrollbackTruncated: boolean } | { error: string } {
+    const session = this.sessions.get(sessionId);
+    if (!session) return { error: 'unknown session' };
+    if (session.owner !== expectedOwner) return { error: 'session owner changed' };
+    if (session.state !== 'running') return { error: 'session is not running' };
+
+    // This method is reachable only through the exact Authority-approved
+    // terminal.session.resume route. Transfer one session's audience/control
+    // binding; the PTY and its session id remain unchanged.
+    session.owner = owner;
+    if (session.scrollbackTruncated) {
+      this.onEvent({ sessionId: session.id, kind: 'error', message: 'restored terminal scrollback was truncated' }, session.owner);
+    }
+    this.emitOutput(session.id, session.scrollback, session.owner);
+    this.onEvent({ sessionId: session.id, kind: 'state', state: session.state, exitCode: session.exitCode }, session.owner);
+    return { session: this.info(session), scrollbackTruncated: session.scrollbackTruncated };
   }
 
   // Control is activity inside an already-admitted session, never a new
@@ -249,6 +273,7 @@ export class TerminalSessionService {
 
   private enqueue(session: Session, data: string): void {
     if (!data) return;
+    this.rememberOutput(session, data);
     session.queue.push(data);
     session.queuedBytes += data.length;
     while (session.queuedBytes > this.maxBufferBytes && session.queue.length > 1) {
@@ -264,6 +289,45 @@ export class TerminalSessionService {
         session.queuedBytes -= excess;
         session.truncated = true;
       }
+    }
+  }
+
+  private rememberOutput(session: Session, data: string): void {
+    let text = session.scrollback + data;
+    if (text.length > MAX_SCROLLBACK_CHARS) {
+      let start = text.length - MAX_SCROLLBACK_CHARS;
+      const first = text.charCodeAt(start);
+      if (first >= 0xDC00 && first <= 0xDFFF) start += 1;
+      text = text.slice(start);
+      session.scrollbackTruncated = true;
+    }
+    let searchFrom = text.length;
+    let lines = 0;
+    let cutAt = -1;
+    while (lines < MAX_SCROLLBACK_LINES) {
+      const newline = text.lastIndexOf('\n', searchFrom - 1);
+      if (newline < 0) break;
+      cutAt = newline;
+      searchFrom = newline;
+      lines += 1;
+    }
+    if (lines === MAX_SCROLLBACK_LINES && cutAt >= 0) {
+      text = text.slice(cutAt + 1);
+      session.scrollbackTruncated = true;
+    }
+    session.scrollback = text;
+  }
+
+  private emitOutput(sessionId: string, text: string, owner: string): void {
+    for (let offset = 0; offset < text.length;) {
+      let end = Math.min(offset + CHUNK_CHARS, text.length);
+      if (end < text.length) {
+        const last = text.charCodeAt(end - 1);
+        const next = text.charCodeAt(end);
+        if (last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end -= 1;
+      }
+      this.onEvent({ sessionId, kind: 'output', data: text.slice(offset, end) }, owner);
+      offset = end;
     }
   }
 
