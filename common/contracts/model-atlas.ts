@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { ModelAccessQualificationState, ModelQualificationBasis } from './model-access.ts';
 
+// CONTRACT FREEZE (MI-1A): this public contract is provisionally frozen for consumer integration.
+// Additive/versioned changes only; public fields are not renamed or restructured without a proven
+// consumer blocker. Consumer contract guide: docs/model-intelligence/MODEL_ATLAS_CONSUMER_CONTRACT.md.
+//
 // Canonical durable evaluation record for the Model Atlas. Harness Sync creates
 // candidates; an authorized evaluation run produces one immutable record.
 // Native (no scaffold) and harnessed (scaffold ON) results are always preserved
