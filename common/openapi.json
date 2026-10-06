@@ -19191,6 +19191,117 @@
         }
       }
     },
+    "/api/resident/binding": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schema": {
+                      "type": "string",
+                      "const": "covert.resident-binding.v1"
+                    },
+                    "resident_id": {
+                      "type": "string",
+                      "const": "cipher"
+                    },
+                    "resident_model_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "resident_model_family": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "binding_state": {
+                      "type": "string",
+                      "enum": [
+                        "BOUND",
+                        "UNBOUND",
+                        "DEGRADED"
+                      ]
+                    },
+                    "availability_state": {
+                      "type": "string",
+                      "enum": [
+                        "AVAILABLE",
+                        "UNAVAILABLE",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "runtime_state": {
+                      "type": "string",
+                      "enum": [
+                        "RUNNING",
+                        "LOADABLE",
+                        "NOT_LOADABLE",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "execution_node": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "degraded_reason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "last_verified_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "resident_id",
+                    "resident_model_id",
+                    "resident_model_family",
+                    "binding_state",
+                    "availability_state",
+                    "runtime_state",
+                    "execution_node",
+                    "degraded_reason",
+                    "last_verified_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/resident/context": {
       "get": {
         "responses": {

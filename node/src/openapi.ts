@@ -71,6 +71,8 @@ import { routesForTelegram, createTelegramBridgeService } from './routes/telegra
 import { routesForExperts, createExpertsService } from './routes/experts.ts';
 import { routesForHardware } from './routes/hardware.ts';
 import { routesForResident, createResidentService, renderResidentContext, makeResidentWorkflowProbe } from './routes/resident.ts';
+import { routeForResidentBinding } from './routes/resident-binding.ts';
+import { createResidentBinding } from './services/resident-binding.ts';
 import { createRequire } from 'node:module';
 import { createOrchService } from './services/orch-context.mjs';
 import { createAgentTools } from './services/agent-tools.mjs';
@@ -715,6 +717,27 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...(modelRuntime instanceof BrokerModelRuntime ? { runtimeStatus: () => modelRuntime.runtimeStatusSnapshot() } : {})
   });
   modelProviderRouteSnapshot = () => modelManagerView.externalRoutes();
+  const residentBindingService = createResidentBinding({
+    listCandidates: async () => {
+      const snapshot = await modelManagerView.snapshot();
+      return snapshot.models.map(entry => ({
+        canonical_id: entry.identity.canonical_id,
+        display_name: entry.identity.display_name,
+        family: entry.identity.family,
+        availability: entry.availability,
+        artifact_available: ['INSTALLED', 'AVAILABLE', 'LOADABLE', 'CONNECTED'].includes(entry.availability),
+        runtime_ready: false
+      }));
+    },
+    observeRuntime: async modelId => {
+      const readiness = await modelRuntime.isReady(modelId);
+      return {
+        runtime_state: readiness.ready ? 'RUNNING' as const : readiness.status === 'conflict' ? 'NOT_LOADABLE' as const : 'UNKNOWN' as const,
+        verified_at: new Date().toISOString()
+      };
+    },
+    executionNode: 'local-windows'
+  });
   const huggingfaceAuthorization =
     options.modelHubAuthorization ??
     (async () => {
@@ -909,6 +932,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     // Resident Assistant: read-only workspace-probe + advisory surfaces.
     // §3 dep-observation, §4 push-summary, §10 workspace context.
     ...routesForResident(residentService),
+    // Resident Binding: 1 read-only projection route (covert.resident-binding.v1).
+    routeForResidentBinding(residentBindingService),
     ...((): Route[] => {
       // Desktop + Telegram share ONE desktop service instance (single grants
       // state). The /ask brain composes: Telegram NL -> model proposal bounded

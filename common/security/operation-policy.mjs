@@ -132,6 +132,7 @@ const HTTP_POLICY = new Map([
   ['GET /api/onboarding/state', 'capability.read'], ['GET /api/system-map/snapshot', 'capability.read'],
   ['GET /api/resident/summary', 'capability.read'], ['GET /api/resident/context', 'capability.read'],
   ['GET /api/resident/push-summary', 'capability.read'], ['GET /api/resident/decisions', 'capability.read'],
+  ['GET /api/resident/binding', 'capability.read'],
   ['GET /api/experts', 'capability.read'], ['GET /api/experts/stats', 'capability.read'],
   ['GET /api/hardware/profile', 'capability.read'], ['GET /api/hardware/recommend', 'capability.read'],
   ['GET /api/closed-loop/status', 'capability.read'],
