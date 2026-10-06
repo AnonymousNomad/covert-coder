@@ -1,0 +1,30 @@
+{
+  "probe": "covert.model-atlas.scale.v1",
+  "generated_at": "2026-10-06T03:40:02.898Z",
+  "platform": "win32",
+  "tiers": {
+    "records": 100,
+    "models": 10
+  },
+  "timings_ms": {
+    "write_total": 46124,
+    "write_per_record": 461.24,
+    "list_all_models_total": 879,
+    "history_lookup": 71,
+    "latest_lookup": 64,
+    "audit": 80
+  },
+  "history_entries_model0": 10,
+  "listed_models": 10,
+  "audit_healthy": true,
+  "audit_totals": {
+    "records": 100,
+    "corrupt": 0,
+    "integrity_mismatch": 0,
+    "unverified": 0,
+    "models": 10
+  },
+  "storage_bytes": 296200,
+  "storage_bytes_per_record": 2962,
+  "rss_bytes": 76939264
+}

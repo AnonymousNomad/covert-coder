@@ -1,0 +1,11 @@
+{
+  "probe": "covert.model-atlas.scale-list.v1",
+  "generated_at": "2026-10-06T03:51:53.901Z",
+  "store": "E:\\pip_temp\\opencode\\mi1b-scale-1000",
+  "records": 1000,
+  "models": 10,
+  "per_model_state_for_ms": 7741,
+  "batch_models_response_ms": 848,
+  "entries": 10,
+  "all_current": true
+}
