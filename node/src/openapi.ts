@@ -72,7 +72,7 @@ import { routesForExperts, createExpertsService } from './routes/experts.ts';
 import { routesForHardware } from './routes/hardware.ts';
 import { routesForResident, createResidentService, renderResidentContext, makeResidentWorkflowProbe } from './routes/resident.ts';
 import { routeForResidentBinding } from './routes/resident-binding.ts';
-import { createResidentBinding } from './services/resident-binding.ts';
+import { createResidentBinding, residentCandidatesFromModelManager } from './services/resident-binding.ts';
 import { createRequire } from 'node:module';
 import { createOrchService } from './services/orch-context.mjs';
 import { createAgentTools } from './services/agent-tools.mjs';
@@ -720,14 +720,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const residentBindingService = createResidentBinding({
     listCandidates: async () => {
       const snapshot = await modelManagerView.snapshot();
-      return snapshot.models.map(entry => ({
-        canonical_id: entry.identity.canonical_id,
-        display_name: entry.identity.display_name,
-        family: entry.identity.family,
-        availability: entry.availability,
-        artifact_available: ['INSTALLED', 'AVAILABLE', 'LOADABLE', 'CONNECTED'].includes(entry.availability),
-        runtime_ready: false
-      }));
+      return residentCandidatesFromModelManager(snapshot);
     },
     observeRuntime: async modelId => {
       const readiness = await modelRuntime.isReady(modelId);

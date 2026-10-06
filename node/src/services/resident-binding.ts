@@ -5,6 +5,7 @@ import {
   ResidentBinding,
   type ResidentBindingT
 } from '../../../common/contracts/resident-binding.ts';
+import type { ModelManagerResponseT } from '../../../common/contracts/model-access.ts';
 
 // Resident binding projection. It reads canonical inventory and runtime state
 // and derives one binding verdict; it never writes and never holds state, so
@@ -29,6 +30,20 @@ export interface ResidentBindingOptions {
   listCandidates: () => Promise<ResidentCandidate[]>;
   observeRuntime?: (modelId: string) => Promise<ResidentRuntimeObservation>;
   executionNode?: string;
+}
+
+export function residentCandidatesFromModelManager(
+  snapshot: Pick<ModelManagerResponseT, 'models' | 'artifacts'>
+): ResidentCandidate[] {
+  const artifactsById = new Map(snapshot.artifacts.map(artifact => [artifact.id, artifact] as const));
+  return snapshot.models.map(entry => ({
+    canonical_id: entry.identity.canonical_id,
+    display_name: entry.identity.display_name,
+    family: entry.identity.family,
+    availability: entry.availability,
+    artifact_available: entry.artifact_ids.some(artifactId => artifactsById.get(artifactId)?.availability === 'INSTALLED'),
+    runtime_ready: false
+  }));
 }
 
 export function isResidentCandidate(candidate: ResidentCandidate): boolean {
