@@ -75,21 +75,24 @@ test('owner inspection is still effect-disabled and immutable', async () => {
   inspector.dispose();
 });
 
-test('binding changes while an owner read is in flight discard the result', async () => {
+for (const change of ['project', 'root']) test(change + ' changes while an owner read is in flight discard the result', async () => {
   let current = { ...binding };
-  const read = deferred();
-  const inspector = createDropInspector({ getBinding: () => current, inspectResource: () => read.promise });
+  const read = deferred(), started = deferred();
+  const inspector = createDropInspector({ getBinding: () => current, inspectResource: () => { started.resolve(); return read.promise; } });
   const pending = inspector.stage(transfer(file), 'editor');
-  current.rootGeneration = 3;
+  await started.promise;
+  if (change === 'root') current.rootGeneration = 3;
+  else current.projectId = 'project:b';
   read.resolve({ kind: 'file', id: 'file:one', revision: 'r1', label: 'old project' });
   assert.deepEqual(await pending, { status: 'REFUSED', code: 'PROJECT_CHANGED' });
   inspector.dispose();
 });
 
 test('invalidate cancels a hung owner read instead of resurrecting its preview', async () => {
-  const read = deferred();
-  const inspector = createDropInspector({ getBinding: () => binding, inspectResource: () => read.promise });
+  const read = deferred(), started = deferred();
+  const inspector = createDropInspector({ getBinding: () => binding, inspectResource: () => { started.resolve(); return read.promise; } });
   const pending = inspector.stage(transfer(file), 'editor');
+  await started.promise;
   inspector.invalidate();
   assert.deepEqual(await pending, { status: 'REFUSED', code: 'CANCELLED' });
   read.resolve({ kind: 'file', id: 'file:one', revision: 'r1', label: 'late' });
@@ -97,11 +100,29 @@ test('invalidate cancels a hung owner read instead of resurrecting its preview',
 });
 
 test('dispose rejects new requests and cancels the previous one', async () => {
-  const inspector = createDropInspector({ getBinding: () => binding, inspectResource: () => new Promise(() => {}) });
+  const read = deferred(), started = deferred();
+  const inspector = createDropInspector({ getBinding: () => binding, inspectResource: () => { started.resolve(); return read.promise; } });
   const pending = inspector.stage(transfer(file), 'editor');
+  await started.promise;
   inspector.dispose();
   assert.equal((await pending).code, 'CANCELLED');
+  read.resolve({ kind: 'file', id: 'file:one', revision: 'r1', label: 'late' });
   assert.equal((await inspector.stage(transfer(file), 'editor')).code, 'DISPOSED');
+});
+
+test('transfer accessors are rejected without invoking their getters', () => {
+  let calls = 0;
+  const value = { get mime() { calls++; return 'application/vnd.covert.resource+json'; }, data: JSON.stringify(file) };
+  assert.throws(() => parseDropIntent(value, 'editor', binding), { code: 'INVALID_TRANSFER' });
+  assert.equal(calls, 0);
+});
+
+test('native file element accessors are rejected before indexing', () => {
+  let calls = 0;
+  const files = [];
+  Object.defineProperty(files, '0', { get() { calls++; return { name: 'x', size: 1, type: '', lastModified: 0 }; } });
+  assert.throws(() => parseDropIntent({ mime: 'application/x-covert-file-hint', files }, 'editor', binding), { code: 'INVALID_TRANSFER' });
+  assert.equal(calls, 0);
 });
 
 test('owner cannot substitute resource identity or leak arbitrary fields', async () => {

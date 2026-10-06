@@ -12,13 +12,15 @@ const routes = {
 
 export function parseDropIntent(transfer, target, currentBinding) {
   const project = snapshotBinding(currentBinding);
-  if (!transfer || typeof transfer !== 'object') refuse('INVALID_TRANSFER');
+  record(transfer, ['mime', 'data', 'files'], ['mime']);
   if (transfer.mime === 'application/x-covert-file-hint') {
     record(transfer, ['mime', 'files']);
     if (!['editor', 'models'].includes(target)) refuse('UNSUPPORTED_DROP');
     if (!project) refuse('PROJECT_REQUIRED');
     if (!Array.isArray(transfer.files) || transfer.files.length !== 1) refuse('INVALID_TRANSFER');
-    const value = record(transfer.files[0], ['name', 'size', 'type', 'lastModified']);
+    const descriptor = Object.getOwnPropertyDescriptor(transfer.files, '0');
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) refuse('INVALID_TRANSFER');
+    const value = record(descriptor.value, ['name', 'size', 'type', 'lastModified']);
     const name = text(value.name, 255);
     if (!name || /[/\\]/.test(name)) refuse('INVALID_TRANSFER');
     return freeze({ version: 1, kind: 'external-file.inspect', project, activation: 'DISABLED',

@@ -12,12 +12,13 @@ export function createMediaLifecycle({ capture, output, onState, timeoutMs = 100
     if (!adapter || typeof adapter.stop !== 'function' || typeof adapter.observe !== 'function') throw new TypeError('Owned stop/observe adapter required');
     const stop = adapter.stop.bind(adapter), observe = adapter.observe.bind(adapter);
     const pending = {};
-    const request = key => {
+    const request = (key, generation) => {
       if (!pending[key]) {
         const original = Promise.resolve().then(key === 'stop' ? stop : observe)
           .then(value => ({ type: 'RETURNED', ...(key === 'observe' ? { value } : {}) }), () => ({ type: 'FAILED' }));
-        pending[key] = original;
-        original.then(() => { if (pending[key] === original) delete pending[key]; });
+        const entry = { promise: original, generation };
+        pending[key] = entry;
+        original.then(() => { if (pending[key] === entry) delete pending[key]; });
       }
       return pending[key];
     };
@@ -25,24 +26,30 @@ export function createMediaLifecycle({ capture, output, onState, timeoutMs = 100
   };
   const paths = { capture: path(capture), output: path(output) };
   let inFlight;
+  let generation = 0;
   const bounded = async promise => {
     let timer;
     const deadline = new Promise(resolve => { timer = setTimeout(() => resolve({ type: 'TIMED_OUT' }), timeoutMs); });
     try { return await Promise.race([promise, deadline]); }
     finally { clearTimeout(timer); }
   };
-  const runPath = async owner => {
+  const runPath = async (owner, attempt) => {
     if (!owner) return freeze({ status: 'NOT_CONFIGURED', stopRequested: false, stopOutcome: 'NOT_CONFIGURED' });
-    const stopped = await bounded(owner.request('stop'));
+    const stopped = await bounded(owner.request('stop', attempt).promise);
     // Acknowledgment is discarded. The separate owner observation decides truth.
-    const observed = await bounded(owner.request('observe'));
-    const state = observed.type === 'RETURNED' && ['ACTIVE', 'INACTIVE', 'UNKNOWN'].includes(observed.value) ? observed.value : 'UNKNOWN';
+    const observation = owner.request('observe', attempt);
+    const observed = await bounded(observation.promise);
+    // Retain the unresolved owner's capacity, but never reuse its old sampled
+    // state as evidence for a different teardown.
+    const state = observation.generation === attempt && observed.type === 'RETURNED' &&
+      ['ACTIVE', 'INACTIVE', 'UNKNOWN'].includes(observed.value) ? observed.value : 'UNKNOWN';
     return freeze({ status: state === 'INACTIVE' ? 'STOPPED' : state, stopRequested: true, stopOutcome: stopped.type });
   };
   return Object.freeze({
     stop(reason) {
       if (!reasons.includes(reason)) throw new BoundaryError('INVALID_STOP_REASON');
       if (inFlight) return inFlight;
+      const attempt = ++generation;
       // Queue work after publishing the promise so a reentrant renderer cannot
       // create a second teardown or delay deterministic owner controls.
       inFlight = Promise.resolve().then(async () => {
@@ -52,7 +59,7 @@ export function createMediaLifecycle({ capture, output, onState, timeoutMs = 100
           try { onState(value); } catch { projectionFailed = true; }
         };
         notify(freeze({ scope: 'OPTIONAL_MEDIA', status: 'STOP_REQUESTED', reason }));
-        const [captureResult, outputResult] = await Promise.all([runPath(paths.capture), runPath(paths.output)]);
+        const [captureResult, outputResult] = await Promise.all([runPath(paths.capture, attempt), runPath(paths.output, attempt)]);
         const stopped = [captureResult, outputResult].every(value => ['STOPPED', 'NOT_CONFIGURED'].includes(value.status));
         const result = freeze({ scope: 'OPTIONAL_MEDIA', reason, status: stopped ? 'STOPPED' : 'PARTIAL',
           capture: captureResult, output: outputResult });

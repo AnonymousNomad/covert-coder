@@ -181,3 +181,34 @@ test('unknown family and malformed owner records cannot execute contributions', 
   assert.equal(view({ resident: { ...facts().resident, credential: 'secret' } }).resident.id, null);
   engine.dispose();
 });
+
+test('disposal cleans timers and remains terminal when the final renderer throws', () => {
+  const time = scheduler(); let frames = 0;
+  const engine = createPresenceEngine({ binding, ...time, render(frame) { frames++; if (!frame.visible) throw new Error('unmounted'); } });
+  engine.update(facts());
+  assert.equal(time.size(), 1);
+  assert.throws(() => engine.dispose(), /unmounted/);
+  assert.equal(time.size(), 0);
+  const count = frames;
+  engine.setVisible(true); engine.update(facts()); engine.dispose();
+  time.advance(7000);
+  assert.equal(frames, count);
+});
+
+test('hiding cancels expiry even when rendering fails and a queued callback arrives late', () => {
+  const time = scheduler(); let late, frames = 0;
+  const engine = createPresenceEngine({ binding, ...time,
+    schedule(fn, delay) { late = fn; return time.schedule(fn, delay); },
+    render(frame) { frames++; if (!frame.visible) throw new Error('hidden'); },
+  });
+  engine.update(facts());
+  assert.throws(() => engine.setVisible(false), /hidden/);
+  assert.equal(time.size(), 0);
+  const count = frames;
+  late();
+  assert.equal(frames, count);
+  assert.equal(time.size(), 0);
+  engine.dispose();
+  late();
+  assert.equal(frames, count);
+});

@@ -91,18 +91,23 @@ export function createPresenceEngine({ binding, render, clock = Date.now, schedu
   let visible = true;
   let disposed = false;
   let timer;
+  let timerGeneration = 0;
   let lastSignature;
   let presentation = { family: 'scout', personalityRef: 'persona:developers-special', voiceRef: null, reducedMotion: false };
-  const stopTimer = () => { if (timer !== undefined) { cancel(timer); timer = undefined; } };
+  const stopTimer = () => { timerGeneration++; if (timer !== undefined) { cancel(timer); timer = undefined; } };
   const scheduleExpiry = now => {
     stopTimer();
     if (!visible || disposed) return;
     const deadlines = Object.values(facts).filter(fact => sameBinding(fact.project, project) && fact.observedAt <= now)
       .map(fact => fact.observedAt + freshForMs + 1).filter(deadline => deadline > now);
-    if (deadlines.length) timer = schedule(() => { timer = undefined; emit(); }, Math.min(...deadlines) - now);
+    const generation = timerGeneration;
+    if (deadlines.length) timer = schedule(() => {
+      if (disposed || !visible || generation !== timerGeneration) return;
+      timer = undefined; emit();
+    }, Math.min(...deadlines) - now);
   };
-  const emit = () => {
-    if (disposed) return;
+  const emit = (final = false) => {
+    if (disposed && !final) return;
     const now = integer(clock());
     const truth = projectNormalized(project, facts, now, freshForMs);
     const chassis = COMPANION_FAMILIES[presentation.family];
@@ -110,8 +115,8 @@ export function createPresenceEngine({ binding, render, clock = Date.now, schedu
       voiceRef: presentation.voiceRef, visible, motion: 'STATIC', reducedMotion: presentation.reducedMotion,
       assetStatus: chassis.assetStatus, pose: truth.status === 'IDLE' ? chassis.idlePose : chassis.attentivePose });
     const signature = JSON.stringify(frame);
-    if (signature !== lastSignature) { lastSignature = signature; render(frame); }
-    scheduleExpiry(now);
+    try { if (signature !== lastSignature) { lastSignature = signature; render(frame); } }
+    finally { scheduleExpiry(now); }
   };
   const setPresentation = value => {
     if (disposed) return;
@@ -147,10 +152,10 @@ export function createPresenceEngine({ binding, render, clock = Date.now, schedu
     dispose() {
       if (disposed) return;
       visible = false;
-      emit();
       disposed = true;
       stopTimer();
-      facts = {};
+      try { emit(true); }
+      finally { facts = {}; }
     },
   });
 }

@@ -127,3 +127,28 @@ test('malformed observed state remains unknown instead of coercing true to inact
   const lifecycle = createMediaLifecycle({ capture: { stop() {}, observe() { return { stopped: true }; } } });
   assert.equal((await lifecycle.stop('operator')).capture.status, 'UNKNOWN');
 });
+
+test('an old inactive observation cannot confirm a later failed teardown', async () => {
+  let releaseOld, startedStop, reads = 0, stops = 0, active = false;
+  const old = new Promise(resolve => { releaseOld = resolve; });
+  const secondStarted = new Promise(resolve => { startedStop = resolve; });
+  const lifecycle = createMediaLifecycle({ timeoutMs: 15, capture: {
+    stop() { if (++stops === 2) { startedStop(); throw new Error('failed'); } },
+    observe() { reads++; return reads === 1 ? old : (active ? 'ACTIVE' : 'INACTIVE'); },
+  } });
+  assert.equal((await lifecycle.stop('operator')).capture.status, 'UNKNOWN');
+  active = true;
+  const later = lifecycle.stop('lock');
+  await secondStarted;
+  // Let the second teardown reach observation before completing the old read.
+  await new Promise(resolve => setImmediate(resolve));
+  releaseOld('INACTIVE');
+  const report = await later;
+  assert.equal(report.capture.stopOutcome, 'FAILED');
+  assert.equal(report.capture.status, 'UNKNOWN');
+  assert.equal(report.status, 'PARTIAL');
+  assert.equal(active, true);
+  assert.equal(reads, 1);
+  assert.equal((await lifecycle.stop('operator')).capture.status, 'ACTIVE');
+  assert.equal(reads, 2);
+});
