@@ -46,6 +46,10 @@ export interface NodePtyEngine {
   spawn: SpawnPtyFn;
 }
 
+export interface NodePtySpawnModule {
+  spawn(file: string, args: string[], options: Record<string, unknown>): unknown;
+}
+
 export interface RuntimeProviderDeps {
   exec: ExecFn;
   fileExists: FileExistsFn;
@@ -300,6 +304,23 @@ export function translateCwd(providerId: string, cwd: string): string {
 
 let cachedEngine: NodePtyEngine | null | undefined;
 
+export function createNodePtyEngine(mod: NodePtySpawnModule, platform: NodeJS.Platform): NodePtyEngine {
+  return {
+    spawn: (options: PtySpawnOptions): PtyProcess =>
+      mod.spawn(options.file, options.args, {
+        name: options.name ?? 'xterm-256color',
+        cols: options.cols,
+        rows: options.rows,
+        cwd: options.cwd,
+        env: options.env,
+        // The pinned node-pty default shutdown races its async console-list
+        // helper against synchronous PTY teardown. Its DLL-backed ConPTY path
+        // avoids AttachConsole and passed packaged process-tree cleanup probes.
+        ...(platform === 'win32' ? { useConpty: true, useConptyDll: true } : {})
+      }) as PtyProcess
+  };
+}
+
 // Lazy: constructing the service must never throw just because node-pty is
 // absent. Callers get `null` and report `unsupported` truthfully.
 export function loadNodePtyModule(): NodePtyEngine | null {
@@ -311,19 +332,8 @@ export function loadNodePtyModule(): NodePtyEngine | null {
       cachedEngine = null;
       return cachedEngine;
     }
-    // node-pty's spawn is the classic (file, args, options) triple; our engine
-    // faces an options-object API, so translate here. This keeps every caller
-    // (service + providers) on one shape and never misrepresents the engine.
-    cachedEngine = {
-      spawn: (options: PtySpawnOptions): PtyProcess =>
-        mod.spawn!(options.file, options.args ?? [], {
-          name: options.name ?? 'xterm-256color',
-          cols: options.cols,
-          rows: options.rows,
-          cwd: options.cwd,
-          env: options.env
-        }) as PtyProcess
-    };
+    // Keep node-pty's classic (file, args, options) API behind our options-object engine.
+    cachedEngine = createNodePtyEngine(mod as NodePtySpawnModule, process.platform);
   } catch {
     cachedEngine = null;
   }
