@@ -78,3 +78,29 @@ test('operator Notebook uses canonical governed writes, preserves provenance, co
  const activity=(await (await owner.request('/api/cipher/laptop/activity')).json()).data.records;
  assert.equal(activity.filter((r:{event_type:string})=>r.event_type==='OBSERVATION').length,3);
 }));
+
+test('private Laptop state cannot be read or rewritten through generic project file capabilities',()=>fixture(async({root,arch,owner})=>{
+ const note={record_id:'operator.private',expected_revision:0,category:'OPERATOR_NOTE',content:'PRIVATE_NOTEBOOK_CANARY',source:'USER_PROVIDED',provenance_ref:'operator:explicit',confidence:null,retention:'RETAIN',approved_memory:true,expires_at:null};
+ const headers=await owner.approve('POST','/api/cipher/laptop/notebook',note,'private-note');
+ assert.equal((await owner.request('/api/cipher/laptop/notebook',{method:'POST',headers,body:JSON.stringify(note)})).status,200);
+ const operator=arch.authority.authenticate(owner.headers.Authorization.slice(7),owner.headers.Origin),worker=arch.authority.control.delegate(operator,'agent',['workspace.read']);
+ const seat=arch.capabilityPort(worker);
+ await assert.rejects(()=>seat.invoke({method:'GET',path:'/api/file?path=.aide/cipher-laptop/notebook.json',task_id:'private-read'}),{code:'FORBIDDEN'});
+ const before=await fs.readFile(path.join(root,'.aide','cipher-laptop','notebook.json'),'utf8'),body={path:'.aide/cipher-laptop/notebook.json',content:'REPLACE_PRIVATE',approved:true};
+ const approved=await owner.approve('POST','/api/file/write',body,'private-write');
+ assert.equal((await owner.request('/api/file/write',{method:'POST',headers:approved,body:JSON.stringify(body)})).status,403);
+ assert.equal(await fs.readFile(path.join(root,'.aide','cipher-laptop','notebook.json'),'utf8'),before);
+ assert.equal((await owner.request('/api/cipher/laptop/notebook')).status,200);
+}));
+
+test('real-path aliases cannot expose private Laptop content through file, search or agent tools',()=>fixture(async({root,owner})=>{
+ const privateRoot=path.join(root,'.aide','cipher-laptop');await fs.mkdir(privateRoot,{recursive:true});
+ const raw=path.join(privateRoot,'alias-canary.txt');await fs.writeFile(raw,'PRIVATE_ALIAS_CANARY');
+ const alias=path.join(root,'public-alias');await fs.symlink(privateRoot,alias,process.platform==='win32'?'junction':'dir');
+ assert.equal((await owner.request('/api/file?path=public-alias/alias-canary.txt')).status,403);
+ const fileAlias=path.join(root,'visible-alias.txt');await fs.symlink(raw,fileAlias,process.platform==='win32'?'file':'file');
+ const searched=await owner.request('/api/search?q=PRIVATE_ALIAS_CANARY');assert.equal(searched.status,200);
+ assert.equal((await searched.json()).data.total,0);
+ const {ensureRealInsideWorkspace}=await import('../../node/src/services/agent-tools.mjs');
+ await assert.rejects(()=>ensureRealInsideWorkspace(root,path.join(alias,'alias-canary.txt')),{code:'DENIED'});
+}));

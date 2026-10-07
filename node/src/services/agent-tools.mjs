@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { logEgress } from './egress-journal.mjs';
 import { escapeCmdArg } from './task-service.mjs';
+import { isPrivatePlatformStatePath } from '../../../common/security/private-platform-state.mjs';
 
 const NETWORK_TOKENS = ['curl', 'wget', 'invoke-webrequest', 'invoke-restmethod', 'iwr ', 'irm ', 'http://', 'https://', 'ftp', 'netcat', 'telnet', 'ssh ', 'scp '];
 const HARD_DENY_SEGMENTS = ['.git'];
@@ -53,6 +54,7 @@ export async function ensureRealInsideWorkspace(workspace, abs) {
   }
   resolveInsideWorkspace(workspace, real);
   const rel = relativeInside(workspace, real);
+  if(isPrivatePlatformStatePath(relativeInside(workspace, abs))||isPrivatePlatformStatePath(rel))throw new ToolError('DENIED','private platform records require their canonical owner');
   for (const segment of HARD_DENY_SEGMENTS) {
     if (rel === segment || rel.startsWith(segment + '/')) {
       throw new ToolError('DENIED', `access to ${segment}/ is not permitted`);
