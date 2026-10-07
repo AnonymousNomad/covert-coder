@@ -47,6 +47,17 @@
       "name": "write-source.log",
       "bytes": 510,
       "sha256": "9d7ac2245a840ddfe12c4e0f35a5d838743dbe25b0b301cae887db2cdd39c21e"
+    },
+    {
+      "name": "runtime-journey-review-repair.log",
+      "bytes": 540,
+      "sha256": "9cf7c56a327653c28ae7cfcc0133d897b03f7288cb1109825a17cc81f15765ee"
     }
-  ]
+  ],
+  "capture_repair_commit": "d49d73eeeae046f99d8818aaf08ea5e50448bccc",
+  "latest_resource_sample": {
+    "utc": "2026-10-07T16:57:13.8042988Z",
+    "physicalMiB": 2003,
+    "freeCommitMiB": 2303
+  }
 }

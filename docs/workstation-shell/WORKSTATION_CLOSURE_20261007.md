@@ -73,3 +73,27 @@ No signature, global containment, installation-wide continuity or runtime/visual
 3. Inspect actual screenshot against accepted black/phosphor retro composition; repair visible failures and repeat.
 4. Complete broader regression, packaged security, integration, clean-user/machine, CI and single-RC-SHA acceptance.
 5. Native App contract and Luna Model Catalog integration follow operational/visually accepted Part A. No marketplace or ecosystem expansion in this checkpoint.
+
+## Follow-up closure / source reconciliation
+
+Runtime capture review found stale exact taskbar locators and no guaranteed Laptop read after focus. Both are repaired in `d49d73eeeae046f99d8818aaf08ea5e50448bccc`: Terminal 01/02 task names, explicit real Laptop and hardware refreshes. Syntax check exited 0. Windows runtime remains NOT RUN.
+
+Latest resource sample, 2026-10-07T16:57:13.8042988Z:
+physical 2003 MiB, free commit 2303 MiB; heavy gate still CLOSED.
+
+Fresh foreign source observed:
+- Luna shell HEAD 12b999d329b59fd7dd480504ce84670b0de521f5, 56 dirty/untracked status entries.
+- Proof lane HEAD 768360fb80a5445cd6350b745f232b134bfc56a0, 15 tracked modifications (557 insertions / 87 deletions). It is no longer clean.
+- New proof work includes trusted-local launch/session bootstrap, boot-failure presentation, native host integration and Authority tests. It was inspected read-only and not adopted blindly.
+- Current foreign observed source supersedes older clean-lane reports. No foreign file or process was changed.
+
+Security/integration handoff:
+CAPABILITY: trusted local operator session bootstrap.
+OWNER: active proof/launch security lane; person assignment not re-established.
+ROUTE: private supervisor.local-operator-session; native authority_local_session. No unauthenticated HTTP mint route is acceptable.
+STATE: observed source binds origin/runtime generation/runtime owner and session expiry; UI has pending/authenticated/failed boot state. Observed source is not behavior proof.
+PERMISSION: operator session authentication must not bypass per-effect Authority/Admission, Resident separation, revocation, or ledger controls.
+NEGATIVE TEST REQUIRED: wrong origin/generation/owner, expired/revoked session, audit failure, remote transport attempting bootstrap, restart/lockdown behavior.
+EVIDENCE: dirty implementation and its newly added tests inspected; not run by this lane. No security acceptance claim.
+EXACT SOURCE: base 768360fb80a5445cd6350b745f232b134bfc56a0 plus uncommitted work; no finalized SHA exists for that work.
+STATUS: UNINTEGRATED / UNVERIFIED. Reconcile it before replacing the proof-lane running product. Preserve the owner lane.
