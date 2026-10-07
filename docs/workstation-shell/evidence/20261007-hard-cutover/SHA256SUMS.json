@@ -1,0 +1,98 @@
+{
+  "utc": "2026-10-07T16:10:18.529Z",
+  "codeSha": "d0d904b79ff29be0ef64bb233afbdffefda5b57b",
+  "branch": "feat/workstation-integration-saul-20261006",
+  "files": [
+    {
+      "path": "hard-cutover-red.log",
+      "bytes": 11606,
+      "sha256": "7b661c84ee729e99f028bb90ff95de02c1031e7db4923646e8d16b3c6692e2d2"
+    },
+    {
+      "path": "hard-cutover-first-green.log",
+      "bytes": 10522,
+      "sha256": "b5ee6ba2b340e657ff2e52c947d1e78f253df0ea5a5f9679589998f21e68dd36"
+    },
+    {
+      "path": "hard-cutover-final-green.log",
+      "bytes": 11342,
+      "sha256": "ce1b6a0b427e8d8af043ca2de540daee625d0cd56bbe368d769f898de3de3851"
+    },
+    {
+      "path": "hard-cutover-lint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "hard-cutover-syntax.log",
+      "bytes": 2928,
+      "sha256": "f21470099ac3dc0b7928eaccc59c40529ba41ca149a99b3a343c6c532bea1fb4"
+    },
+    {
+      "path": "hard-cutover-syntax-repair.log",
+      "bytes": 188,
+      "sha256": "e702e22058de5da6728aae96493ccde29928b5b529cab7f204abe253e7972daa"
+    },
+    {
+      "path": "hard-cutover-source-write.log",
+      "bytes": 2344,
+      "sha256": "68aa2abb0096f405a8e0ba6f2261f98f326a17cc9737a1bb939ca8b49449538e"
+    },
+    {
+      "path": "hard-cutover-source-write-retry.log",
+      "bytes": 1046,
+      "sha256": "69a8fee6c143794ea059b9e7f04793c241a3eecf657bd2645deba51a9f509666"
+    },
+    {
+      "path": "connections-recovery-red.log",
+      "bytes": 5080,
+      "sha256": "149f2a924073557658770a0b1d546dd47c1a6164a0f370633a67ae11eba745a6"
+    },
+    {
+      "path": "connections-recovery-green.log",
+      "bytes": 878,
+      "sha256": "e2806c980554bca6bba00e1576cd31daa1caabfa09debc8845c065f9f97a4ab3"
+    },
+    {
+      "path": "connections-repair-write.log",
+      "bytes": 240,
+      "sha256": "d5b7f85a31fb7df9f9ae87b4576c65e0d102dbe1e1ea4ad93efe91e74b4dd2fc"
+    },
+    {
+      "path": "connections-repair-lint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "settings-connections-disposal-red.log",
+      "bytes": 2498,
+      "sha256": "8d681459796369c3bfc0d27a2fbe9d57425d3c9872ab99d12beb60b13477a99e"
+    },
+    {
+      "path": "settings-repair-write.log",
+      "bytes": 74,
+      "sha256": "2bcc1bf9a4b33ab1c03a827813a8fd8ffe7249de47fc9985ab5757ea688a6e0b"
+    },
+    {
+      "path": "hard-cutover-precommit-source.json",
+      "bytes": 12040,
+      "sha256": "fbffd3ffadd26a841b786c5a4be3a9dd09dd64f8ba48c282d518f8522fed09e4"
+    },
+    {
+      "path": "hard-cutover-resource-gate.json",
+      "bytes": 109,
+      "sha256": "55dbd469798182ae5ea32383fd1024ca9ab3af50deda385c4889dbc758f77a96"
+    },
+    {
+      "path": "running-build-all-worktrees.json",
+      "bytes": 1086,
+      "sha256": "66498ca78094f1c42c659fa3524441349ba8c1f64f810756633db7992b255577"
+    },
+    {
+      "path": "hard-cutover-code-commit.log",
+      "bytes": 436,
+      "sha256": "7fee0f292afd33466517aaf84e20aaaeb6b621c62023ecb414c34a296ad9991e"
+    }
+  ],
+  "scope": "53 focused Windows Node tests; scoped ESLint and diff checks. Syntax/import validation is not semantic typing. Full types/build/browser/screenshot/package acceptance blocked by resource floor. Running product build identified in another preserved worktree."
+}

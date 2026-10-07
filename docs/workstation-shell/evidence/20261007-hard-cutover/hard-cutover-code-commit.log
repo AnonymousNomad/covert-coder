@@ -1,0 +1,5 @@
+[feat/workstation-integration-saul-20261006 d0d904b] feat(workstation): cut over production entry to retro desktop applications
+ 16 files changed, 581 insertions(+), 431 deletions(-)
+ create mode 100644 browser/src/workstation/WorkstationShell.ts
+ create mode 100644 tests/unit/test-connections-window-recovery.test.mjs
+d0d904b79ff29be0ef64bb233afbdffefda5b57b feat(workstation): cut over production entry to retro desktop applications

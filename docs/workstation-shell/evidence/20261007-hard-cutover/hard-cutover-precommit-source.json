@@ -1,0 +1,155 @@
+﻿{
+    "utc":  "2026-10-07T15:49:02.4749957Z",
+    "availablePhysicalMiB":  2741,
+    "freeCommitMiB":  1937,
+    "requiredPhysicalMiB":  3072,
+    "requiredFreeCommitGreaterThanMiB":  5120,
+    "source":  [
+                   {
+                       "worktree":  "E:\\covert-workstation-integration-saul-20261006",
+                       "branch":  "feat/workstation-integration-saul-20261006",
+                       "head":  "0a4f1e53bb014b4b8c3787a98c43862e7df0e67b",
+                       "upstream":  [
+                                        "origin/feat/workstation-integration-saul-20261006 [ahead 15]"
+                                    ],
+                       "relationTo14b9ad9":  [
+                                                 "0\t15"
+                                             ],
+                       "status":  [
+                                      " M browser/src/cockpit/CockpitShell.ts",
+                                      " M browser/src/cockpit/SettingsSurface.ts",
+                                      " M browser/src/connections/connections.ts",
+                                      " M browser/src/desktop/app-registry.ts",
+                                      " M browser/src/desktop/desktop.css",
+                                      " M browser/src/desktop/layout.ts",
+                                      " M browser/src/desktop/types.ts",
+                                      " M browser/src/desktop/window-manager-view.ts",
+                                      " M browser/src/desktop/window-manager.ts",
+                                      " M browser/src/main.ts",
+                                      " M browser/src/shell/shell.ts",
+                                      " M browser/src/store/state.ts",
+                                      " M tests/unit/test-desktop-launcher-view.test.mjs",
+                                      " M tests/unit/test-desktop-window-manager.test.mjs",
+                                      "?? browser/src/workstation/WorkstationShell.ts",
+                                      "?? tests/unit/test-connections-window-recovery.test.mjs"
+                                  ],
+                       "recent":  [
+                                      "0a4f1e53bb014b4b8c3787a98c43862e7df0e67b docs(workstation): record project Laptop UI verification checkpoint",
+                                      "c5db51a97bd2dc11b39ad18ebd387e0a9992791c feat(workstation): bind Cipher Laptop to canonical project owners",
+                                      "810b0025ac583a4e50174ce1631e556a366e38b2 docs(platform): checkpoint project scope evidence and Luna handoff",
+                                      "80f0cf116a8df618ad66428bdbaa6714a52cb0e0 feat(platform): persist project identity and bind governed scope"
+                                  ]
+                   },
+                   {
+                       "worktree":  "E:\\covert-sovereign-workstation-shell",
+                       "branch":  "feat/covert-sovereign-workstation-shell",
+                       "head":  "12b999d329b59fd7dd480504ce84670b0de521f5",
+                       "upstream":  [
+                                        " "
+                                    ],
+                       "relationTo14b9ad9":  [
+                                                 "17\t0"
+                                             ],
+                       "status":  [
+                                      " M browser/src/byok/byok.ts",
+                                      " M browser/src/chat/chat.ts",
+                                      " M browser/src/cockpit/ActivityTimeline.ts",
+                                      " M browser/src/cockpit/CockpitShell.ts",
+                                      " M browser/src/cockpit/ModelLineup.ts",
+                                      " M browser/src/cockpit/ResidentCore.ts",
+                                      " M browser/src/cockpit/SettingsSurface.ts",
+                                      " M browser/src/cockpit/SetupSession.ts",
+                                      " M browser/src/cockpit/SystemTelemetry.ts",
+                                      " M browser/src/cockpit/cockpit.css",
+                                      " M browser/src/cockpit/setup-validation.ts",
+                                      " M browser/src/desktop/desktop.css",
+                                      " M browser/src/desktop/theme.ts",
+                                      " M browser/src/desktop/window-manager-view.ts",
+                                      " M browser/src/editor/views.ts",
+                                      " M browser/src/main.css",
+                                      " M browser/src/main.ts",
+                                      " M browser/src/panels/command-center.ts",
+                                      " M browser/src/panels/terminal.ts",
+                                      " M browser/src/providers/providers.ts",
+                                      " M browser/src/services/api.ts",
+                                      " M common/contracts/terminal.ts",
+                                      " M common/facade-route-map.json",
+                                      " M common/openapi.json",
+                                      " M common/security/operation-policy.mjs",
+                                      " M docs/evidence/desktop-battery.md",
+                                      " M docs/v1/routes/C1-02-ROUTE-OWNERSHIP-DECISIONS.json",
+                                      " M docs/v1/routes/C1-02-ROUTE-OWNERSHIP-DECISIONS.md",
+                                      " M node/src/events.ts",
+                                      " M node/src/openapi.ts",
+                                      " M node/src/routes/terminal-sessions.ts",
+                                      " M node/src/services/runtime-providers.ts",
+                                      " M node/src/services/terminal-sessions.ts",
+                                      " M playwright.workstation.config.ts",
+                                      " M scripts/facade.mjs",
+                                      " M scripts/run-workstation-e2e.mjs",
+                                      " M scripts/start.mjs",
+                                      " M tests/arch/openapi-drift.test.ts",
+                                      " M tests/arch/setup-validation-truth.test.ts",
+                                      " M tests/arch/terminal-session-routes.test.ts",
+                                      " M tests/e2e/workstation-real-mutation.spec.ts",
+                                      " M tests/e2e/workstation-test-server.mjs",
+                                      " M tests/integration/test-authority-launch.mjs",
+                                      " M tests/integration/test-canonical-launch.mjs",
+                                      " M tests/unit/test-facade.mjs",
+                                      "?? browser/src/cockpit/interaction-mode.ts",
+                                      "?? browser/src/platform/AppsInventory.ts",
+                                      "?? browser/src/platform/PlatformHome.ts",
+                                      "?? browser/src/platform/navigation.ts",
+                                      "?? docs/covert-world/CW0_5_RECONCILIATION.md",
+                                      "?? docs/covert-world/PLATFORM_SHELL_UI0_EVIDENCE_2026-10-07.md",
+                                      "?? docs/workstation-shell/DEMO_FIDELITY_CHECKPOINT_2026-10-07.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/actual-workstation-paired-test-fixture-1440x960.png",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/actual-workstation-retro-r20.json",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/actual-workstation-retro-r20.png",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/monaco-theme-failure-c-temp.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/setup-validation-full-suite-pairing-failure.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/setup-validation-root-cause.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/setup-validation-second-run-assertion-failure.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/setup-validation-third-run-assertion-failure.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/workstation-authenticated-workspace-no-response.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/workstation-e-drive-build-runner-crash.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/workstation-screenshot-temp-root-failure.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/workstation-screenshot-temp-root-second-failure.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/workstation-temp-root-instrumented-rerun-interrupted.md",
+                                      "?? docs/workstation-shell/evidence/20261007-demo/workstation-temp-root-runner-prerequisite-failure.md",
+                                      "?? tests/arch/platform-shell-navigation.test.ts",
+                                      "?? tests/arch/runtime-provider-node-pty.test.ts",
+                                      "?? tests/arch/workbench-interaction-spine.test.ts",
+                                      "?? tests/e2e/platform-shell-navigation.spec.ts",
+                                      "?? tests/e2e/setup-validation-user-journey.spec.ts",
+                                      "?? tests/e2e/terminal-authority-refresh.spec.ts"
+                                  ],
+                       "recent":  [
+                                      "12b999d329b59fd7dd480504ce84670b0de521f5 docs(workbench): reconcile interaction spine owners",
+                                      "0a439528d5835cec00f6cb405acba5b0f50d5d97 fix(workbench): prove paired AgentLoop editor reconciliation",
+                                      "7aa9cbf03014b0678e7c56967a76a45abf413f1f fix(editor): publish canonical workspace mutation events",
+                                      "d103516a87fdb16ee2ae2f191565ce8b53c7b2be test(workstation): cover dirty document event conflicts"
+                                  ]
+                   },
+                   {
+                       "worktree":  "E:\\covert-local-model-demo-proof-20261007",
+                       "branch":  "feat/local-model-demo-proof-20261007",
+                       "head":  "768360fb80a5445cd6350b745f232b134bfc56a0",
+                       "upstream":  [
+                                        " "
+                                    ],
+                       "relationTo14b9ad9":  [
+                                                 "24\t3"
+                                             ],
+                       "status":  [
+
+                                  ],
+                       "recent":  [
+                                      "768360fb80a5445cd6350b745f232b134bfc56a0 feat(model-access): pin and verify acquired GGUFs",
+                                      "7f79be9f09afa43283d3548b3b2fd0c98a6dbca7 docs(evidence): record agent integrity gate results",
+                                      "dda9d00204b48327160a43c42ac5aa1e0510ade0 test(agent): await governed cleanup before fixture reuse",
+                                      "cfaad716a01af06dfe61dcfb3d1acd7dea9b4b2c docs(evidence): trace Authority audit timeout boundary"
+                                  ]
+                   }
+               ]
+}
