@@ -1,0 +1,92 @@
+﻿[
+    {
+        "Name":  "closure-2310-browser-types.stderr.log",
+        "Bytes":  0,
+        "Sha256":  "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+        "Name":  "closure-2310-browser-types.stdout.log",
+        "Bytes":  0,
+        "Sha256":  "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+        "Name":  "closure-2310-node-types.stderr.log",
+        "Bytes":  0,
+        "Sha256":  "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+        "Name":  "closure-2310-node-types.stdout.log",
+        "Bytes":  0,
+        "Sha256":  "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+        "Name":  "closure-2310-production-build.log",
+        "Bytes":  9903,
+        "Sha256":  "6CEB6A2E1F5C034EE9767611F8A611C02226AEA86C77E8798FA902C9A7F50122"
+    },
+    {
+        "Name":  "closure-2310-workstation-journey.log",
+        "Bytes":  12097,
+        "Sha256":  "AEC765B879F8EA3005C3113A33A9D249DD05289036C189CC22B220C3EDF95115"
+    },
+    {
+        "Name":  "closure-terminal-routes.stdout.log",
+        "Bytes":  1189,
+        "Sha256":  "486D24C2CAEA53C2C26B0ED922FAEBF4C54B71ECFE81A2873460A24CCC51EAD3"
+    },
+    {
+        "Name":  "covert-production-workstation-composition.png",
+        "Bytes":  220962,
+        "Sha256":  "DCB1A666BF9FF28CFF8A9A560EEFDE9A1AFDDFC4EAE2B23E234E6AA7C3E489FE"
+    },
+    {
+        "Name":  "final-runtime-2258-workstation-journey.log",
+        "Bytes":  13760,
+        "Sha256":  "3EA7123DBBFBB3B4596C12DB91FA2F3CA66A31821B18A658155AE04872A4A811"
+    },
+    {
+        "Name":  "input-projection-2254-workstation-journey.log",
+        "Bytes":  12576,
+        "Sha256":  "6D360DFE42D09CEA36C9B7576AFE7B599FA41497A78D5F19A14532DC1BDD1966"
+    },
+    {
+        "Name":  "provider-trace.jsonl",
+        "Bytes":  10916,
+        "Sha256":  "C39465472E6646094AE68861513507294B64033836A6545BF02CDFDCE4363E7E"
+    },
+    {
+        "Name":  "resource-gate.jsonl",
+        "Bytes":  43186,
+        "Sha256":  "063D0B40BC546A68AB76889E6D27562EB27D405A0AE430FF658B632E29FA06DC"
+    },
+    {
+        "Name":  "results.jsonl",
+        "Bytes":  7706,
+        "Sha256":  "1A5B2D5668F49772293B5A9CFD5515FD8314ACA3DBA6E7883BCC2C41B4D1FE4A"
+    },
+    {
+        "Name":  "run-closure-2310.ps1",
+        "Bytes":  4075,
+        "Sha256":  "948FD78E6A9F5F464CF97FA3957D32467034F27A93C6CEB5FFB88653E781C510"
+    },
+    {
+        "Name":  "terminal-ports-green.stdout.log",
+        "Bytes":  5252,
+        "Sha256":  "6882AF632D00A444E2060F4A053C33DCE94412207AC38F99C1CBE55597DD4D75"
+    },
+    {
+        "Name":  "terminal-ports-red.stdout.log",
+        "Bytes":  4323,
+        "Sha256":  "B0ABA7C9AC43A3BC4ECB560E3A2942DFC43BD3EBCAB265B539769A91B76FB0C5"
+    },
+    {
+        "Name":  "terminal-readiness-red.stdout.log",
+        "Bytes":  3765,
+        "Sha256":  "5B878469B6BC5ABD5E7FE925406C3121D870C3DD1147F841196195DEBEA53A11"
+    },
+    {
+        "Name":  "visual-2250-workstation-journey.log",
+        "Bytes":  12589,
+        "Sha256":  "6DB48705C642295B6406F360C543E9569CFD8B847A92E0416EA9BC1CAF880FD2"
+    }
+]
