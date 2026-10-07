@@ -100,7 +100,7 @@ test('Resource Monitor projects real hardware owner samples through workstation 
   await evidence.getByRole('button',{name:'Minimize window',exact:true}).click();
 
   const settings=await openUtility('settings');
-  await expect(settings.getByLabel('Theme',{exact:true})).toHaveValue('COVERT_PHOSPHOR');
+  await expect(settings.getByRole('combobox',{name:'Theme',exact:true})).toHaveValue('COVERT_PHOSPHOR');
   await expect(settings.locator('.desktop-settings-feedback').last()).toContainText('MICROPHONE: OFF');
   await page.screenshot({path:test.info().outputPath('covert-settings-application.png'),fullPage:true});
   await settings.getByRole('button',{name:'Minimize window',exact:true}).click();

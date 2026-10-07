@@ -121,7 +121,15 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await expect(first.locator('.terminal-session-state')).toContainText('RUNNING');
     await expect(second.locator('.terminal-session-state')).toContainText('RUNNING');
     expect(opened.length).toBe(2);
+    const summon=page.getByRole('button',{name:'Open Cipher Console',exact:true});
+    await summon.click({trial:true});
     await page.screenshot({ path: test.info().outputPath('covert-production-workstation-composition.png'), fullPage: true });
+    await summon.click();
+    const resident=page.locator('.desktop-window[data-app-id="resident"]');
+    await expect(resident).toBeVisible();
+    await expect(resident.locator('.chat-panel')).toBeVisible();
+    await resident.getByRole('button',{name:'Close window',exact:true}).click();
+    expect(opened.length).toBe(2);
     await page.getByRole('button', { name: 'Focus or restore Terminal 01, open', exact: true }).click();
     await page.screenshot({ path: test.info().outputPath('covert-retro-coding-native-terminals.png'), fullPage: true });
     await first.getByRole('button', { name: 'REFRESH', exact: true }).click();

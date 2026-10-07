@@ -129,10 +129,12 @@ export function mountWorkstation(app: HTMLElement, store: Store<AppState>): Work
       <aside class="desktop-application-rail" id="desktop-application-launcher" aria-label="Application launcher"></aside>
       <div class="desktop-workspace">
         <div class="desktop-window-layer" id="desktop-window-layer"></div>
-        <div class="desktop-resident-anchor" id="desktop-resident-anchor"></div>
       </div>
     </main>
-    <footer class="desktop-dock-wrap" id="desktop-dock" aria-label="Workstation taskbar"></footer>
+    <footer class="desktop-taskbar" aria-label="Workstation taskbar">
+      <div class="desktop-dock-wrap" id="desktop-dock"></div>
+      <div class="desktop-resident-anchor" id="desktop-resident-anchor"></div>
+    </footer>
     <div class="desktop-shell-status" id="cockpit-status" aria-live="polite">
       <span id="cockpit-lsp-status">LSP: UNKNOWN</span>
     </div>
