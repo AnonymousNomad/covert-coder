@@ -43,3 +43,9 @@ Fresh review reproduced three Important findings, all repaired: concurrent UNKNO
 Ruling: no new principal, credential or context grant is minted merely to activate the Laptop. Current history/Notebook reads remain operator-only until genuine Resident/context qualification. The root port is enrolled-principal-only. Cost: live Resident memory/operation access is still gated, rather than silently widened.
 Ruling: current durable storage is workspace-private and project_id stays null where the canonical Project owner is absent. Cost: installation-wide continuity and multi-project context isolation are not claimed; their owner/addressing adoption is still required.
 Ruling: bounded personal record identities reserve removal history without silent compaction. Cost: after 500 distinct identities, new IDs require an explicit archival/reconciliation capability; existing IDs can still be corrected/recreated/removed.
+
+## Direct file capability privacy repair
+
+Author follow-up found that delegated workspace.read could reach private Laptop records through generic files, and a public file symlink could disclose them through search. Both were observed RED before repair. Shared private-path checks now reject direct and resolved paths in WorkspaceService and agent tools; search/search-replace use the canonical workspace reader; patch targets receive resolved containment checks. Twenty-six Windows Laptop/file/search/workspace tests passed, including canonical Notebook access and unchanged bytes after rejected generic writes. This is a file-capability boundary, not OS/terminal sandbox containment. Other adapters, installation-wide ownership and context leases remain open. S35 tracks the boundary.
+
+Wider architecture run: 1077 tests, 1065 passed, one Helix HTTP deadline failure, 11 skipped. The unchanged Helix file passed three tests in isolation (7.218s). Root cause of the wider timeout remains unproved; no timeout increase or test weakening was applied.

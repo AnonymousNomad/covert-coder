@@ -181,9 +181,10 @@ export function routeForSearch(workspace: WorkspaceService): Route {
           }
           const relative = path.relative(workspace.root, full).split(path.sep).join('/');
           if (fileMask && !matchMask(relative, fileMask)) continue;
-          const stat = await fs.stat(full);
-          if (stat.size > SEARCH_MAX_FILE_BYTES) continue;
-          const text = await fs.readFile(full, 'utf8').catch(() => '');
+          const stat = await workspace.stat(relative).catch(() => null);
+          if (!stat || stat.size > SEARCH_MAX_FILE_BYTES) continue;
+          const text = await workspace.read(relative).catch(() => null);
+          if (text === null) continue;
           const hits: { line: number; text: string }[] = [];
           text.split('\n').forEach((line, index) => {
             if (regex.test(line)) hits.push({ line: index + 1, text: line.replace(/\r$/, '').slice(0, SEARCH_HIT_TEXT_SLICE) });
@@ -253,9 +254,9 @@ export function routeForSearchReplace(workspace: WorkspaceService, events?: Even
           const relative = path.relative(workspace.root, full).split(path.sep).join('/');
           if (SENSITIVE_PATHS.test(relative)) continue;
           if (fileMask && !matchMask(relative, fileMask)) continue;
-          const stat = await fs.stat(full);
-          if (stat.size > SEARCH_MAX_FILE_BYTES) continue;
-          const text = await fs.readFile(full, 'utf8').catch(() => null);
+          const stat = await workspace.stat(relative).catch(() => null);
+          if (!stat || stat.size > SEARCH_MAX_FILE_BYTES) continue;
+          const text = await workspace.read(relative).catch(() => null);
           if (text === null) continue;
           if (!regex.test(text)) continue;
           const changed = text.replace(globalPattern, request.replacement);

@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { RouteError } from '../server.ts';
+import { isPrivatePlatformStatePath } from '../../../common/security/private-platform-state.mjs';
 import type { WorkspaceTreeNodeT } from '../../../common/contracts/workspace.ts';
 
 export const TREE_MAX_DEPTH = 4;
@@ -44,6 +45,7 @@ export class WorkspaceService {
     if (target !== this.root && !target.startsWith(`${this.root}${path.sep}`)) {
       throw new RouteError('FORBIDDEN', 'path escaped workspace');
     }
+    if(isPrivatePlatformStatePath(path.relative(this.root,target)))throw new RouteError('FORBIDDEN','private platform records require their canonical owner');
     return target;
   }
 
@@ -69,6 +71,7 @@ export class WorkspaceService {
     if (target !== rootReal && !target.startsWith(`${rootReal}${path.sep}`)) {
       throw new RouteError('FORBIDDEN', 'path resolves outside workspace');
     }
+    if(isPrivatePlatformStatePath(path.relative(rootReal,target)))throw new RouteError('FORBIDDEN','private platform records require their canonical owner');
     return target;
   }
 
@@ -107,7 +110,7 @@ export class WorkspaceService {
     try {
       await this.runGit(['apply', '--check', '--whitespace=error', temporary]);
       const paths = parseApplyNumstat(await this.runGit(['apply', '--numstat', '-z', temporary]));
-      for (const relativePath of paths) this.resolve(relativePath);
+      for (const relativePath of paths) await this.resolveReal(relativePath);
       await this.runGit(['apply', '--whitespace=error', temporary]);
       return { applied: true, bytes: Buffer.byteLength(patch), paths };
     } finally {
