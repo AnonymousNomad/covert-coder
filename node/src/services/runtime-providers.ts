@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import type { TerminalProviderInfoT, TerminalShellDescriptorT } from '../../../common/contracts/terminal.ts';
 
@@ -408,6 +408,47 @@ function defaultExec(file: string, args: string[], encoding: BufferEncoding = 'u
   });
 }
 
+function defaultBoundedExec(file: string, args: string[], timeoutMs: number, encoding: BufferEncoding = 'utf8'): Promise<ExecResult> {
+  return new Promise((resolve, reject) => {
+    // Noninteractive probes receive NUL, not an input pipe awaiting EOF.
+    const child = spawn(file, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    const stdout: Buffer[] = [], stderr: Buffer[] = [];
+    let bytes = 0, settled = false;
+    const refuse = (error: Error): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      child.kill();
+      // A descendant can retain capture handles after the direct child exits.
+      // Refusal must not wait for those handles or terminate the whole runtime.
+      child.stdout.destroy();
+      child.stderr.destroy();
+      reject(error);
+    };
+    const deadline = setTimeout(() => refuse(new Error(`Bounded probe deadline exceeded after ${timeoutMs} ms`)), timeoutMs);
+    const collect = (target: Buffer[]) => (chunk: Buffer): void => {
+      if (settled) return;
+      bytes += chunk.length;
+      if (bytes > 1024 * 1024) {
+        refuse(new Error('Bounded probe output exceeded 1 MiB'));
+        return;
+      }
+      target.push(chunk);
+    };
+    child.stdout.on('data', collect(stdout));
+    child.stderr.on('data', collect(stderr));
+    child.once('error', refuse);
+    child.once('close', (code, signal) => {
+      if (settled) return;
+      const errorOutput = Buffer.concat(stderr).toString(encoding);
+      if (code !== 0) { refuse(new Error(`Bounded probe exited ${code ?? signal ?? 'unknown'}: ${errorOutput}`)); return; }
+      settled = true;
+      clearTimeout(deadline);
+      resolve({ code: 0, stdout: Buffer.concat(stdout).toString(encoding), stderr: errorOutput });
+    });
+  });
+}
+
 async function defaultFileExists(path: string): Promise<boolean> {
   try {
     const { access } = await import('node:fs/promises');
@@ -425,17 +466,7 @@ async function defaultListDir(path: string): Promise<string[]> {
 export function createDefaultProviderDeps(overrides: Partial<RuntimeProviderDeps> = {}): RuntimeProviderDeps {
   return {
     exec: overrides.exec ?? defaultExec,
-  execBounded: overrides.execBounded ?? ((file, args, timeoutMs, encoding) => new Promise<ExecResult>((resolve, reject) => {
-    const child = execFile(file, args, { encoding: encoding ?? 'utf8', timeout: timeoutMs, windowsHide: true }, (error, stdout, stderr) => {
-      if (error !== null) {
-        reject(error);
-        return;
-      }
-      resolve({ code: 0, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
-    });
-    // Readiness is noninteractive. WSL can wait for EOF even after /bin/true exits.
-    child.stdin?.end();
-  })),
+    execBounded: overrides.execBounded ?? defaultBoundedExec,
     fileExists: overrides.fileExists ?? defaultFileExists,
     listDir: overrides.listDir ?? defaultListDir,
     loadPty: overrides.loadPty ?? loadNodePtyModule,
