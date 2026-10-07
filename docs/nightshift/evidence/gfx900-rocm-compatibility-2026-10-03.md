@@ -107,3 +107,64 @@ This branch is intentionally a draft candidate. Before integration:
 - UNKNOWN remains UNKNOWN.
 - Existing red is preserved.
 - PR must remain draft until the gates above are closed.
+
+## Addendum — Windows ownership-probe source-path analysis — 2026-10-06 22:12 UTC
+
+**Disposition:** `RED PRESERVED / CAUSE NOT PROVEN / DYNAMIC RETEST GATED`
+
+The current candidate source explains a plausible mechanism for the recorded `FOREIGN` versus `UNKNOWN` red:
+
+- The fixture at `tests/arch/runtime-broker.test.ts:166` awaits `adapter.discover()` and then calls `adapter.status()`.
+- `UnslothRuntimeAdapter.status()` calls `discover()` again (`node/src/services/unsloth-runtime-adapter.ts:987`); `discover()` refreshes `lastHealth` through `health()` (`:424-436`).
+- With no owned process handle, each `health()` call invokes `inspectPort()` (`:615-624`). The default Windows inspector starts a fresh `powershell.exe` for `Get-NetTCPConnection` with an unchanged 3,000 ms timeout (`:202-212`). Any exec error is mapped fail-closed to `UNKNOWN`.
+- Therefore this single fixture performs two sequential Windows PowerShell ownership probes before asserting status. The recorded 5.88 s red is close to the combined 6 s timeout budget. This makes a repeated-probe timeout a concrete hypothesis; **per-probe timing was not captured**, so timeout causality and the contribution of concurrent TypeScript compilation remain unproven. The red is not reclassified or dismissed.
+
+No source/test assertion, timeout, floor, ownership rule, or process was changed in this analysis. No Covert app or model runtime was started.
+
+The current host sample remains below the explicit product-test admission gate: **3.41 GiB free physical / 4.91 GiB free commit** (24.36 GiB commit limit). The requested dynamic reproduction/instrumentation is therefore deferred until both established floors pass. PR #41 remains OPEN/DRAFT at `9cfb2f65cec702185002a84afa12a2e4048342aa`; its exact-head required checks currently report SUCCESS, which does not close this local red or qualify gfx900. The candidate worktree's pre-existing owner edit in `docs/evidence/desktop-battery.md` remains untouched.
+
+**Next diagnostic:** when resource admission passes, rerun the named test in the previously observed concurrent-TypeScript condition with unchanged 3,000 ms timeouts. Capture elapsed time for each PowerShell child (without command bodies/secrets), then distinguish first-probe timeout, second-probe timeout, and returned listener identity. Keep the original red and any new observation side by side. Do not repair or reclassify until that distinguishes cause.
+
+## Addendum — product status path versus Windows fixture probe count — 2026-10-06 22:27 UTC
+
+**Disposition:** `SOURCE-PATH HYPOTHESIS STRENGTHENED / TEST RED OPEN`
+
+Current source shows the extra ownership probe is specific to the direct adapter test sequence, not the ordinary model-status request path:
+
+- `tests/arch/runtime-broker.test.ts:183-184` explicitly awaits `adapter.discover()` and then awaits `adapter.status()`.
+- `UnslothRuntimeAdapter.status()` at `node/src/services/unsloth-runtime-adapter.ts:987-988` performs its own `discover()`; each discovery refreshes the ownership/health observation.
+- Product construction at `node/src/openapi.ts:255-295` composes `RuntimeBroker` inside `BrokerModelRuntime`. Its `observedStatus()` at `node/src/services/broker-model-runtime.ts:91-117` uses a two-second response cache and, on a cache miss, calls `activeStatus()` once. That delegates to `RuntimeBroker.status()` (`node/src/services/runtime-adapter.ts:229-231`), which calls the selected adapter's `status()` once. For Unsloth, that status call performs one discovery.
+- This source comparison makes a fixture-only duplicate probe a stronger explanation for why the named test is near two 3-second child deadlines. It does not measure either probe, prove that a timeout occurred, or exclude host contention. **Cause remains unproven; the `FOREIGN` versus `UNKNOWN` red remains open.**
+
+No product source, test, timeout, ownership rule, or assertion changed. No test or runtime was started in this continuation.
+
+### Current external and resource truth
+
+- GitHub PR #41 is still **OPEN / DRAFT**, head `9cfb2f65cec702185002a84afa12a2e4048342aa`; the PR remains not merge-ready. Exact-head AIDE CI run **37503972483** reports `SUCCESS`. This does not close the preserved local red or qualify gfx900.
+- Fresh host sample at **2026-10-06 22:27:29 UTC**: **3.05 GiB free physical RAM / 3.04 GiB free commit**, commit limit **24.36 GiB**. Product-test admission requires at least **3 GiB physical RAM** and **more than 5 GiB free commit**; the commit floor fails, so dynamic reproduction remains deferred.
+- The pre-existing `docs/evidence/desktop-battery.md` edit remains untouched. The worktree remains dirty only in the two already-classified evidence files; no commit/push was made.
+
+**Next:** after a fresh sample clears both resource floors, instrument elapsed time for each PowerShell ownership child in the named Windows test under the preserved concurrent-TypeScript condition, with all deadlines and assertions unchanged. Keep the original and new red evidence together.
+
+## Addendum — exact-SHA CI platform coverage — 2026-10-06 22:33 UTC
+
+The exact-head AIDE CI success does not execute the preserved Windows-specific test:
+
+- The candidate's `.github/workflows/ci.yml:16` defines `runs-on: ubuntu-latest` for AIDE CI.
+- GitHub run **37503972483** for `9cfb2f65cec702185002a84afa12a2e4048342aa` completed its single `verify` job successfully, including backend/integration, architecture and Veritas steps.
+- `tests/arch/runtime-broker.test.ts:166` skips the foreign-listener ownership case unless `process.platform === 'win32'`. The Linux CI pass therefore does not contradict or disposition the local Windows `FOREIGN` versus `UNKNOWN` red.
+
+The exact-SHA CI remains valid evidence for its Linux job, but **Windows reproduction is still required**. Latest host sample: **3.11 GiB free physical RAM / 3.15 GiB free commit** at **2026-10-06 22:30:26 UTC**; the `>5 GiB` commit admission floor still fails. No Windows test was started and no process was stopped.
+
+## Addendum — instrumented Windows ownership fixture — 2026-10-07 02:26 UTC
+
+**Disposition:** `PASS ON THIS RUN / PRIOR RED PRESERVED / CAUSE UNKNOWN`
+
+- Source remained at exact candidate SHA `9cfb2f65cec702185002a84afa12a2e4048342aa`; no product source, test assertion, timeout, ownership rule, or resource floor changed.
+- Pre-run sample at 02:25:58 UTC: **4.77 GiB free physical RAM / 6.51 GiB free commit**, 24.36 GiB commit limit. A follow-up sample at 02:27:59 UTC was **4.73 GiB / 6.54 GiB**.
+- Concurrent TypeScript command: `node node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit`; exit **0**.
+- Focused test command: `node --experimental-strip-types --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-name-pattern="Windows port inspection identifies and refuses an occupied foreign listener" tests/arch/runtime-broker.test.ts`. A temporary preload also wrapped `child_process.execFile` and emitted elapsed milliseconds for `powershell.exe` only; its command arguments and bodies were not logged. Result: **1 passed, 0 failed, 0 skipped**.
+- A temporary Node preload measured three `powershell.exe` children without recording their arguments or command bodies: **1,242.5 ms**, **1,242.2 ms**, and **1,216.6 ms**. The first two correspond to the fixture's explicit `discover()` and subsequent `status()` discovery; the third occurs during the attempted load refusal. The test observed the listener as `FOREIGN`; its assertions confirmed no runtime HTTP fetch and no process spawn, and the fixture listener remained open until test cleanup.
+- No model/runtime was started and no foreign process was terminated. The temporary instrumentation file was outside the repository.
+
+This passing run is not a repair and does not erase the preserved earlier `UNKNOWN` result. The exact cause of the earlier `FOREIGN` versus `UNKNOWN` red remains **unproven**; the measured successful probe timings do not establish why the earlier run approached the two 3-second child deadlines. Exact-SHA CI is still Linux-only and does not cover this Windows-specific case. Keep PR #41 in draft and the gfx900 runtime unqualified.
