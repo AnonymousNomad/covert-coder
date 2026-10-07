@@ -12,12 +12,16 @@ export interface WindowManagerViewOptions {
   paletteHost: HTMLElement;
   manager: WindowManager;
   onAttach(appId: DesktopAppId, content: HTMLElement, instanceId: string): void;
+  /** Presentation transition only; implementations must not replay domain effects. */
+  onVisibility?(appId: DesktopAppId, visible: boolean, instanceId: string): void;
 }
 
 interface WindowElements {
   root: HTMLElement;
   content: HTMLElement;
   disposeInteractions(): void;
+  attached: boolean;
+  visible: boolean;
 }
 
 interface PaletteItem {
@@ -116,9 +120,10 @@ export class WindowManagerView {
     document.removeEventListener('keydown', this.onGlobalKeyDown, true);
     document.removeEventListener('covert:open-command-palette', this.openPaletteEvent);
     window.removeEventListener('resize', this.onViewportResize);
-    for (const window of this.windows.values()) {
-      window.disposeInteractions();
-      window.root.remove();
+    for (const [instanceId, elements] of this.windows) {
+      if (elements.visible) this.options.onVisibility?.(elements.root.dataset.appId as DesktopAppId, false, instanceId);
+      elements.disposeInteractions();
+      elements.root.remove();
     }
     this.windows.clear();
     this.taskButtons.clear();
@@ -202,6 +207,7 @@ export class WindowManagerView {
     const visibleIds = new Set(state.windows.map(windowInstanceId));
     for (const [appId, elements] of this.windows) {
       if (!visibleIds.has(appId)) {
+        if (elements.visible) this.options.onVisibility?.(elements.root.dataset.appId as DesktopAppId, false, appId);
         elements.disposeInteractions();
         elements.root.remove();
         this.windows.delete(appId);
@@ -217,7 +223,6 @@ export class WindowManagerView {
       if (!elements) {
         elements = this.createWindow(manifest, instanceId);
         this.windows.set(instanceId, elements);
-        this.options.onAttach(windowState.appId, elements.content, instanceId);
         this.options.layer.appendChild(elements.root);
       }
       const pixels = windowPixelBounds(windowState.bounds, { width: this.options.layer.clientWidth, height: this.options.layer.clientHeight }, { width: manifest.minWidth, height: manifest.minHeight });
@@ -229,6 +234,14 @@ export class WindowManagerView {
       elements.root.style.setProperty('--window-min-width', `${manifest.minWidth}px`);
       elements.root.style.setProperty('--window-min-height', `${manifest.minHeight}px`);
       elements.root.hidden = windowState.minimized;
+      if (!windowState.minimized && !elements.attached) {
+        this.options.onAttach(windowState.appId, elements.content, instanceId);
+        elements.attached = true;
+      }
+      if (elements.visible !== !windowState.minimized) {
+        elements.visible = !windowState.minimized;
+        this.options.onVisibility?.(windowState.appId, elements.visible, instanceId);
+      }
       elements.root.classList.toggle('is-focused', focused === instanceId);
       elements.root.classList.toggle('is-maximized', windowState.snap === 'maximized');
       elements.root.dataset.snap = windowState.snap;
@@ -334,7 +347,7 @@ export class WindowManagerView {
       onFocus: () => {},
       onCommit: bounds => this.options.manager.setBounds(instanceId, normalizedFromPixels(bounds, this.options.layer))
     });
-    return { root, content, disposeInteractions };
+    return { root, content, disposeInteractions, attached: false, visible: false };
   }
 
   private renderWindowTasks(state: DesktopLayoutState): void {

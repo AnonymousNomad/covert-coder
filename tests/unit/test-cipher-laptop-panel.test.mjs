@@ -57,6 +57,24 @@ test('real read-only Laptop application is launchable and restores its window wi
 
 test('Notebook offers explicit approval and visible record/retention labels without claiming automatic capture',async()=>{const h=harness();await tick();h.click('NOTEBOOK');assert.match(textOf(h.parent),/No automatic memory capture/);assert.match(textOf(h.parent),/RECORD ID/);assert.match(textOf(h.parent),/RETENTION/);h.handle.dispose();});
 
+const notebookField=(parent,label)=>all(parent).find(node=>node.attributes.get('aria-label')===label);
+test('Laptop visibility refresh preserves a same-checkout unsaved record without issuing a mutation',async()=>{
+ const h=harness();await tick();h.click('NOTEBOOK');
+ notebookField(h.parent,'Notebook record identity').value='operator-draft';notebookField(h.parent,'Notebook approved content').value='unsaved working preference';notebookField(h.parent,'Notebook retention').value='SESSION';notebookField(h.parent,'I approve retaining this working record').checked=true;
+ h.handle.activate();await tick();
+ assert.equal(notebookField(h.parent,'Notebook record identity').value,'operator-draft');assert.equal(notebookField(h.parent,'Notebook approved content').value,'unsaved working preference');assert.equal(notebookField(h.parent,'Notebook retention').value,'SESSION');assert.equal(notebookField(h.parent,'I approve retaining this working record').checked,true);assert.equal(h.writes,0);h.handle.dispose();
+});
+test('Laptop visibility refresh preserves an unsaved correction when the owner record changes',async()=>{
+ let revision=1;const h=harness(undefined,{notebook:async()=>({records:[{record_id:'approved-note',content:'owner value '+revision,retention:'RETAIN',revision,source:'USER_PROVIDED',provenance_ref:'operator:explicit'}]})});await tick();h.click('NOTEBOOK');h.click('CORRECT');
+ notebookField(h.parent,'Notebook approved content').value='unsaved correction';notebookField(h.parent,'Notebook retention').value='SESSION';revision=2;h.handle.activate();await tick();
+ assert.equal(notebookField(h.parent,'Notebook approved content').value,'unsaved correction');assert.equal(notebookField(h.parent,'Notebook retention').value,'SESSION');assert.equal(notebookField(h.parent,'Notebook record identity').disabled,true);assert.equal(h.writes,0);h.handle.dispose();
+});
+test('a verified checkout change discards its prior Notebook form instead of leaking the old draft',async()=>{
+ let changed=false;const h=harness(undefined,{project:async()=>{const next=address();if(changed)next.checkout.checkout_id='44444444-4444-4444-8444-444444444444';return next;}});await tick();h.click('NOTEBOOK');
+ notebookField(h.parent,'Notebook record identity').value='old-scope-draft';notebookField(h.parent,'Notebook approved content').value='old-scope-private-content';changed=true;h.handle.activate();await tick();
+ assert.equal(notebookField(h.parent,'Notebook record identity').value,'');assert.equal(notebookField(h.parent,'Notebook approved content').value,'');assert.equal(h.writes,0);h.handle.dispose();
+});
+
 
 test('Laptop exposes canonical project and checkout IDs rather than deriving identity from window or path',async()=>{
  const h=harness();await tick();assert.match(textOf(h.parent),new RegExp(projectId));assert.match(textOf(h.parent),new RegExp(checkoutId));

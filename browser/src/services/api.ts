@@ -379,8 +379,8 @@ export const api = {
   cipherLaptopActivity(signal?: AbortSignal, projectId?: string): Promise<CipherLedgerListResponseT> {
     return call('/api/cipher/laptop/activity', { schema: CipherLedgerListResponse, ...(projectId !== undefined ? { query: { project_id: projectId } } : {}), ...(signal !== undefined ? { signal } : {}) });
   },
-  hardwareProfile(): Promise<HardwareProfileResponseT> {
-    return call('/api/hardware/profile', { schema: HardwareProfileResponse });
+  hardwareProfile(signal?: AbortSignal): Promise<HardwareProfileResponseT> {
+    return call('/api/hardware/profile', { schema: HardwareProfileResponse, ...(signal !== undefined ? { signal } : {}) });
   },
   tasksList(): Promise<TaskListResponseT> {
     return call('/api/tasks', { schema: TaskListResponse });

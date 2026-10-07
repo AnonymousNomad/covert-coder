@@ -47,6 +47,9 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
   let inFlight = false;
   let hardware: HardwareProfileResponseT | null = null;
   let failed = false;
+  let failureReason = '';
+  let request: AbortController | null = null;
+  let requestTimeout: number | null = null;
 
   function row(label: string, value: string, usage: number | null, source: string): void {
     const item = el('tr', 'resource-monitor-row');
@@ -73,14 +76,14 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
     const age = Date.now() - hardware.detectedAt;
     const timeKnown = Number.isFinite(age) && age >= 0;
     const stale = failed || !timeKnown || age > 40000;
-    status.textContent = `${stale ? 'STALE' : 'SNAPSHOT'} · ${timeKnown ? `${Math.floor(age / 1000)}s` : 'age UNKNOWN'} · ${failed ? 'refresh unavailable; retaining last observation' : 'owner observation time'}${inFlight ? ' · refresh pending' : ''}`;
+    status.textContent = `${stale ? 'STALE' : 'SNAPSHOT'} · ${timeKnown ? `${Math.floor(age / 1000)}s` : 'age UNKNOWN'} · ${failed ? `refresh unavailable; retaining last observation · ${failureReason}` : 'owner observation time'}${inFlight ? ' · refresh pending' : ''}`;
   }
 
   function paint(): void {
     paintStatus();
     body.innerHTML = '';
     if (hardware === null) {
-      status.textContent = 'UNAVAILABLE · hardware owner did not return a sample';
+      status.textContent = `UNAVAILABLE · ${inFlight ? 'hardware owner read pending' : failureReason || 'hardware owner did not return a sample'}`;
       row('RAM', 'UNAVAILABLE', null, 'no sample');
       row('VRAM', 'UNAVAILABLE', null, 'no sample');
     } else {
@@ -109,15 +112,30 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
     inFlight = true;
     refreshButton.disabled = true;
     root.setAttribute('aria-busy', 'true');
+    const current = new AbortController();
+    request = current;
+    let timedOut = false;
+    let rejectRead: (reason: Error) => void = (): void => {};
+    const stopped = new Promise<never>((_resolve, reject) => { rejectRead = reject; });
+    const onAbort = (): void => rejectRead(new Error('Hardware read aborted'));
+    current.signal.addEventListener('abort', onAbort, { once: true });
+    requestTimeout = window.setTimeout(() => { timedOut = true; current.abort(); }, 8000);
+    paintStatus();
     try {
-      const sample = await api.hardwareProfile();
+      const sample = await Promise.race([api.hardwareProfile(current.signal), stopped]);
       if (!alive) return;
       hardware = sample;
       failed = false;
+      failureReason = '';
     } catch {
       if (!alive) return;
       failed = true;
+      failureReason = timedOut ? 'hardware owner read timed out after 8s' : 'hardware owner read failed';
     } finally {
+      current.signal.removeEventListener('abort', onAbort);
+      if (requestTimeout !== null) window.clearTimeout(requestTimeout);
+      requestTimeout = null;
+      if (request === current) request = null;
       inFlight = false;
       if (alive) {
         refreshButton.disabled = false;
@@ -136,6 +154,9 @@ export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppStat
     activate: () => { void readSnapshot(true); },
     dispose() {
       alive = false;
+      request?.abort();
+      if (requestTimeout !== null) window.clearTimeout(requestTimeout);
+      requestTimeout = null;
       window.clearInterval(interval);
       parent.innerHTML = '';
     }

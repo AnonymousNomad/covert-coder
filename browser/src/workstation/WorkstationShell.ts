@@ -320,9 +320,14 @@ export function mountWorkstation(app: HTMLElement, store: Store<AppState>): Work
         registration = terminalInstance;
       }
       registration.mount();
-      registration.activate();
+      if (appId !== 'resources' && appId !== 'cipher-laptop' && appId !== 'connections') registration.activate();
       registration.root.hidden = false;
       content.appendChild(registration.root);
+    },
+    onVisibility(appId: DesktopAppId, visible: boolean): void {
+      // Only refresh proven read-only owners. Terminal execution, model routing,
+      // credentials and workflow effects are never replayed by window restore.
+      if (visible && (appId === 'resources' || appId === 'cipher-laptop' || appId === 'connections')) panels[appId].activate();
     }
   });
 

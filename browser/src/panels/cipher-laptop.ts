@@ -55,8 +55,16 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  let request:AbortController|null=null;
  let requestTimeout:number|null=null;
  let notebookControls:Array<{node:HTMLButtonElement|HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement;locked:boolean}>=[];
+ let notebookDraft:{id:string;content:string;retention:string;approved:boolean}|null=null;
+ let notebookForm:{project:CurrentProjectResponseT;id:HTMLInputElement;content:HTMLTextAreaElement;retention:HTMLSelectElement;approved:HTMLInputElement}|null=null;
+ function clearNotebookDraft(){notebookDraft=null;notebookForm=null;}
+ function captureNotebookDraft(){
+  if(notebookForm&&project&&!scopeError&&sameAddress(notebookForm.project,project)){
+   notebookDraft={id:notebookForm.id.value,content:notebookForm.content.value,retention:notebookForm.retention.value,approved:notebookForm.approved.checked};
+  }
+ }
  function invalidateProject(reason:string){
-  project=null;scopeError=reason;memories=null;editing=null;
+  project=null;scopeError=reason;memories=null;editing=null;clearNotebookDraft();
  }
  function canWrite():boolean {
   return Date.now()-projectReceivedAt<=30000&&Date.now()-receivedAt<=30000&&project!==null&&!scopeError&&memories!==null&&!notebookFailed&&projection!==null&&!failed&&projection.status.state==='NORMAL'&&!inFlight&&!writing;
@@ -72,7 +80,7 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
   status.textContent=`${failed||age>30?'STALE':'SNAPSHOT'} · ${projection.status.state} · ${projection.status.integrity} · receipt ${age}s ago${inFlight?' · refresh pending':''}`;
  }
  function paint(){
-  if(!alive)return;paintStatus();content.innerHTML='';notebookControls=[];
+  if(!alive)return;captureNotebookDraft();notebookForm=null;paintStatus();content.innerHTML='';notebookControls=[];
   for(const [name,button] of sectionButtons)button.setAttribute('aria-pressed',String(selected===name));
   const gated=GATED_SECTIONS.find(([name])=>name===selected);
   if(gated){content.append(el('h3','cipher-laptop-section-title',`${gated[0]} · ${gated[1]}`),el('p','',gated[2]));return;}
@@ -113,7 +121,7 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
    catch{if(alive)invalidateProject('canonical project binding unavailable; refresh required');throw new Error('PROJECT_BINDING_UNAVAILABLE');}
    if(!alive)return;
    if(!sameAddress(initiating,current)){invalidateProject('project binding changed; refresh before another request');throw new Error('PROJECT_SCOPE_MISMATCH');}
-   await effect();writeMessage='Observed save/removal. This does not grant Cipher authority.';editing=null;if(alive)await read();
+   await effect();writeMessage='Observed save/removal. This does not grant Cipher authority.';editing=null;clearNotebookDraft();if(alive)await read();
   }
   catch{writeMessage='Operation did not return a confirmed result. Inspect activity and current records before any new attempt.';}
   finally{writing=false;if(alive){refresh.disabled=inFlight;paint();}}
@@ -128,18 +136,20 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
   for(const record of memories){
    const item=el('section','cipher-notebook-record');item.append(el('h3','',record.record_id),el('p','',record.content),el('p','cipher-laptop-note',record.source+' / '+record.retention+' / revision '+record.revision+' / '+record.provenance_ref));
    const edit=document.createElement('button');edit.type='button';edit.textContent='CORRECT';edit.disabled=writing;
-   edit.disabled=!canWrite();edit.addEventListener('click',()=>{if(!canWrite())return;editing=record;paint();});
+   edit.disabled=!canWrite();edit.addEventListener('click',()=>{if(!canWrite())return;clearNotebookDraft();editing=record;paint();});
    const remove=document.createElement('button');remove.type='button';remove.textContent='REMOVE';remove.disabled=writing;
    remove.disabled=!canWrite();remove.addEventListener('click',()=>{if(canWrite()&&window.confirm('Logically remove this approved record? Canonical Authority still decides.'))void write(()=>api.cipherNotebookRemove({record_id:record.record_id,expected_revision:record.revision}));});
    notebookControls.push({node:edit,locked:false},{node:remove,locked:false});
    item.append(edit,remove);content.append(item);
   }
   const form=document.createElement('form');form.className='cipher-notebook-form';
-  const id=document.createElement('input');id.value=editing?.record_id??'';id.required=true;id.maxLength=240;id.disabled=editing!==null||!canWrite();id.setAttribute('aria-label','Notebook record identity');
-  const text=document.createElement('textarea');text.value=editing?.content??'';text.required=true;text.maxLength=4000;text.disabled=!canWrite();text.setAttribute('aria-label','Notebook approved content');
+  const id=document.createElement('input');id.value=notebookDraft?.id??editing?.record_id??'';id.required=true;id.maxLength=240;id.disabled=editing!==null||!canWrite();id.setAttribute('aria-label','Notebook record identity');
+  const text=document.createElement('textarea');text.value=notebookDraft?.content??editing?.content??'';text.required=true;text.maxLength=4000;text.disabled=!canWrite();text.setAttribute('aria-label','Notebook approved content');
   const retention=document.createElement('select');retention.setAttribute('aria-label','Notebook retention');retention.disabled=!canWrite();
-  for(const value of ['RETAIN','SESSION']){const option=document.createElement('option');option.value=value;option.textContent=value;retention.append(option);}retention.value=editing?.retention??'RETAIN';
+  for(const value of ['RETAIN','SESSION']){const option=document.createElement('option');option.value=value;option.textContent=value;retention.append(option);}retention.value=notebookDraft?.retention??editing?.retention??'RETAIN';
   const confirm=document.createElement('input');confirm.type='checkbox';confirm.required=true;confirm.disabled=!canWrite();confirm.setAttribute('aria-label','I approve retaining this working record');
+  confirm.checked=notebookDraft?.approved??false;
+  notebookForm={project,id,content:text,retention,approved:confirm};
   const label=document.createElement('label');label.append(confirm,el('span','','I approve retaining this working record. Never enter credentials.'));
   const save=document.createElement('button');save.type='submit';save.textContent=editing?'SAVE CORRECTION':'SAVE RECORD';save.disabled=!canWrite();
   const idLabel=document.createElement('label');idLabel.append(el('span','','RECORD ID'),id);
@@ -151,7 +161,7 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
    const body={record_id:id.value.trim(),expected_revision:editing?.revision??0,category:'OPERATOR_NOTE' as const,content:text.value,source:'USER_PROVIDED' as const,provenance_ref:'operator:explicit',confidence:null,retention:retention.value==='SESSION'?'SESSION' as const:'RETAIN' as const,approved_memory:true,expires_at:null};
    void write(()=>api.cipherNotebookPut(body));
   });
-  if(editing){const cancel=document.createElement('button');cancel.type='button';cancel.textContent='CANCEL';cancel.disabled=writing;cancel.addEventListener('click',()=>{editing=null;paint();});form.append(cancel);}
+  if(editing){const cancel=document.createElement('button');cancel.type='button';cancel.textContent='CANCEL';cancel.disabled=writing;cancel.addEventListener('click',()=>{clearNotebookDraft();editing=null;paint();});form.append(cancel);}
   if(!canWrite())content.append(el('p','','Notebook is read-only while owner freshness, project binding or integrity is unresolved. This UI check does not replace Authority.'));
   notebookControls.push(...[id,text,retention,confirm,save].map(node=>({node,locked:node===id&&editing!==null})));
   content.append(form);
@@ -165,7 +175,7 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
    let initiating:CurrentProjectResponseT|null=null;
    try{initiating=await api.projectsCurrent(current.signal);}catch{if(alive)invalidateProject('canonical project binding unavailable');}
    if(!alive)return;
-   if(initiating&&project&&!sameAddress(project,initiating)){memories=null;editing=null;projection=null;}
+   if(initiating&&project&&!sameAddress(project,initiating)){memories=null;editing=null;projection=null;clearNotebookDraft();}
    const [activity,notebook]=await Promise.allSettled([
     api.cipherLaptopActivity(current.signal,initiating?.project.project_id),
     initiating?api.cipherNotebook(current.signal):Promise.resolve(null)
@@ -188,5 +198,5 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  for(const [name,button] of sectionButtons)button.addEventListener('click',()=>{selected=name;paint();});
  paint();void read();
  const timer=window.setInterval(()=>{if(alive&&!document.hidden&&root.isConnected&&!root.closest('[hidden]'))paintStatus();},5000);
- return {root,refresh:read,activate:()=>{void read();},dispose(){alive=false;request?.abort();if(requestTimeout!==null)window.clearTimeout(requestTimeout);window.clearInterval(timer);parent.innerHTML='';}};
+ return {root,refresh:read,activate:()=>{void read();},dispose(){alive=false;clearNotebookDraft();request?.abort();if(requestTimeout!==null)window.clearTimeout(requestTimeout);window.clearInterval(timer);parent.innerHTML='';}};
 }
