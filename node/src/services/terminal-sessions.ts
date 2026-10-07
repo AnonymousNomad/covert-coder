@@ -159,6 +159,12 @@ export class TerminalSessionService {
   async open(input: OpenSessionInput): Promise<{ session: TerminalSessionInfoT } | { error: string }> {
     const resolved = await this.registry.resolve(input.provider, input.shell);
     if ('error' in resolved) return resolved;
+    // Authorized readiness precondition (e.g. WSL cold start). Runs only here,
+    // inside the terminal-open operation; failure must prevent PTY creation.
+    if (resolved.provider.prepareSession) {
+      const readiness = await resolved.provider.prepareSession(resolved.shell);
+      if ('error' in readiness) return readiness;
+    }
     const baseCwd = input.cwd && input.cwd.trim() ? input.cwd : this.defaultCwd;
     const cwd = translateCwd(input.provider, baseCwd);
     const { env, dropped } = buildTerminalEnv(this.deps.env);
