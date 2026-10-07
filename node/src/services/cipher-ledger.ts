@@ -31,7 +31,7 @@ function assertLineage(records:CipherLedgerRecordT[],input:CipherLedgerInputT) {
   if(['SECURITY_EVENT','TOMBSTONE'].includes(input.event_type))return;
   const prepared=own.find(record=>record.event_type==='PREPARE');
   if(!prepared)throw new CipherLedgerError('missing prepare lineage');
-  const immutable=['principal_id','principal_kind','origin_channel','project_id','task_id','capability','target_ref','target_digest'] as const;
+  const immutable=['principal_id','principal_kind','origin_channel','project_id','checkout_id','task_id','capability','target_ref','target_digest'] as const;
   if(immutable.some(key=>prepared[key]!==input[key]))throw new CipherLedgerError('immutable action lineage mismatch');
   if(input.event_type==='RECONCILIATION')throw new CipherLedgerError('unsupported reconciliation lineage');
   if(input.event_type==='AUTHORITY_DECISION'&&(!['ALLOWED','DENIED'].includes(input.result_state)||!input.authority_decision_ref))throw new CipherLedgerError('invalid authority lineage');
@@ -154,6 +154,12 @@ export function createCipherLedger(options:CipherLedgerOptions) {
       const limit=Math.max(1,Math.min(200,query.limit??200));
       return (state?.records??[]).filter(record=>(query.project_id===undefined||record.project_id===query.project_id)&&(query.task_id===undefined||record.task_id===query.task_id)).slice(-limit);
     }),
+    // Reconciliation reference only: this cannot reconstruct Project owner
+    // state. The current ledger remains configured-checkout scoped.
+    recordedProjectAddress:()=>serialized(async()=>{await open();const record=(state?.records??[]).filter(record=>record.origin_channel==='authority'&&record.event_type==='PREPARE'&&record.project_id!==null&&record.checkout_id!=null).at(-1);return record?{project_id:record.project_id!,checkout_id:record.checkout_id!}:null;}),
+    // Internal exact action lookup; unlike the operator's bounded activity page,
+    // this must find PREPARE even after more than 200 unrelated records.
+    action:(actionId:string)=>serialized(async()=>{await open();return (state?.records??[]).filter(record=>record.action_id===actionId);}),
     append:(input:unknown)=>serialized(async()=>{
       const parsed=CipherLedgerInput.safeParse(input);
       if(!parsed.success)throw new CipherLedgerError('invalid ledger metadata');

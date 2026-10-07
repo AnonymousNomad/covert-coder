@@ -13,6 +13,7 @@ export const CipherLedgerInput = z.object({
   principal_kind: z.enum(['operator','agent','adapter','service']),
   origin_channel: Ref,
   project_id: Ref.nullable(),
+  checkout_id: z.string().uuid().nullable().optional(),
   task_id: Ref.nullable(),
   capability: Ref,
   target_ref: Ref,

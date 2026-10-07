@@ -15,9 +15,9 @@
 
 | Measure | Before | Current |
 | --- | ---: | ---: |
-| OpenAPI operations | 235 | 244 |
-| OpenAPI paths | 223 | 231 |
-| Typed registrations | 236 | 244 |
+| OpenAPI operations | 235 | 245 |
+| OpenAPI paths | 223 | 232 |
+| Typed registrations | 236 | 245 |
 | Typed prefix registrations | — | 0 |
 | Typed registrations selected to legacy | 35 | 0 |
 | Documented operations without selected-backend handler | 31 | 0 |
