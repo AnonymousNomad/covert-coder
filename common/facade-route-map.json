@@ -201,6 +201,15 @@
     },
     {
       "method": "GET",
+      "path": "/api/cipher/laptop/notebook",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/cipher/laptop/status",
       "match": "exact",
       "target": "ts",
@@ -1120,6 +1129,24 @@
     {
       "method": "POST",
       "path": "/api/chat/stream",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/cipher/laptop/notebook",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/cipher/laptop/notebook/remove",
       "match": "exact",
       "target": "ts",
       "classification": "PUBLIC_TYPED",

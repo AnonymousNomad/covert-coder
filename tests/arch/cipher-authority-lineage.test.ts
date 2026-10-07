@@ -109,3 +109,30 @@ test('missing canonical audit receipt after a real effect holds integrity even w
   await assert.rejects(()=>authority.prepare(operator,{...input,taskId:'next'}),{code:'NOT_READY'});
  }finally{authority.control.close();await fs.rm(root,{recursive:true,force:true});}
 });
+
+test('a concurrent integrity hold between status read and append cannot admit an approved effect; running outcomes remain recordable',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'covert-gate-race-'));
+ const ledger=createCipherLedger({storageRoot:path.join(root,'laptop'),residentId:'covert.resident.cipher'});
+ let pause=false,release:()=>void=()=>{},signal:()=>void=()=>{};
+ const reached=new Promise<void>(resolve=>{signal=resolve;}),barrier=new Promise<void>(resolve=>{release=resolve;});
+ const port={...ledger,status:async()=>{const status=await ledger.status();if(pause){pause=false;signal();await barrier;}return status;}};
+ const audit=createAuditTrail({workspace:root}),authority=createExecutionAuthority({workspace:root,record:createCipherAuthorityRecorder({ledger:port,audit:event=>audit.emitAuthority(event)})});
+ try{
+  const origin='http://127.0.0.1:4174',paired=await authority.pair(authority.control.createPairing(origin),origin),operator=authority.authenticate(paired.token,origin);
+  const input={workspace:root,taskId:'race',kind:'workspace.write',args:{body:{path:'never.txt',content:'NEVER'}}};
+  const op=await authority.prepare(operator,input);await authority.decide(operator,op.operation_id,'approve');pause=true;let effects=0;
+  const execution=authority.execute(operator,op.operation_id,input,()=>{effects++;});
+  const rejected=assert.rejects(execution,{code:'NOT_READY'});
+  await reached;await ledger.reportAnomaly('OTHER_EFFECT_UNKNOWN','OPERATIONAL');release();await rejected;assert.equal(effects,0);
+ }finally{release();authority.control.close();await fs.rm(root,{recursive:true,force:true});}
+});
+
+test('an integrity hold blocks new effects but preserves durable outcomes of already-running authorized work',()=>fixture(async({root,ledger,authority,operator})=>{
+ let release:()=>void=()=>{},started:()=>void=()=>{};
+ const reached=new Promise<void>(resolve=>{started=resolve;}),barrier=new Promise<void>(resolve=>{release=resolve;});
+ const input={workspace:root,taskId:'running-outcome',kind:'workspace.write',args:{body:{path:'running.txt',content:'ACTUAL'}}};
+ const op=await authority.prepare(operator,input);await authority.decide(operator,op.operation_id,'approve');
+ const execution=authority.execute(operator,op.operation_id,input,async()=>{started();await barrier;await fs.writeFile(path.join(root,'running.txt'),'ACTUAL');return 'actual';});
+ await reached;await ledger.reportAnomaly('OTHER_EFFECT_UNKNOWN','OPERATIONAL');release();
+ assert.equal(await execution,'actual');assert.equal((await ledger.list()).at(-1)?.result_state,'OBSERVED');assert.equal((await ledger.status()).state,'RECONCILING');
+}));

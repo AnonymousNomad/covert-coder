@@ -16,9 +16,11 @@ import { httpOperationKind, type OperationInput } from '../../common/security/op
 import { routesForAuthority } from './routes/authority.ts';
 import { connectAuthorityChannel, type AuthorityPeer } from '../../common/security/authority-channel.mjs';
 import { StatePersistenceError } from './services/atomic-json.ts';
+import { createCipherNotebook, type CipherNotebook } from './services/cipher-notebook.ts';
 import { createCipherLedger, type CipherLedger } from './services/cipher-ledger.ts';
 import { createCipherAuthorityRecorder, bindCipherLedger } from './services/cipher-authority-recorder.ts';
 import { CIPHER_RESIDENT_ID } from '../../common/contracts/cipher-laptop.ts';
+import { CapabilitySeatRequest, type CapabilitySeatRequestT } from '../../common/contracts/capability-seat.ts';
 
 export class RouteError extends Error {
   readonly code: ErrorCode;
@@ -79,6 +81,7 @@ function requestOrigin(request: Pick<http.IncomingMessage, 'method' | 'headers'>
 export class ArchServer {
   readonly authority: ExecutionAuthority;
   readonly cipherLedger: CipherLedger;
+  readonly cipherNotebook: CipherNotebook;
   readonly logger: Logger;
   readonly processes: ProcessManager;
   readonly events: EventHub;
@@ -98,7 +101,8 @@ export class ArchServer {
     const audit = createAuditTrail({ workspace: this.workspace });
     this.cipherLedger = createCipherLedger({ storageRoot: path.join(workspace, '.aide', 'cipher-laptop'), residentId: CIPHER_RESIDENT_ID, onLockdown: () => this.authority.control.revokePending() });
     this.authority = createExecutionAuthority({ workspace: this.workspace, record: createCipherAuthorityRecorder({ ledger: this.cipherLedger, audit: event => audit.emitAuthority(event) }) });
-    bindCipherLedger(this.authority, this.cipherLedger);
+    this.cipherNotebook = createCipherNotebook({ storageRoot: path.join(workspace, '.aide', 'cipher-laptop'), residentId: CIPHER_RESIDENT_ID, authority: this.authority });
+    bindCipherLedger(this.authority, this.cipherLedger, this.cipherNotebook);
   }
 
   addShutdownHook(hook: () => Promise<void>): this {
@@ -201,17 +205,7 @@ export class ArchServer {
       const dispatch = async () => {
         if (publicHealth || route.authorityMode) return invoke();
         if (!actor) throw new RouteError('FORBIDDEN', 'authenticated actor required');
-        const input = await this.operationInput(route, url, context, String(request.headers['x-aide-task'] ?? `http:${actor.id}`));
-        let id = request.headers['x-aide-operation'];
-        if (input.kind.endsWith('.read')) {
-          id = (await this.authority.prepare(actor, input)).operation_id;
-        } else if (typeof id !== 'string') {
-          throw new RouteError('NOT_READY', 'exact operation approval required', { reason: 'APPROVAL_REQUIRED', adapter: 'ts' });
-        }
-        return this.authority.execute(actor, String(id), input, async (_operation, execution) => {
-          context.execution = execution;
-          return invoke();
-        });
+        return this.governedDispatch(route, url, context, String(request.headers['x-aide-task'] ?? `http:${actor.id}`), request.headers['x-aide-operation'], invoke);
       };
       if (route.stream !== undefined) {
         const terminal = await dispatch();
@@ -297,6 +291,50 @@ export class ArchServer {
 
   private match(method: string, pathname: string): Route | undefined {
     return this.routes.find(route => route.method === method && (route.prefix ? pathname.startsWith(route.path) : pathname === route.path));
+  }
+
+  // Trusted composition-root port for a PRE-ENROLLED principal. It has no
+  // credentials, delegation, approval or control surface. Not an HTTP endpoint
+  // or a model-executable extension host.
+  capabilityPort(actor: ActorHandle) {
+    this.authority.assertActor(actor);
+    const resolve = (value: CapabilitySeatRequestT) => {
+      this.authority.assertActor(actor);
+      const input = CapabilitySeatRequest.parse(value);
+      if (Buffer.byteLength(JSON.stringify(input)) > MAX_BODY_BYTES) throw new RouteError('PAYLOAD_TOO_LARGE', 'capability request exceeds limit');
+      const url = new URL(input.path, 'http://127.0.0.1');
+      const route = this.match(input.method, url.pathname);
+      if (!route || route.authorityMode || route.stream) throw new RouteError('FORBIDDEN', 'registered non-stream capability required');
+      const query = Object.fromEntries(url.searchParams);
+      const queryResult = route.query ? route.query.safeParse(query) : { success: true as const, data: query };
+      const bodyResult = route.body ? route.body.safeParse(input.body ?? {}) : { success: true as const, data: input.body ?? {} };
+      if (!queryResult.success || !bodyResult.success) throw new RouteError('BAD_REQUEST', 'invalid capability parameters');
+      const context: RouteContext = { query: queryResult.data as Record<string,string>, body: bodyResult.data, actor, authority:this.authority };
+      return {input,url,route,context};
+    };
+    return Object.freeze({
+      prepare: async (request: CapabilitySeatRequestT) => {
+        const {input,url,route,context}=resolve(request);
+        return this.authority.prepare(actor,await this.operationInput(route,url,context,input.task_id));
+      },
+      invoke: async (request: CapabilitySeatRequestT,operationId?: string) => {
+        const {input,url,route,context}=resolve(request);
+        const data=await this.governedDispatch(route,url,context,input.task_id,operationId,async()=>route.handler(context));
+        const result=route.response.safeParse(data);
+        if(!result.success)throw new RouteError('INTERNAL','capability response violates contract');
+        return result.data;
+      }
+    });
+  }
+
+  private async governedDispatch(route: Route, url: URL, context: RouteContext, taskId: string, operationId: unknown, invoke: () => Promise<unknown>): Promise<unknown> {
+    const actor=context.actor;
+    if(!actor)throw new RouteError('FORBIDDEN','authenticated actor required');
+    const input=await this.operationInput(route,url,context,taskId);
+    let id=operationId;
+    if(input.kind.endsWith('.read'))id=(await this.authority.prepare(actor,input)).operation_id;
+    else if(typeof id!=='string')throw new RouteError('NOT_READY','exact operation approval required',{reason:'APPROVAL_REQUIRED',adapter:'ts'});
+    return this.authority.execute(actor,String(id),input,async(_operation,execution)=>{context.execution=execution;return invoke();});
   }
 
   private async operationInput(route: Route, url: URL, context: RouteContext, taskId: string): Promise<OperationInput> {

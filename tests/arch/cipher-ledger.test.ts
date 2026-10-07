@@ -69,7 +69,9 @@ test('duplicate action prepare is refused rather than rewritten or blindly retri
 }));
 test('authority decision and attempt require real prepare lineage; no fabricated completion', () => fixture(async root => {
   const owner=createCipherLedger({storageRoot:root,residentId});
-  await assert.rejects(()=>owner.append({...prepare('absent'),event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED'}),/lineage/);
+  const absent=createCipherLedger({storageRoot:path.join(root,'missing-lineage'),residentId});
+  await assert.rejects(()=>absent.append({...prepare('absent'),event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED'}),/lineage/);
+  assert.equal((await absent.status()).state,'LOCKDOWN');
   await owner.append(prepare('action'));
   await owner.append({...prepare('action'),event_type:'AUTHORITY_DECISION',result_state:'DENIED',authority_decision_ref:'authority:action:reject'});
   await assert.rejects(()=>owner.append({...prepare('action'),event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED'}),/lineage/);
@@ -138,4 +140,27 @@ test('unknown observation remains unresolved across restart and cannot be replay
  const restarted=createCipherLedger({storageRoot:root,residentId});
  assert.equal((await restarted.status()).state,'RECONCILING');
  await assert.rejects(()=>restarted.append(prepare('retry')),/RECONCILIATION/);
+}));
+
+test('live UNKNOWN observation immediately holds future effects without waiting for restart',()=>fixture(async root=>{
+ const owner=createCipherLedger({storageRoot:root,residentId});
+ await owner.append(prepare('unknown-live'));
+ await owner.append({...prepare('unknown-live'),event_type:'AUTHORITY_DECISION',result_state:'ALLOWED',authority_decision_ref:'authority:unknown-live:approve'});
+ await owner.append({...prepare('unknown-live'),event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED',effect_generation:'unknown-live:1',authority_decision_ref:'authority:unknown-live:approve'});
+ await owner.append({...prepare('unknown-live'),event_type:'OBSERVATION',result_state:'UNKNOWN_PENDING_RECONCILIATION',observation_ref:'authority:unknown-live:unknown'});
+ assert.equal((await owner.status()).state,'RECONCILING');
+ await assert.rejects(()=>owner.append(prepare('never-admit')),/RECONCILIATION/);
+}));
+test('prepared principal, scope, capability and intent cannot change in later lineage; mismatch locks persistently',()=>fixture(async root=>{
+ const owner=createCipherLedger({storageRoot:root,residentId});await owner.append(prepare('bound'));
+ await assert.rejects(()=>owner.append({...prepare('bound'),principal_id:'different',target_digest:'b'.repeat(64),event_type:'AUTHORITY_DECISION',result_state:'ALLOWED',authority_decision_ref:'authority:bound:approve'}),/lineage/);
+ assert.equal((await owner.status()).state,'LOCKDOWN');
+ assert.equal((await createCipherLedger({storageRoot:root,residentId}).status()).state,'LOCKDOWN');
+ assert.equal((await owner.list()).length,1);
+}));
+test('missing effect lineage is a security invariant failure and unsupported reconciliation cannot clear it',()=>fixture(async root=>{
+ const owner=createCipherLedger({storageRoot:root,residentId});await owner.append(prepare('mismatch'));
+ await assert.rejects(()=>owner.append({...prepare('mismatch'),event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED',effect_generation:'mismatch:1',authority_decision_ref:'authority:mismatch:approve'}),/lineage/);
+ assert.equal((await owner.status()).state,'LOCKDOWN');
+ await assert.rejects(()=>owner.append({...prepare('mismatch'),event_type:'RECONCILIATION',result_state:'VERIFIED',evidence_ref:'fake:evidence'}),/LOCKDOWN/);
 }));

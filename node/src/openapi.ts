@@ -84,7 +84,7 @@ import { createResourceAdmission } from './services/resource-admission.ts';
 import { routesForResourceAdmission } from './routes/resource-admission.ts';
 import { createProvenanceLedger } from './services/provenance-ledger.ts';
 import { routesForCipherLaptop } from './routes/cipher-laptop.ts';
-import { cipherLedgerForAuthority } from './services/cipher-authority-recorder.ts';
+import { cipherLedgerForAuthority, cipherNotebookForAuthority } from './services/cipher-authority-recorder.ts';
 import { createAttemptJournal } from './services/attempt-journal.ts';
 import { routesForAttempts } from './routes/attempts.ts';
 import { routesForProvenance } from './routes/provenance.ts';
@@ -872,7 +872,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForContinuation(continuationManager, workspace),
     ...routesForResourceAdmission(resourceAdmission),
     ...routesForProvenance(provenanceLedger),
-    ...routesForCipherLaptop(options.authority ? cipherLedgerForAuthority(options.authority) : undefined),
+    ...routesForCipherLaptop(options.authority ? cipherLedgerForAuthority(options.authority) : undefined, options.authority ? cipherNotebookForAuthority(options.authority) : undefined),
     ...routesForAttempts(attemptJournal),
     ...routesForReadiness(readinessService),
     ...routesForEgressManifest(egressManifest),
