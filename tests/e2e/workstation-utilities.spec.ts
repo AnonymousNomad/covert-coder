@@ -67,6 +67,11 @@ test('Resource Monitor projects real hardware owner samples through workstation 
 test('selected WSL terminal executes in the exact distribution without native fallback', async ({page}) => {
   test.skip(process.platform !== 'win32', 'Windows WSL proof requires the Windows host');
   const {errors,sessions}=await pairWorkstation(page,'wsl');
+  page.on('response', response => {
+    if(response.request().method()==='POST'&&new URL(response.url()).pathname==='/api/terminal/sessions'){
+      void response.json().then((raw:{error?:unknown;data?:{session?:unknown}})=>console.log('WSL_OWNER_RESPONSE',response.status(),JSON.stringify(raw.error??raw.data?.session))).catch(()=>{});
+    }
+  });
   const frame=page.locator('.desktop-window[data-instance-id="terminal"]');
   const wsl=frame.locator('.terminal-provider').filter({hasText:/^WSL/});
   await expect(wsl).toContainText('AVAILABLE');
@@ -94,6 +99,10 @@ test('selected WSL terminal executes in the exact distribution without native fa
     await frame.locator('.xterm-helper-textarea').press('Enter');
     await expect(frame.locator('.terminal-session')).toContainText(/Session stopped/i);
     expect(errors).toEqual([]);
+  } catch(error) {
+    console.log('WSL_UI_ON_FAILURE',await frame.innerText());
+    await page.screenshot({path:test.info().outputPath('covert-wsl-failure.png'),fullPage:true});
+    throw error;
   } finally {
     const stop=frame.getByRole('button',{name:'STOP SESSION',exact:true});
     if(!page.isClosed() && await stop.isVisible()) {
