@@ -12,7 +12,7 @@ const runId = randomUUID();
 const tempRoot = path.resolve(os.tmpdir());
 const workspace = path.join(tempRoot, `covert-workstation-e2e-${runId}`);
 const pairingProof = path.join(tempRoot, `covert-workstation-e2e-pair-${runId}.txt`);
-const proofFiles = [pairingProof, ...['terminal-refresh', 'dual-terminals', 'dual-restart', 'utilities', 'wsl'].map(suffix => `${pairingProof}.${suffix}`)];
+const proofFiles = [pairingProof, ...['terminal-refresh', 'dual-terminals', 'dual-restart', 'utilities', 'wsl', 'laptop', 'laptop-restart'].map(suffix => `${pairingProof}.${suffix}`)];
 
 function assertOwnedTempPath(target) {
   const relative = path.relative(tempRoot, target);

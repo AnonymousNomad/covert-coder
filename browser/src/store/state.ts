@@ -24,6 +24,7 @@ export type Panel =
   | 'terminal'
   | 'models'
   | 'resources'
+  | 'cipher-laptop'
   | 'skills'
   | 'memory'
   | 'verification'

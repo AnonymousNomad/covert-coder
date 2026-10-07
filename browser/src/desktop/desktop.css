@@ -726,3 +726,43 @@ body,
 .covert-desktop-shell .resource-monitor-source { color: var(--desktop-text-muted); }
 .covert-desktop-shell .resource-monitor-track { height: 5px; border: 1px solid var(--desktop-border-focus); background: var(--desktop-inset); }
 .covert-desktop-shell .resource-monitor-fill { height: 100%; background: var(--desktop-accent); }
+
+/* Cipher Laptop is a projection of durable working records, never Authority. */
+.covert-desktop-shell .cipher-laptop { padding: 8px; color: var(--desktop-text); font: 12px/1.4 var(--desktop-font-mono); }
+.covert-desktop-shell .cipher-laptop-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--desktop-border); }
+.covert-desktop-shell .cipher-laptop h2 { margin: 0; color: var(--desktop-accent); font: inherit; }
+.covert-desktop-shell .cipher-laptop button { padding: 2px 7px; border: 1px solid var(--desktop-border-focus); border-radius: 0; background: var(--desktop-inset); color: var(--desktop-text); font: inherit; }
+.covert-desktop-shell .cipher-laptop button[aria-pressed='true'] { background: var(--desktop-accent); color: var(--desktop-inset); }
+.covert-desktop-shell .cipher-laptop-tabs { display: flex; gap: 4px; margin: 6px 0; }
+.covert-desktop-shell .cipher-laptop-status, .covert-desktop-shell .cipher-laptop-note { color: var(--desktop-text-muted); margin: 6px 0; overflow-wrap: anywhere; }
+.covert-desktop-shell .cipher-laptop-content { overflow-wrap: anywhere; }
+.covert-desktop-shell .cipher-laptop-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.covert-desktop-shell .cipher-laptop-table td, .covert-desktop-shell .cipher-laptop-table th { padding: 4px; border-bottom: 1px solid var(--desktop-border); text-align: left; vertical-align: top; font-weight: normal; overflow-wrap: anywhere; }
+.covert-desktop-shell .cipher-laptop-table th { color: var(--desktop-accent); }
+.covert-desktop-shell .cipher-laptop-security { display: grid; grid-template-columns: 120px 1fr; gap: 4px 8px; }
+.covert-desktop-shell .cipher-laptop-security dt { color: var(--desktop-accent); }
+.covert-desktop-shell .cipher-laptop-security dd { margin: 0; overflow-wrap: anywhere; }
+
+.covert-desktop-shell .cipher-notebook-record { border-bottom: 1px solid var(--desktop-border); padding: 6px 0; }
+.covert-desktop-shell .cipher-notebook-record h3 { margin: 0; font: inherit; color: var(--desktop-accent); }
+.covert-desktop-shell .cipher-notebook-form { display: grid; gap: 5px; padding: 8px 0; }
+.covert-desktop-shell .cipher-notebook-form input:not([type='checkbox']), .covert-desktop-shell .cipher-notebook-form textarea, .covert-desktop-shell .cipher-notebook-form select { width: 100%; box-sizing: border-box; border: 1px solid var(--desktop-border-focus); border-radius: 0; color: var(--desktop-text); background: var(--desktop-inset); font: inherit; padding: 3px; }
+.covert-desktop-shell .cipher-notebook-form textarea { min-height: 64px; resize: vertical; }
+
+.covert-desktop-shell .cipher-laptop { display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-height: 0; }
+.covert-desktop-shell .cipher-laptop-toolbar, .covert-desktop-shell .cipher-laptop-tabs, .covert-desktop-shell .cipher-laptop-status, .covert-desktop-shell .cipher-laptop > .cipher-laptop-note { flex: 0 0 auto; }
+.covert-desktop-shell .cipher-laptop-content { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.covert-desktop-shell .cipher-notebook-form label > span { display: inline-block; margin-right: 6px; }
+
+/* Retained terminal utilities inherit the workstation palette, not historical blue/purple chrome. */
+.covert-desktop-shell .terminal-panel {
+  --covert-text: var(--desktop-text);
+  --covert-muted: var(--desktop-text-muted);
+  --covert-green: var(--desktop-accent);
+  --covert-blue: var(--desktop-accent);
+  --covert-purple: var(--desktop-accent);
+  --covert-amber: var(--desktop-warning);
+  --covert-danger: var(--desktop-failure);
+  --covert-bg-gunmetal: var(--desktop-inset);
+  --covert-line: var(--desktop-border);
+}

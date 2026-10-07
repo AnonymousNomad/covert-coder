@@ -107,7 +107,8 @@ export function createShell(app: HTMLElement, store: Store<AppState>): Shell {
     'security': document.getElementById('stage-security'),
     'extensions': null,
     'settings': null,
-    'resources': null
+    'resources': null,
+    'cipher-laptop': null
   };
 
   function applyPanelState(panel: Panel): void {

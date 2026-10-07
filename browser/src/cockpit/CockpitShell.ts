@@ -11,6 +11,7 @@ import { createSystemTelemetry, type SystemTelemetryHandles } from './SystemTele
 import { createActivityTimeline, type ActivityTimelineHandles } from './ActivityTimeline.ts';
 import { createBottomStrip, type BottomStripHandles } from './BottomStrip.ts';
 import { createCommandCenterPanel } from '../panels/command-center.ts';
+import { createCipherLaptopPanel } from '../panels/cipher-laptop.ts';
 import { createModelsPanel } from '../panels/models.ts';
 import { TerminalViewBindings } from '../desktop/terminal-view-bindings.ts';
 import { createTerminalPanel } from '../panels/terminal.ts';
@@ -197,6 +198,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const terminalRoot = appRoot('terminal');
   const modelsRoot = appRoot('models');
   const resourcesRoot = appRoot('resources');
+  const laptopRoot = appRoot('cipher-laptop');
   const skillsRoot = appRoot('skills');
   const memoryRoot = appRoot('memory');
   const verificationRoot = appRoot('verification');
@@ -226,6 +228,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const terminalInstances = new Map<string, PanelRegistration>([['terminal', terminal]]);
   const models = lazyPanel(modelsRoot, () => createModelsPanel(modelsRoot, store));
   const resources = lazyPanel(resourcesRoot, () => createSystemTelemetry(resourcesRoot, store));
+  const laptop = lazyPanel(laptopRoot, () => createCipherLaptopPanel(laptopRoot));
   const skills = lazyPanel(skillsRoot, () => createSkillsPanel(skillsRoot, store));
   const memory = lazyPanel(memoryRoot, () => createMemoryPanel(memoryRoot, store));
   const verification = lazyPanel(verificationRoot, () => createVerificationPanel(verificationRoot, store));
@@ -275,6 +278,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     terminal,
     models,
     resources,
+    'cipher-laptop': laptop,
     skills,
     memory,
     verification,
