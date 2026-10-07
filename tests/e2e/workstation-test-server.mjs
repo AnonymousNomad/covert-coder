@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ArchServer } from '../../node/src/server.ts';
 import { TerminalSessionService } from '../../node/src/services/terminal-sessions.ts';
+import { createDefaultProviderDeps } from '../../node/src/services/runtime-providers.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
 
 const workspaceValue = process.env.AIDE_WORKSTATION_E2E_WORKSPACE;
@@ -21,8 +22,33 @@ await fs.writeFile(path.join(workspace, '.aide', 'session.json'), JSON.stringify
 }), 'utf8');
 
 const server = new ArchServer(workspace, path.join(workspace, '.aide', 'logs', 'workstation-e2e.log'));
+// Preserve real provider timings outside fixture cleanup; no credentials or env values.
+const providerTraceFile = proofFile + '.provider-trace.jsonl';
+const providerDeps = createDefaultProviderDeps();
+const traceProvider = (phase, data) => fs.appendFile(providerTraceFile, JSON.stringify({ utc: new Date().toISOString(), phase, ...data }) + '\n');
 const terminalSessions = new TerminalSessionService({
   defaultCwd: workspace,
+  deps: {
+    exec: async (file, args, encoding) => {
+      const started = Date.now();
+      await traceProvider('probe-start', { file, args });
+      const result = await providerDeps.exec(file, args, encoding);
+      await traceProvider('probe-end', { elapsedMs: Date.now() - started, code: result.code });
+      return result;
+    },
+    execBounded: async (file, args, budget, encoding) => {
+      const started = Date.now();
+      await traceProvider('readiness-start', { file, args, budget });
+      try {
+        const result = await providerDeps.execBounded(file, args, budget, encoding);
+        await traceProvider('readiness-end', { elapsedMs: Date.now() - started, code: result.code });
+        return result;
+      } catch (error) {
+        await traceProvider('readiness-refused', { elapsedMs: Date.now() - started, message: String(error) });
+        throw error;
+      }
+    }
+  },
   onEvent: (event, owner) => server.events.publish('terminal', event, identity => identity?.id === owner)
 });
 server.registerControlHandler((message, context) => terminalSessions.handleControl(message, context.identity));
