@@ -16,6 +16,9 @@ import { httpOperationKind, type OperationInput } from '../../common/security/op
 import { routesForAuthority } from './routes/authority.ts';
 import { connectAuthorityChannel, type AuthorityPeer } from '../../common/security/authority-channel.mjs';
 import { StatePersistenceError } from './services/atomic-json.ts';
+import { createCipherLedger, type CipherLedger } from './services/cipher-ledger.ts';
+import { createCipherAuthorityRecorder, bindCipherLedger } from './services/cipher-authority-recorder.ts';
+import { CIPHER_RESIDENT_ID } from '../../common/contracts/cipher-laptop.ts';
 
 export class RouteError extends Error {
   readonly code: ErrorCode;
@@ -59,6 +62,7 @@ export const SERVER_KEEP_ALIVE_TIMEOUT_MS = 65_000;
 
 export class ArchServer {
   readonly authority: ExecutionAuthority;
+  readonly cipherLedger: CipherLedger;
   readonly logger: Logger;
   readonly processes: ProcessManager;
   readonly events: EventHub;
@@ -76,7 +80,9 @@ export class ArchServer {
     this.processes = new ProcessManager(this.logger);
     this.events = new EventHub(this.logger);
     const audit = createAuditTrail({ workspace: this.workspace });
-    this.authority = createExecutionAuthority({ workspace: this.workspace, record: event => audit.emitAuthority(event) });
+    this.cipherLedger = createCipherLedger({ storageRoot: path.join(workspace, '.aide', 'cipher-laptop'), residentId: CIPHER_RESIDENT_ID, onLockdown: () => this.authority.control.revokePending() });
+    this.authority = createExecutionAuthority({ workspace: this.workspace, record: createCipherAuthorityRecorder({ ledger: this.cipherLedger, audit: event => audit.emitAuthority(event) }) });
+    bindCipherLedger(this.authority, this.cipherLedger);
   }
 
   addShutdownHook(hook: () => Promise<void>): this {
@@ -102,6 +108,8 @@ export class ArchServer {
   }
 
   async listen(port: number, host = '127.0.0.1'): Promise<http.Server> {
+    // Verify history before ingress. LOCKDOWN retains operator read/recovery access.
+    await this.cipherLedger.status();
     for (const route of routesForAuthority()) if (!this.match(route.method, route.path)) this.route(route);
     const server = http.createServer((request, response) => {
       void this.handle(request, response);

@@ -4966,6 +4966,624 @@
         }
       }
     },
+    "/api/cipher/laptop/activity": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "records": {
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "action_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "event_type": {
+                            "type": "string",
+                            "enum": [
+                              "PREPARE",
+                              "AUTHORITY_DECISION",
+                              "EFFECT_ATTEMPT",
+                              "OBSERVATION",
+                              "VERIFICATION",
+                              "RECONCILIATION",
+                              "SECURITY_EVENT",
+                              "TOMBSTONE"
+                            ]
+                          },
+                          "principal_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "principal_kind": {
+                            "type": "string",
+                            "enum": [
+                              "operator",
+                              "agent",
+                              "adapter",
+                              "service"
+                            ]
+                          },
+                          "origin_channel": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "project_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "task_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "capability": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "target_ref": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "target_digest": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "result_state": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "ALLOWED",
+                              "DENIED",
+                              "APPLIED",
+                              "OBSERVED",
+                              "VERIFIED",
+                              "FAILED",
+                              "UNKNOWN_PENDING_RECONCILIATION",
+                              "EXTERNAL_OR_UNATTRIBUTED"
+                            ]
+                          },
+                          "authority_decision_ref": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "admission_decision_ref": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "effect_generation": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "observation_ref": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "evidence_ref": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "schema": {
+                            "type": "string",
+                            "const": "covert.cipher-ledger-record.v1"
+                          },
+                          "ledger_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "resident_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "sequence": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "event_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "recorded_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "previous_record_hash": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "record_hash": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "signature_state": {
+                            "type": "string",
+                            "const": "SIGNATURE_UNAVAILABLE"
+                          }
+                        },
+                        "required": [
+                          "action_id",
+                          "event_type",
+                          "principal_id",
+                          "principal_kind",
+                          "origin_channel",
+                          "project_id",
+                          "task_id",
+                          "capability",
+                          "target_ref",
+                          "target_digest",
+                          "result_state",
+                          "schema",
+                          "ledger_id",
+                          "resident_id",
+                          "sequence",
+                          "event_id",
+                          "recorded_at",
+                          "previous_record_hash",
+                          "record_hash",
+                          "signature_state"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "status": {
+                      "type": "object",
+                      "properties": {
+                        "schema": {
+                          "type": "string",
+                          "const": "covert.lockdown-state.v1"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "NORMAL",
+                            "DEGRADED",
+                            "RECONCILING",
+                            "LOCKDOWN"
+                          ]
+                        },
+                        "generation": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "entered_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "reasons": {
+                          "maxItems": 64,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": [
+                                  "INFO",
+                                  "OPERATIONAL",
+                                  "SECURITY_CRITICAL"
+                                ]
+                              },
+                              "evidence_ref": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 240,
+                                    "pattern": "^[A-Za-z0-9._:/@-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "severity",
+                              "evidence_ref"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "operator_ack_required": {
+                          "type": "boolean"
+                        },
+                        "ledger_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resident_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240,
+                          "pattern": "^[A-Za-z0-9._:/@-]+$"
+                        },
+                        "integrity": {
+                          "type": "string",
+                          "enum": [
+                            "HASH_CHAIN_VERIFIED",
+                            "UNAVAILABLE",
+                            "FAILED"
+                          ]
+                        },
+                        "signature_state": {
+                          "type": "string",
+                          "const": "SIGNATURE_UNAVAILABLE"
+                        },
+                        "checkpoint_root": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "record_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "unresolved_actions": {
+                          "maxItems": 10000,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          }
+                        },
+                        "limitations": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 300
+                          }
+                        }
+                      },
+                      "required": [
+                        "schema",
+                        "state",
+                        "generation",
+                        "entered_at",
+                        "reasons",
+                        "operator_ack_required",
+                        "ledger_id",
+                        "resident_id",
+                        "integrity",
+                        "signature_state",
+                        "checkpoint_root",
+                        "record_count",
+                        "unresolved_actions",
+                        "limitations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "records",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          }
+        ]
+      }
+    },
+    "/api/cipher/laptop/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schema": {
+                      "type": "string",
+                      "const": "covert.lockdown-state.v1"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "NORMAL",
+                        "DEGRADED",
+                        "RECONCILING",
+                        "LOCKDOWN"
+                      ]
+                    },
+                    "generation": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "entered_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "reasons": {
+                      "maxItems": 64,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "INFO",
+                              "OPERATIONAL",
+                              "SECURITY_CRITICAL"
+                            ]
+                          },
+                          "evidence_ref": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240,
+                                "pattern": "^[A-Za-z0-9._:/@-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "severity",
+                          "evidence_ref"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "operator_ack_required": {
+                      "type": "boolean"
+                    },
+                    "ledger_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "resident_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 240,
+                      "pattern": "^[A-Za-z0-9._:/@-]+$"
+                    },
+                    "integrity": {
+                      "type": "string",
+                      "enum": [
+                        "HASH_CHAIN_VERIFIED",
+                        "UNAVAILABLE",
+                        "FAILED"
+                      ]
+                    },
+                    "signature_state": {
+                      "type": "string",
+                      "const": "SIGNATURE_UNAVAILABLE"
+                    },
+                    "checkpoint_root": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "record_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "unresolved_actions": {
+                      "maxItems": 10000,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240,
+                        "pattern": "^[A-Za-z0-9._:/@-]+$"
+                      }
+                    },
+                    "limitations": {
+                      "maxItems": 8,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 300
+                      }
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "state",
+                    "generation",
+                    "entered_at",
+                    "reasons",
+                    "operator_ack_required",
+                    "ledger_id",
+                    "resident_id",
+                    "integrity",
+                    "signature_state",
+                    "checkpoint_root",
+                    "record_count",
+                    "unresolved_actions",
+                    "limitations"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/closed-loop/status": {
       "get": {
         "responses": {
