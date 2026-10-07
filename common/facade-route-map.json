@@ -192,6 +192,24 @@
     },
     {
       "method": "GET",
+      "path": "/api/cipher/laptop/activity",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/cipher/laptop/status",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/closed-loop/status",
       "match": "exact",
       "target": "ts",

@@ -50,12 +50,14 @@ function verify(state:CipherLedgerStateT,identity:z.infer<typeof Identity>) {
 function unresolved(records:CipherLedgerRecordT[]):string[] {
   const latest=new Map<string,CipherLedgerRecordT>();
   for(const record of records)if(!['SECURITY_EVENT','TOMBSTONE'].includes(record.event_type))latest.set(record.action_id,record);
-  return [...latest].filter(([,record])=>!(['OBSERVATION','VERIFICATION'].includes(record.event_type)||record.result_state==='DENIED')).map(([id])=>id);
+  return [...latest].filter(([,record])=>!(record.event_type==='VERIFICATION'||(record.event_type==='OBSERVATION'&&record.result_state!=='UNKNOWN_PENDING_RECONCILIATION')||record.result_state==='DENIED')).map(([id])=>id);
 }
-export interface CipherLedgerOptions {storageRoot:string;residentId:string;testHooks?:AtomicJsonTestHooks}
+export interface CipherLedgerOptions {storageRoot:string;residentId:string;testHooks?:AtomicJsonTestHooks;onLockdown?:()=>void}
 export function createCipherLedger(options:CipherLedgerOptions) {
   const root=path.resolve(options.storageRoot),file=path.join(root,'ledger.json'),identityFile=path.join(root,'identity.json'),lockFile=path.join(root,'lockdown.json');
   let initialized=false;
+  let lockdownNotified=false;
+  function containPending(){if(security.state==='LOCKDOWN'&&!lockdownNotified){options.onLockdown?.();lockdownNotified=true;}}
   let state:CipherLedgerStateT|null=null;
   let identity:z.infer<typeof Identity>|null=null;
   let security:CipherLockdownT={schema:'covert.lockdown-state.v1',state:'NORMAL',generation:0,entered_at:new Date().toISOString(),reasons:[],operator_ack_required:false};
@@ -89,6 +91,9 @@ export function createCipherLedger(options:CipherLedgerOptions) {
     const next=severity==='SECURITY_CRITICAL'?'LOCKDOWN':severity==='OPERATIONAL'?'RECONCILING':security.state;
     const parsed=CipherLockdown.parse({...security,state:security.state==='LOCKDOWN'?'LOCKDOWN':next,generation:security.generation+1,entered_at:new Date().toISOString(),reasons:[...security.reasons,{code,severity,evidence_ref}].slice(-64),operator_ack_required:severity!=='INFO'||security.operator_ack_required});
     security=parsed;
+    // Trusted composition-root callback runs before storage: persistent failure
+    // must not leave already-issued permits usable. This does not kill processes.
+    containPending();
     await safeDirectory(true);
     await atomicWriteJson(lockFile,parsed,{validate:value=>{CipherLockdown.parse(value);}});
     if(identity!==null){
@@ -116,6 +121,7 @@ export function createCipherLedger(options:CipherLedgerOptions) {
       if(identity?.lockdown_hash&&(nextSecurity===null||identity.lockdown_hash!==createHash('sha256').update(canonicalLedgerJson(nextSecurity)).digest('hex')))throw new CipherLedgerError('LOCKDOWN_HISTORY_MISMATCH');
       if(!starting&&security.state==='LOCKDOWN'&&nextSecurity?.state!=='LOCKDOWN')throw new CipherLedgerError('LOCKDOWN_CANNOT_CLEAR');
       if(nextSecurity!==null)security=nextSecurity;
+      containPending();
       if(starting&&security.state!=='LOCKDOWN'&&state&&unresolved(state.records).length){
         await setSecurity('UNKNOWN_PENDING_RECONCILIATION','OPERATIONAL');
       }

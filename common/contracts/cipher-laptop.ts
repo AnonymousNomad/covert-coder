@@ -71,3 +71,4 @@ export type CipherLedgerRecordT=z.infer<typeof CipherLedgerRecord>;
 export type CipherLedgerStateT=z.infer<typeof CipherLedgerState>;
 export type CipherLockdownT=z.infer<typeof CipherLockdown>;
 export type CipherLedgerStatusT=z.infer<typeof CipherLedgerStatus>;
+export type CipherLedgerListResponseT=z.infer<typeof CipherLedgerListResponse>;

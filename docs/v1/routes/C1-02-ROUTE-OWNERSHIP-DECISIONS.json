@@ -18,11 +18,11 @@
   },
   "counts": {
     "openApiOperationsBefore": 235,
-    "openApiOperationsAfter": 239,
+    "openApiOperationsAfter": 241,
     "openApiPathsBefore": 223,
-    "openApiPathsAfter": 227,
+    "openApiPathsAfter": 229,
     "typedRegistrationsBefore": 236,
-    "typedRegistrationsAfter": 239,
+    "typedRegistrationsAfter": 241,
     "typedPrefixRegistrationsAfter": 0,
     "facadeTypedToLegacyBefore": 35,
     "facadeTypedToLegacyAfter": 0,
@@ -7344,7 +7344,7 @@
       "currentFrontendCallers": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 280,
+          "line": 281,
           "methodEvidence": "GET",
           "source": "return call('/api/readiness', { schema: ReadinessResponse });"
         }
@@ -9355,7 +9355,7 @@
         },
         {
           "file": "browser/src/services/api.ts",
-          "line": 288,
+          "line": 289,
           "methodEvidence": "POST",
           "source": "return call('/api/file', { query: query.data, schema: FileReadResponse });"
         }
@@ -9466,7 +9466,7 @@
       "otherFrontendMethodReferences": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 299,
+          "line": 300,
           "methodEvidence": "POST",
           "source": "return call('/api/search', { query: query.data, schema: SearchResponse });"
         }

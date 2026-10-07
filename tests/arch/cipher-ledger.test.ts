@@ -127,3 +127,15 @@ test('malformed storage and unsupported schema cannot become an empty notebook',
  assert.equal((await owner.status()).state,'LOCKDOWN');
  await assert.rejects(()=>owner.append(prepare('action')),/LOCKDOWN/);
 }));
+
+test('unknown observation remains unresolved across restart and cannot be replayed',()=>fixture(async root=>{
+ const owner=createCipherLedger({storageRoot:root,residentId});
+ await owner.append(prepare('unknown'));
+ await owner.append({...prepare('unknown'),event_type:'AUTHORITY_DECISION',result_state:'ALLOWED',authority_decision_ref:'authority:unknown:approve'});
+ await owner.append({...prepare('unknown'),event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED',effect_generation:'unknown:1',authority_decision_ref:'authority:unknown:approve'});
+ await owner.append({...prepare('unknown'),event_type:'OBSERVATION',result_state:'UNKNOWN_PENDING_RECONCILIATION',observation_ref:'authority:unknown:failure'});
+ assert.deepEqual((await owner.status()).unresolved_actions,['unknown']);
+ const restarted=createCipherLedger({storageRoot:root,residentId});
+ assert.equal((await restarted.status()).state,'RECONCILING');
+ await assert.rejects(()=>restarted.append(prepare('retry')),/RECONCILIATION/);
+}));

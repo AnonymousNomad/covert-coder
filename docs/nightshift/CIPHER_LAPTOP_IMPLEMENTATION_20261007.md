@@ -21,3 +21,12 @@ Results preserve semantic distinctions: prepare, Authority decision, attempt, ob
 Sixteen focused tests passed after additional negative tests exposed three defects: manufactured verification, removed-lockdown recovery and deletion of both live owner history files. All three were repaired without weakening assertions. Initial node types also exposed strict optional-field incompatibility; the typed input contract repaired it without suppression.
 
 This owner is not yet mounted or correlated into real Authority effects at this slice. No complete lockdown/containment, signing, credential gating, Laptop UI, notebook correction, Buddy policy, Pack installation, remote channel or whole-platform acceptance is claimed. The next slice wires the deterministic Authority boundary and live read projections, then proves negative execution/restart behavior. Existing H3 attempt/admission, provenance, memory, Authority, tasks and verifier owners are preserved and referenced.
+
+## Production Authority adoption
+The real server now owns one Laptop ledger and binds its required Authority recorder to it. Operator-only status/activity read routes project that same owner. Mutation prepare, decision and pre-effect attempt must be durable before the executor can enter. Required canonical audit receipts still apply. Record history is not exposed to delegated workers.
+
+Critical integrity state calls the trusted root's revokePending control before attempting state persistence; operator reads and exact stop/revoke controls remain available. This is pending-permit containment only, not proof of killing existing processes, preventing every credential/network path, or packaged containment.
+
+Observed invocation failure is FAILED, not a rollback or zero-effect assertion. Unknown/lost outcome persistence remains RECONCILING, with no blind replay. A test writes a real partial file before throwing to prove the distinction. Missing canonical audit receipt after a persisted Laptop observation also holds integrity.
+
+Focused production regression: 100/100 pass on Windows, including real file effects, tamper detection/preserved bytes, pending-permit revocation, anonymous/worker denial, real Authority and AgentLoop regression, terminal session ownership, and presentation cleanup. Node/browser type checks and scoped lint pass. Generated OpenAPI and facade ownership include both read routes. Runtime browser/visual acceptance is recorded separately after execution.

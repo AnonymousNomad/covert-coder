@@ -92,7 +92,7 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
       state: op.state, expires_at: op.expiresAt, args: op.descriptor.args });
   }
   function event(op, decision) {
-    return { operation_id: op.id, actor_id: op.actor.id, owner_id: op.ownerId,
+    return { operation_id: op.id, actor_id: op.actor.id, actor_kind: op.actor.kind, owner_id: op.ownerId,
       task_id: op.descriptor.taskId, kind: op.descriptor.kind, digest: op.descriptor.digest,
       policy_revision: op.revision, decision };
   }
