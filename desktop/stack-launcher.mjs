@@ -2,15 +2,19 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFile, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { userInfo } from 'node:os';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 // Staged resource root is explicit, as with the backend entrypoints below.
 const { superviseAuthority } = await import(pathToFileURL(path.join(root, 'common/security/authority-channel.mjs')).href);
 const nativeBootstrap = process.argv.includes('--native-bootstrap');
-const pairingOrigin = process.argv.find(arg => arg.startsWith('--pair-origin='))?.slice('--pair-origin='.length);
-if (!nativeBootstrap || !['http://127.0.0.1:5173', 'http://tauri.localhost', 'https://tauri.localhost', 'tauri://localhost'].includes(pairingOrigin)) {
+const localOperatorOrigin = process.argv.find(arg => arg.startsWith('--local-operator-origin='))?.slice('--local-operator-origin='.length);
+if (!nativeBootstrap || !['http://127.0.0.1:5173', 'http://tauri.localhost', 'https://tauri.localhost', 'tauri://localhost'].includes(localOperatorOrigin)) {
   throw new Error('native parent bootstrap required');
 }
+const runtimeGeneration = randomUUID();
+const runtimeOwner = userInfo().username;
 const workspace = path.resolve(process.env.AIDE_WORKSPACE || path.join(root, 'workspace'));
 const modelDir = path.resolve(process.env.AIDE_MODEL_DIR || path.join(workspace, 'models'));
 const logsDir = path.join(workspace, '.aide', 'logs');
@@ -29,6 +33,8 @@ const env = {
   AIDE_LEGACY_PORT: ports.legacy,
   AIDE_DAEMON_PORT: ports.legacy,
   AIDE_FACADE_PORT: ports.facade,
+  AIDE_RUNTIME_GENERATION: runtimeGeneration,
+  AIDE_RUNTIME_OWNER: runtimeOwner,
   AIDE_LLAMA_SERVER: process.env.AIDE_LLAMA_SERVER || path.join(root, 'runtime', process.platform === 'win32' ? 'llama-server.exe' : 'llama-server')
 };
 
@@ -90,9 +96,9 @@ supervisor = superviseAuthority(spawnChild('arch', ['--experimental-strip-types'
 supervisor.attach('legacy', spawnChild('legacy', [path.join(root, 'daemon', 'server.mjs')]));
 supervisor.attach('facade', spawnChild('facade', [path.join(root, 'scripts', 'facade.mjs')]));
 await supervisor.ready();
-const pairing = await supervisor.pairing(pairingOrigin);
-// Dedicated native-parent pipe, never the children logs or a workspace file.
-process.stdout.write(`COVERT_PAIRING_V1 ${pairing.proof}\n`);
+const session = await supervisor.localOperatorSession(localOperatorOrigin, runtimeGeneration, runtimeOwner);
+// Dedicated native-parent pipe, never child logs, a URL or a workspace file.
+process.stdout.write(`COVERT_LOCAL_OPERATOR_SESSION_V1 ${session.token} ${session.actor_id} ${session.expires_at}\n`);
 
 process.once('SIGINT', () => void stop(0));
 process.once('SIGTERM', () => void stop(0));

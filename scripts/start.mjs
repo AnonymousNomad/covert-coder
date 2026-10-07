@@ -1,5 +1,7 @@
 import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { createReadStream, promises as fs, mkdirSync, openSync, closeSync, appendFileSync } from 'node:fs';
+import { userInfo } from 'node:os';
 import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -85,6 +87,77 @@ export async function createFrontendServer({ frontend, host = '127.0.0.1', port 
       server.close(() => resolve());
     })
   };
+}
+
+async function launchTrustedLocalBrowser({ origin, session, generation, evidenceDir }) {
+  mkdirSync(evidenceDir, { recursive: true });
+  const { chromium } = await import('@playwright/test');
+  // Playwright launches an isolated browser context and controls Chromium over
+  // its private process pipe; no remote-debugging TCP port or token URL exists.
+  const browser = await chromium.launch({ channel: process.platform === 'win32' ? 'msedge' : 'chrome', headless: false });
+  try {
+    const context = await browser.newContext();
+    await context.addInitScript(({ expectedOrigin, localSession }) => {
+      if (location.origin === expectedOrigin) {
+        Object.defineProperty(window, '__COVERT_LOCAL_OPERATOR_EXPECTED__', { value: true, configurable: true });
+        Object.defineProperty(window, '__COVERT_LOCAL_OPERATOR_SESSION__', { value: localSession, configurable: true });
+      }
+    }, { expectedOrigin: origin, localSession: session });
+    const page = await context.newPage();
+    const logFile = path.join(evidenceDir, `browser-${generation}.log`);
+    const log = line => appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
+    const safeText = value => String(value).split(session.token).join('[redacted]').slice(0, 500);
+    const safePath = value => {
+      try { return new URL(value).pathname; } catch { return '(invalid-url)'; }
+    };
+    page.on('console', message => {
+      if (message.type() === 'error' || message.type() === 'warning') log(`console ${message.type()}: ${safeText(message.text())}`);
+    });
+    page.on('pageerror', error => log(`pageerror: ${error.name}: ${safeText(error.message)}`));
+    page.on('requestfailed', request => log(`request-failed ${request.method()} ${safePath(request.url())}: ${request.failure()?.errorText ?? 'unknown'}`));
+    page.on('response', response => {
+      if (response.status() >= 400) log(`response ${response.status()} ${safePath(response.url())}`);
+    });
+    page.on('dialog', dialog => {
+      // Keep the governed Authority prompt visible for the operator. The local
+      // bootstrap authenticates identity; it never accepts a capability action.
+      if (dialog.type() === 'prompt') {
+        log('unexpected-pairing-prompt: dismissed in trusted local browser to fail closed');
+        void dialog.dismiss();
+        return;
+      }
+      log(`dialog ${dialog.type()}: Authority decision awaiting operator input`);
+    });
+    log(`session-handoff=trusted-local origin=${new URL(origin).origin} credential=not-logged`);
+    await page.goto(origin, { waitUntil: 'domcontentloaded' });
+    let bootState = 'unknown';
+    try {
+      await page.waitForFunction(() => {
+        const state = document.getElementById('app')?.dataset.bootState;
+        return state === 'ready' || state === 'failed';
+      }, null, { timeout: 30_000 });
+      bootState = await page.locator('#app').getAttribute('data-boot-state') || 'unknown';
+    } catch (error) {
+      log(`boot-state-timeout: ${error instanceof Error ? error.name : 'unknown'}`);
+    }
+    const authorityState = await page.locator('#app').getAttribute('data-authority-state') || 'unknown';
+    log(`frontend-state: boot=${bootState} authority=${authorityState}`);
+    if (bootState === 'ready') {
+      await page.screenshot({ path: path.join(evidenceDir, `local-operator-${generation}.png`), fullPage: true });
+      await page.getByRole('button', { name: 'MODELS: Loaded lineup' }).click();
+      await page.locator('#cockpit-models-stage .models-panel').waitFor({ state: 'visible', timeout: 15_000 });
+      await page.screenshot({ path: path.join(evidenceDir, `models-${generation}.png`), fullPage: true });
+      const activePanel = await page.locator('#app').getAttribute('data-active-panel') || 'unknown';
+      log(`launch-proof: boot=${bootState} authority=${authorityState} active-panel=${activePanel}`);
+    } else {
+      log(`launch-proof: frontend boot state=${bootState}`);
+      await page.screenshot({ path: path.join(evidenceDir, `startup-state-${generation}.png`), fullPage: true }).catch(() => {});
+    }
+    return { browser, close: () => browser.isConnected() ? browser.close() : Promise.resolve(), bootState };
+  } catch (error) {
+    await browser.close().catch(() => {});
+    throw error;
+  }
 }
 
 function wait(milliseconds) {
@@ -248,6 +321,8 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
     legacy: Number(process.env.AIDE_LEGACY_PORT || process.env.AIDE_DAEMON_PORT || 4779)
   };
   const timeoutMs = Number(process.env.AIDE_START_TIMEOUT_MS || 30000);
+  const runtimeGeneration = randomUUID();
+  const runtimeOwner = userInfo().username;
   const workspace = path.resolve(process.env.AIDE_WORKSPACE || root);
   const logsDir = path.join(workspace, '.aide', 'logs');
   const children = new Map();
@@ -256,6 +331,7 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
   let parentWatch = null;
   let authoritySupervisor = null;
   let pairingConsole = null;
+  let localBrowser = null;
   let stopping = false;
   let settle;
   const stopped = new Promise(resolve => { settle = resolve; });
@@ -267,6 +343,11 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
     stopping = true;
     const cleanupFailures = [];
     pairingConsole?.close();
+    if (localBrowser) {
+      try { await localBrowser.close(); }
+      catch (error) { cleanupFailures.push(`trusted local browser: ${error instanceof Error ? error.message : 'close failed'}`); }
+      localBrowser = null;
+    }
     authoritySupervisor?.close();
     if (parentWatch) { clearInterval(parentWatch.timer); parentWatch = null; }
     if (buildChild && buildChild.exitCode === null && buildChild.pid !== undefined) {
@@ -343,7 +424,11 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
 
     if (frontend.kind === 'typed' || frontend.kind === 'legacy') frontendServer = await createFrontendServer({ frontend, host, port: ports.ui });
 
-    const arch = spawnChild('arch', ['node/src/server.ts'], { AIDE_ARCH_PORT: String(ports.arch) });
+    const arch = spawnChild('arch', ['node/src/server.ts'], {
+      AIDE_ARCH_PORT: String(ports.arch),
+      AIDE_RUNTIME_GENERATION: runtimeGeneration,
+      AIDE_RUNTIME_OWNER: runtimeOwner
+    });
     authoritySupervisor = superviseAuthority(arch);
     const legacy = spawnChild('legacy', ['daemon/server.mjs'], { AIDE_DAEMON_PORT: String(ports.legacy), AIDE_LEGACY_PORT: String(ports.legacy) });
     authoritySupervisor.attach('legacy', legacy);
@@ -364,6 +449,13 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
       await waitForHttp('Vite frontend', `http://${host}:${ports.ui}/`, vite, timeoutMs);
     }
 
+    if (process.stdin.isTTY && process.stdout.isTTY) {
+      const origin = `http://${host}:${ports.ui}`;
+      const session = await authoritySupervisor.localOperatorSession(origin, runtimeGeneration, runtimeOwner);
+      localBrowser = await launchTrustedLocalBrowser({ origin, session, generation: runtimeGeneration,
+        evidenceDir: path.join(workspace, '.aide', 'evidence') });
+    }
+
     const watch = await startOwnershipDeathWatch(() => {
       const label = parentWatch?.target ? `owning ancestor ${parentWatch.target}` : `parent ${process.ppid}`;
       appendFileSync(path.join(logsDir, 'start-err.log'), `[start.mjs] ${label} died; stopping owned stack\n`);
@@ -376,7 +468,7 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
     // never child logs, workspace files, environment variables or URLs.
     if (process.stdin.isTTY && process.stdout.isTTY) {
       pairingConsole = createInterface({ input: process.stdin, output: process.stdout });
-      process.stdout.write('Type pair to create a one-use browser pairing code.\n');
+      process.stdout.write('The Covert-launched local browser uses a private operator session. Type pair only for an unrecognized browser client.\n');
       pairingConsole.on('line', async line => {
         if (line.trim() !== 'pair' || stopping) return;
         try {

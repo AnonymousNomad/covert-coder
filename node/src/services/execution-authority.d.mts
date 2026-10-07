@@ -13,6 +13,7 @@ export interface ExecutionAuthority {
   control: {
     telegramAdapter(execution: ExecutionHandle, input: { chat_id: number; user_id: number }): Promise<TelegramAdapterPort>;
     createPairing(origin: string): string;
+    localOperatorSession(origin: string, runtimeGeneration: string, runtimeOwner: string): Promise<{ token: string; actor_id: string; expires_at: number }>;
     delegate(owner: ActorHandle, kind: 'agent' | 'adapter' | 'service', scope: string[]): ActorHandle;
     revoke(actor: ActorHandle): void;
     revokePending(): void;
@@ -36,4 +37,5 @@ export function createExecutionAuthority(options: {
   workspace: string;
   record: (event: Readonly<Record<string, unknown>>) => Promise<{ persisted: boolean; error?: string | null }>;
   clock?: () => number; sessionTtlMs?: number; operationTtlMs?: number; limit?: number;
+  runtimeGeneration?: string; runtimeOwner?: string;
 }): ExecutionAuthority;

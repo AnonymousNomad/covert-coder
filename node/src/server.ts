@@ -76,7 +76,8 @@ export class ArchServer {
     this.processes = new ProcessManager(this.logger);
     this.events = new EventHub(this.logger);
     const audit = createAuditTrail({ workspace: this.workspace });
-    this.authority = createExecutionAuthority({ workspace: this.workspace, record: event => audit.emitAuthority(event) });
+    this.authority = createExecutionAuthority({ workspace: this.workspace, record: event => audit.emitAuthority(event),
+      runtimeGeneration: process.env.AIDE_RUNTIME_GENERATION || '', runtimeOwner: process.env.AIDE_RUNTIME_OWNER || '' });
   }
 
   addShutdownHook(hook: () => Promise<void>): this {
@@ -402,6 +403,9 @@ export async function main(): Promise<void> {
   const authorityChannel = connectAuthorityChannel(process as unknown as AuthorityPeer, async (method, input) => {
     if (method === 'supervisor.ready') return ready;
     if (method === 'supervisor.pairing') return { proof: server.authority.control.createPairing(input?.origin) };
+    if (method === 'supervisor.local-operator-session') {
+      return server.authority.control.localOperatorSession(input?.origin, input?.runtime_generation, input?.runtime_owner);
+    }
     if (method === 'transport.authenticate') {
       const actor = server.authority.authenticate(input?.token, input?.origin);
       return { actor_id: actor.id, kind: actor.kind };

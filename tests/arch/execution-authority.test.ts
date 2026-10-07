@@ -33,6 +33,55 @@ test('decision wait observes canonical approval, rejection, revocation and expir
   }
 });
 
+test('trusted local bootstrap is private, origin and runtime bound, short lived, and grants no action approval', async () => {
+  let now = 10_000;
+  const records: Array<Readonly<Record<string, unknown>>> = [];
+  const runtimeGeneration = '11111111-1111-4111-8111-111111111111';
+  const runtimeOwner = 'local-owner-fixture';
+  const origin = 'http://127.0.0.1:4173';
+  const authority = createExecutionAuthority({ workspace: 'workspace-local', clock: () => now, sessionTtlMs: 1000,
+    runtimeGeneration, runtimeOwner, record: async event => { records.push(event); return { persisted: true }; } });
+
+  const invalidBindings = [
+    { origin: 'http://127.0.0.1:4173.evil.invalid', generation: runtimeGeneration, owner: runtimeOwner },
+    { origin: 'https://remote.example', generation: runtimeGeneration, owner: runtimeOwner },
+    { origin, generation: 'another-runtime-generation', owner: runtimeOwner },
+    { origin, generation: runtimeGeneration, owner: 'another-local-owner' }
+  ];
+  for (const binding of invalidBindings) {
+    await assert.rejects(authority.control.localOperatorSession(binding.origin, binding.generation, binding.owner), { code: 'FORBIDDEN' });
+  }
+  assert.equal(records.length, 0, 'rejected bootstrap identities must not be audited as successful');
+  const disabled = createExecutionAuthority({ workspace: 'workspace-disabled', record: async () => ({ persisted: true }) });
+  await assert.rejects(disabled.control.localOperatorSession(origin, runtimeGeneration, runtimeOwner), { code: 'FORBIDDEN' });
+
+  const [session, replay] = await Promise.all([
+    authority.control.localOperatorSession(origin, runtimeGeneration, runtimeOwner),
+    authority.control.localOperatorSession(origin, runtimeGeneration, runtimeOwner)
+  ]);
+  assert.equal(replay.token, session.token, 'trusted supervisor recovery reuses the same in-memory session');
+  assert.equal(replay.actor_id, session.actor_id);
+  assert.equal(session.expires_at, now + 1000);
+  await assert.rejects(authority.control.localOperatorSession('http://localhost:4173', runtimeGeneration, runtimeOwner), { code: 'FORBIDDEN' });
+  const actor = authority.authenticate(session.token, origin);
+  assert.equal(actor.id, session.actor_id);
+  assert.deepEqual(records.map(record => record.decision), ['local-owner-bootstrap']);
+  const bootstrapRecord = records[0];
+  assert.ok(bootstrapRecord);
+  assert.equal(bootstrapRecord.actor_id, session.actor_id);
+  assert.equal(bootstrapRecord.owner_id, session.actor_id);
+  assert.ok(!JSON.stringify(records).includes(session.token));
+
+  const operation = await authority.prepare(actor, {
+    workspace: 'workspace-local', taskId: 'local-bootstrap-write', kind: 'workspace.write',
+    args: { path: 'guarded.txt', content: 'must remain pending' }
+  });
+  assert.equal(operation.state, 'pending', 'authentication does not approve an Authority action');
+  now += 1000;
+  assert.throws(() => authority.authenticate(session.token, origin), { code: 'FORBIDDEN' });
+  await assert.rejects(authority.control.localOperatorSession(origin, runtimeGeneration, runtimeOwner), { code: 'NOT_READY' });
+});
+
 test('pairing requires a single-use supervisor proof; claims and origins cannot mint actors', async () => {
   const f = await fixture();
   await assert.rejects(f.authority.pair('x'.repeat(43), f.origin), { code: 'FORBIDDEN' });

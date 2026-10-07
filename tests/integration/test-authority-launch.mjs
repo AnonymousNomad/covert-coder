@@ -11,6 +11,56 @@ import { superviseAuthority } from '../../common/security/authority-channel.mjs'
 import { createFacade, loadRouteMap } from '../../scripts/facade.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+test('trusted local operator bootstrap is private to the launch supervisor and preserves Authority decisions', { timeout: 90000 }, async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-local-operator-'));
+  const children = [];
+  let supervisor;
+  const runtimeGeneration = '20261007-0000-4000-8000-000000000001';
+  const runtimeOwner = 'integration-local-owner';
+  const origin = 'http://127.0.0.1:4173';
+  function child(entry, extra) {
+    const processRef = spawn(process.execPath, [entry], { cwd: root, windowsHide: true,
+      env: { ...process.env, AIDE_WORKSPACE: workspace, AIDE_ARCH_PORT: '0', AIDE_RUNTIME_GENERATION: runtimeGeneration,
+        AIDE_RUNTIME_OWNER: runtimeOwner, ...extra }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+    children.push(processRef);
+    return processRef;
+  }
+  try {
+    supervisor = superviseAuthority(child('node/src/server.ts', {}));
+    const addresses = await supervisor.ready();
+    const base = `http://127.0.0.1:${addresses.arch.port}`;
+    const anonymous = await fetch(`${base}/api/authority/local-session`, { method: 'POST', headers: { Origin: origin } });
+    assert.equal(anonymous.status, 404, 'there is no HTTP session-mint route');
+    await assert.rejects(supervisor.localOperatorSession('https://remote.example', runtimeGeneration, runtimeOwner), { code: 'FORBIDDEN' });
+    await assert.rejects(supervisor.localOperatorSession(origin, 'different-runtime-generation', runtimeOwner), { code: 'FORBIDDEN' });
+    await assert.rejects(supervisor.localOperatorSession(origin, runtimeGeneration, 'different-local-owner'), { code: 'FORBIDDEN' });
+
+    const session = await supervisor.localOperatorSession(origin, runtimeGeneration, runtimeOwner);
+    const reconnected = await supervisor.localOperatorSession(origin, runtimeGeneration, runtimeOwner);
+    assert.equal(reconnected.token, session.token, 'trusted supervisor reconnection reuses one bounded session');
+    assert.deepEqual(await supervisor.authenticate(session.token, origin), { actor_id: session.actor_id, kind: 'operator' });
+    await assert.rejects(supervisor.authenticate(session.token, 'http://localhost:4173'), { code: 'FORBIDDEN' });
+    const prepared = await fetch(`${base}/api/authority/prepare`, { method: 'POST', headers: {
+      Origin: origin, Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json'
+    }, body: JSON.stringify({ method: 'POST', path: '/api/file/write', task_id: 'bootstrap-must-not-approve',
+      body: { path: 'not-written.txt', content: 'still requires an explicit Authority decision', approved: true } }) });
+    assert.equal(prepared.status, 200);
+    const proposal = await prepared.json();
+    assert.equal(proposal.ok, true);
+    assert.equal(proposal.data.state, 'pending', 'local identity bootstrap cannot approve the proposed write');
+  } finally {
+    supervisor?.close();
+    for (const processRef of children) {
+      if (processRef.exitCode !== null || processRef.signalCode !== null) continue;
+      const exited = once(processRef, 'exit', { signal: AbortSignal.timeout(10000) });
+      processRef.kill();
+      await exited;
+    }
+    await fs.rm(workspace, { recursive: true, force: true });
+    assert.ok(children.every(ref => ref.exitCode !== null || ref.signalCode !== null));
+  }
+});
+
 test('real supervisor -> facade/direct TS/legacy: pairing, bound write and denial without fallback', { timeout: 90000 }, async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'phase2a-stack-'));
   const children = [];

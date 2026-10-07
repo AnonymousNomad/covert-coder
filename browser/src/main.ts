@@ -59,9 +59,12 @@ function renderAllTabs(host: EditorHost): void {
 }
 
 async function boot(): Promise<void> {
-  await initializeAuthority();
   const app = document.getElementById('app');
   if (app === null) throw new Error('#app missing');
+  app.dataset.bootState = 'authenticating';
+  app.dataset.authorityState = 'pending';
+  await initializeAuthority();
+  app.dataset.authorityState = 'authenticated';
   const store = new Store(INITIAL_STATE);
   const shell: CockpitHandles = mountCockpit(app, store);
   const session = new SessionService();
@@ -146,6 +149,33 @@ async function boot(): Promise<void> {
     void session.flush();
     events.dispose();
   });
+  app.dataset.bootState = 'ready';
+}
+
+function renderBootFailure(error: unknown): void {
+  const app = document.getElementById('app');
+  if (app === null) return;
+  app.dataset.bootState = 'failed';
+  if (app.dataset.authorityState === 'pending') app.dataset.authorityState = 'failed';
+  const panel = document.createElement('main');
+  panel.className = 'boot-failure';
+  panel.setAttribute('role', 'alert');
+  const title = document.createElement('h1');
+  title.textContent = 'Covert could not start';
+  const failureCode = error instanceof Error && /^(FORBIDDEN|NOT_READY|BAD_REQUEST|INTERNAL|CONFLICT):/.test(error.message)
+    ? error.message.split(':', 1)[0]
+    : null;
+  const detail = document.createElement('p');
+  detail.textContent = failureCode !== null
+    ? `Operator session or startup service refused the request (${failureCode}). Check the owned Covert launch logs.`
+    : 'The operator session or frontend startup failed. Check the owned Covert launch logs, then restart the app.';
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.textContent = 'Restart Covert';
+  retry.addEventListener('click', () => window.location.reload());
+  panel.append(title, detail, retry);
+  app.replaceChildren(panel);
+  console.error(`[Covert] startup failed (${failureCode ?? 'STARTUP'}); privileged access remains unavailable.`);
 }
 
 async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
@@ -269,4 +299,4 @@ async function refreshVerificationChip(shell: CockpitHandles): Promise<void> {
   shell.topbar.setVerification('UNVERIFIED');
 }
 
-void boot();
+void boot().catch(renderBootFailure);

@@ -22,6 +22,7 @@ name = "aide-sovereign-workbench"
 version = "0.1.0"
 dependencies = [
  "dunce",
+ "serde",
  "tauri",
  "tauri-build",
  "windows-sys 0.61.2",

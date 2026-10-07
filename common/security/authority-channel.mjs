@@ -64,7 +64,7 @@ export function connectAuthorityChannel(peer, handle = async () => { throw new E
 }
 
 // Only the launch supervisor possesses these exact child-channel references.
-// Adapters may ask for transport authentication, never operator pairing.
+// Adapters may authenticate a transport, but cannot mint operator sessions.
 export function superviseAuthority(archChild) {
   const adapters = new Map();
   const arch = connectAuthorityChannel(archChild, async (method, payload) => {
@@ -84,6 +84,11 @@ export function superviseAuthority(archChild) {
       adapters.set(role, channel);
     },
     pairing(origin) { return arch.call('supervisor.pairing', { origin }, 60000); },
+    localOperatorSession(origin, runtimeGeneration, runtimeOwner) {
+      return arch.call('supervisor.local-operator-session', {
+        origin, runtime_generation: runtimeGeneration, runtime_owner: runtimeOwner
+      }, 60000);
+    },
     authenticate(token, origin) { return arch.call('transport.authenticate', { token, origin }); },
     async ready() {
       return { arch: await arch.call('supervisor.ready', {}, 60000),

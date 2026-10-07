@@ -13,6 +13,7 @@ export function connectAuthorityChannel(peer: AuthorityPeer, handle?: (method: s
 export function superviseAuthority(archChild: AuthorityPeer): {
   attach(role: 'facade' | 'legacy', child: AuthorityPeer): void;
   pairing(origin: string): Promise<unknown>;
+  localOperatorSession(origin: string, runtimeGeneration: string, runtimeOwner: string): Promise<unknown>;
   authenticate(token: string, origin: string): Promise<unknown>;
   ready(): Promise<unknown>;
   close(): void;

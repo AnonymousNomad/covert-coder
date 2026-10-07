@@ -14,7 +14,10 @@ const secret = () => randomBytes(32).toString('base64url');
 // The control object is held only by the composition root/supervisor. It is
 // not exposed as an HTTP service. Actor handles are recognized by identity,
 // not by their serializable claims. Credentials and decisions live in memory.
-export function createExecutionAuthority({ workspace, record, clock = Date.now, sessionTtlMs = 30 * 60_000, operationTtlMs = 5 * 60_000, limit = 4096 }) {
+export function createExecutionAuthority({
+  workspace, record, clock = Date.now, sessionTtlMs = 30 * 60_000,
+  operationTtlMs = 5 * 60_000, limit = 4096, runtimeGeneration = '', runtimeOwner = ''
+}) {
   if (!workspace || typeof record !== 'function') throw new TypeError('workspace and required audit recorder are required');
   if (![sessionTtlMs, operationTtlMs, limit].every(n => Number.isSafeInteger(n) && n > 0)) throw new TypeError('positive finite authority limits required');
   const actors = new Map();
@@ -27,6 +30,8 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
   const notifyDecisions = () => { for (const wake of [...decisionWaiters]) wake(); };
   const telegramMessages = new WeakMap();
   let revision = 1;
+  let localOperatorSession = null;
+  let localOperatorBootstrapPending = null;
 
   function actorFor(handle) {
     const entry = handle && actors.get(handle.id);
@@ -51,13 +56,15 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
     }
     if (map.size >= limit) throw new AuthorityError('NOT_READY', 'authority capacity reached');
   }
-  function newActor(kind, ownerId, scope, origin) {
+  function newActor(kind, ownerId, scope, origin, binding = {}) {
     room(actors);
     const id = randomUUID();
     const token = secret();
     const handle = Object.freeze({ id, kind });
-    const expiresAt = clock() + sessionTtlMs;
-    const entry = { handle, ownerId: ownerId ?? id, scope: new Set(scope), origin, expiresAt, revoked: false };
+    const expiresAt = clock() + (binding.ttlMs ?? sessionTtlMs);
+    const entry = {
+      handle, ownerId: ownerId ?? id, scope: new Set(scope), origin, expiresAt, revoked: false,
+      runtimeGeneration: binding.runtimeGeneration, runtimeOwner: binding.runtimeOwner, localOwner: binding.localOwner === true };
     actors.set(id, entry);
     credentials.set(hash(token), id);
     return { token, actor: handle, expires_at: expiresAt };
@@ -156,6 +163,59 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
       pairings.set(hash(proof), { origin, expiresAt: clock() + operationTtlMs });
       return proof;
     },
+    async localOperatorSession(origin, requestedGeneration, requestedOwner) {
+      const parsedOrigin = (() => { try { return new URL(origin); } catch { return null; } })();
+      const localOrigin = parsedOrigin !== null && parsedOrigin.origin === origin && (
+        (parsedOrigin.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(parsedOrigin.hostname)) ||
+        (['http:', 'https:'].includes(parsedOrigin.protocol) && parsedOrigin.hostname === 'tauri.localhost') ||
+        (parsedOrigin.protocol === 'tauri:' && parsedOrigin.hostname === 'localhost')
+      );
+      const generationValid = typeof runtimeGeneration === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runtimeGeneration);
+      if (!localOrigin || !generationValid || typeof runtimeOwner !== 'string' ||
+          runtimeOwner.length === 0 || runtimeOwner.length > 256 ||
+          requestedGeneration !== runtimeGeneration || requestedOwner !== runtimeOwner) deny('trusted local runtime identity required');
+      if (localOperatorSession) {
+        if (localOperatorSession.expiresAt <= clock()) throw new AuthorityError('NOT_READY', 'local operator session expired; restart the owned runtime');
+        if (localOperatorSession.origin !== origin ||
+            localOperatorSession.runtimeGeneration !== requestedGeneration ||
+            localOperatorSession.runtimeOwner !== requestedOwner) {
+          deny('local operator session is bound to another runtime');
+        }
+        return localOperatorSession.response;
+      }
+      if (localOperatorBootstrapPending) {
+        if (localOperatorBootstrapPending.origin !== origin ||
+            localOperatorBootstrapPending.runtimeGeneration !== requestedGeneration ||
+            localOperatorBootstrapPending.runtimeOwner !== requestedOwner) {
+          deny('local operator session is bound to another runtime');
+        }
+        return localOperatorBootstrapPending.promise;
+      }
+      const pending = (async () => {
+        // A local session is created only through the launcher's private IPC
+        // channel. There is deliberately no unauthenticated HTTP mint route.
+        const created = newActor('operator', null, [], origin, {
+          localOwner: true, runtimeGeneration, runtimeOwner, ttlMs: Math.min(sessionTtlMs, 30 * 60_000)
+        });
+        try {
+          await required({
+            decision: 'local-owner-bootstrap', origin, runtime_generation: runtimeGeneration,
+            actor_id: created.actor.id, owner_id: created.actor.id
+          });
+        } catch (error) {
+          actors.delete(created.actor.id);
+          credentials.delete(hash(created.token));
+          throw error;
+        }
+        const response = Object.freeze({ token: created.token, actor_id: created.actor.id, expires_at: created.expires_at });
+        localOperatorSession = { origin, runtimeGeneration, runtimeOwner, expiresAt: created.expires_at, response };
+        return response;
+      })();
+      localOperatorBootstrapPending = { origin, runtimeGeneration: requestedGeneration, runtimeOwner: requestedOwner, promise: pending };
+      try { return await pending; }
+      finally { if (localOperatorBootstrapPending?.promise === pending) localOperatorBootstrapPending = null; }
+    },
     delegate(owner, kind, scope) {
       const parent = actorFor(owner);
       if (owner.kind !== 'operator' || !['agent', 'adapter', 'service'].includes(kind)) deny('only operator-owned delegation is permitted');
@@ -178,6 +238,7 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
     close() {
       revision += 1;
       actors.clear(); credentials.clear(); pairings.clear(); operations.clear();
+      localOperatorSession = null;
       notifyDecisions();
     }
   });
@@ -198,6 +259,7 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
       if (typeof token !== 'string' || token.length > 256) deny('missing actor credential');
       const entry = actors.get(credentials.get(hash(token)));
       if (!entry || entry.origin !== origin) deny('invalid actor credential');
+      if (entry.localOwner && (entry.runtimeGeneration !== runtimeGeneration || entry.runtimeOwner !== runtimeOwner)) deny('local operator runtime binding mismatch');
       actorFor(entry.handle);
       return entry.handle;
     },

@@ -20,13 +20,33 @@ export function withAuthority(input?: HeadersInit): Headers {
   return headers;
 }
 export async function pairAuthority(proof: string): Promise<void> {
-  const session = AuthoritySessionResponse.parse(await control('/api/authority/pair', { proof }));
+  acceptAuthoritySession(await control('/api/authority/pair', { proof }));
+}
+function acceptAuthoritySession(input: unknown): void {
+  const session = AuthoritySessionResponse.parse(input);
+  if (session.expires_at <= Date.now()) throw new Error('Operator session expired before startup completed.');
   credential = session.token; expiresAt = session.expires_at;
 }
 export async function initializeAuthority(): Promise<void> {
-  const host = window as unknown as { __TAURI_INTERNALS__?: { invoke(command: string): Promise<unknown> } };
-  const proof = host.__TAURI_INTERNALS__ ? await host.__TAURI_INTERNALS__.invoke('authority_pairing')
-    : window.prompt('Pair this Covert session: type pair in the launch terminal, then enter its one-use code.');
+  const host = window as unknown as {
+    __COVERT_LOCAL_OPERATOR_SESSION__?: unknown;
+    __COVERT_LOCAL_OPERATOR_EXPECTED__?: boolean;
+    __TAURI_INTERNALS__?: { invoke(command: string): Promise<unknown> };
+  };
+  const localSession = host.__COVERT_LOCAL_OPERATOR_SESSION__;
+  if (localSession !== undefined) {
+    delete host.__COVERT_LOCAL_OPERATOR_SESSION__;
+    acceptAuthoritySession(localSession);
+    return;
+  }
+  if (host.__COVERT_LOCAL_OPERATOR_EXPECTED__) {
+    throw new Error('Trusted local operator session was not delivered by the Covert launcher.');
+  }
+  if (host.__TAURI_INTERNALS__) {
+    acceptAuthoritySession(await host.__TAURI_INTERNALS__.invoke('authority_local_session'));
+    return;
+  }
+  const proof = window.prompt('This browser was not started by the trusted local Covert runtime. Pair this client with its one-use Authority code.');
   if (typeof proof !== 'string' || !proof.trim()) throw new Error('Pairing cancelled; privileged access remains disabled.');
   await pairAuthority(proof.trim());
 }
