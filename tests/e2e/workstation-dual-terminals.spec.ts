@@ -48,7 +48,12 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
   await expect(page.locator('[aria-label="Authority paired: PAIRED"]')).toBeVisible();
   const first = page.locator('.desktop-window[data-instance-id="terminal"]');
   const second = page.locator('.desktop-window[data-instance-id="terminal:2"]');
+  const focusTerminal = async (frame: typeof first): Promise<void> => {
+    const label = frame === first ? 'Terminal 01' : 'Terminal 02';
+    await page.getByRole('button', { name: `Focus or restore ${label}, open`, exact: true }).click();
+  };
   for (const frame of [first, second]) {
+    await focusTerminal(frame);
     await expect(frame).toBeVisible();
     // A missing native prerequisite fails qualification; it cannot become a fake green session.
     await expect(frame.locator('.terminal-provider.available').filter({ hasText: /native/i })).toBeVisible();
@@ -58,8 +63,10 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await shell.selectOption(hasPwsh ? 'pwsh' : 'powershell');
   }
   try {
+    await focusTerminal(first);
     await first.getByRole('button', { name: 'OPEN SESSION', exact: true }).click();
     await expect.poll(() => opened.length).toBe(1);
+    await focusTerminal(second);
     await second.getByRole('button', { name: 'OPEN SESSION', exact: true }).click();
     await expect.poll(() => opened.length).toBe(2);
     expect(new Set(opened).size).toBe(2);
@@ -72,8 +79,10 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     const suffixB = randomUUID().replaceAll('-', '');
     const a = `COVERT_A_${suffixA}`;
     const b = `COVERT_B_${suffixB}`;
+    await focusTerminal(first);
     await first.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_A_' + '${suffixA}')`);
     await first.locator('.xterm-helper-textarea').press('Enter');
+    await focusTerminal(second);
     await second.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_B_' + '${suffixB}')`);
     await second.locator('.xterm-helper-textarea').press('Enter');
     await expect(first.locator('.xterm-screen')).toContainText(a);
@@ -81,6 +90,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await expect(first.locator('.xterm-screen')).not.toContainText(b);
     await expect(second.locator('.xterm-screen')).not.toContainText(a);
     for (const frame of [first, second]) {
+      await focusTerminal(frame);
       await expect(frame.locator('.terminal-providers')).toBeHidden();
       await frame.getByRole('button', { name: 'Show terminal details', exact: true }).click();
       await expect(frame.locator('.terminal-providers')).toBeVisible();
@@ -124,6 +134,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await expect(first).toBeHidden();
     await page.getByRole('button', { name: 'Focus or restore Terminal 01, minimized', exact: true }).click();
     await expect(first).toBeVisible();
+    await focusTerminal(second);
     await second.getByRole('button', { name: 'Close window', exact: true }).click();
     await expect(second).toHaveCount(0);
     await page.getByRole('button', { name: 'New terminal window', exact: true }).click();
@@ -132,6 +143,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     expect(opened.length).toBe(2);
     const suffixC = randomUUID().replaceAll('-', '');
     const c = `COVERT_REOPEN_${suffixC}`;
+    await focusTerminal(second);
     await second.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_REOPEN_' + '${suffixC}')`);
     await second.locator('.xterm-helper-textarea').press('Enter');
     await expect(second.locator('.xterm-screen')).toContainText(c);
@@ -143,12 +155,14 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     for (const [index, frame] of [first, second].entries()) {
       const sessionId = sessionIds[index];
       if (!sessionId) throw new Error('Unexpected terminal window index');
+      await focusTerminal(frame);
       await frame.getByRole('button', { name: `Reattach terminal session ${sessionId}`, exact: true }).click();
       await expect(frame.locator('.terminal-session-state')).toContainText('RUNNING');
       await expect(frame.locator('.terminal-session-meta')).toContainText(sessionId.slice(0, 8));
     }
     const suffixD = randomUUID().replaceAll('-', '');
     const d = `COVERT_RESTORE_${suffixD}`;
+    await focusTerminal(first);
     await first.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_RESTORE_' + '${suffixD}')`);
     await first.locator('.xterm-helper-textarea').press('Enter');
     await expect(first.locator('.xterm-screen')).toContainText(d);
