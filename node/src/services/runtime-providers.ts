@@ -54,12 +54,18 @@ export interface NodePtySpawnModule {
 
 export interface RuntimeProviderDeps {
   exec: ExecFn;
+  execBounded: (file: string, args: string[], timeoutMs: number, encoding?: BufferEncoding) => Promise<ExecResult>;
   fileExists: FileExistsFn;
   listDir: ListDirFn;
   loadPty: () => NodePtyEngine | null;
   platform: NodeJS.Platform;
   env: NodeJS.ProcessEnv;
 }
+
+// WSL cold-start readiness budget: a stopped WSL VM must be allowed to start
+// inside the authorized terminal-open operation. This budget applies ONLY to
+// the explicit readiness probe; ordinary discovery/probe execs keep 5000ms.
+export const WSL_READINESS_BUDGET_MS = 15000;
 
 // The shell must resolve to a real executable image. Windows execution-alias
 // stubs (0-byte reparse points such as %LOCALAPPDATA%\Microsoft\WindowsApps\
@@ -128,9 +134,14 @@ const NATIVE_SHELLS: ShellCandidate[] = [
 ];
 
 export interface RuntimeProvider {
-  id: string;
+  readonly id: string;
   describe(): Promise<TerminalProviderInfoT>;
   resolveShell(shellId: string | null): Promise<{ shell: TerminalShellDescriptorT; cwd: string; args?: string[] } | { error: string }>;
+  // Authorized-preparation hook: runs ONLY inside the terminal-open operation,
+  // never during discovery/polling. Providers that need a bounded readiness
+  // precondition (e.g. WSL cold start) implement this; failure must prevent
+  // any PTY creation.
+  prepareSession?(shell: TerminalShellDescriptorT): Promise<{ ok: true } | { error: string }>;
   spawnPty(options: PtySpawnOptions): PtyProcess;
 }
 
@@ -310,6 +321,24 @@ class WslProvider implements RuntimeProvider {
     return { shell: { ...shell, path: executable }, cwd: '', args: ['--distribution', shell.id] };
   }
 
+  // Cold-start readiness precondition. Runs ONLY inside the authorized
+  // terminal-open operation (terminal-sessions.open calls prepareSession
+  // before any PTY creation). The probe may start a stopped WSL VM, which is
+  // exactly its purpose here; it never runs during discovery or polling.
+  async prepareSession(shell: TerminalShellDescriptorT): Promise<{ ok: true } | { error: string }> {
+    const executable = await firstExisting(this.deps, ['C:\\Windows\\System32\\wsl.exe']);
+    if (!executable) return { error: 'wsl.exe is no longer available' };
+    try {
+      const probe = await this.deps.execBounded(executable, ['--distribution', shell.id, '--exec', '/bin/true'], WSL_READINESS_BUDGET_MS);
+      if (probe.code !== 0) return { error: `WSL distribution '${shell.id}' is not ready (exit ${probe.code}).` };
+      return { ok: true };
+    } catch (error) {
+      return {
+        error: `WSL distribution '${shell.id}' did not become ready within ${WSL_READINESS_BUDGET_MS}ms: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
   spawnPty(options: PtySpawnOptions): PtyProcess {
     const engine = this.deps.loadPty();
     if (!engine) throw new Error('PTY engine unavailable');
@@ -396,6 +425,15 @@ async function defaultListDir(path: string): Promise<string[]> {
 export function createDefaultProviderDeps(overrides: Partial<RuntimeProviderDeps> = {}): RuntimeProviderDeps {
   return {
     exec: overrides.exec ?? defaultExec,
+  execBounded: overrides.execBounded ?? ((file, args, timeoutMs, encoding) => new Promise<ExecResult>((resolve, reject) => {
+    execFile(file, args, { encoding: encoding ?? 'utf8', timeout: timeoutMs, windowsHide: true }, (error, stdout, stderr) => {
+      if (error !== null) {
+        reject(error);
+        return;
+      }
+      resolve({ code: 0, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
+    });
+  })),
     fileExists: overrides.fileExists ?? defaultFileExists,
     listDir: overrides.listDir ?? defaultListDir,
     loadPty: overrides.loadPty ?? loadNodePtyModule,
