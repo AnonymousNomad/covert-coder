@@ -93,8 +93,24 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   const bus = getSharedEvents();
   let transportConnected = bus?.connected?.() !== false;
 
+  let channelReady = bus?.subscribed?.('terminal') ?? transportConnected;
+
+  function inputReady(): boolean {
+    return alive && controlConfirmed && !resumeInProgress && !outputReplayInProgress && !outputRecoveryInProgress && transportConnected && channelReady && activeSessionId !== null;
+  }
+
   function synchronizeInput(): void {
-    if (xterm) xterm.options.disableStdin = !alive || !controlConfirmed || resumeInProgress || outputReplayInProgress || !transportConnected;
+    if (!xterm) return;
+    const ready = inputReady();
+    xterm.options.disableStdin = !ready;
+    let status = sessionShell.querySelector('.terminal-input-state');
+    if (!status) {
+      status = el('div', 'terminal-input-state');
+      status.setAttribute('role', 'status');
+      sessionShell.firstElementChild?.prepend(status);
+    }
+    const reason = !alive ? 'DISPOSED' : !controlConfirmed ? 'AUTHORITY REQUIRED' : !transportConnected ? 'EVENT SOCKET OFFLINE' : !channelReady ? 'AWAITING EVENT SUBSCRIPTION' : resumeInProgress ? 'REATTACHING' : 'RESTORING OUTPUT';
+    status.textContent = ready ? 'INPUT READY' : `INPUT PAUSED · ${reason}`;
   }
 
   const providerEls = new Map<string, HTMLElement>();
@@ -255,14 +271,14 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       lineHeight: appearance.lineHeight,
       fontFamily: `'${appearance.terminalFont.replaceAll("'", '')}', Consolas, monospace`,
       scrollback: 5000,
-      disableStdin: !controlConfirmed || resumeInProgress || outputReplayInProgress || !transportConnected,
+      disableStdin: !inputReady(),
       theme: terminalThemeFor(appearance)
     });
     const addon = new FitAddon();
     refreshedTerm.loadAddon(addon);
     refreshedTerm.open(termHost);
     refreshedTerm.onData(data => {
-      if (alive && xterm === refreshedTerm && controlConfirmed && !resumeInProgress && !outputReplayInProgress && transportConnected && activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
+      if (xterm === refreshedTerm && inputReady() && activeSessionId !== null) bus?.send({ type: 'terminal', sessionId: activeSessionId, action: 'input', data });
     });
     xterm = refreshedTerm;
     fitAddon = addon;
@@ -272,6 +288,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     resizeObserver.observe(termHost);
     scheduleFit();
     refreshedTerm.focus();
+    synchronizeInput();
   }
 
   function outputStatus(message: string): void {
@@ -313,6 +330,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     const id = activeSessionId, generation = ++outputRecoveryGeneration;
     let retryNeeded = false;
     outputRecoveryInProgress = true;
+    synchronizeInput();
     outputProjection.beginSnapshot();
     outputStatus('RESTORING OUTPUT');
     try {
@@ -336,6 +354,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
         outputRecoveryQueued = false;
         if (needsRecovery && attempt < 2) void recoverOutput(attempt + 1);
         else if (needsRecovery) outputStatus('OUTPUT STALE · buffer gap persists; use REFRESH to retry');
+        synchronizeInput();
       }
     }
   }
@@ -512,10 +531,11 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     } finally {
       resumeInProgress = false;
       if (alive) {
-        synchronizeInput(); renderOpenControls(); scheduleFit();
+        renderOpenControls(); scheduleFit();
         const needsRecovery = recoveryNeeded || outputRecoveryQueued;
         outputRecoveryQueued = false;
         if (controlConfirmed && needsRecovery) void recoverOutput();
+        synchronizeInput();
       }
     }
   }
@@ -603,9 +623,14 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       xterm.write(`\r\n[terminal: ${event.message}]\r\n`);
     }
   });
-  const unsubscribeSubscribed = bus?.onSubscribed?.('terminal', requestOutputRecovery);
+  const unsubscribeSubscribed = bus?.onSubscribed?.('terminal', () => {
+    channelReady = true;
+    requestOutputRecovery();
+    synchronizeInput();
+  });
   const unsubscribeStatus = bus?.subscribeStatus?.(connected => {
     transportConnected = connected;
+    channelReady = connected && (bus?.subscribed?.('terminal') ?? (bus?.onSubscribed ? false : true));
     if (!xterm || !controlConfirmed) return;
     synchronizeInput();
     if (!connected) outputStatus('OUTPUT STALE · event socket disconnected; input paused');

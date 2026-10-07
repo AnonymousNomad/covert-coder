@@ -12,6 +12,7 @@ const source = await readFile(new URL('../../browser/src/panels/terminal.ts', im
 const script = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
 class Element {
   constructor(tag = 'div', className = '', text = '') { this.tagName = tag; this.className = className; this.textContent = text; this.children = []; this.listeners = new Map(); this.dataset = {}; this.clientWidth = 700; this.clientHeight = 240; this.isConnected = true; this.disabled = false; this.classList = { add() {}, remove() {}, toggle() {} }; }
+  get firstElementChild() { return this.children[0] ?? null; }
   set innerHTML(_value) { this.children = []; }
   appendChild(child) { this.children.push(child); return child; }
   append(...children) { this.children.push(...children); }
@@ -26,10 +27,11 @@ class Element {
 function find(root, predicate) { for (const child of (root.children ?? [])) { if (predicate(child)) return child; const nested = find(child, predicate); if (nested) return nested; } return null; }
 const tick = async () => { for (let index = 0; index < 24; index++) await Promise.resolve(); };
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
-function harness(providerFixture = [{ id: 'native', label: 'Native PTY', state: 'available', detail: 'fixture', shells: [{ id: 'pwsh', label: 'PowerShell' }] }]) {
+function harness(providerFixture = [{ id: 'native', label: 'Native PTY', state: 'available', detail: 'fixture', shells: [{ id: 'pwsh', label: 'PowerShell' }] }], legacyAcknowledgements = false) {
   const frames = new Map(); const terminals = []; const sent = []; const subscriptions = new Set(); const observers = [];
   let nextFrame = 1; let fits = 0; let openCalls = 0; let resumeCalls = 0;
   const opening = deferred(), resuming = deferred();
+  let channelAcknowledged = true;
   let subscribed, connectionChanged; let snapshotCalls = 0; let snapshotProvider = null;
   let deferParserWrites = false; const parserCallbacks = [];
   const sessions = ['session:a', 'session:b'].map(sessionId => ({ sessionId, state: 'running', provider: 'native', shell: 'pwsh', owner: 'operator', createdAt: 1, exitCode: null, cleanup: 'clean' }));
@@ -53,7 +55,7 @@ function harness(providerFixture = [{ id: 'native', label: 'Native PTY', state: 
     '../desktop/terminal-output-projection.ts': { TerminalOutputProjection },
     '@xterm/xterm': { Terminal }, '@xterm/addon-fit': { FitAddon: class { fit() { fits++; } } },
     '@xterm/xterm/css/xterm.css': {}, '../services/api.ts': { api },
-    '../services/ws.ts': { getSharedEvents: () => ({ send: message => sent.push(message), connected: () => true, onSubscribed: (_channel, callback) => { subscribed = callback; return () => { subscribed = null; }; }, subscribeStatus: callback => { connectionChanged = callback; return () => { connectionChanged = null; }; }, subscribe: (_channel, listener) => { subscriptions.add(listener); return () => subscriptions.delete(listener); } }) },
+    '../services/ws.ts': { getSharedEvents: () => ({ send: message => sent.push(message), connected: () => true, ...(!legacyAcknowledgements ? { subscribed: () => channelAcknowledged, onSubscribed: (_channel, callback) => { subscribed = callback; return () => { subscribed = null; }; } } : {}), subscribeStatus: callback => { connectionChanged = callback; return () => { connectionChanged = null; }; }, subscribe: (_channel, listener) => { subscriptions.add(listener); return () => subscriptions.delete(listener); } }) },
     '../../../common/contracts/terminal.ts': { TerminalEvent: { safeParse: data => ({ success: true, data }) } },
     '../desktop/theme.ts': { DEFAULT_APPEARANCE: { terminalFont: 'Cascadia Mono' }, terminalThemeFor: () => ({}) }
   };
@@ -63,7 +65,7 @@ function harness(providerFixture = [{ id: 'native', label: 'Native PTY', state: 
   return {
     create(viewId) { const root = new Element(); const handle = exports.createTerminalPanel(root, {}, undefined, { viewId, bindings }); return { root, handle }; },
     bindings, terminals, sent, opening, resuming, sessions, observers,
-    subscriptionReady() { subscribed?.(); }, connection(connected) { connectionChanged?.(connected); }, setSnapshotProvider(provider) { snapshotProvider = provider; }, get snapshotCalls() { return snapshotCalls; },
+    setChannelReady(ready) { channelAcknowledged = ready; }, subscriptionReady() { channelAcknowledged = true; subscribed?.(); }, connection(connected) { if (!connected) channelAcknowledged = false; connectionChanged?.(connected); }, setSnapshotProvider(provider) { snapshotProvider = provider; }, get snapshotCalls() { return snapshotCalls; },
     deferParsing(value) { deferParserWrites = value; }, finishParsing() { for (const callback of parserCallbacks.splice(0)) callback(); },
     get openCalls() { return openCalls; }, get resumeCalls() { return resumeCalls; }, get fits() { return fits; },
     event(data) { for (const listener of subscriptions) listener(data); },
@@ -222,3 +224,50 @@ for (const ending of ['denied', 'disposed']) {
     view.handle.dispose();
   });
 }
+test('input readiness waits for canonical output fetch and parser completion without replaying attempted input', async () => {
+ const h = harness(); const view = h.create('terminal'); await tick();
+ find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+ h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false } }); await tick();
+ const waiting = deferred(); h.setSnapshotProvider(() => waiting.promise); h.deferParsing(true);
+ h.subscriptionReady(); await tick();
+ const before = h.sent.filter(message => message.action === 'input').length;
+ h.terminals[0].input('input during output fetch');
+ assert.equal(h.sent.filter(message => message.action === 'input').length, before, 'fetching recovery must not advertise or accept ready stdin');
+ assert.equal(find(view.root, e => e.className === 'terminal-input-state')?.textContent, 'INPUT PAUSED · RESTORING OUTPUT');
+ waiting.resolve({ sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false }); await tick();
+ assert.equal(h.terminals[0].options.disableStdin, true);
+ h.terminals[0].input('parser response or premature input');
+ assert.equal(h.sent.filter(message => message.action === 'input').length, before);
+ h.deferParsing(false); h.finishParsing(); await tick();
+ assert.equal(find(view.root, e => e.className === 'terminal-input-state')?.textContent, 'INPUT READY');
+ h.terminals[0].input('after recovery');
+ assert.equal(h.sent.at(-1)?.data, 'after recovery');
+ view.handle.dispose();
+});
+test('authenticated transport alone does not grant terminal input before its channel acknowledgement', async () => {
+ const h = harness(); h.setChannelReady(false);
+ const view = h.create('terminal'); await tick();
+ find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+ h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false } }); await tick();
+ assert.equal(h.terminals[0].options.disableStdin, true);
+ assert.equal(find(view.root, e => e.className === 'terminal-input-state')?.textContent, 'INPUT PAUSED · AWAITING EVENT SUBSCRIPTION');
+ h.terminals[0].input('before channel acknowledgement');
+ assert.deepEqual(h.sent.filter(message => message.action === 'input'), []);
+ h.subscriptionReady(); await tick();
+ assert.equal(find(view.root, e => e.className === 'terminal-input-state')?.textContent, 'INPUT READY');
+ h.terminals[0].input('after governed reattach and channel acknowledgement');
+ assert.equal(h.sent.at(-1)?.data, 'after governed reattach and channel acknowledgement');
+ view.handle.dispose();
+});
+test('legacy event ports without acknowledgement support retain confirmed input after reconnect', async () => {
+ const h = harness(undefined, true); const view = h.create('terminal'); await tick();
+ find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+ h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false } }); await tick();
+ assert.equal(find(view.root, e => e.className === 'terminal-input-state')?.textContent, 'INPUT READY');
+ h.connection(false); assert.equal(h.terminals[0].options.disableStdin, true);
+ h.connection(true);
+ assert.equal(find(view.root, e => e.className === 'terminal-input-state')?.textContent, 'INPUT READY');
+ h.terminals[0].input('confirmed legacy input');
+ assert.equal(h.sent.at(-1)?.data, 'confirmed legacy input');
+ view.handle.dispose();
+});

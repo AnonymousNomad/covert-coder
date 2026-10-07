@@ -80,9 +80,11 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     const a = `COVERT_A_${suffixA}`;
     const b = `COVERT_B_${suffixB}`;
     await focusTerminal(first);
+    await expect(first.locator('.terminal-input-state')).toHaveText('INPUT READY');
     await first.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_A_' + '${suffixA}')`);
     await first.locator('.xterm-helper-textarea').press('Enter');
     await focusTerminal(second);
+    await expect(second.locator('.terminal-input-state')).toHaveText('INPUT READY');
     await second.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_B_' + '${suffixB}')`);
     await second.locator('.xterm-helper-textarea').press('Enter');
     await expect(first.locator('.xterm-screen')).toContainText(a);
@@ -155,6 +157,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     const suffixC = randomUUID().replaceAll('-', '');
     const c = `COVERT_REOPEN_${suffixC}`;
     await focusTerminal(second);
+    await expect(second.locator('.terminal-input-state')).toHaveText('INPUT READY');
     await second.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_REOPEN_' + '${suffixC}')`);
     await second.locator('.xterm-helper-textarea').press('Enter');
     await expect(second.locator('.xterm-screen')).toContainText(c);
@@ -174,6 +177,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     const suffixD = randomUUID().replaceAll('-', '');
     const d = `COVERT_RESTORE_${suffixD}`;
     await focusTerminal(first);
+    await expect(first.locator('.terminal-input-state')).toHaveText('INPUT READY');
     await first.locator('.xterm-helper-textarea').pressSequentially(`Write-Output ('COVERT_RESTORE_' + '${suffixD}')`);
     await first.locator('.xterm-helper-textarea').press('Enter');
     await expect(first.locator('.xterm-screen')).toContainText(d);

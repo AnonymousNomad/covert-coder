@@ -4,6 +4,7 @@ import { authenticateEventSocket } from './authority.ts';
 export interface EventBus {
   subscribe(channel: string, handler: (data: unknown) => void): () => void;
   connected(): boolean;
+  subscribed?(channel: string): boolean;
   onSubscribed?(channel: string, handler: () => void): () => void;
   subscribeStatus?(handler: (connected: boolean) => void): () => void;
   send(data: unknown): void;
@@ -21,6 +22,7 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
   const handlers = new Map<string, Set<(data: unknown) => void>>();
   const subscriptionListeners = new Map<string, Set<() => void>>();
   const statusListeners = new Set<(connected: boolean) => void>();
+  const acknowledgedChannels = new Set<string>();
   let socket: WebSocket | null = null;
   let disposed = false;
   let reconnectDelay = MIN_BACKOFF_MS;
@@ -29,6 +31,7 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
 
   function setStatus(value: boolean): void {
     connected = value;
+    if (!value) acknowledgedChannels.clear();
     opts.onStatus?.(value);
     for (const listener of statusListeners) listener(value);
   }
@@ -55,10 +58,14 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
       scheduleReconnect();
       return;
     }
-    socket.addEventListener('open', () => {
-      if (socket) authenticateEventSocket(socket);
+    const currentSocket = socket;
+    if (currentSocket === null) return;
+    const isCurrent = (): boolean => !disposed && socket === currentSocket;
+    currentSocket.addEventListener('open', () => {
+      if (isCurrent()) authenticateEventSocket(currentSocket);
     });
-    socket.addEventListener('message', (event: MessageEvent) => {
+    currentSocket.addEventListener('message', (event: MessageEvent) => {
+      if (!isCurrent()) return;
       let raw: unknown;
       try {
         raw = JSON.parse(String(event.data));
@@ -74,7 +81,9 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
       const acknowledgement = raw as { type?: string; channels?: unknown } | null;
       if (connected && acknowledgement?.type === 'subscribed' && Array.isArray(acknowledgement.channels)) {
         for (const channel of acknowledgement.channels) {
-          if (typeof channel === 'string' && handlers.has(channel)) for (const listener of subscriptionListeners.get(channel) ?? []) listener();
+          if (typeof channel !== 'string' || !handlers.has(channel) || acknowledgedChannels.has(channel)) continue;
+          acknowledgedChannels.add(channel);
+          for (const listener of subscriptionListeners.get(channel) ?? []) listener();
         }
         return;
       }
@@ -84,13 +93,14 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
       if (channelHandlers === undefined) return;
       for (const handler of channelHandlers) handler(parsed.data.data);
     });
-    socket.addEventListener('close', () => {
+    currentSocket.addEventListener('close', () => {
+      if (!isCurrent()) return;
       setStatus(false);
       socket = null;
       scheduleReconnect();
     });
-    socket.addEventListener('error', () => {
-      socket?.close();
+    currentSocket.addEventListener('error', () => {
+      if (isCurrent()) currentSocket.close();
     });
   }
 
@@ -104,7 +114,7 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
     subscribeAll();
     return () => {
       set?.delete(handler);
-      if (set?.size === 0) handlers.delete(channel);
+      if (set?.size === 0) { handlers.delete(channel); acknowledgedChannels.delete(channel); }
     };
   }
 
@@ -118,6 +128,7 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
   return {
     subscribe,
     connected: () => connected,
+    subscribed: channel => connected && acknowledgedChannels.has(channel),
     onSubscribed: (channel, handler) => {
       let listeners = subscriptionListeners.get(channel);
       if (!listeners) { listeners = new Set(); subscriptionListeners.set(channel, listeners); }
@@ -129,8 +140,10 @@ export function connectEvents(wsUrl: string, opts: EventBusOptions = {}): EventB
     dispose: () => {
       disposed = true;
       if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+      setStatus(false);
       socket?.close();
       socket = null;
+      acknowledgedChannels.clear();
       handlers.clear();
       subscriptionListeners.clear();
       statusListeners.clear();
