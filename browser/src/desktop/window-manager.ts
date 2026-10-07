@@ -154,7 +154,7 @@ export class WindowManager {
     if (layout === 'CUSTOM') {
       const custom = this.state.customWindows;
       if (custom) this.commit({ ...this.state, selectedLayout: 'CUSTOM', windows: custom.map(window => ({ ...window })) });
-      else this.selectLayout('CODING');
+      else this.selectLayout('WORKSTATION');
       return;
     }
     this.selectLayout(layout);
@@ -162,7 +162,7 @@ export class WindowManager {
 
   resetLayout(): void {
     const startupLayout = this.state.startupLayout;
-    this.commit({ ...createDefaultLayoutState('CODING'), startupLayout });
+    this.commit({ ...createDefaultLayoutState('WORKSTATION'), startupLayout });
   }
 
   private patchWindow(instanceId: string, update: (window: DesktopWindowState) => DesktopWindowState): void {

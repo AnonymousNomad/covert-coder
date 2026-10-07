@@ -23,6 +23,7 @@ export type Panel =
   | 'editor'
   | 'terminal'
   | 'models'
+  | 'connections'
   | 'resources'
   | 'cipher-laptop'
   | 'skills'

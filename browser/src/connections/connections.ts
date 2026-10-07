@@ -22,6 +22,8 @@ export interface ConnectionsPanelOptions {
 
 export interface ConnectionsPanel {
   refresh(): Promise<void>;
+  activate(): void;
+  dispose(): void;
 }
 
 const ROLES = ['planner', 'coder', 'reviewer', 'utility'] as const;
@@ -380,23 +382,47 @@ export function createConnectionsPanel(container: HTMLElement, opts: Connections
       });
   });
 
-  async function refresh(): Promise<void> {
-    let view: ConnectionsViewResponseT;
-    try {
-      view = await api.connections();
-    } catch (error) {
-      consensusEl.textContent = 'unavailable';
-      listEl.textContent = '';
-      const err = document.createElement('div');
-      err.className = 'conn-meta';
-      err.textContent = error instanceof Error ? error.message : 'connections unavailable';
-      listEl.appendChild(err);
-      return;
+  let disposed = false;
+  let reading: Promise<void> | null = null;
+  let refreshQueued = false;
+  function refresh(): Promise<void> {
+    if (disposed) return Promise.resolve();
+    if (reading !== null) {
+      refreshQueued = true;
+      return reading;
     }
-    render(view);
+    reading = (async (): Promise<void> => {
+      do {
+        refreshQueued = false;
+        try {
+          const view = await api.connections();
+          if (!disposed) render(view);
+        } catch (error) {
+          if (disposed) return;
+          consensusEl.textContent = 'unavailable';
+          listEl.textContent = '';
+          const err = document.createElement('div');
+          err.className = 'conn-meta';
+          err.textContent = error instanceof Error ? error.message : 'connections unavailable';
+          listEl.appendChild(err);
+        }
+      } while (refreshQueued && !disposed);
+    })().finally(() => { reading = null; });
+    return reading;
   }
 
+  const paired = (): void => { void refresh(); };
+  document.addEventListener('covert:authority-paired', paired);
   void refresh();
 
-  return { refresh };
+  return {
+    refresh,
+    activate(): void { void refresh(); },
+    dispose(): void {
+      disposed = true;
+      refreshQueued = false;
+      document.removeEventListener('covert:authority-paired', paired);
+      container.replaceChildren();
+    }
+  };
 }

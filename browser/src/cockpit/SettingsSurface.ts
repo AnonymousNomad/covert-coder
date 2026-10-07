@@ -218,6 +218,7 @@ export function createSettingsSurface(parent: HTMLElement, _store: Store<AppStat
 
   return {
     dispose() {
+      connectionsPanel?.dispose();
       (root as HTMLElement & { disposeVoiceSettings?: () => void }).disposeVoiceSettings?.();
       parent.innerHTML = '';
     }

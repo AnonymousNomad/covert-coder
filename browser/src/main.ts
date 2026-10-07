@@ -6,7 +6,7 @@ import { Store } from './store/store.ts';
 import { INITIAL_STATE } from './store/state.ts';
 import { api } from './services/api.ts';
 import { SessionService } from './services/session.ts';
-import { mountCockpit, type CockpitHandles } from './cockpit/CockpitShell.ts';
+import { mountWorkstation, type WorkstationHandles } from './workstation/WorkstationShell.ts';
 import './cockpit/cockpit.css';
 import './desktop/desktop.css';
 import { createEditorHost, type EditorHost } from './editor/host.ts';
@@ -92,7 +92,7 @@ async function boot(): Promise<void> {
   const store = new Store(INITIAL_STATE);
   const events = connectEvents(facadeWebSocketUrl('/ws'));
   setSharedEvents(events);
-  const shell: CockpitHandles = mountCockpit(app, store);
+  const shell: WorkstationHandles = mountWorkstation(app, store);
   let paired = false;
   shell.topbar.setAuthority({ label: 'PAIRING REQUIRED', paired });
   const session = new SessionService(() => shell.notify(
@@ -100,7 +100,7 @@ async function boot(): Promise<void> {
     'Workbench session was not saved. Current workstation state remains in memory until this session closes.'
   ));
 
-  // Editor mounts inside the cockpit center column.
+  // Preserve the editor host inside its independent workstation application window.
   const groups = createGroups(shell.editorWorkspace, {
     onSplit: direction => {
       void host.split(direction);
@@ -227,7 +227,7 @@ async function boot(): Promise<void> {
   }, { once: true });
 }
 
-async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
+async function wireTopbarToBackends(shell: WorkstationHandles): Promise<void> {
   void refreshEngineChip(shell);
   const cloud = createCloudStatusReader(async () => {
     const [byok, connections] = await Promise.all([api.byokStatus(), api.connections()]);
@@ -247,7 +247,7 @@ async function wireTopbarToBackends(shell: CockpitHandles): Promise<void> {
   void refreshModes(shell);
 }
 
-async function refreshModes(shell: CockpitHandles): Promise<void> {
+async function refreshModes(shell: WorkstationHandles): Promise<void> {
   // Mode derivation from real backend state only:
   //   PRIVATE   = BYOK consent disabled (no egress consented)
   //   LOCAL     = daemon health reachable (the daemon runs on 127.0.0.1)
@@ -274,7 +274,7 @@ async function refreshModes(shell: CockpitHandles): Promise<void> {
   shell.topbar.setModes({ private: privateMode, local: localMode, verifiable });
 }
 
-async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
+async function refreshEngineChip(shell: WorkstationHandles): Promise<void> {
   let res: ModelStatusResponseT;
   try { res = await api.modelsStatus(); }
   catch {
@@ -292,7 +292,7 @@ async function refreshEngineChip(shell: CockpitHandles): Promise<void> {
   shell.topbar.setEngine({ label: `${activeCount} OF ${totalCount} MODELS ACTIVE`, ready: states.some(modelIsVerifiedReady) });
 }
 
-function renderLspStatus(shell: CockpitHandles, states: Record<string, string>): void {
+function renderLspStatus(shell: WorkstationHandles, states: Record<string, string>): void {
   const entries = Object.entries(states);
   if (entries.length === 0) {
     shell.lspStatus.textContent = 'LSP: NONE REPORTED';
@@ -302,7 +302,7 @@ function renderLspStatus(shell: CockpitHandles, states: Record<string, string>):
   shell.lspStatus.textContent = `LSP: ${available}/${entries.length} AVAILABLE`;
 }
 
-async function refreshLspStatus(shell: CockpitHandles, states: Record<string, string>): Promise<void> {
+async function refreshLspStatus(shell: WorkstationHandles, states: Record<string, string>): Promise<void> {
   try {
     const status = await api.lspStatus();
     for (const server of status.servers) states[server.languageId] = server.status;
@@ -312,7 +312,7 @@ async function refreshLspStatus(shell: CockpitHandles, states: Record<string, st
   }
 }
 
-async function refreshHarnessChip(shell: CockpitHandles): Promise<void> {
+async function refreshHarnessChip(shell: WorkstationHandles): Promise<void> {
   let res: ClosedLoopStatusT;
   try { res = await api.closedLoopStatus(); }
   catch { shell.topbar.setHarness('STANDBY'); return; }
@@ -326,7 +326,7 @@ async function refreshHarnessChip(shell: CockpitHandles): Promise<void> {
   shell.topbar.setHarness('ENABLED');
 }
 
-async function refreshVerificationChip(shell: CockpitHandles): Promise<void> {
+async function refreshVerificationChip(shell: WorkstationHandles): Promise<void> {
   // Truth-gate (Checkpoint 0 — final): the topbar reflects CURRENT UI scope.
   // Without a scope-correlation key (no current_session_id / current_bundle_id
   // exposed to the frontend, no workspace-scoped audit query), neither

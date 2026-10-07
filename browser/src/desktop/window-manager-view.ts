@@ -36,6 +36,11 @@ function button(label: string, text: string, className: string, ariaLabel = labe
   return node;
 }
 
+function applicationWindowTitle(manifest: CovertAppManifest, instanceId: string): string {
+  if (manifest.id === 'terminal') return `Terminal ${String(instanceId === manifest.id ? 1 : instanceId.split(':')[1]).padStart(2, '0')}`;
+  return instanceId === manifest.id ? manifest.title : `${manifest.title} ${instanceId.split(':')[1]}`;
+}
+
 function normalizedFromPixels(bounds: PixelBounds, layer: HTMLElement): NormalizedBounds {
   const width = Math.max(1, layer.clientWidth);
   const height = Math.max(1, layer.clientHeight);
@@ -157,7 +162,7 @@ export class WindowManagerView {
     layoutSelect.className = 'desktop-layout-select';
     layoutSelect.setAttribute('aria-label', 'Desktop layout');
     for (const [value, label] of [
-      ['CODING', 'Coding'], ['DEBUGGING', 'Debugging'], ['MODEL_WORK', 'Model work'],
+      ['WORKSTATION', 'Workstation'], ['CODING', 'Coding'], ['DEBUGGING', 'Debugging'], ['MODEL_WORK', 'Model work'],
       ['VERIFICATION', 'Verification'], ['MINIMAL', 'Minimal'], ['CUSTOM', 'Custom']
     ] as const) {
       const option = document.createElement('option');
@@ -174,7 +179,7 @@ export class WindowManagerView {
     save.addEventListener('click', () => this.options.manager.saveLayout());
     const restore = button('Restore startup layout', 'Restore', 'desktop-layout-action');
     restore.addEventListener('click', () => this.options.manager.restoreStartupLayout());
-    const reset = button('Reset layout to Coding', 'Reset', 'desktop-layout-action');
+    const reset = button('Reset layout to Workstation', 'Reset', 'desktop-layout-action');
     reset.addEventListener('click', () => this.options.manager.resetLayout());
     const startup = button('Set current layout as startup', 'Set startup', 'desktop-layout-action');
     startup.addEventListener('click', () => this.options.manager.setStartupLayout());
@@ -227,7 +232,7 @@ export class WindowManagerView {
       elements.root.classList.toggle('is-focused', focused === instanceId);
       elements.root.classList.toggle('is-maximized', windowState.snap === 'maximized');
       elements.root.dataset.snap = windowState.snap;
-      elements.content.setAttribute('aria-label', `${instanceId === manifest.id ? manifest.title : `${manifest.title} ${instanceId.split(':')[1]}`} content`);
+      elements.content.setAttribute('aria-label', `${applicationWindowTitle(manifest, instanceId)} content`);
       const launcher = this.launcherButtons.get(windowState.appId);
       launcher?.classList.toggle('is-running', true);
       launcher?.setAttribute('aria-pressed', focusedWindow?.appId === windowState.appId ? 'true' : 'false');
@@ -254,7 +259,7 @@ export class WindowManagerView {
     root.tabIndex = 0;
     root.dataset.appId = manifest.id;
     root.dataset.instanceId = instanceId;
-    const displayTitle = instanceId === manifest.id ? manifest.title : `${manifest.title} ${instanceId.split(':')[1]}`;
+    const displayTitle = applicationWindowTitle(manifest, instanceId);
     root.setAttribute('aria-label', `${displayTitle} window`);
 
     const titlebar = document.createElement('header');
@@ -346,7 +351,7 @@ export class WindowManagerView {
       const manifest = APP_REGISTRY.find(app => app.id === window.appId);
       if (!manifest) continue;
       const instanceId = windowInstanceId(window);
-      const displayTitle = instanceId === manifest.id ? manifest.title : `${manifest.title} ${instanceId.split(':')[1]}`;
+      const displayTitle = applicationWindowTitle(manifest, instanceId);
       let task = this.taskButtons.get(instanceId);
       if (!task) {
         task = button(`Restore ${manifest.title}`, manifest.icon, 'desktop-window-task', `${manifest.title} window`);
@@ -375,7 +380,7 @@ export class WindowManagerView {
       run: () => this.openApp(app.id)
     }));
     const layouts = [
-      ['CODING', 'Coding'], ['DEBUGGING', 'Debugging'], ['MODEL_WORK', 'Model work'], ['VERIFICATION', 'Verification'], ['MINIMAL', 'Minimal']
+      ['WORKSTATION', 'Workstation'], ['CODING', 'Coding'], ['DEBUGGING', 'Debugging'], ['MODEL_WORK', 'Model work'], ['VERIFICATION', 'Verification'], ['MINIMAL', 'Minimal']
     ] as const;
     return [...apps, { label: 'New terminal window', detail: 'Independent session view', run: () => { this.options.manager.openNew('terminal'); } }, ...layouts.map(([id, label]) => ({ label: `Switch layout: ${label}`, detail: 'Layout', run: () => this.options.manager.selectLayout(id) }))];
   }

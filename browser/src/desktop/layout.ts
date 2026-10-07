@@ -3,7 +3,7 @@ import { APP_BY_ID, APP_REGISTRY } from './app-registry.ts';
 import type { DesktopAppId, DesktopLayoutState, DesktopWindowState, LayoutId, NormalizedBounds, PixelBounds, SnapState } from './types.ts';
 
 export const DESKTOP_LAYOUT_STORAGE_KEY = 'covert.desktop.layout.v1';
-const LAYOUT_IDS: readonly LayoutId[] = ['CODING', 'DEBUGGING', 'MODEL_WORK', 'VERIFICATION', 'MINIMAL', 'CUSTOM'];
+const LAYOUT_IDS: readonly LayoutId[] = ['WORKSTATION', 'CODING', 'DEBUGGING', 'MODEL_WORK', 'VERIFICATION', 'MINIMAL', 'CUSTOM'];
 const SNAP_STATES: readonly SnapState[] = ['none', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'maximized'];
 
 interface PresetWindow {
@@ -13,6 +13,13 @@ interface PresetWindow {
 }
 
 const PRESETS: Record<Exclude<LayoutId, 'CUSTOM'>, readonly PresetWindow[]> = {
+  WORKSTATION: [
+    { appId: 'editor', bounds: { x: 0.02, y: 0.03, width: 0.60, height: 0.61 } },
+    { appId: 'terminal', bounds: { x: 0.02, y: 0.63, width: 0.56, height: 0.34 } },
+    { appId: 'terminal', instanceId: 'terminal:2', bounds: { x: 0.08, y: 0.56, width: 0.48, height: 0.38 } },
+    { appId: 'resources', bounds: { x: 0.65, y: 0.03, width: 0.33, height: 0.27 } },
+    { appId: 'cipher-laptop', bounds: { x: 0.60, y: 0.35, width: 0.38, height: 0.62 } }
+  ],
   CODING: [
     { appId: 'editor', bounds: { x: 0.02, y: 0.025, width: 0.96, height: 0.55 } },
     { appId: 'terminal', bounds: { x: 0.02, y: 0.60, width: 0.47, height: 0.39 } },
@@ -60,7 +67,7 @@ export function createPresetWindows(layoutId: Exclude<LayoutId, 'CUSTOM'>): Desk
     .map((window, index) => windowState(window.appId, window.bounds, index + 1, window.instanceId));
 }
 
-export function createDefaultLayoutState(layoutId: Exclude<LayoutId, 'CUSTOM'> = 'CODING'): DesktopLayoutState {
+export function createDefaultLayoutState(layoutId: Exclude<LayoutId, 'CUSTOM'> = 'WORKSTATION'): DesktopLayoutState {
   return { version: 1, selectedLayout: layoutId, startupLayout: layoutId, windows: createPresetWindows(layoutId), customWindows: null };
 }
 

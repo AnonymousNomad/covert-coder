@@ -791,3 +791,17 @@ body,
   .covert-desktop-shell .desktop-work-area { grid-template-columns: 64px minmax(0, 1fr); }
   .covert-desktop-shell .cipher-laptop-desk { grid-template-columns: 118px minmax(0, 1fr); }
 }
+
+/* Rehosted capabilities read as compact utilities, not dashboard cards. */
+.covert-desktop-shell .desktop-app-models .models-panel,
+.covert-desktop-shell .desktop-app-connections .connections-panel { padding: 8px; font: 12px/1.4 var(--desktop-font-mono); }
+.covert-desktop-shell .desktop-app-models .models-list,
+.covert-desktop-shell .desktop-app-connections .connections-list { display: block; }
+.covert-desktop-shell .desktop-app-models .model-card,
+.covert-desktop-shell .desktop-app-connections .conn-card { margin: 0; padding: 6px 0; border: 0; border-bottom: 1px solid var(--desktop-border); border-radius: 0; background: transparent; box-shadow: none; }
+.covert-desktop-shell .desktop-app-models .model-card-name,
+.covert-desktop-shell .desktop-app-connections .connections-title,
+.covert-desktop-shell .desktop-app-connections .provider-name { color: var(--desktop-text); }
+.covert-desktop-shell .desktop-app-connections input,
+.covert-desktop-shell .desktop-app-connections select,
+.covert-desktop-shell .desktop-app-connections button { border-radius: 0; font-family: var(--desktop-font-mono); }

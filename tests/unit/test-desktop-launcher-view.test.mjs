@@ -48,7 +48,7 @@ test('the existing optional-host composition remains functional while callers mi
 });
 test('taskbar captions identify separate terminal windows and closing presentation never stops a PTY',()=>{
  const h=harness({windows:[{appId:'terminal',instanceId:'terminal:2',zIndex:1,minimized:false,snap:'none',bounds:{x:0.1,y:0.1,width:0.5,height:0.5}}]});
- const task=h.dock.querySelector('.desktop-window-task');assert.ok(task);assert.match(textOf(task),/Terminal 2/);
+ const task=h.dock.querySelector('.desktop-window-task');assert.ok(task);assert.match(textOf(task),/Terminal 02/);
  task.listeners.get('click')();assert.deepEqual(h.calls,[['restore','terminal:2']]);
  const close=all(h.layer).find(node=>node.attributes.get('aria-label')==='Close window');close.listeners.get('click')({stopPropagation(){}});
  assert.deepEqual(h.calls,[['restore','terminal:2'],['close','terminal:2']]);h.view.dispose();

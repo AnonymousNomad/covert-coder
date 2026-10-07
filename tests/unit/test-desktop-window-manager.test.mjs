@@ -12,21 +12,21 @@ function memoryStorage(initial = null) {
   };
 }
 
-test('first launch opens the shared coding workstation with Workspace and two terminal views', () => {
+test('first launch opens Editor, two distinct terminals, Laptop and resources as overlapping applications', () => {
   const state = createDefaultLayoutState();
-  assert.equal(state.selectedLayout, 'CODING');
-  assert.deepEqual(state.windows.map(window => window.appId), ['editor', 'terminal', 'terminal']);
+  assert.equal(state.selectedLayout, 'WORKSTATION');
+  assert.deepEqual(state.windows.map(window => window.appId), ['editor', 'terminal', 'terminal', 'resources', 'cipher-laptop']);
   assert.ok(state.windows.every(window => window.bounds.x >= 0 && window.bounds.y >= 0));
 });
 
-test('corrupt or unavailable persistence fails safely to Coding without throwing', () => {
-  assert.equal(loadLayoutState(null).state.selectedLayout, 'CODING');
+test('corrupt or unavailable persistence fails safely to the workstation without throwing', () => {
+  assert.equal(loadLayoutState(null).state.selectedLayout, 'WORKSTATION');
   const corrupt = loadLayoutState(memoryStorage('{broken-json'));
   assert.equal(corrupt.recovered, true);
-  assert.equal(corrupt.state.selectedLayout, 'CODING');
+  assert.equal(corrupt.state.selectedLayout, 'WORKSTATION');
   const invalid = loadLayoutState(memoryStorage(JSON.stringify({ version: 1, selectedLayout: 'CODING', startupLayout: 'CODING', windows: [{ appId: 'not-an-app' }], customWindows: null })));
   assert.equal(invalid.recovered, true);
-  assert.equal(invalid.state.windows.length, 3);
+  assert.equal(invalid.state.windows.length, 5);
 });
 
 test('layout codec rejects invalid bounds and duplicate singleton windows', () => {
@@ -74,10 +74,27 @@ test('named layouts, custom save, startup restore, and reset remain separate fro
   assert.equal(manager.snapshot().selectedLayout, 'CUSTOM');
   assert.equal(manager.snapshot().windows.some(window => window.appId === 'terminal'), true);
   manager.resetLayout();
-  assert.equal(manager.snapshot().selectedLayout, 'CODING');
-  assert.deepEqual(manager.snapshot().windows.map(window => window.appId), ['editor', 'terminal', 'terminal']);
+  assert.equal(manager.snapshot().selectedLayout, 'WORKSTATION');
+  assert.deepEqual(manager.snapshot().windows.map(window => window.appId), ['editor', 'terminal', 'terminal', 'resources', 'cipher-laptop']);
 });
 
 test('storage write errors are reported as unavailable rather than escaping', () => {
   assert.equal(persistLayoutState({ getItem() { return null; }, setItem() { throw new Error('storage blocked'); } }, createDefaultLayoutState()), false);
+});
+
+ test('workstation composition overlaps windows while keeping distinct terminal presentation identities',()=>{
+ const state=createDefaultLayoutState();assert.equal(new Set(state.windows.map(w=>w.instanceId)).size,5);
+ const editor=state.windows.find(w=>w.appId==='editor').bounds,laptop=state.windows.find(w=>w.appId==='cipher-laptop').bounds;
+ assert.ok(editor.x<laptop.x+laptop.width&&laptop.x<editor.x+editor.width&&editor.y<laptop.y+laptop.height&&laptop.y<editor.y+editor.height);
+ assert.deepEqual(state.windows.filter(w=>w.appId==='terminal').map(w=>w.instanceId),['terminal','terminal:2']);
+});
+ test('valid saved Coding and custom geometry survive cutover without silent replacement',()=>{
+ const coding=createDefaultLayoutState('CODING');assert.equal(coding.windows.length,3);const loaded=loadLayoutState(memoryStorage(JSON.stringify(coding)));assert.equal(loaded.recovered,false);assert.deepEqual(loaded.state.windows,coding.windows);
+ const manager=new WindowManager(coding);manager.setBounds('editor',{x:0.12,y:0.11,width:0.62,height:0.51});manager.saveLayout();manager.setStartupLayout();const saved=manager.snapshot();assert.deepEqual(loadLayoutState(memoryStorage(JSON.stringify(saved))).state,saved);
+});
+ test('restored windows cannot contain an executable effect, permit or terminal session identity',()=>{
+ const valid=createDefaultLayoutState();for(const key of ['command','permit','session_id'])assert.equal(decodeLayoutState({...valid,windows:[{...valid.windows[0],[key]:'NEVER_EXECUTE'}]}),null);
+});
+ test('Connections is a registered independent application with its own window lifecycle',async()=>{
+ const {APP_BY_ID}=await import('../../browser/src/desktop/app-registry.ts');const manifest=APP_BY_ID.get('connections');assert.equal(manifest?.title,'Connections');assert.equal(manifest?.maturity,'AVAILABLE');const manager=new WindowManager(createDefaultLayoutState());assert.equal(manager.open('connections'),true);manager.minimize('connections');assert.equal(manager.snapshot().windows.find(w=>w.appId==='connections').minimized,true);manager.restore('connections');manager.close('connections');assert.equal(manager.snapshot().windows.some(w=>w.appId==='connections'),false);
 });

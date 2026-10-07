@@ -101,6 +101,7 @@ export function createShell(app: HTMLElement, store: Store<AppState>): Shell {
     'editor': null,
     'terminal': document.getElementById('stage-terminal'),
     'models': document.getElementById('stage-models'),
+    'connections': null,
     'verification': document.getElementById('stage-verification'),
     'skills': document.getElementById('stage-skills'),
     'memory': document.getElementById('stage-memory'),

@@ -1,7 +1,7 @@
 import type { Panel } from '../store/state.ts';
 
 export type DesktopAppId = Panel;
-export type LayoutId = 'CODING' | 'DEBUGGING' | 'MODEL_WORK' | 'VERIFICATION' | 'MINIMAL' | 'CUSTOM';
+export type LayoutId = 'WORKSTATION' | 'CODING' | 'DEBUGGING' | 'MODEL_WORK' | 'VERIFICATION' | 'MINIMAL' | 'CUSTOM';
 export type SnapState = 'none' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'maximized';
 
 /** Desktop geometry is normalized to the desktop work area (0..1). */
