@@ -35,11 +35,11 @@ function harness({left=true,windows=[]}={}){
  const view=new exports.WindowManagerView({dock,layer,paletteHost,manager,onAttach(app,content,id){events.push(['attach',app,id,content.parentElement.parentElement===layer]);},onVisibility(app,visible,id){events.push(['visibility',app,visible,id]);},...(left?{launcherHost}:{})});
  return {view,dock,launcherHost,layer,calls,events,render:windows=>{state.windows=windows;changed(state);}};
 }
-test('desktop launcher is mounted in its left host with readable application labels; taskbar is separate',()=>{
+test('desktop launcher is mounted in its left host with only pinned workstation applications; taskbar is separate',()=>{
  const h=harness();assert.ok(h.launcherHost.querySelector('.desktop-launcher'));
  assert.equal(h.dock.querySelector('.desktop-launcher'),null);
- assert.match(textOf(h.launcherHost),/Cipher Laptop/);assert.match(textOf(h.launcherHost),/Resource Monitor/);
- const disabled=all(h.launcherHost).find(node=>node.dataset.appId==='extensions');assert.equal(disabled.disabled,true);
+ for(const label of ['Projects','Editor','Terminal','Cipher Laptop','Models','Connections','Resource Monitor','Evidence','Settings'])assert.match(textOf(h.launcherHost),new RegExp(label));
+ for(const appId of ['resident','command-center','skills','memory','security','extensions'])assert.equal(all(h.launcherHost).some(node=>node.dataset.appId===appId),false);
  const open=all(h.launcherHost).find(node=>node.dataset.appId==='cipher-laptop');open.listeners.get('click')();assert.deepEqual(h.calls,[['open','cipher-laptop']]);
  h.view.dispose();assert.equal(h.launcherHost.children.length,0);assert.equal(h.dock.children.length,0);
 });

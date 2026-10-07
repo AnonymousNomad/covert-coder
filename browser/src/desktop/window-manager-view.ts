@@ -143,7 +143,7 @@ export class WindowManagerView {
     const layoutTools = document.createElement('div');
     layoutTools.className = 'desktop-layout-tools';
 
-    for (const manifest of APP_REGISTRY) {
+    for (const manifest of APP_REGISTRY.filter(app => app.launcher)) {
       const appButton = button(`Open ${manifest.title}`, manifest.icon, 'desktop-launcher-app', `${manifest.title} application`);
       const caption = document.createElement('span');
       caption.className = 'desktop-application-caption';
