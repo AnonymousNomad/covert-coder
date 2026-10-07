@@ -2,7 +2,8 @@
 /// <reference lib="webworker" />
 
 import * as monaco from 'monaco-editor/editor/editor.api';
-import type { AppearancePreferences } from '../desktop/theme.ts';
+import { DEFAULT_APPEARANCE, type AppearancePreferences } from '../desktop/theme.ts';
+import { editorThemeFor, WORKSTATION_EDITOR_THEME } from './theme.ts';
 
 export interface EditorView {
   relPath: string;
@@ -12,18 +13,21 @@ export interface EditorView {
 
 const views = new Map<string, EditorView>();
 let nextId = 0;
-let appearance: Pick<AppearancePreferences, 'editorFont' | 'fontSize' | 'lineHeight'> = {
-  editorFont: 'Cascadia Mono', fontSize: 13, lineHeight: 1.45
-};
+let appearance: AppearancePreferences = { ...DEFAULT_APPEARANCE };
+let themeRegistered = false;
 
 function key(relPath: string, splitId: string): string {
   return `${relPath}@${splitId}#${nextId++}`;
 }
 
 export function createView(container: HTMLElement, relPath: string, splitId: string, model: monaco.editor.ITextModel): EditorView {
+  if (!themeRegistered) {
+    monaco.editor.defineTheme(WORKSTATION_EDITOR_THEME, editorThemeFor(appearance));
+    themeRegistered = true;
+  }
   const editor = monaco.editor.create(container, {
     model,
-    theme: 'vs-dark',
+    theme: WORKSTATION_EDITOR_THEME,
     fontSize: appearance.fontSize,
     lineHeight: Math.round(appearance.fontSize * appearance.lineHeight),
     fontFamily: `'${appearance.editorFont.replaceAll("'", '')}', Consolas, 'Courier New', monospace`,
@@ -41,7 +45,10 @@ export function createView(container: HTMLElement, relPath: string, splitId: str
 }
 
 export function setEditorAppearance(next: AppearancePreferences): void {
-  appearance = { editorFont: next.editorFont, fontSize: next.fontSize, lineHeight: next.lineHeight };
+  appearance = { ...next };
+  monaco.editor.defineTheme(WORKSTATION_EDITOR_THEME, editorThemeFor(appearance));
+  themeRegistered = true;
+  monaco.editor.setTheme(WORKSTATION_EDITOR_THEME);
   const options = {
     fontSize: appearance.fontSize,
     lineHeight: Math.round(appearance.fontSize * appearance.lineHeight),

@@ -487,7 +487,8 @@ body,
 .desktop-window-task.is-minimized { color: var(--desktop-text-muted); }
 .desktop-layout-tools { display: flex; align-items: center; justify-content: flex-end; gap: 5px; flex: 1 0 auto; min-width: 0; }
 .desktop-layout-select,
-.desktop-layout-action {
+.desktop-layout-action,
+.desktop-palette-trigger {
   min-height: 32px;
   padding: 0 9px;
   border: 1px solid var(--desktop-border);
@@ -805,3 +806,20 @@ body,
 .covert-desktop-shell .desktop-app-connections input,
 .covert-desktop-shell .desktop-app-connections select,
 .covert-desktop-shell .desktop-app-connections button { border-radius: 0; font-family: var(--desktop-font-mono); }
+
+/* Retained editor search tools use the same rectangular workstation controls. */
+.covert-desktop-shell .desktop-app-editor .search-form input,
+.covert-desktop-shell .desktop-app-editor .search-mask,
+.covert-desktop-shell .desktop-app-editor .search-replace input,
+.covert-desktop-shell .desktop-app-editor .search-form button,
+.covert-desktop-shell .desktop-app-editor .search-replace button {
+  border: 1px solid var(--desktop-border);
+  border-radius: 0;
+  background: var(--desktop-inset);
+  color: var(--desktop-text);
+  font: 11px var(--desktop-font-mono);
+}
+.covert-desktop-shell .desktop-app-editor .search-opt input {
+  accent-color: var(--desktop-accent);
+  color-scheme: dark;
+}

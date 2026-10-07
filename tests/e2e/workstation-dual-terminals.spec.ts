@@ -105,7 +105,10 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     for (const surface of ['.desktop-systembar', '.desktop-application-rail', '.desktop-workspace', '.desktop-dock-wrap', '.desktop-resident-presence']) {
       await expect(shell.locator(surface)).toBeVisible();
     }
-    await expect(page.locator('.desktop-window[data-app-id="editor"] .monaco-editor')).toBeVisible();
+    const editor=page.locator('.desktop-window[data-app-id="editor"] .monaco-editor');
+    await expect(editor).toBeVisible();
+    await expect(editor).toHaveCSS('background-color','rgb(6, 8, 7)');
+    await expect(shell.locator('.desktop-palette-trigger')).toHaveCSS('background-color','rgb(9, 14, 10)');
     await page.keyboard.press('Alt+8');
     const monitor = page.locator('.desktop-window[data-app-id="resources"]');
     await monitor.getByRole('button', { name: 'Refresh resource snapshot', exact: true }).click();

@@ -65,6 +65,46 @@ test('Resource Monitor projects real hardware owner samples through workstation 
   await page.screenshot({path:test.info().outputPath('covert-resource-monitor.png'),fullPage:true});
   await monitor.getByRole('button',{name:'Minimize window',exact:true}).click();
 
+  const appMutations:string[]=[];
+  page.on('request',request=>{
+    if(request.method()==='POST'&&new URL(request.url()).pathname.startsWith('/api/')) appMutations.push(new URL(request.url()).pathname);
+  });
+  const openUtility=async(id:string)=>{
+    await page.locator(`.desktop-application-rail button[data-app-id="${id}"]`).click();
+    const window=page.locator(`.desktop-window[data-app-id="${id}"]`);
+    await expect(window).toBeVisible();
+    return window;
+  };
+  const modelResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/models/manager'&&response.status()===200);
+  const models=await openUtility('models');
+  const modelOwner=await (await modelResponse).json() as {ok:boolean;data:{models:unknown[];routes:Array<{available:boolean}>}};
+  expect(modelOwner.ok).toBe(true);
+  await expect(models.locator('.models-counts')).toContainText(`${modelOwner.data.models.length} KNOWN MODELS · ${modelOwner.data.routes.filter(route=>route.available).length} / ${modelOwner.data.routes.length} AVAILABLE ROUTES`);
+  await page.screenshot({path:test.info().outputPath('covert-models-application.png'),fullPage:true});
+  await models.getByRole('button',{name:'Minimize window',exact:true}).click();
+
+  const connectionResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/connections'&&response.status()===200);
+  const connections=await openUtility('connections');
+  const connectionOwner=await (await connectionResponse).json() as {ok:boolean;data:{consensus:string}};
+  expect(connectionOwner.ok).toBe(true);
+  await expect(connections.locator('.connections-consensus')).toHaveText(connectionOwner.data.consensus);
+  await page.screenshot({path:test.info().outputPath('covert-connections-application.png'),fullPage:true});
+  await connections.getByRole('button',{name:'Minimize window',exact:true}).click();
+
+  const auditResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/audit/events'&&response.status()===200);
+  const evidence=await openUtility('verification');
+  const auditOwner=await (await auditResponse).json() as {ok:boolean;data:{events:unknown[]}};
+  expect(auditOwner.ok).toBe(true);
+  await expect(evidence.locator('.verification-section-title').last()).toContainText(`RECENT AGENT.VERIFICATION EVENTS (${auditOwner.data.events.length})`);
+  await page.screenshot({path:test.info().outputPath('covert-evidence-application.png'),fullPage:true});
+  await evidence.getByRole('button',{name:'Minimize window',exact:true}).click();
+
+  const settings=await openUtility('settings');
+  await expect(settings.getByLabel('Theme',{exact:true})).toHaveValue('COVERT_PHOSPHOR');
+  await expect(settings.locator('.desktop-settings-feedback').last()).toContainText('MICROPHONE: OFF');
+  await page.screenshot({path:test.info().outputPath('covert-settings-application.png'),fullPage:true});
+  await settings.getByRole('button',{name:'Minimize window',exact:true}).click();
+  expect(appMutations).toEqual([]);
   expect(observation.errors).toEqual([]);
 });
 
