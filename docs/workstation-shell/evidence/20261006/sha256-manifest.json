@@ -2,8 +2,9 @@
     "ApplicationCommit":  "56c977b46a3a66df4a657d5bbd0aeb1f6618c1aa",
     "FocusedTests":  66,
     "NativeJourneys":  3,
-    "RecordedAt":  "2026-10-07T00:08:54.0001916Z",
-    "Scope":  "Observed fixture/native browser evidence; hashes are integrity data, not publisher authentication or independent verifier signatures",
+    "NodeTypecheckExit":  0,
+    "RecordedAt":  "2026-10-07T00:17:55.2432860Z",
+    "Scope":  "Observed fixture/native browser/target-graph evidence; integrity hashes are not publisher authentication or independent verifier signatures",
     "Artifacts":  [
                       {
                           "Name":  ".gitattributes",
@@ -14,6 +15,21 @@
                           "Name":  "active-refresh-red.log",
                           "Bytes":  3278,
                           "SHA256":  "ed5297da17fd72e094926506af3eeaf1784da3183e97fb66b64bd7b6b9225ee6"
+                      },
+                      {
+                          "Name":  "dependency-alert-1.json",
+                          "Bytes":  1427,
+                          "SHA256":  "5786f4647bf2ddbaf45a3cae565b278520964f7438b637326ff53e3ec779faba"
+                      },
+                      {
+                          "Name":  "dependency-glib-all-targets.log",
+                          "Bytes":  4130,
+                          "SHA256":  "1d2003759e82af63cb1db23182db499a1d3fdfa866cb74d476518f4cf2c78f0f"
+                      },
+                      {
+                          "Name":  "dependency-glib-windows-target.log",
+                          "Bytes":  1044,
+                          "SHA256":  "5b0828547a1ddfc89cdd3f0edd011c8757b804406174af31e9ea6e22597478b7"
                       },
                       {
                           "Name":  "focused-regression.log",
@@ -34,6 +50,11 @@
                           "Name":  "native-restored.png",
                           "Bytes":  129806,
                           "SHA256":  "3c90ec19c6042bf4b3c67197140fd1f37cba6549baa5c2c8ff44707872fd904a"
+                      },
+                      {
+                          "Name":  "node-typecheck-receipt.json",
+                          "Bytes":  571,
+                          "SHA256":  "ec3c6327a5e0882e3151d9eae96a2e335999cd46976f85f929f5ab49aee8fa1d"
                       },
                       {
                           "Name":  "parser-replay-red.log",

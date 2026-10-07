@@ -1,0 +1,14 @@
+{
+  "ApplicationCommit": "56c977b46a3a66df4a657d5bbd0aeb1f6618c1aa",
+  "CheckpointCommitAtRun": "19765efd5764964b0e59e49843522543491d7861",
+  "Command": "node --max-old-space-size=1024 node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit",
+  "ExitCode": 0,
+  "HostProcess": 22992,
+  "ObservedElapsedSeconds": 15.85,
+  "Admission": {
+    "AvailablePhysicalMiB": 4686,
+    "FreeCommitMiB": 6027,
+    "Time": "2026-10-07T00:10:45.1669177Z"
+  },
+  "SourceEquivalence": "No application files changed between the accepted application commit and checkpoint commit."
+}

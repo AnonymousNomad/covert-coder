@@ -1,0 +1,40 @@
+{
+  "Number": 1,
+  "State": "open",
+  "Dependency": {
+    "package": {
+      "ecosystem": "rust",
+      "name": "glib"
+    },
+    "manifest_path": "desktop/Cargo.lock",
+    "scope": "runtime",
+    "relationship": "unknown"
+  },
+  "Vulnerability": {
+    "Package": {
+      "ecosystem": "rust",
+      "name": "glib"
+    },
+    "Severity": "medium",
+    "Affected": ">= 0.15.0, < 0.20.0",
+    "Patched": {
+      "identifier": "0.20.0"
+    }
+  },
+  "Advisory": {
+    "GHSA": "GHSA-wrw7-89jp-8q8g",
+    "Summary": "Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`",
+    "URL": "https://github.com/advisories/GHSA-wrw7-89jp-8q8g"
+  },
+  "CreatedAt": "2026-08-10T16:17:01Z",
+  "UpdatedAt": "2026-09-23T12:25:24Z",
+  "Scope": "Default-branch alert; candidate relevance must be established from its lockfile",
+  "Candidate": {
+    "Lockfile": "desktop/Cargo.lock",
+    "Version": "0.18.5",
+    "Affected": true,
+    "WindowsDefaultFeatureTargetGraph": "cargo tree --locked --offline --target x86_64-pc-windows-msvc -i glib --manifest-path desktop/Cargo.toml: exit 0, nothing to print",
+    "AllTargetsGraph": "glib 0.18.5 through GTK/WebKit/Tauri",
+    "Conclusion": "Unresolved platform-specific dependency finding. The observed default-feature Windows target graph excludes glib; actual packaged feature/SBOM qualification and non-Windows remediation remain Packaging-owned acceptance work."
+  }
+}

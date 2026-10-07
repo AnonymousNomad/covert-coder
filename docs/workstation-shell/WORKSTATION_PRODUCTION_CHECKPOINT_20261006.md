@@ -55,7 +55,7 @@ The desktop/window manager did not become Authority, process owner, credential s
 | Preserved baseline | 18 passing tests | Before the new production slice. |
 | Final focused regression | 66 pass; 0 fail; 0 skipped; exit 0 | Window/layout/geometry/theme, controller/binding isolation, document reconciliation, chat lifecycle, replay/projection/subscription and real Authority/server routes using FakePty. FakePty is not native isolation proof. |
 | Browser TypeScript | Pass, exit 0 on final presentation changes | 512 MiB heap. Earlier 256 MiB OOM retained as a budget failure. |
-| Node TypeScript | Last completed check passed at dc9a7d5209dad096634ed88dbd90e863a68ae178 | 1024 MiB heap. Recheck after final compact-view/layout/test changes currently resource-gated. Earlier 512 MiB OOM was not promoted to a code verdict. |
+| Node TypeScript | Pass, exit 0 for final application source 56c977b... | 1024 MiB heap; completed after a fresh 4,686 MiB physical / 6,027 MiB free-commit sample. Earlier 512 MiB OOM and refused launches were retained as budget evidence. |
 | Scoped lint / harness syntax / diff check | Pass, exit 0 | Changed production and acceptance paths. |
 | Final production frontend build | Pass, exit 0; 5.95s | Main bundle 4,698.34 kB, gzip 1,213.62 kB. Chunk-size warning remains. |
 | Windows browser journeys | 3 pass; exit 0; 44.6s | Final source 56c977b...; installed Edge in an owned headless profile; production browser build with isolated canonical daemon fixture. |
@@ -86,7 +86,8 @@ Heavy floors remain physical availability at least 3 GiB and free commit above 5
 - Final focused run: 16.088s; sampled Node test-tree peak 205.71 MiB; sampled CPU 6,266ms; exit 0.
 - Final build/browser/native journey pipeline: 52.904s; sampled process-tree peak 1,763.52 MiB; sampled CPU 80,969ms; exit 0.
 - Native launch sample: 4,345 MiB available physical / 5,408 MiB free commit. End sample: 4,225 / 5,653 MiB.
-- Final Node recheck refused at 3,290 MiB physical / 4,180 MiB free commit (2026-10-07T00:03:26Z).
+- Final Node recheck was initially refused at 3,290 MiB physical / 4,180 MiB free commit; it subsequently passed after a fresh 4,686 / 6,027 MiB sample (2026-10-07T00:10:45Z).
+- The wider architecture runner contains 140 serialized test files. Admission samples were 3,789 MiB physical / 4,749 MiB free commit at 2026-10-07T00:12:53Z and 3,829 / 4,703 MiB at 00:16:15Z; it was not launched below the floor.
 
 These are 250ms diagnostic ancestry samples across the test/build/browser/PTY pipeline, not product idle RAM/CPU, model-coexistence qualification or native process-containment proof. Short-lived descendants and PID reuse limit sampling precision. The large frontend bundle and actual idle/background polling budget still need performance work.
 
@@ -97,6 +98,10 @@ SECURITY_ACCEPTANCE_20261006.csv retains 28 gaps with owner, contract, implement
 Observed slice-level negatives cover foreign/duplicate display binding, malformed/privileged saved layout fields, invalid geometry, unconfirmed terminal controls, former-owner output reads, delayed subscription/snapshot recovery, overlapping bytes, disposed callbacks, historical parser-generated input and Cipher mode/timeline races. Native journey proof covers this exact composed terminal/browser path, not every principal or host-process boundary.
 
 Still open: Resident/app/worker enrollment; project/context lease isolation; credential lifecycle; plugin network scope and hostile-code isolation; executable/update trust; egress and revocation; native descendant containment; cross-owner panic; memory provenance; voice/vision privacy; lock/sleep/process restart; acquisition/supply chain; Veritas/Ghost adversarial publication. Historical controls are not a fresh audit of every composed owner.
+
+## Dependency finding exposed during publication
+
+The push reported default-branch Dependabot alert #1. Its authenticated API record identifies glib 0.18.5 in desktop/Cargo.lock and GHSA-wrw7-89jp-8q8g (affected range >=0.15.0, <0.20.0). Locked offline inverse graphs show the GTK/WebKit/Tauri path with all targets, and no glib path for x86_64-pc-windows-msvc with default manifest features. This is an open platform-specific dependency finding: Packaging must qualify the actual packaged feature/SBOM graph and plan non-Windows remediation. No Cargo source or lockfile was changed, and this is not an aggregate dependency/security PASS. Evidence is committed with the owner/contract tracking matrix.
 
 ## Exact bounded commits
 
@@ -111,9 +116,10 @@ Still open: Resident/app/worker enrollment; project/context lease isolation; cre
 | dc9a7d5209dad096634ed88dbd90e863a68ae178 | Gate historical parser replies through asynchronous replay completion. |
 | c2e47ab9e533ffd6d389da6c8297225215cb019d | Compact active terminal with reversible DETAILS disclosure. |
 | 56c977b46a3a66df4a657d5bbd0aeb1f6618c1aa | Fit default coding terminals and focus owned cleanup. |
+| 19765efd5764964b0e59e49843522543491d7861 | Publish production checkpoint, security matrix, runtime captures and integrity-checked evidence. |
 
 Evidence root on the host: E:\covert-tooling\workstation-integration-20261006-2248. Selected test logs, measurements, source-preservation receipt and runtime captures are committed under evidence/20261006. Checkpoint/evidence commits follow the tested application SHA; no shared convergence merge or packaged deployment is asserted.
 
 ## Next executable slice
 
-Re-run final Node/architecture checks when the unchanged heavy floors permit. Then repair the WSL provider probe's UTF-16/NUL decoding exposed by native presentation, and proceed with existing utility-application lifecycle/restoration and project-addressed capability discovery. Adopt profiles/drop and shared Buddy only through reconciled canonical owner seams. Keep arbitrary untrusted execution, ambient capture and unqualified routes gated until effect-boundary evidence exists.
+Node typechecking is complete. Run the wider architecture/regression and packaged gates when the unchanged heavy floors permit. Then repair the WSL provider probe's UTF-16/NUL decoding exposed by native presentation, and proceed with existing utility-application lifecycle/restoration and project-addressed capability discovery. Adopt profiles/drop and shared Buddy only through reconciled canonical owner seams. Keep arbitrary untrusted execution, ambient capture and unqualified routes gated until effect-boundary evidence exists.
