@@ -139,3 +139,10 @@ test('a hidden Laptop waits for restore instead of fetching owner records on pai
  const h=harness();await tick();h.handle.root.closest=()=>({hidden:true});h.pair();await tick();assert.equal(h.calls,1);
  h.handle.root.closest=()=>null;h.handle.activate();await tick();assert.equal(h.calls,2);assert.equal(h.writes,0);h.handle.dispose();
 });
+
+test('a queued pairing recovery is deferred if the Laptop is hidden before the old read settles',async()=>{
+ let release;const pending=new Promise(resolve=>{release=resolve;});let reads=0;
+ const h=harness(async()=>{if(++reads===1){await pending;throw new Error('UNAUTHORIZED');}return snapshot();});await tick();
+ h.pair();h.handle.root.closest=()=>({hidden:true});release();await tick();await tick();assert.equal(h.calls,1);
+ h.handle.root.closest=()=>null;h.handle.activate();await tick();assert.match(textOf(h.parent),/HASH_CHAIN_VERIFIED/);assert.equal(h.calls,2);assert.equal(h.writes,0);h.handle.dispose();
+});

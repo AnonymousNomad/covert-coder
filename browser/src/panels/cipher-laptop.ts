@@ -192,7 +192,7 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
    }
   }
   catch{if(alive){invalidateProject('canonical project binding unavailable');failed=true;}}
-  finally{window.clearTimeout(timeout);requestTimeout=null;request=null;inFlight=false;if(alive){refresh.disabled=writing;root.setAttribute('aria-busy','false');paint();if(refreshAfterPair){refreshAfterPair=false;void read();}}}
+  finally{window.clearTimeout(timeout);requestTimeout=null;request=null;inFlight=false;if(alive){refresh.disabled=writing;root.setAttribute('aria-busy','false');paint();if(refreshAfterPair){refreshAfterPair=false;if(root.isConnected&&!root.closest('[hidden]'))void read();}}}
  }
  // Pairing changes credential availability, not authority. Recover only owner
  // reads; never replay Notebook writes or any platform effect.
