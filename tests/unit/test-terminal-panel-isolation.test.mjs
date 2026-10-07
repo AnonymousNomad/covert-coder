@@ -166,3 +166,28 @@ for (const runtimeState of ['stopped', 'running', 'unknown']) {
     view.handle.dispose();
   });
 }
+
+test('completed governed reattach does not launch a second replay that can interrupt operator typing', async () => {
+  const h = harness(); const view = h.create('terminal'); await tick();
+  const redundant = deferred(); h.setSnapshotProvider(() => redundant.promise);
+  find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+  h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false } }); await tick();
+  assert.equal(h.snapshotCalls, 0, 'resume already supplied the complete canonical snapshot');
+  assert.equal(h.terminals[0].options.disableStdin, false);
+  h.terminals[0].input('whole operator command');
+  assert.equal(h.sent.at(-1)?.data, 'whole operator command');
+  view.handle.dispose();
+});
+
+
+test('reattach snapshot gaps still fetch canonical missing history before completing recovery', async () => {
+  const h = harness(); const view = h.create('terminal'); await tick();
+  h.setSnapshotProvider(async () => ({ sessionId: 'session:a', output: 'snapshotGAP!tail', endOffset: 16, truncated: false }));
+  find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+  h.event({ kind: 'output', sessionId: 'session:a', data: 'tail', endOffset: 16 });
+  h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false } }); await tick();
+  assert.equal(h.snapshotCalls, 1);
+  assert.equal(h.terminals[0].output, 'snapshotGAP!tail');
+  assert.equal(h.terminals[0].options.disableStdin, false);
+  view.handle.dispose();
+});

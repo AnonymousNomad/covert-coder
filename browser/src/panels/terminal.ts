@@ -466,6 +466,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   async function resumeSession(candidate: TerminalSessionInfoT): Promise<void> {
     if (!alive || activeSessionId !== null || resumeInProgress || openInProgress || candidate.state !== 'running') return;
     if (view && !view.bindings.claim(view.viewId, candidate.sessionId)) return;
+    let recoveryNeeded = false;
     controlConfirmed = false;
     legacyOutput = false;
     outputProjection = new TerminalOutputProjection();
@@ -482,7 +483,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       if (resumed.session.sessionId !== candidate.sessionId || resumed.session.state !== 'running') {
         throw new Error('resume response identity or state mismatch');
       }
-      if (resumed.output) await restoreOutput(resumed.output);
+      if (resumed.output) recoveryNeeded = await restoreOutput(resumed.output);
       else { legacyOutput = true; outputStatus('LIVE OUTPUT ONLY · replay snapshot unsupported'); }
       if (!alive || activeSessionId !== candidate.sessionId || !xterm) return;
       controlConfirmed = true;
@@ -499,7 +500,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       }
     } finally {
       resumeInProgress = false;
-      if (alive) { synchronizeInput(); renderOpenControls(); scheduleFit(); if (controlConfirmed) void recoverOutput(); }
+      if (alive) { synchronizeInput(); renderOpenControls(); scheduleFit(); if (controlConfirmed && recoveryNeeded) void recoverOutput(); }
     }
   }
 
