@@ -1,0 +1,52 @@
+{
+  "source_commit": "6d2d144b8a1b4943f52cabf4afa1b47640df862f",
+  "resource_sample": {
+    "utc": "2026-10-07T16:54:21.9752513Z",
+    "physicalMiB": 1729,
+    "freeCommitMiB": 2369
+  },
+  "heavy_gate": "CLOSED",
+  "runtime": "NOT_RUN",
+  "entries": [
+    {
+      "name": "closure-red.log",
+      "bytes": 10892,
+      "sha256": "05f11175031466cfd05c0eaa082dd232dd6f48b5687b312174f48e00503b08c0"
+    },
+    {
+      "name": "closure-first-green.log",
+      "bytes": 2160,
+      "sha256": "516a62e3771bb9f38aac4da28971ce1ae56cdf0b4e0e5510e8ad5670071fa0b7"
+    },
+    {
+      "name": "laptop-draft-red.log",
+      "bytes": 7378,
+      "sha256": "cc3145b9df32f6f9ad6db020a2c526cec2b5c1b1673825d60510d7be925d74d2"
+    },
+    {
+      "name": "laptop-draft-green.log",
+      "bytes": 4244,
+      "sha256": "faa174a73cfb99bf38edc40dd65729c6af00ac95c70bade9a4f86057a21ec22e"
+    },
+    {
+      "name": "closure-regression.log",
+      "bytes": 13256,
+      "sha256": "176c7d46d9e543ea0c949bb19909c364d5887bee63aab3c9f6c9b291ce1d0685"
+    },
+    {
+      "name": "closure-lint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "runtime-journey-static.log",
+      "bytes": 834,
+      "sha256": "a3bd91626b79eb7648f19bedf7dfb6d93303e264d29343dafb3702c8ed30e5f2"
+    },
+    {
+      "name": "write-source.log",
+      "bytes": 510,
+      "sha256": "9d7ac2245a840ddfe12c4e0f35a5d838743dbe25b0b301cae887db2cdd39c21e"
+    }
+  ]
+}

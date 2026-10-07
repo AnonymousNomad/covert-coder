@@ -42,6 +42,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
   await page.addInitScript(() => {
     (globalThis as typeof globalThis & { __AIDE_RUNTIME_CONFIG__?: { facadeOrigin: string } }).__AIDE_RUNTIME_CONFIG__ = { facadeOrigin: window.location.origin };
   });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.getByRole('button', { name: 'Pair browser session', exact: true }).click();
   await expect(page.locator('[aria-label="Authority paired: PAIRED"]')).toBeVisible();
@@ -87,6 +88,26 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
       await frame.getByRole('button', { name: 'Hide terminal details', exact: true }).click();
       await expect(frame.locator('.terminal-providers')).toBeHidden();
     }
+    // Capture the production workstation only after its canonical owners respond.
+    // No generated artwork, mocked telemetry or additional terminal starts.
+    const shell = page.locator('[data-presentation="workstation"]');
+    await expect(shell).toHaveAttribute('data-theme', 'covert-phosphor');
+    for (const surface of ['.desktop-systembar', '.desktop-application-rail', '.desktop-workspace', '.desktop-dock-wrap', '.desktop-resident-presence']) {
+      await expect(shell.locator(surface)).toBeVisible();
+    }
+    await expect(page.locator('.desktop-window[data-app-id="editor"] .monaco-editor')).toBeVisible();
+    await page.keyboard.press('Alt+8');
+    const monitor = page.locator('.desktop-window[data-app-id="resources"]');
+    await expect(monitor.locator('.resource-monitor-status')).toContainText('SNAPSHOT');
+    await page.keyboard.press('Alt+9');
+    const laptop = page.locator('.desktop-window[data-app-id="cipher-laptop"]');
+    await expect(laptop.locator('.cipher-laptop-project')).toContainText('SNAPSHOT');
+    await expect(laptop.locator('.cipher-laptop-status')).toContainText('SNAPSHOT');
+    await expect(first.locator('.terminal-session-state')).toContainText('RUNNING');
+    await expect(second.locator('.terminal-session-state')).toContainText('RUNNING');
+    expect(opened.length).toBe(2);
+    await page.screenshot({ path: test.info().outputPath('covert-production-workstation-composition.png'), fullPage: true });
+    await page.getByRole('button', { name: 'Focus or restore Terminal, open', exact: true }).click();
     await page.screenshot({ path: test.info().outputPath('covert-retro-coding-native-terminals.png'), fullPage: true });
     await first.getByRole('button', { name: 'REFRESH', exact: true }).click();
     await expect.poll(() => geometry.get(firstSessionId)?.cols ?? 0).toBeGreaterThan(0);
