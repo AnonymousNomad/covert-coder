@@ -1,0 +1,230 @@
+﻿diff --git a/common/contracts/terminal.ts b/common/contracts/terminal.ts
+index 44639f8..c56289b 100644
+--- a/common/contracts/terminal.ts
++++ b/common/contracts/terminal.ts
+@@ -126,6 +126,16 @@ export const TerminalSessionStopResponse = z
+   .strict();
+ export type TerminalSessionStopResponseT = z.infer<typeof TerminalSessionStopResponse>;
+ 
++export const TerminalSessionResumeRequest = z
++  .object({ sessionId: z.string().min(1), expectedOwner: z.string().min(1) })
++  .strict();
++export type TerminalSessionResumeRequestT = z.infer<typeof TerminalSessionResumeRequest>;
++
++export const TerminalSessionResumeResponse = z
++  .object({ session: TerminalSessionInfo, scrollbackTruncated: z.boolean() })
++  .strict();
++export type TerminalSessionResumeResponseT = z.infer<typeof TerminalSessionResumeResponse>;
++
+ // ---------------------------------------------------------------------------
+ // WebSocket control protocol (client -> daemon) and event protocol
+ // (daemon -> client).
+diff --git a/node/src/events.ts b/node/src/events.ts
+index f136748..5a16108 100644
+--- a/node/src/events.ts
++++ b/node/src/events.ts
+@@ -80,6 +80,9 @@ export class EventHub {
+   attach(server: Server, authenticate?: WsAuthenticate, onControl?: WsControlHandler): void {
+     this.control = onControl;
+     this.wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8192 });
++    this.wss.on('error', error => {
++      this.logger.error('websocket server error', { message: error.message });
++    });
+     this.wss.on('connection', (socket, request) => {
+       // No URL credentials, no subscription or event before real actor proof.
+       // Missing authority fails closed, including standalone EventHub callers.
+diff --git a/node/src/routes/terminal-sessions.ts b/node/src/routes/terminal-sessions.ts
+index 8f63023..9c0e15a 100644
+--- a/node/src/routes/terminal-sessions.ts
++++ b/node/src/routes/terminal-sessions.ts
+@@ -5,7 +5,9 @@ import {
+   TerminalSessionOpenRequest,
+   TerminalSessionOpenResponse,
+   TerminalSessionStopRequest,
+-  TerminalSessionStopResponse
++  TerminalSessionStopResponse,
++  TerminalSessionResumeRequest,
++  TerminalSessionResumeResponse
+ } from '../../../common/contracts/terminal.ts';
+ import type { TerminalSessionService } from '../services/terminal-sessions.ts';
+ 
+@@ -15,19 +17,24 @@ import type { TerminalSessionService } from '../services/terminal-sessions.ts';
+ // ONLY inside authority.execute. Session ids are opaque handles, not authority,
+ // and stop verifies ownership against the authenticated actor.
+ 
+-export function routesForTerminalSessions(service: TerminalSessionService): Route[] {
++function requireTerminalSessionService(service: TerminalSessionService | undefined): TerminalSessionService {
++  if (!service) throw new RouteError('NOT_READY', 'Interactive terminal sessions are unavailable in this process.');
++  return service;
++}
++
++export function routesForTerminalSessions(service?: TerminalSessionService): Route[] {
+   return [
+     {
+       method: 'GET',
+       path: '/api/terminal/providers',
+       response: TerminalProviderListResponse,
+-      handler: async () => ({ providers: await service.providers() })
++      handler: async () => ({ providers: await requireTerminalSessionService(service).providers() })
+     },
+     {
+       method: 'GET',
+       path: '/api/terminal/sessions',
+       response: TerminalSessionListResponse,
+-      handler: () => ({ sessions: service.list() })
++      handler: () => ({ sessions: requireTerminalSessionService(service).list() })
+     },
+     {
+       method: 'POST',
+@@ -36,7 +43,7 @@ export function routesForTerminalSessions(service: TerminalSessionService): Rout
+       response: TerminalSessionOpenResponse,
+       handler: async ({ body, actor }) => {
+         const input = body as { provider: string; shell: string | null; cwd: string | null; cols: number; rows: number };
+-        const result = await service.open({ owner: actor!.id, ...input });
++        const result = await requireTerminalSessionService(service).open({ owner: actor!.id, ...input });
+         if ('error' in result) throw new RouteError('NOT_READY', result.error);
+         return result;
+       }
+@@ -48,13 +55,29 @@ export function routesForTerminalSessions(service: TerminalSessionService): Rout
+       response: TerminalSessionStopResponse,
+       handler: ({ body, actor }) => {
+         const input = body as { sessionId: string };
+-        const result = service.stop(actor!.id, input.sessionId);
++        const result = requireTerminalSessionService(service).stop(actor!.id, input.sessionId);
++        if ('error' in result) {
++          if (result.error === 'unknown session') throw new RouteError('NOT_FOUND', result.error);
++          throw new RouteError('FORBIDDEN', result.error);
++        }
++        return result;
++      }
++    },
++    {
++      method: 'POST',
++      path: '/api/terminal/sessions/resume',
++      body: TerminalSessionResumeRequest,
++      response: TerminalSessionResumeResponse,
++      handler: ({ body, actor }) => {
++        const input = body as { sessionId: string; expectedOwner: string };
++        const result = requireTerminalSessionService(service).resume(actor!.id, input.sessionId, input.expectedOwner);
+         if ('error' in result) {
+           if (result.error === 'unknown session') throw new RouteError('NOT_FOUND', result.error);
++          if (result.error === 'session owner changed' || result.error === 'session is not running') throw new RouteError('CONFLICT', result.error);
+           throw new RouteError('FORBIDDEN', result.error);
+         }
+         return result;
+       }
+     }
+   ];
+-}
+\ No newline at end of file
++}
+diff --git a/node/src/services/terminal-sessions.ts b/node/src/services/terminal-sessions.ts
+index 2abcba0..313ec44 100644
+--- a/node/src/services/terminal-sessions.ts
++++ b/node/src/services/terminal-sessions.ts
+@@ -60,6 +60,8 @@ const CHUNK_CHARS = 4096;          // below the 8 KiB WebSocket frame cap
+ const MAX_BYTES_PER_TICK = 16_384; // ~320 KiB/s ceiling per session
+ const DRAIN_INTERVAL_MS = 50;
+ const DEFAULT_BUFFER_BYTES = 1_048_576;
++const MAX_SCROLLBACK_CHARS = 262_144;
++const MAX_SCROLLBACK_LINES = 5_000;
+ const STOP_GRACE_MS = 3_000;
+ 
+ interface Session {
+@@ -79,6 +81,8 @@ interface Session {
+   queue: string[];
+   queuedBytes: number;
+   truncated: boolean;
++  scrollback: string;
++  scrollbackTruncated: boolean;
+   drainTimer: ReturnType<typeof setInterval> | null;
+   stopTimer: ReturnType<typeof setTimeout> | null;
+ }
+@@ -175,6 +179,8 @@ export class TerminalSessionService {
+       queue: [],
+       queuedBytes: 0,
+       truncated: false,
++      scrollback: '',
++      scrollbackTruncated: false,
+       drainTimer: null,
+       stopTimer: null
+     };
+@@ -211,6 +217,24 @@ export class TerminalSessionService {
+     return { sessionId: session.id, state: session.state, cleanup: session.cleanup };
+   }
+ 
++  resume(owner: string, sessionId: string, expectedOwner: string): { session: TerminalSessionInfoT; scrollbackTruncated: boolean } | { error: string } {
++    const session = this.sessions.get(sessionId);
++    if (!session) return { error: 'unknown session' };
++    if (session.owner !== expectedOwner) return { error: 'session owner changed' };
++    if (session.state !== 'running') return { error: 'session is not running' };
++
++    // This method is reachable only through the exact Authority-approved
++    // terminal.session.resume route. Transfer one session's audience/control
++    // binding; the PTY and its session id remain unchanged.
++    session.owner = owner;
++    if (session.scrollbackTruncated) {
++      this.onEvent({ sessionId: session.id, kind: 'error', message: 'restored terminal scrollback was truncated' }, session.owner);
++    }
++    this.emitOutput(session.id, session.scrollback, session.owner);
++    this.onEvent({ sessionId: session.id, kind: 'state', state: session.state, exitCode: session.exitCode }, session.owner);
++    return { session: this.info(session), scrollbackTruncated: session.scrollbackTruncated };
++  }
++
+   // Control is activity inside an already-admitted session, never a new
+   // authority operation. Fail closed: no identity, no action; wrong owner, no
+   // action (and no oracle ΓÇö we log a count only, never the payload).
+@@ -249,6 +273,7 @@ export class TerminalSessionService {
+ 
+   private enqueue(session: Session, data: string): void {
+     if (!data) return;
++    this.rememberOutput(session, data);
+     session.queue.push(data);
+     session.queuedBytes += data.length;
+     while (session.queuedBytes > this.maxBufferBytes && session.queue.length > 1) {
+@@ -267,6 +292,45 @@ export class TerminalSessionService {
+     }
+   }
+ 
++  private rememberOutput(session: Session, data: string): void {
++    let text = session.scrollback + data;
++    if (text.length > MAX_SCROLLBACK_CHARS) {
++      let start = text.length - MAX_SCROLLBACK_CHARS;
++      const first = text.charCodeAt(start);
++      if (first >= 0xDC00 && first <= 0xDFFF) start += 1;
++      text = text.slice(start);
++      session.scrollbackTruncated = true;
++    }
++    let searchFrom = text.length;
++    let lines = 0;
++    let cutAt = -1;
++    while (lines < MAX_SCROLLBACK_LINES) {
++      const newline = text.lastIndexOf('\n', searchFrom - 1);
++      if (newline < 0) break;
++      cutAt = newline;
++      searchFrom = newline;
++      lines += 1;
++    }
++    if (lines === MAX_SCROLLBACK_LINES && cutAt >= 0) {
++      text = text.slice(cutAt + 1);
++      session.scrollbackTruncated = true;
++    }
++    session.scrollback = text;
++  }
++
++  private emitOutput(sessionId: string, text: string, owner: string): void {
++    for (let offset = 0; offset < text.length;) {
++      let end = Math.min(offset + CHUNK_CHARS, text.length);
++      if (end < text.length) {
++        const last = text.charCodeAt(end - 1);
++        const next = text.charCodeAt(end);
++        if (last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end -= 1;
++      }
++      this.onEvent({ sessionId, kind: 'output', data: text.slice(offset, end) }, owner);
++      offset = end;
++    }
++  }
++
+   private drain(session: Session): void {
+     if (session.truncated && session.queuedBytes === 0) {
+       session.truncated = false;

@@ -1,0 +1,196 @@
+﻿UTC 2026-10-07T13:20:13.0933843Z
+OWN
+feat/workstation-integration-saul-20261006
+80f0cf116a8df618ad66428bdbaa6714a52cb0e0
+origin/feat/workstation-integration-saul-20261006
+0	12
+0	12
+80f0cf116a8df618ad66428bdbaa6714a52cb0e0 feat(platform): persist project identity and bind governed scope
+cf6eaf01334bf761a164569e776d9f3e4c315acb fix(cipher): bind outcomes to their actual effect references
+8417af9e6a9bfd63ec73596c1a5134c03865fb70 docs(workstation): checkpoint Cipher implementation with raw Windows and security evidence
+worktree E:/aide-sovereign-workbench
+bare
+
+worktree E:/aide-covert-operator-control
+HEAD a05ad8484b7d5451f8797a8d09e99a08836320ca
+branch refs/heads/feat/covert-operator-control-surface
+
+worktree E:/aide-desktop-control-v1
+HEAD 3d05f5a237320a51ff430cebced48051f599878c
+branch refs/heads/feat/covert-desktop-control-v1
+prunable gitdir file points to non-existent location
+
+worktree E:/aide-pr31-verify-ac0eb0a
+HEAD 579d767c91154f33a3f4ef32ebfc8c13eb975cf0
+detached
+
+worktree E:/aide-sovereign-workbench-runtime-lab
+HEAD e41aafa1b723d14981af8882f44a0de782170076
+branch refs/heads/research/local-runtime-bakeoff
+prunable gitdir file points to non-existent location
+
+worktree E:/aide-sovereign-workbench-ui-fidelity
+HEAD ddcba2fb34d3b34d93d036a9b2b921cafee3d812
+detached
+locked initializing
+
+worktree E:/aide-v1-mission-cancellation
+HEAD bf3dd2a9cb3e20cfffa14cf2b2b48c85ba0db26b
+branch refs/heads/fix/v1-mission-cancellation
+prunable gitdir file points to non-existent location
+
+worktree E:/aide-v1-public-ops
+HEAD 029282127b998a7c8ba2e9969ba2f8f37837d15f
+branch refs/heads/feat/v1-public-ops
+
+worktree E:/aide-v1-resource-admission
+HEAD a9628b8861fbcfc31fb05741ffbcfd551945a054
+branch refs/heads/fix/v1-resource-admission-gate
+
+worktree E:/aide-v1-themes
+HEAD 1e0d069a3a50e4bb539f37e120494b0ab697d179
+branch refs/heads/feat/v1-theme-system
+
+worktree E:/covert-agent-fixture-cleanup-20261007
+HEAD 7f79be9f09afa43283d3548b3b2fd0c98a6dbca7
+branch refs/heads/codex/agent-fixture-cleanup-20261007
+
+worktree E:/covert-desktop-dogfood-20261006
+HEAD da320b96fc9ab2ec4da7d0c24150d24ce90d2c17
+branch refs/heads/codex/desktop-dogfood-integrated-20261006
+
+worktree E:/covert-dogfood-20261004
+HEAD c20e7be9bcab91e4495575dbde2ed3d05484b672
+branch refs/heads/codex/desktop-dogfood-20261006
+
+worktree E:/covert-ecosystem-expansion-luna2
+HEAD bccf9bef932a2ebe51a0e7628c10df12b8967857
+branch refs/heads/codex/covert-ecosystem-expansion-luna2
+
+worktree E:/covert-gfx900-compat
+HEAD e76403f37a7adcf7607db3aafffdaa6660092eba
+branch refs/heads/feat/runtime-gfx900-compat
+
+worktree E:/covert-model-intelligence-mi1
+HEAD c4896ecab0c4eadfbc536136373d8a67fa76f565
+branch refs/heads/feat/model-intelligence-mi1-20261005
+
+worktree E:/covert-model-intelligence-mi1b
+HEAD 3651b12926a1af36c51ff8864de485ec49869277
+branch refs/heads/feat/model-intelligence-mi1b-reliability-20261005
+
+worktree E:/covert-nightshift-integration
+HEAD 7f79be9f09afa43283d3548b3b2fd0c98a6dbca7
+branch refs/heads/nightshift/production-convergence-20260926
+
+worktree E:/covert-nightshift-workspace-trust
+HEAD 30d19a6c1547086d5fd2c755b6d05c6139272612
+branch refs/heads/nightshift/workspace-trust-c4-01
+
+worktree E:/covert-product-fidelity
+HEAD 33eeefe2a2ce3dbc429b2307d497a4f42654a712
+branch refs/heads/audit/product-fidelity-20261001
+
+worktree E:/covert-provider-research-docs
+HEAD cb396109f04e4296240cabb969bc3caa0d856d3f
+branch refs/heads/docs/provider-ecosystem-research-20261006
+
+worktree E:/covert-remote-operations
+HEAD f41c7272e0e5613a28f9405f25de6f06dad15ed5
+branch refs/heads/feat/covert-remote-operations
+
+worktree E:/covert-sol61-product-closure
+HEAD bf6f03874fd576b28f1ba2240062b41424691e9b
+branch refs/heads/audit/sol61-product-closure-20261001
+
+worktree E:/covert-sovereign-workstation-shell
+HEAD 12b999d329b59fd7dd480504ce84670b0de521f5
+branch refs/heads/feat/covert-sovereign-workstation-shell
+
+worktree E:/covert-tooling/worktrees/desktop-battery-evidence-20261003
+HEAD f7521d527a9a10157dc49b7cb20b61c18f779a48
+branch refs/heads/codex/preserve-desktop-battery-20261003
+
+worktree E:/covert-tooling/worktrees/model-ready-status-bound-20261003
+HEAD 7391b98e1e0972dd3fe4365420fe15366b77b24c
+branch refs/heads/codex/model-ready-status-bound-20261003
+
+worktree E:/covert-tooling/worktrees/owner-design-lab-20261003
+HEAD eb1768ef78b9087a1ac16ca95ecffdc1542f6ced
+branch refs/heads/codex/preserve-owner-design-lab-20261003
+
+worktree E:/covert-tooling/worktrees/response-identity-observation-20261003
+HEAD 3ac7af270224ef958c8e950dd0e86d6398c96099
+branch refs/heads/codex/response-identity-observation-20261003
+
+worktree E:/covert-workstation-integration-saul-20261006
+HEAD 80f0cf116a8df618ad66428bdbaa6714a52cb0e0
+branch refs/heads/feat/workstation-integration-saul-20261006
+
+worktree E:/covert-workstation-ui-v2-20261004
+HEAD d5f992e25fb5e920a003c08e240ff9c25b46a2c7
+branch refs/heads/codex/workstation-ui-v2-20261004
+
+worktree E:/pip_temp/opencode/aide-ci-repro
+HEAD 2072cc40df06a41bc6b8fee5d1b88418027f3f8e
+detached
+
+LUNA
+feat/covert-sovereign-workstation-shell
+12b999d329b59fd7dd480504ce84670b0de521f5
+ M browser/src/byok/byok.ts
+ M browser/src/chat/chat.ts
+ M browser/src/cockpit/ActivityTimeline.ts
+ M browser/src/cockpit/CockpitShell.ts
+ M browser/src/cockpit/ModelLineup.ts
+ M browser/src/cockpit/ResidentCore.ts
+ M browser/src/cockpit/SettingsSurface.ts
+ M browser/src/cockpit/SystemTelemetry.ts
+ M browser/src/cockpit/cockpit.css
+ M browser/src/desktop/desktop.css
+ M browser/src/desktop/window-manager-view.ts
+ M browser/src/main.css
+ M browser/src/main.ts
+ M browser/src/panels/command-center.ts
+ M browser/src/panels/terminal.ts
+ M browser/src/providers/providers.ts
+ M browser/src/services/api.ts
+ M common/contracts/terminal.ts
+ M common/facade-route-map.json
+ M common/openapi.json
+ M common/security/operation-policy.mjs
+ M docs/evidence/desktop-battery.md
+ M docs/v1/routes/C1-02-ROUTE-OWNERSHIP-DECISIONS.json
+ M docs/v1/routes/C1-02-ROUTE-OWNERSHIP-DECISIONS.md
+ M node/src/events.ts
+ M node/src/openapi.ts
+ M node/src/routes/terminal-sessions.ts
+ M node/src/services/terminal-sessions.ts
+ M playwright.workstation.config.ts
+ M scripts/facade.mjs
+ M scripts/run-workstation-e2e.mjs
+ M scripts/start.mjs
+ M tests/arch/openapi-drift.test.ts
+ M tests/arch/terminal-session-routes.test.ts
+ M tests/e2e/workstation-real-mutation.spec.ts
+ M tests/e2e/workstation-test-server.mjs
+ M tests/integration/test-authority-launch.mjs
+ M tests/integration/test-canonical-launch.mjs
+ M tests/unit/test-facade.mjs
+?? browser/src/cockpit/interaction-mode.ts
+?? browser/src/platform/AppsInventory.ts
+?? browser/src/platform/PlatformHome.ts
+?? browser/src/platform/navigation.ts
+?? docs/covert-world/CW0_5_RECONCILIATION.md
+?? docs/covert-world/PLATFORM_SHELL_UI0_EVIDENCE_2026-10-07.md
+?? tests/arch/platform-shell-navigation.test.ts
+?? tests/arch/workbench-interaction-spine.test.ts
+?? tests/e2e/platform-shell-navigation.spec.ts
+?? tests/e2e/terminal-authority-refresh.spec.ts
+ 39 files changed, 2210 insertions(+), 357 deletions(-)
+CONVERGENCE
+7f79be9f09afa43283d3548b3b2fd0c98a6dbca7
+?? docs/nightshift/MAIN-LUNA-WEEKEND-EXECUTION-DIRECTIVE-2026-10-04.md
+PACKAGING
+da320b96fc9ab2ec4da7d0c24150d24ce90d2c17
+{"PhysicalMiB":3149,"FreeCommitMiB":1563}

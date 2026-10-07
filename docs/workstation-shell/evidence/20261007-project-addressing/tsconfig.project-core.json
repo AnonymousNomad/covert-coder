@@ -1,0 +1,19 @@
+{
+  "extends": "E:/covert-workstation-integration-saul-20261006/tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "E:/covert-workstation-integration-saul-20261006/node_modules/@types"
+    ]
+  },
+  "files": [
+    "E:/covert-workstation-integration-saul-20261006/common/contracts/project.ts",
+    "E:/covert-workstation-integration-saul-20261006/node/src/services/project-registry.ts",
+    "E:/covert-workstation-integration-saul-20261006/node/src/services/project-seat.ts",
+    "E:/covert-workstation-integration-saul-20261006/tests/arch/project-registry.test.ts"
+  ]
+}

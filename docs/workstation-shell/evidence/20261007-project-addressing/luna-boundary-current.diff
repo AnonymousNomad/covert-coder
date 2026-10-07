@@ -1,0 +1,129 @@
+﻿diff --git a/common/security/operation-policy.mjs b/common/security/operation-policy.mjs
+index 3505fd3..c3ed7a9 100644
+--- a/common/security/operation-policy.mjs
++++ b/common/security/operation-policy.mjs
+@@ -6,7 +6,7 @@ export const OPERATION_POLICY = Object.freeze({
+   'git.read': 'read', 'git.mutate': 'write', 'git.push': 'external',
+   'tasks.read': 'read', 'tasks.run': 'execute', 'tasks.stop': 'write',
+   'terminal.read': 'read', 'terminal.run': 'execute',
+-  'terminal.session.start': 'execute', 'terminal.session.stop': 'execute',
++  'terminal.session.start': 'execute', 'terminal.session.stop': 'execute', 'terminal.session.resume': 'execute',
+   'desktop.read': 'read', 'desktop.action': 'execute', 'desktop.panic': 'revoke',
+   'desktop.grants': 'permission', 'agent.start': 'execute', 'agent.start.external': 'external', 'agent.read': 'read',
+   'agent.tool': 'execute', 'agent.decision': 'permission', 'agent.cancel': 'revoke',
+@@ -53,6 +53,7 @@ const HTTP_POLICY = new Map([
+   ['GET /api/terminal/sessions', 'terminal.read'],
+   ['POST /api/terminal/sessions', 'terminal.session.start'],
+   ['POST /api/terminal/sessions/stop', 'terminal.session.stop'],
++  ['POST /api/terminal/sessions/resume', 'terminal.session.resume'],
+   ['GET /api/desktop/status', 'desktop.read'], ['POST /api/desktop/action', 'desktop.action'],
+   ['POST /api/desktop/grants', 'desktop.grants'], ['POST /api/desktop/panic', 'desktop.panic'],
+   ['POST /api/desktop/pending', 'capability.write'], ['GET /api/desktop/pending', 'desktop.read'],
+diff --git a/scripts/facade.mjs b/scripts/facade.mjs
+index d3d4fac..0d64e0d 100644
+--- a/scripts/facade.mjs
++++ b/scripts/facade.mjs
+@@ -52,6 +52,21 @@ function corsHeadersFor(request) {
+   };
+ }
+ 
++function authorityOriginFor(request) {
++  const origin = request.headers.origin;
++  if (typeof origin === 'string') return origin;
++  if (request.method !== 'GET' && request.method !== 'HEAD') return '';
++  const referer = request.headers.referer;
++  if (typeof referer !== 'string') return '';
++  try {
++    const parsed = new URL(referer);
++    if (parsed.origin === 'null' || parsed.username || parsed.password) return '';
++    return parsed.origin;
++  } catch {
++    return '';
++  }
++}
++
+ function apiFormatFor(request) {
+   const value = request.headers[API_FORMAT_HEADER];
+   if (value === undefined) return { kind: 'legacy-bare' };
+@@ -194,7 +209,7 @@ export function createFacade({ port = 0, host = '127.0.0.1', routeMap, targets,
+       try {
+         const header = request.headers.authorization;
+         if (typeof header !== 'string' || !header.startsWith('Bearer ') || typeof authenticate !== 'function') throw new Error('missing authority');
+-        await authenticate(header.slice(7), typeof request.headers.origin === 'string' ? request.headers.origin : '');
++        await authenticate(header.slice(7), authorityOriginFor(request));
+       } catch {
+         const payload = JSON.stringify(apiFormat.kind === ENVELOPE_V1 ? envelopeError('FORBIDDEN', 'authenticated actor required') : { error: 'authenticated actor required', code: 'FORBIDDEN' });
+         response.writeHead(403, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), ...(corsForRequest ?? {}) });
+diff --git a/scripts/start.mjs b/scripts/start.mjs
+index aa075eb..78674ce 100644
+--- a/scripts/start.mjs
++++ b/scripts/start.mjs
+@@ -108,6 +108,45 @@ async function waitForHttp(label, url, child, timeoutMs) {
+   throw new Error(`${label} did not become ready at ${url}: ${last}`);
+ }
+ 
++async function waitForSupervisorReady(supervisor, children, timeoutMs) {
++  let timer = null;
++  const childListeners = [];
++  const exited = children.map(({ label, child }) => new Promise((_, reject) => {
++    const fail = code => reject(new Error(`${label} exited before readiness (code ${code ?? 'null'})`));
++    const failToStart = error => reject(new Error(`${label} failed before readiness: ${error instanceof Error ? error.message : String(error)}`));
++    if (child.exitCode !== null) {
++      fail(child.exitCode);
++      return;
++    }
++    const onExit = code => fail(code);
++    const onError = error => failToStart(error);
++    child.once('exit', onExit);
++    child.once('error', onError);
++    childListeners.push({ child, onExit, onError });
++    if (child.exitCode !== null) onExit(child.exitCode);
++  }));
++
++  try {
++    const deadline = new Promise((_, reject) => {
++      timer = setTimeout(() => reject(new Error(`backend supervisor did not become ready within ${timeoutMs}ms`)), timeoutMs);
++    });
++    const readiness = supervisor.ready().catch(error => {
++      // Child IPC can disconnect before the process emits its exit event.
++      // The child listeners below provide the concrete failure; the existing
++      // startup deadline still bounds a live child with a lost channel.
++      if (error instanceof Error && error.message === 'authority IPC disconnected') return new Promise(() => {});
++      throw error;
++    });
++    await Promise.race([readiness, deadline, ...exited]);
++  } finally {
++    if (timer !== null) clearTimeout(timer);
++    for (const { child, onExit, onError } of childListeners) {
++      child.removeListener('exit', onExit);
++      child.removeListener('error', onError);
++    }
++  }
++}
++
+ function processGroupExists(groupId) {
+   try {
+     process.kill(-groupId, 0);
+@@ -347,17 +386,17 @@ export async function run(argv = process.argv.slice(2), root = defaultRoot) {
+     authoritySupervisor = superviseAuthority(arch);
+     const legacy = spawnChild('legacy', ['daemon/server.mjs'], { AIDE_DAEMON_PORT: String(ports.legacy), AIDE_LEGACY_PORT: String(ports.legacy) });
+     authoritySupervisor.attach('legacy', legacy);
+-    await Promise.all([
+-      waitForHttp('TypeScript backend', `http://${host}:${ports.arch}/api/health`, arch, timeoutMs),
+-      waitForHttp('legacy backend', `http://${host}:${ports.legacy}/health`, legacy, timeoutMs)
+-    ]);
++    await waitForSupervisorReady(authoritySupervisor, [
++      { label: 'TypeScript backend', child: arch },
++      { label: 'legacy backend', child: legacy }
++    ], timeoutMs);
+     const facade = spawnChild('facade', ['scripts/facade.mjs'], {
+       AIDE_FACADE_PORT: String(ports.facade),
+       AIDE_ARCH_PORT: String(ports.arch),
+       AIDE_LEGACY_PORT: String(ports.legacy)
+     });
+     authoritySupervisor.attach('facade', facade);
+-    await waitForHttp('facade', `http://${host}:${ports.facade}/api/health`, facade, timeoutMs);
++    await waitForHttp('facade readiness', `http://${host}:${ports.facade}/api/health/ts`, facade, timeoutMs);
+ 
+     if (frontend.kind === 'vite') {
+       const vite = spawnChild('vite', ['node_modules/vite/bin/vite.js', '--config', 'browser/vite.config.ts', '--port', String(ports.ui), '--host', host]);

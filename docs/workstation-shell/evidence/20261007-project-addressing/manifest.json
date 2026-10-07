@@ -1,0 +1,142 @@
+{
+    "schema":  "covert.implementation-evidence.v1",
+    "generated_utc":  "2026-10-07T13:25:23.1016543Z",
+    "source_head":  "80f0cf116a8df618ad66428bdbaa6714a52cb0e0",
+    "prerequisite":  "cf6eaf01334bf761a164569e776d9f3e4c315acb",
+    "proof_layers":  [
+                         "source-review",
+                         "unit-fixture",
+                         "Windows-HTTP-Authority-fixture",
+                         "restart-fixture",
+                         "scoped-static"
+                     ],
+    "limitations":  "Not full compiler, browser, live Resident, multi-project switch, packaged or release acceptance",
+    "source_bytes_preserved":  true,
+    "files":  [
+                  {
+                      "name":  "checkpoint-source-resource.txt",
+                      "bytes":  7420,
+                      "sha256":  "e95a53618f72e36403445098730bbb85aa7048643f74bee08d665b67b5b4da8c"
+                  },
+                  {
+                      "name":  "correlation-red.log",
+                      "bytes":  28668,
+                      "sha256":  "ff103fc768df89eab3a83c259536bcf1627961e59b271351c5296d3b4099efdc"
+                  },
+                  {
+                      "name":  "correlation-green-es2022.log",
+                      "bytes":  8870,
+                      "sha256":  "d37f6c6eb70bcbeaeb6a31956db1f4b89b7b93f156aaa5e694a41140335a8c96"
+                  },
+                  {
+                      "name":  "correlation-lint.log",
+                      "bytes":  0,
+                      "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  {
+                      "name":  "project-registry-red.log",
+                      "bytes":  3056,
+                      "sha256":  "e58eec74f526e685d7364e3991135d1b3ff1e66e84da21f7d88a16d0ca308322"
+                  },
+                  {
+                      "name":  "project-registry-green.log",
+                      "bytes":  2168,
+                      "sha256":  "92501dd4b7a8a6be7364b31792ecf522db90825293bfaf9c95c985e7e6742853"
+                  },
+                  {
+                      "name":  "project-addressing-red.log",
+                      "bytes":  9926,
+                      "sha256":  "4f571c2d7c1b346a8112567f7594f577ef1979174f6bd12f8336cf92a8215be2"
+                  },
+                  {
+                      "name":  "project-integrated-first.log",
+                      "bytes":  12588,
+                      "sha256":  "e46a2f2a0a918b71d54c3e4b00e97a8b4aea42a5f0e245251781374cdf5bcf4e"
+                  },
+                  {
+                      "name":  "project-review-red.log",
+                      "bytes":  6000,
+                      "sha256":  "3f41f4672c3cd1e56c78aab839df154b9e5730b3177633648e78390bece35ba9"
+                  },
+                  {
+                      "name":  "project-marker-red.log",
+                      "bytes":  7698,
+                      "sha256":  "7fcb29d2eec4fa8d8573db6e4e290565068e3dbcb212647ba1ca0213e1e94304"
+                  },
+                  {
+                      "name":  "project-review-green.log",
+                      "bytes":  13472,
+                      "sha256":  "8b878ad9c3172909798d556cc6aeaff2b069c149bca0e3d0d41e5355aea20a98"
+                  },
+                  {
+                      "name":  "project-final-focused.log",
+                      "bytes":  17436,
+                      "sha256":  "89de9c81011ef4c50f709654a7342b571a1252170e1b990b7a94a2112791fdcb"
+                  },
+                  {
+                      "name":  "project-private-state-red.log",
+                      "bytes":  2112,
+                      "sha256":  "8e7ba6bec2f954cf567a269481cf4a5d22de1980ddc5ef62c5edbe65b187640e"
+                  },
+                  {
+                      "name":  "project-routes-private-final.log",
+                      "bytes":  51758,
+                      "sha256":  "34ebbbc5090360be6b37fcf805778aeff42811ee2ca2c20c90b3786beb7d22b5"
+                  },
+                  {
+                      "name":  "project-routes-private-green.log",
+                      "bytes":  5350,
+                      "sha256":  "3436008cd4edfa8272820ab00d75621f9d568f4cf9cd395de5110f2685b857a7"
+                  },
+                  {
+                      "name":  "project-core-types.log",
+                      "bytes":  0,
+                      "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  {
+                      "name":  "project-scoped-lint.log",
+                      "bytes":  0,
+                      "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  {
+                      "name":  "project-final-lint.log",
+                      "bytes":  0,
+                      "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  {
+                      "name":  "project-contracts-final.log",
+                      "bytes":  130,
+                      "sha256":  "f83ead2a9754dd78b78a39a74edf961e4d92cac17f4307f9de1d08e09b94f3d4"
+                  },
+                  {
+                      "name":  "project-facade-final.log",
+                      "bytes":  176,
+                      "sha256":  "518e10b1d3f339ffa0b55629c3d9867f335622d4adc9ec9a77e7eca83799df42"
+                  },
+                  {
+                      "name":  "project-owner-final.log",
+                      "bytes":  438,
+                      "sha256":  "7e2d97410111a9b1684014bb4c2c4244331b07522fd4ada54a9b6bb89b6c659d"
+                  },
+                  {
+                      "name":  "luna-terminal-current.diff",
+                      "bytes":  10482,
+                      "sha256":  "eb842c370bfd54ee1079cb0a1dec24bd19b387234d6deaeaad74e190f92ed408"
+                  },
+                  {
+                      "name":  "luna-boundary-current.diff",
+                      "bytes":  6930,
+                      "sha256":  "218636de5f499ea3f9e63b0cf29c126fe4ac3a1153e147ee7935bf4e709beb03"
+                  },
+                  {
+                      "name":  "tsconfig.project-core.json",
+                      "bytes":  685,
+                      "sha256":  "2e06b7ce353d6948c89cac961879245f0368129121b27408adc306cd7934244c"
+                  },
+                  {
+                      "name":  "generate-project-contracts.mjs",
+                      "bytes":  780,
+                      "sha256":  "37f3d7068d66d970952b0e703e1fa0eac1dbcc9f114ee4436adc14ce2e76a9e8"
+                  }
+              ]
+}

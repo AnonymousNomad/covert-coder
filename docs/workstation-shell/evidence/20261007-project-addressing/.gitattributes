@@ -1,0 +1,4 @@
+* -text -diff
+README.md diff
+production-paths.txt diff
+.gitattributes diff
