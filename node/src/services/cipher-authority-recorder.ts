@@ -44,7 +44,7 @@ export function createCipherAuthorityRecorder(options:{
    if(decision==='proposed')input=CipherLedgerInput.parse(base);
    else if(decision==='approve'||decision==='reject')input=CipherLedgerInput.parse({...base,event_type:'AUTHORITY_DECISION',result_state:decision==='approve'?'ALLOWED':'DENIED',authority_decision_ref:'authority:'+operationId+':'+decision});
    else if(decision==='consumed')input=CipherLedgerInput.parse({...base,event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED',effect_generation:'authority:'+operationId+':1',authority_decision_ref:'authority:'+operationId+':approve'});
-   else input=CipherLedgerInput.parse({...base,event_type:'OBSERVATION',result_state:decision==='execution-succeeded'?'OBSERVED':'FAILED',observation_ref:'authority:'+operationId+':'+decision});
+   else input=CipherLedgerInput.parse({...base,event_type:'OBSERVATION',result_state:decision==='execution-succeeded'?'OBSERVED':'FAILED',effect_generation:'authority:'+operationId+':1',authority_decision_ref:'authority:'+operationId+':approve',observation_ref:'authority:'+operationId+':'+decision});
    // Required before canonical Authority consumption can enter the executor.
    // No prompt/args/command body or credential values enter these records.
    await options.ledger.append(input);

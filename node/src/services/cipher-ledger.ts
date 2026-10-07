@@ -39,6 +39,13 @@ function assertLineage(records:CipherLedgerRecordT[],input:CipherLedgerInputT) {
   if(input.event_type==='EFFECT_ATTEMPT'&&(!(last?.event_type==='AUTHORITY_DECISION'&&last.result_state==='ALLOWED')||input.result_state!=='ALLOWED'||!input.effect_generation||input.authority_decision_ref!==last.authority_decision_ref))throw new CipherLedgerError('invalid effect lineage');
   if(input.event_type==='OBSERVATION'&&(last?.event_type!=='EFFECT_ATTEMPT'||!['OBSERVED','FAILED','UNKNOWN_PENDING_RECONCILIATION'].includes(input.result_state)||(input.result_state==='OBSERVED'&&!input.observation_ref)))throw new CipherLedgerError('invalid observation lineage');
   if(input.event_type==='VERIFICATION'&&(!['VERIFIED','FAILED'].includes(input.result_state)||!input.evidence_ref||last?.event_type!=='OBSERVATION'||last.result_state!=='OBSERVED'))throw new CipherLedgerError('missing verification lineage');
+  if(input.event_type==='OBSERVATION'||input.event_type==='VERIFICATION'){
+    const attempt=own.find(record=>record.event_type==='EFFECT_ATTEMPT');
+    // Missing historical references stay missing. Supplied references must
+    // agree with the actual attempt, never another generation or permit.
+    const references=['effect_generation','authority_decision_ref','admission_decision_ref'] as const;
+    if(references.some(key=>input[key]!=null&&input[key]!==attempt?.[key]))throw new CipherLedgerError('effect correlation lineage mismatch');
+  }
 }
 function verify(state:CipherLedgerStateT,identity:z.infer<typeof Identity>) {
   if(state.ledger_id!==identity.ledger_id||state.resident_id!==identity.resident_id||state.checkpoint_count!==state.records.length)throw new CipherLedgerError('LEDGER_IDENTITY_OR_CHECKPOINT');
