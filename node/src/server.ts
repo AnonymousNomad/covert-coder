@@ -21,6 +21,8 @@ import { createCipherLedger, type CipherLedger } from './services/cipher-ledger.
 import { createCipherAuthorityRecorder, bindCipherLedger } from './services/cipher-authority-recorder.ts';
 import { CIPHER_RESIDENT_ID } from '../../common/contracts/cipher-laptop.ts';
 import { CapabilitySeatRequest, type CapabilitySeatRequestT } from '../../common/contracts/capability-seat.ts';
+import { createProjectRegistry } from './services/project-registry.ts';
+import { createProjectSeat, bindProjectSeat, type ProjectSeat } from './services/project-seat.ts';
 
 export class RouteError extends Error {
   readonly code: ErrorCode;
@@ -66,6 +68,7 @@ export class ArchServer {
   readonly authority: ExecutionAuthority;
   readonly cipherLedger: CipherLedger;
   readonly cipherNotebook: CipherNotebook;
+  readonly projects: ProjectSeat;
   readonly logger: Logger;
   readonly processes: ProcessManager;
   readonly events: EventHub;
@@ -82,11 +85,13 @@ export class ArchServer {
     this.logger = new Logger(logFile);
     this.processes = new ProcessManager(this.logger);
     this.events = new EventHub(this.logger);
+    this.projects = createProjectSeat(createProjectRegistry({ storageRoot: path.join(workspace, '.aide', 'platform-projects') }), workspace);
     const audit = createAuditTrail({ workspace: this.workspace });
     this.cipherLedger = createCipherLedger({ storageRoot: path.join(workspace, '.aide', 'cipher-laptop'), residentId: CIPHER_RESIDENT_ID, onLockdown: () => this.authority.control.revokePending() });
-    this.authority = createExecutionAuthority({ workspace: this.workspace, record: createCipherAuthorityRecorder({ ledger: this.cipherLedger, audit: event => audit.emitAuthority(event) }) });
+    this.authority = createExecutionAuthority({ workspace: this.workspace, record: createCipherAuthorityRecorder({ ledger: this.cipherLedger, audit: event => audit.emitAuthority(event), project: () => this.projects.current() }) });
     this.cipherNotebook = createCipherNotebook({ storageRoot: path.join(workspace, '.aide', 'cipher-laptop'), residentId: CIPHER_RESIDENT_ID, authority: this.authority });
     bindCipherLedger(this.authority, this.cipherLedger, this.cipherNotebook);
+    bindProjectSeat(this.authority, this.projects);
   }
 
   addShutdownHook(hook: () => Promise<void>): this {
@@ -114,6 +119,14 @@ export class ArchServer {
   async listen(port: number, host = '127.0.0.1'): Promise<http.Server> {
     // Verify history before ingress. LOCKDOWN retains operator read/recovery access.
     await this.cipherLedger.status();
+    try { await this.projects.initialize(await this.cipherLedger.recordedProjectAddress()); }
+    catch (error) {
+      // Preserve operator reads/evidence on failed identity recovery. Effects
+      // remain held by the deterministic recorder, never by Resident choice.
+      const reason = typeof error === 'object' && error !== null && 'reason' in error ? String(error.reason) : '';
+      const critical = ['PROJECT_CATALOG_INVALID', 'PROJECT_CATALOG_CHANGED', 'PROJECT_SCOPE_MISMATCH', 'CHECKOUT_ROOT_CHANGED', 'PROJECT_STORAGE_UNSAFE'].includes(reason);
+      await this.cipherLedger.reportAnomaly('PROJECT_INITIALIZATION_FAILED', critical ? 'SECURITY_CRITICAL' : 'OPERATIONAL').catch(() => {});
+    }
     for (const route of routesForAuthority()) if (!this.match(route.method, route.path)) this.route(route);
     const server = http.createServer((request, response) => {
       void this.handle(request, response);
@@ -282,9 +295,10 @@ export class ArchServer {
   // or a model-executable extension host.
   capabilityPort(actor: ActorHandle) {
     this.authority.assertActor(actor);
-    const resolve = (value: CapabilitySeatRequestT) => {
+    const resolve = async (value: CapabilitySeatRequestT) => {
       this.authority.assertActor(actor);
       const input = CapabilitySeatRequest.parse(value);
+      if (input.project) await this.projects.assertAddress(input.project);
       if (Buffer.byteLength(JSON.stringify(input)) > MAX_BODY_BYTES) throw new RouteError('PAYLOAD_TOO_LARGE', 'capability request exceeds limit');
       const url = new URL(input.path, 'http://127.0.0.1');
       const route = this.match(input.method, url.pathname);
@@ -298,11 +312,11 @@ export class ArchServer {
     };
     return Object.freeze({
       prepare: async (request: CapabilitySeatRequestT) => {
-        const {input,url,route,context}=resolve(request);
+        const {input,url,route,context}=await resolve(request);
         return this.authority.prepare(actor,await this.operationInput(route,url,context,input.task_id));
       },
       invoke: async (request: CapabilitySeatRequestT,operationId?: string) => {
-        const {input,url,route,context}=resolve(request);
+        const {input,url,route,context}=await resolve(request);
         const data=await this.governedDispatch(route,url,context,input.task_id,operationId,async()=>route.handler(context));
         const result=route.response.safeParse(data);
         if(!result.success)throw new RouteError('INTERNAL','capability response violates contract');
