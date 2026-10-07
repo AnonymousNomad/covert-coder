@@ -426,13 +426,15 @@ export function createDefaultProviderDeps(overrides: Partial<RuntimeProviderDeps
   return {
     exec: overrides.exec ?? defaultExec,
   execBounded: overrides.execBounded ?? ((file, args, timeoutMs, encoding) => new Promise<ExecResult>((resolve, reject) => {
-    execFile(file, args, { encoding: encoding ?? 'utf8', timeout: timeoutMs, windowsHide: true }, (error, stdout, stderr) => {
+    const child = execFile(file, args, { encoding: encoding ?? 'utf8', timeout: timeoutMs, windowsHide: true }, (error, stdout, stderr) => {
       if (error !== null) {
         reject(error);
         return;
       }
       resolve({ code: 0, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
     });
+    // Readiness is noninteractive. WSL can wait for EOF even after /bin/true exits.
+    child.stdin?.end();
   })),
     fileExists: overrides.fileExists ?? defaultFileExists,
     listDir: overrides.listDir ?? defaultListDir,
