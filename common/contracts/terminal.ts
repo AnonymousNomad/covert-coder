@@ -38,7 +38,9 @@ export const TerminalShellDescriptor = z
   .object({
     id: z.string().min(1),
     label: z.string().min(1),
-    path: z.string().min(1)
+    path: z.string().min(1),
+    // Observed distribution lifecycle; provider availability is a separate fact.
+    runtimeState: z.enum(['running', 'stopped', 'unknown']).optional()
   })
   .strict();
 export type TerminalShellDescriptorT = z.infer<typeof TerminalShellDescriptor>;
@@ -48,6 +50,7 @@ export const TerminalProviderInfo = z
     id: z.string().min(1),
     label: z.string().min(1),
     state: TerminalProviderState,
+    installationState: z.enum(['installed', 'not-installed', 'unknown']).optional(),
     detail: z.string(),
     shells: z.array(TerminalShellDescriptor)
   })

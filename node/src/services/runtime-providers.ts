@@ -17,7 +17,7 @@ export interface ExecResult {
   stderr: string;
 }
 
-export type ExecFn = (file: string, args: string[]) => Promise<ExecResult>;
+export type ExecFn = (file: string, args: string[], encoding?: BufferEncoding) => Promise<ExecResult>;
 export type FileExistsFn = (path: string) => Promise<boolean>;
 export type ListDirFn = (path: string) => Promise<string[]>;
 
@@ -25,6 +25,8 @@ export interface PtySpawnOptions {
   file: string;
   args: string[];
   cwd: string;
+  /** Linux cwd for a WSL guest; the native PTY still receives its Windows cwd. */
+  runtimeCwd?: string;
   env: Record<string, string>;
   cols: number;
   rows: number;
@@ -128,7 +130,7 @@ const NATIVE_SHELLS: ShellCandidate[] = [
 export interface RuntimeProvider {
   id: string;
   describe(): Promise<TerminalProviderInfoT>;
-  resolveShell(shellId: string | null): Promise<{ shell: TerminalShellDescriptorT; cwd: string } | { error: string }>;
+  resolveShell(shellId: string | null): Promise<{ shell: TerminalShellDescriptorT; cwd: string; args?: string[] } | { error: string }>;
   spawnPty(options: PtySpawnOptions): PtyProcess;
 }
 
@@ -182,7 +184,7 @@ class NativeProvider implements RuntimeProvider {
     };
   }
 
-  async resolveShell(shellId: string | null): Promise<{ shell: TerminalShellDescriptorT; cwd: string } | { error: string }> {
+  async resolveShell(shellId: string | null): Promise<{ shell: TerminalShellDescriptorT; cwd: string; args?: string[] } | { error: string }> {
     const shells = await this.detectShells();
     if (shells.length === 0) return { error: 'no supported shell is available' };
     const shell = shellId ? shells.find(s => s.id === shellId) : shells[0];
@@ -230,18 +232,20 @@ class WslProvider implements RuntimeProvider {
         id: this.id,
         label: 'WSL',
         state: 'unsupported',
+        installationState: 'not-installed',
         detail: 'wsl.exe was not found on this host.',
         shells: []
       };
     }
     let result: ExecResult;
     try {
-      result = await this.deps.exec(wsl, ['-l', '-q']);
+      result = await this.deps.exec(wsl, ['-l', '-q'], 'utf16le');
     } catch (error) {
       return {
         id: this.id,
         label: 'WSL',
         state: 'unhealthy',
+        installationState: 'unknown',
         detail: `WSL could not be queried: ${error instanceof Error ? error.message : String(error)}`,
         shells: []
       };
@@ -251,41 +255,67 @@ class WslProvider implements RuntimeProvider {
         id: this.id,
         label: 'WSL',
         state: 'unhealthy',
+        installationState: 'unknown',
         detail: `wsl.exe reported an error (exit ${result.code}).`,
         shells: []
       };
     }
-    const distros = result.stdout.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const parseNames = (stdout: string): string[] => stdout.replace(/^\ufeff/, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const distros = parseNames(result.stdout);
+    if (distros.some(name => /[\u0000-\u001f\u007f\ufffd]/.test(name))) {
+      return { id: this.id, label: 'WSL', state: 'unhealthy', installationState: 'unknown',
+        detail: 'WSL returned malformed distribution identities; no session can start.', shells: [] };
+    }
     if (distros.length === 0) {
       return {
         id: this.id,
         label: 'WSL',
         state: 'requires-setup',
+        installationState: 'installed',
         detail: 'WSL is present but no distribution is installed. Install one before opening a WSL session.',
         shells: []
       };
+    }
+    let running: Set<string> | null = null;
+    let stateError = '';
+    try {
+      const states = await this.deps.exec(wsl, ['--list', '--running', '--quiet'], 'utf16le');
+      if (states.code !== 0) stateError = `exit ${states.code}`;
+      else {
+        const names = parseNames(states.stdout);
+        if (names.some(name => /[\u0000-\u001f\u007f\ufffd]/.test(name) || !distros.includes(name))) stateError = 'inconsistent distribution state';
+        else running = new Set(names);
+      }
+    } catch (error) {
+      stateError = error instanceof Error ? error.message : String(error);
     }
     return {
       id: this.id,
       label: 'WSL',
       state: 'available',
-      detail: `Interactive sessions in ${distros.join(', ')}.`,
-      shells: distros.map(name => ({ id: name, label: name, path: '/bin/sh' }))
+      installationState: 'installed',
+      detail: `Installed: ${distros.join(', ')}.${running ? ' Runtime state is observed; opening a stopped distribution starts it.' : ` Runtime state UNKNOWN (${stateError}); installation remains observed.`}`,
+      shells: distros.map(name => ({ id: name, label: name, path: '/bin/sh',
+        runtimeState: running ? (running.has(name) ? 'running' : 'stopped') : 'unknown' }))
     };
   }
 
-  async resolveShell(shellId: string | null): Promise<{ shell: TerminalShellDescriptorT; cwd: string } | { error: string }> {
+  async resolveShell(shellId: string | null): Promise<{ shell: TerminalShellDescriptorT; cwd: string; args?: string[] } | { error: string }> {
     const info = await this.describe();
     if (info.state !== 'available' || info.shells.length === 0) return { error: info.detail };
     const shell = shellId ? info.shells.find(s => s.id === shellId) : info.shells[0];
     if (!shell) return { error: `unknown distribution '${shellId}'` };
-    return { shell, cwd: '' };
+    const executable = await firstExisting(this.deps, ['C:\\Windows\\System32\\wsl.exe']);
+    if (!executable) return { error: 'wsl.exe is no longer available' };
+    return { shell: { ...shell, path: executable }, cwd: '', args: ['--distribution', shell.id] };
   }
 
   spawnPty(options: PtySpawnOptions): PtyProcess {
     const engine = this.deps.loadPty();
     if (!engine) throw new Error('PTY engine unavailable');
-    return engine.spawn(options);
+    return engine.spawn({ ...options,
+      args: [...options.args, '--cd', options.runtimeCwd ?? translateCwd(this.id, options.cwd), '--exec', '/bin/sh']
+    });
   }
 }
 
@@ -340,9 +370,9 @@ export function loadNodePtyModule(): NodePtyEngine | null {
   return cachedEngine;
 }
 
-function defaultExec(file: string, args: string[]): Promise<ExecResult> {
+function defaultExec(file: string, args: string[], encoding: BufferEncoding = 'utf8'): Promise<ExecResult> {
   return new Promise(resolve => {
-    execFile(file, args, { timeout: 5000, windowsHide: true }, (error, stdout, stderr) => {
+    execFile(file, args, { encoding, timeout: 5000, windowsHide: true }, (error, stdout, stderr) => {
       const code = error && typeof (error as { code?: unknown }).code === 'number' ? (error as { code: number }).code : error ? 1 : 0;
       resolve({ code, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
     });
@@ -377,7 +407,7 @@ export function createDefaultProviderDeps(overrides: Partial<RuntimeProviderDeps
 export interface RuntimeProviderRegistry {
   list(): Promise<TerminalProviderInfoT[]>;
   get(id: string): RuntimeProvider | undefined;
-  resolve(providerId: string, shellId: string | null): Promise<{ provider: RuntimeProvider; shell: TerminalShellDescriptorT } | { error: string }>;
+  resolve(providerId: string, shellId: string | null): Promise<{ provider: RuntimeProvider; shell: TerminalShellDescriptorT; args?: string[] } | { error: string }>;
 }
 
 export function createRuntimeProviderRegistry(deps: RuntimeProviderDeps): RuntimeProviderRegistry {
@@ -400,7 +430,7 @@ export function createRuntimeProviderRegistry(deps: RuntimeProviderDeps): Runtim
       if ('error' in resolved) return resolved;
       // cwd translation is owned here (see translateCwd); the service passes the
       // operator-requested Windows path and this layer maps it for the runtime.
-      return { provider, shell: resolved.shell };
+      return { provider, shell: resolved.shell, ...(resolved.args ? { args: resolved.args } : {}) };
     }
   };
 }

@@ -188,7 +188,7 @@ export class TerminalSessionService {
     };
     try {
       const spawn = this.spawnOverride ?? ((options: Parameters<SpawnPtyFn>[0]) => resolved.provider.spawnPty(options));
-      const pty = spawn({ file: resolved.shell.path, args: [], cwd, env, cols: input.cols, rows: input.rows });
+      const pty = spawn({ file: resolved.shell.path, args: resolved.args ?? [], cwd: baseCwd, runtimeCwd: cwd, env, cols: input.cols, rows: input.rows });
       session.pty = pty;
     } catch (error) {
       this.logger.error('terminal session failed to start', { provider: input.provider, error: error instanceof Error ? error.message : String(error) });

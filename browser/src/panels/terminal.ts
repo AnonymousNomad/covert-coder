@@ -140,7 +140,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     card.appendChild(head);
     card.appendChild(el('div', 'terminal-provider-detail', p.detail));
     if (p.shells.length > 0) {
-      card.appendChild(el('div', 'terminal-provider-shells', p.shells.map(s => s.label).join(' \u00b7 ')));
+      card.appendChild(el('div', 'terminal-provider-shells', p.shells.map(s => s.runtimeState ? `${s.label} [${s.runtimeState.toUpperCase()}]` : s.label).join(' \u00b7 ')));
     }
     return card;
   }
@@ -183,7 +183,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     shellWrap.appendChild(providerSelect);
     shellSelect = document.createElement('select');
     shellSelect.className = 'terminal-select';
-    for (const s of activeProvider.shells) shellSelect.add(new Option(s.label, s.id));
+    for (const s of activeProvider.shells) shellSelect.add(new Option(s.runtimeState ? `${s.label} [${s.runtimeState.toUpperCase()}]` : s.label, s.id));
     shellSelect.value = activeProvider.shells[0]!.id;
     shellWrap.appendChild(shellSelect);
     bar.appendChild(shellWrap);

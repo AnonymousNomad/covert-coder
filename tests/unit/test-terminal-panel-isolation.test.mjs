@@ -26,7 +26,7 @@ class Element {
 function find(root, predicate) { for (const child of (root.children ?? [])) { if (predicate(child)) return child; const nested = find(child, predicate); if (nested) return nested; } return null; }
 const tick = async () => { for (let index = 0; index < 24; index++) await Promise.resolve(); };
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
-function harness() {
+function harness(providerFixture = [{ id: 'native', label: 'Native PTY', state: 'available', detail: 'fixture', shells: [{ id: 'pwsh', label: 'PowerShell' }] }]) {
   const frames = new Map(); const terminals = []; const sent = []; const subscriptions = new Set(); const observers = [];
   let nextFrame = 1; let fits = 0; let openCalls = 0; let resumeCalls = 0;
   const opening = deferred(), resuming = deferred();
@@ -34,7 +34,7 @@ function harness() {
   let deferParserWrites = false; const parserCallbacks = [];
   const sessions = ['session:a', 'session:b'].map(sessionId => ({ sessionId, state: 'running', provider: 'native', shell: 'pwsh', owner: 'operator', createdAt: 1, exitCode: null, cleanup: 'clean' }));
   const api = {
-    terminalProviders: async () => ({ providers: [{ id: 'native', label: 'Native PTY', state: 'available', detail: 'fixture', shells: [{ id: 'pwsh', label: 'PowerShell' }] }] }),
+    terminalProviders: async () => ({ providers: providerFixture }),
     tasksStatus: async () => ({ jobs: [] }), terminalSessions: async () => ({ sessions }),
     terminalSessionOpen: () => { openCalls++; return opening.promise; },
     terminalSessionResume: () => { resumeCalls++; return resuming.promise; },
@@ -154,3 +154,15 @@ test('historical terminal parser replies and operator input cannot reach the PTY
   assert.equal(h.sent.at(-1)?.data, 'after parse');
   view.handle.dispose();
 });
+
+for (const runtimeState of ['stopped', 'running', 'unknown']) {
+  test(`terminal displays observed WSL ${runtimeState} separately from provider availability`, async () => {
+    const h = harness([{ id: 'wsl', label: 'WSL', state: 'available', installationState: 'installed', detail: 'Installed distribution', shells: [{ id: 'Ubuntu-24.04', label: 'Ubuntu-24.04', path: '/bin/sh', runtimeState }] }]);
+    const view = h.create('terminal'); await tick();
+    const shells = find(view.root, e => e.className === 'terminal-provider-shells');
+    assert.equal(shells?.textContent, `Ubuntu-24.04 [${runtimeState.toUpperCase()}]`);
+    const select = find(view.root, e => e.tagName === 'select' && e.children.some(child => child.value === 'Ubuntu-24.04'));
+    assert.equal(select?.children[0]?.label, `Ubuntu-24.04 [${runtimeState.toUpperCase()}]`);
+    view.handle.dispose();
+  });
+}

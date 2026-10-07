@@ -1,0 +1,16 @@
+# Workstation continuation — 2026-10-07 UTC
+Source refreshed at 01:42–01:45 UTC: isolated integration branch feat/workstation-integration-saul-20261006, HEAD 14b9ad9fcfe69b9fbb628fe1a913c9a2e4b225c4, clean; fetched upstream 0/0; no commits or dirty work after the prior checkpoint.
+Original Luna: 12b999d..., same 18 modified/4 untracked, all 40 preserved byte hashes unchanged. Packaging: da320b96..., clean. KEEP all preserved Luna/packaging work; unrelated worktrees/processes preserved. No reset/stash/clean/foreign termination. Frozen PR #31 and convergence untouched.
+Resource sample at 01:40:20 UTC: physical 5,233 MiB; free commit 6,821 MiB. Heavy floors remain >=3 GiB physical and >5 GiB free commit.
+Baseline: refreshed 66 focused tests pass, exit 0, 11.155s, sampled Node-tree peak 203.39 MiB. Evidence outside repository: E:\covert-tooling\workstation-continuation-20261007-0145.
+## Task 1 — WSL discovery and launch boundary
+Raw read-only Windows reproduction: wsl.exe -l -q returned 28 bytes, UTF-16LE Ubuntu-24.04; old UTF-8 decode created a NUL-bearing identity plus phantom second distribution. Running-only query returned no distributions. Discovery did not start WSL.
+Repair: explicit UTF-16LE at subprocess boundary; BOM-aware name parsing; reject malformed identities; separately record installation and observed stopped/running/unknown states; state probe failure remains visible UNKNOWN. No install, start, fallback or permission change during discovery.
+Ruling: repair the exposed WSL launch defect in this owned slice — old service attempted /bin/sh as a native Windows image. Provider resolution now supplies wsl.exe and explicit distribution arguments; native PTY retains Windows cwd while WSL receives translated Linux cwd. Cost if wrong: WSL launch fails; no silent native fallback.
+Proof: watched decoding/state/UI regressions fail, then pass; watched real production service launch-contract test fail on /bin/sh before repair. Final focused 34/34; browser types (512 MiB), node types (1024 MiB), scoped lint exit 0. Fresh Windows read reports one clean Ubuntu-24.04 identity, installed, stopped. Actual WSL PTY/browser/package qualification still pending.
+Research: Microsoft WSL command reference https://learn.microsoft.com/en-us/windows/wsl/basic-commands and Node child_process https://github.com/nodejs/node/blob/main/doc/api/child_process.md read 2026-10-07. --list --running --quiet is read-only lifecycle inspection; execFile defaults to UTF-8. Raw host bytes establish this host's required encoding.
+## Next tasks
+Task 2: rehost Resource Monitor from existing canonical hardware projection; repair cached-sample timestamp and unknown-free-VRAM presentation; bound hidden polling/request overlap.
+Task 3: identify required project-addressing owner seams; do not treat window ID or UI selected project as canonical project truth.
+Task 4: refreshed serialized focused/architecture/browser evidence, runtime captures, whole-branch review, checkpoint/commits. No full-product, packaged-security, clean-machine or RC claim.
+Current explicit retro black/phosphor identity overrides older palettes/theme schedules. Reuse established tokens; no modern dashboard/card substitutes, fake telemetry, duplicated backend truth or unqualified voice/Buddy activation.

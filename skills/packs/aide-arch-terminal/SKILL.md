@@ -94,3 +94,9 @@ node-pty (native, prebuilt for the pinned Node), xterm.js + @xterm/addon-fit (lo
 4. Contracts terminal.ts/tasks.ts + WS channels in common/; fixtures both sides.
 5. Offline audit: no CDN, no remote shells; xterm css bundled.
 6. `npm run check` green.
+## WSL workstation probe and launch lesson — 2026-10-07
+For current RuntimeProviderRegistry/TerminalSessionService, preserve canonical Authority admission and owner-checked controls. Closing a display frame does not stop a service-owned PTY; explicit stop/disposal boundaries are defined by current contracts, not this SOP's historical tab-close example.
+Windows redirected wsl.exe list output on NEURO-MIRROR is UTF-16LE (raw bytes verified). Decode at execFile's encoding boundary before name parsing; deleting NUL characters from an already corrupted string is not a Unicode fix. Reject malformed identities instead of advertising them.
+Use installed-name and running-only quiet probes separately. Installed/available does not mean running; failed state inspection is UNKNOWN. Discovery must never install or start a distro. Selection is exact; never substitute native or another distro.
+A WSL terminal starts the Windows wsl.exe image with explicit --distribution, --cd and --exec arguments. Native PTY cwd remains a Windows path; guest cwd is translated separately. A Linux /bin/sh path cannot be a native Windows image.
+Run runtime-provider-wsl, runtime-provider-node-pty, terminal-session-routes and terminal-panel-isolation focused regressions. Fixtures prove contracts, not native WSL or packaged containment. Retain raw failure/repair evidence. Microsoft WSL basic commands and Node child_process docs were refreshed 2026-10-07.
