@@ -96,6 +96,17 @@ async function start(task = 'alpha beta gamma: create result.js and run its test
   assert.equal(res.status, 200);
   return res.body.session_id;
 }
+async function cancelAndConfirmRelease(sessionId: string): Promise<string> {
+  const cancellation = await postApproved<{ ok: boolean; state: string }>(
+    '/api/agent/cancel', { session_id: sessionId }, `integrity-cancel-${sessionId.slice(0, 8)}-${++taskSequence}`
+  );
+  assert.equal(cancellation.status, 200);
+  assert.equal(cancellation.body.ok, true);
+  let state = cancellation.body.state;
+  if (!['done', 'error', 'aborted'].includes(state)) state = (await terminal(sessionId)).state;
+  assert.ok(['done', 'error', 'aborted'].includes(state), `agent cancellation did not release the session: ${state}`);
+  return state;
+}
   async function terminal(id: string): Promise<AgentStatusBody> {
     const deadline = Date.now() + 30000;
   let last: AgentStatusBody | null = null;
@@ -320,16 +331,79 @@ test('selected skill read failure stops production inference and records context
   const skill = path.join(workspace, 'skills/SKILL.md');
   await fs.rename(skill, skill + '.saved');
   const offset = requests.length;
+  let sessionId: string | null = null;
+  let terminalObserved = false;
+  let failed = false;
+  let failure: unknown;
+  const preserveFailure = (next: unknown) => {
+    failure = failed ? new AggregateError([failure, next], 'The original test failure and its cleanup failure are both preserved.') : next;
+    failed = true;
+  };
   try {
-    const id = await start();
-    const final = await terminal(id);
+    sessionId = await start();
+    const final = await terminal(sessionId);
+    terminalObserved = true;
     assert.equal(final.state, 'error');
     assert.ok(final.error, 'terminal error message must be observable');
     assert.match(final.error, /skills context failed/);
     assert.equal(requests.length, offset);
-    const rows = await createAuditTrail({ workspace }).readEvents({ type: 'agent.context', sessionId: id });
+    const rows = await createAuditTrail({ workspace }).readEvents({ type: 'agent.context', sessionId });
     assert.ok(rows.some(row => row.source === 'skills' && row.status === 'failed' && typeof row.error === 'string'));
-  } finally { await fs.rename(skill + '.saved', skill); }
+  } catch (error) {
+    preserveFailure(error);
+  } finally {
+    if (sessionId !== null && !terminalObserved) {
+      try {
+        await cancelAndConfirmRelease(sessionId);
+        terminalObserved = true;
+      } catch (error) {
+        preserveFailure(error);
+      }
+    }
+    try { await fs.rename(skill + '.saved', skill); }
+    catch (error) { preserveFailure(error); }
+  }
+  if (failed) throw failure;
+});
+
+test('governed cancellation cleanup releases the root agent slot before workspace reuse', async () => {
+  const previousReplies = replies;
+  let sessionId: string | null = null;
+  let terminalObserved = false;
+  let failed = false;
+  let failure: unknown;
+  const preserveFailure = (next: unknown) => {
+    failure = failed ? new AggregateError([failure, next], 'The original test failure and its cleanup failure are both preserved.') : next;
+    failed = true;
+  };
+  try {
+    replies = ['<run_command><command>node --version</command></run_command>'];
+    sessionId = await start('cleanup cancellation probe');
+    const pending = await eventually(async () => {
+      const { body } = await getJson<AgentStatusBody>('/api/agent/status?id=' + sessionId);
+      return body.state === 'awaiting_approval' ? body : null;
+    });
+    assert.ok(pending.pending_approval, 'control session did not reach its governed approval boundary');
+    assert.equal(await cancelAndConfirmRelease(sessionId), 'aborted');
+    sessionId = null;
+    terminalObserved = true;
+
+    replies = ['<attempt_completion><result>post-cancel start completed</result></attempt_completion>'];
+    sessionId = await start('post-cancel ownership probe');
+    terminalObserved = false;
+    const final = await terminal(sessionId);
+    terminalObserved = true;
+    assert.equal(final.state, 'done');
+  } catch (error) {
+    preserveFailure(error);
+  } finally {
+    if (sessionId !== null && !terminalObserved) {
+      try { await cancelAndConfirmRelease(sessionId); }
+      catch (error) { preserveFailure(error); }
+    }
+    replies = previousReplies;
+  }
+  if (failed) throw failure;
 });
 
 test('production audit write failure cannot claim durable evidence', async () => {

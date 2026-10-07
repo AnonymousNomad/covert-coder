@@ -1,0 +1,70 @@
+{
+  "date_utc": "2026-10-07",
+  "status": "BOUNDED_TEST_FIX_VERIFIED_LOCALLY_ORIGINAL_AUTHORITY_AUDIT_TIMEOUT_OPEN",
+  "worktree": "E:\\covert-agent-fixture-cleanup-20261007",
+  "branch": "codex/agent-fixture-cleanup-20261007",
+  "base_head": "cfaad716a01af06dfe61dcfb3d1acd7dea9b4b2c",
+  "changed_production_behavior": false,
+  "changed_files": [
+    "tests/arch/agent-execution-integrity.test.ts"
+  ],
+  "verified_test_file_sha256": "5CA615E7A7B406854DA5345FDA14FE744681B5A4BFDCA466B203DC96E030C76F",
+  "preserved_original_failure": {
+    "boundary": "GET /api/agent/status waited for required durable Authority audit persistence and exceeded the existing 30000ms facade deadline",
+    "lower_level_cause": "UNKNOWN",
+    "cleared": false
+  },
+  "confirmed_secondary_fixture_cause": "The failing selected-skill test did not cancel or await its running session before restoring/reusing the shared workspace, allowing later tests to encounter the still-owned AgentLoop root slot.",
+  "repair": "On failure, cancel via the Authority-approved /api/agent/cancel route and confirm terminal release before restoring the fixture. Preserve original and cleanup failures together. Add a governed cancellation-then-reuse regression.",
+  "verification": [
+    {
+      "gate": "diff-check",
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    {
+      "gate": "typescript",
+      "command": "node node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit",
+      "exit_code": 0,
+      "scope": "Includes tests/**/*.ts"
+    },
+    {
+      "gate": "focused-regression",
+      "command": "node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 --test-name-pattern '(selected skill read failure|governed cancellation cleanup)' tests/arch/agent-execution-integrity.test.ts",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "exit_code": 0
+    },
+    {
+      "gate": "affected-architecture-file",
+      "command": "node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/agent-execution-integrity.test.ts",
+      "tests": 30,
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "duration_seconds": 21.142,
+      "exit_code": 0
+    }
+  ],
+  "retained_fixture_arch_log_sha256": "FACF21DD68E2E1A7A0339F57E658BA547A23ECC190C2B528728D568B2CE4A47B",
+  "resource_sample": {
+    "free_physical_ram_gib": 4.38,
+    "free_commit_gib": 6.67,
+    "commit_limit_gib": 24.36,
+    "system_drive_free_gib": 7.05,
+    "data_drive_free_gib_approx": 73.0
+  },
+  "processes_terminated": 0,
+  "models_started": 0,
+  "pagefile_changed": false,
+  "aggregate_windows_pre_push": "NOT_RUN_AFTER_CANDIDATE",
+  "architecture_battery": "NOT_RUN_AFTER_CANDIDATE",
+  "veritas": "NOT_RUN_AFTER_CANDIDATE",
+  "exact_sha_github_ci": "NOT_RUN",
+  "canonical_integration": "NOT_PERFORMED",
+  "pr_31_modified": false
+}
