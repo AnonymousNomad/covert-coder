@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, appendFileSync } from 'node:fs';
 import path from 'node:path';
 import { ArchServer } from '../../node/src/server.ts';
 import { TerminalSessionService } from '../../node/src/services/terminal-sessions.ts';
@@ -29,6 +29,17 @@ const traceProvider = (phase, data) => fs.appendFile(providerTraceFile, JSON.str
 const terminalSessions = new TerminalSessionService({
   defaultCwd: workspace,
   deps: {
+    loadPty: () => {
+      const engine = providerDeps.loadPty();
+      if (!engine) return engine;
+      return { spawn: options => {
+        const started = Date.now();
+        appendFileSync(providerTraceFile, JSON.stringify({ utc: new Date().toISOString(), phase: 'pty-spawn-start', file: options.file, args: options.args }) + '\n');
+        const process = engine.spawn(options);
+        appendFileSync(providerTraceFile, JSON.stringify({ utc: new Date().toISOString(), phase: 'pty-spawn-end', elapsedMs: Date.now() - started, pid: process.pid }) + '\n');
+        return process;
+      } };
+    },
     exec: async (file, args, encoding) => {
       const started = Date.now();
       await traceProvider('probe-start', { file, args });
