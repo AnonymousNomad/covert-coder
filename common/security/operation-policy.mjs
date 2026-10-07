@@ -61,6 +61,7 @@ const HTTP_POLICY = new Map([
   ['POST /api/agent/decision', 'agent.decision'],
   ['POST /api/agent/cancel', 'agent.cancel'], ['POST /api/agent/tool', 'agent.tool'], ['GET /api/agent/status', 'agent.read'],
   ['GET /api/agent/sessions', 'agent.read'],
+  ['GET /api/cipher/laptop/notebook', 'capability.read'], ['POST /api/cipher/laptop/notebook', 'capability.write'], ['POST /api/cipher/laptop/notebook/remove', 'capability.write'],
   ['GET /api/cipher/laptop/status', 'capability.read'], ['GET /api/cipher/laptop/activity', 'capability.read'],
   ['GET /api/audit/events', 'capability.read'], ['GET /api/audit/session', 'capability.read'],
   ['GET /api/audit/bundle', 'capability.read'], ['GET /api/openapi.json', 'capability.read'],

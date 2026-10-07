@@ -29,7 +29,11 @@ function assertLineage(records:CipherLedgerRecordT[],input:CipherLedgerInputT) {
   const last=own.at(-1);
   if(input.event_type==='PREPARE'){if(own.length)throw new CipherLedgerError('duplicate action');if(input.result_state!=='PENDING'||input.authority_decision_ref||input.evidence_ref)throw new CipherLedgerError('invalid prepare lineage');return;}
   if(['SECURITY_EVENT','TOMBSTONE'].includes(input.event_type))return;
-  if(!own.some(record=>record.event_type==='PREPARE'))throw new CipherLedgerError('missing prepare lineage');
+  const prepared=own.find(record=>record.event_type==='PREPARE');
+  if(!prepared)throw new CipherLedgerError('missing prepare lineage');
+  const immutable=['principal_id','principal_kind','origin_channel','project_id','task_id','capability','target_ref','target_digest'] as const;
+  if(immutable.some(key=>prepared[key]!==input[key]))throw new CipherLedgerError('immutable action lineage mismatch');
+  if(input.event_type==='RECONCILIATION')throw new CipherLedgerError('unsupported reconciliation lineage');
   if(input.event_type==='AUTHORITY_DECISION'&&(!['ALLOWED','DENIED'].includes(input.result_state)||!input.authority_decision_ref))throw new CipherLedgerError('invalid authority lineage');
   if(input.event_type==='AUTHORITY_DECISION'&&(!last||!['PREPARE','AUTHORITY_DECISION'].includes(last.event_type)))throw new CipherLedgerError('invalid authority lineage');
   if(input.event_type==='EFFECT_ATTEMPT'&&(!(last?.event_type==='AUTHORITY_DECISION'&&last.result_state==='ALLOWED')||input.result_state!=='ALLOWED'||!input.effect_generation||input.authority_decision_ref!==last.authority_decision_ref))throw new CipherLedgerError('invalid effect lineage');
@@ -120,7 +124,8 @@ export function createCipherLedger(options:CipherLedgerOptions) {
       await load();
       if(identity?.lockdown_hash&&(nextSecurity===null||identity.lockdown_hash!==createHash('sha256').update(canonicalLedgerJson(nextSecurity)).digest('hex')))throw new CipherLedgerError('LOCKDOWN_HISTORY_MISMATCH');
       if(!starting&&security.state==='LOCKDOWN'&&nextSecurity?.state!=='LOCKDOWN')throw new CipherLedgerError('LOCKDOWN_CANNOT_CLEAR');
-      if(nextSecurity!==null)security=nextSecurity;
+      // Persisted or in-memory holds cannot silently downgrade on a failed write.
+      if(nextSecurity!==null&&(starting||security.state==='NORMAL'||nextSecurity.state==='LOCKDOWN'||nextSecurity.state===security.state))security=nextSecurity;
       containPending();
       if(starting&&security.state!=='LOCKDOWN'&&state&&unresolved(state.records).length){
         await setSecurity('UNKNOWN_PENDING_RECONCILIATION','OPERATIONAL');
@@ -147,9 +152,14 @@ export function createCipherLedger(options:CipherLedgerOptions) {
       if(!parsed.success)throw new CipherLedgerError('invalid ledger metadata');
       await open();
       if(security.state==='LOCKDOWN')throw new CipherLedgerError('LOCKDOWN');
-      if(security.state==='RECONCILING'&&parsed.data.event_type==='PREPARE')throw new CipherLedgerError('UNKNOWN_PENDING_RECONCILIATION');
+      if(['RECONCILING','DEGRADED'].includes(security.state)&&['PREPARE','AUTHORITY_DECISION','EFFECT_ATTEMPT'].includes(parsed.data.event_type))throw new CipherLedgerError('UNKNOWN_PENDING_RECONCILIATION');
       const records=state?.records??[];
-      assertLineage(records,parsed.data);
+      try{assertLineage(records,parsed.data);}
+      catch(error){
+        // Invalid lifecycle/identity is distinct from unavailable persistence.
+        await setSecurity('LEDGER_LINEAGE_MISMATCH','SECURITY_CRITICAL','ledger-action:'+createHash('sha256').update(parsed.data.action_id).digest('hex')).catch(()=>{});
+        throw error;
+      }
       if(records.length>=10000)throw new CipherLedgerError('LEDGER_CAPACITY_RECONCILIATION_REQUIRED');
       await safeDirectory(true);
       if(identity===null){
@@ -162,6 +172,7 @@ export function createCipherLedger(options:CipherLedgerOptions) {
       try{await atomicWriteJson(file,next,{validate:value=>{verify(CipherLedgerState.parse(value),identity!);},...(options.testHooks?{testHooks:options.testHooks}:{})});}
       catch{await setSecurity('LEDGER_WRITE_FAILED','OPERATIONAL').catch(()=>{});throw new CipherLedgerError('ledger persistence failed');}
       state=next;integrity='HASH_CHAIN_VERIFIED';
+      if(parsed.data.result_state==='UNKNOWN_PENDING_RECONCILIATION')await setSecurity('UNKNOWN_PENDING_RECONCILIATION','OPERATIONAL','authority-operation:'+parsed.data.action_id);
       return record;
     }),
     reportAnomaly:(code:string,severity:'INFO'|'OPERATIONAL'|'SECURITY_CRITICAL',evidence_ref:string|null=null)=>serialized(async()=>{await open();await setSecurity(code,severity,evidence_ref);return statusValue();})

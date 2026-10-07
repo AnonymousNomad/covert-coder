@@ -58,3 +58,23 @@ test('tamper lockdown is visible, revokes pending permits, blocks HTTP effects, 
  assert.equal(await fs.readFile(path.join(root,'real.txt'),'utf8'),'PRESERVE_OPERATOR_FILE');
  assert.equal(await fs.readFile(ledgerFile,'utf8'),preserved);
 }));
+
+test('operator Notebook uses canonical governed writes, preserves provenance, corrects and logically removes personal content',()=>fixture(async({root,owner})=>{
+ const body={record_id:'operator.style',expected_revision:0,category:'PREFERENCE',content:'Challenge weak assumptions.',source:'USER_PROVIDED',provenance_ref:'operator:explicit',confidence:null,retention:'RETAIN',approved_memory:true,expires_at:null};
+ const unapproved=await owner.request('/api/cipher/laptop/notebook',{method:'POST',body:JSON.stringify(body)});assert.equal(unapproved.status,409);
+ const headers=await owner.approve('POST','/api/cipher/laptop/notebook',body,'notebook-save');
+ assert.equal((await owner.request('/api/cipher/laptop/notebook',{method:'POST',headers,body:JSON.stringify(body)})).status,200);
+ const listed=await owner.request('/api/cipher/laptop/notebook');assert.equal(listed.status,200);
+ assert.equal((await listed.json()).data.records[0].source,'USER_PROVIDED');
+ const correction={...body,expected_revision:1,content:'Prefer concise evidence.'};
+ const correctionHeaders=await owner.approve('POST','/api/cipher/laptop/notebook',correction,'correct');
+ assert.equal((await owner.request('/api/cipher/laptop/notebook',{method:'POST',headers:correctionHeaders,body:JSON.stringify(correction)})).status,200);
+ const removal={record_id:body.record_id,expected_revision:2};
+ const removalHeaders=await owner.approve('POST','/api/cipher/laptop/notebook/remove',removal,'remove');
+ assert.equal((await owner.request('/api/cipher/laptop/notebook/remove',{method:'POST',headers:removalHeaders,body:JSON.stringify(removal)})).status,200);
+ assert.deepEqual((await (await owner.request('/api/cipher/laptop/notebook')).json()).data.records,[]);
+ const disk=await fs.readFile(path.join(root,'.aide','cipher-laptop','notebook.json'),'utf8');
+ assert.equal(disk.includes(body.content),false);assert.equal(disk.includes(correction.content),false);
+ const activity=(await (await owner.request('/api/cipher/laptop/activity')).json()).data.records;
+ assert.equal(activity.filter((r:{event_type:string})=>r.event_type==='OBSERVATION').length,3);
+}));

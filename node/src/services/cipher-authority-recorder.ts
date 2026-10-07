@@ -6,11 +6,14 @@ import type { CipherLedger } from './cipher-ledger.ts';
 
 // Composition-root registration only; not an HTTP/model port.
 const owners=new WeakMap<ExecutionAuthority,CipherLedger>();
-export function bindCipherLedger(authority:ExecutionAuthority,ledger:CipherLedger):void {
+const notebooks=new WeakMap<ExecutionAuthority,import('./cipher-notebook.ts').CipherNotebook>();
+export function bindCipherLedger(authority:ExecutionAuthority,ledger:CipherLedger,notebook?:import('./cipher-notebook.ts').CipherNotebook):void {
   if(owners.has(authority))throw new Error('Cipher ledger already bound to this Authority');
   owners.set(authority,ledger);
+  if(notebook)notebooks.set(authority,notebook);
 }
 export function cipherLedgerForAuthority(authority:ExecutionAuthority):CipherLedger|undefined{return owners.get(authority);}
+export function cipherNotebookForAuthority(authority:ExecutionAuthority){return notebooks.get(authority);}
 type Receipt={persisted:boolean;error?:string|null};
 const stopCapabilities=new Set(['terminal.session.stop','tasks.stop','telegram.disconnect','desktop.panic','agent.cancel']);
 const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -28,7 +31,7 @@ export function createCipherAuthorityRecorder(options:{
   if(!operationId||!capability||!decision||!stages.has(decision)||risk==='read'||risk==='revoke'||stopCapabilities.has(capability))return options.audit(event);
   try{
    const status=await options.ledger.status();
-   if(status.state==='LOCKDOWN'||status.state==='RECONCILING'||status.state==='DEGRADED')return {persisted:false,error:'Cipher integrity gate holds new effects'};
+   if(status.state==='LOCKDOWN'||((status.state==='RECONCILING'||status.state==='DEGRADED')&&['proposed','approve','reject','consumed'].includes(decision)))return {persisted:false,error:'Cipher integrity gate holds new effects'};
    const base={
     action_id:operationId,event_type:'PREPARE' as const,
     principal_id:event.actor_id,principal_kind:event.actor_kind,
