@@ -9,7 +9,8 @@ async function pairWorkstation(page: Page, suffix: string) {
   const proof = await fs.readFile(`${proofFile}.${suffix}`, 'utf8');
   const errors: string[] = [];
   let sample: HardwareProfileResponseT | null = null;
-  const sessions: Array<{provider:string;shell:string;cwd:string}> = [];
+  const sessions: Array<{sessionId:string;provider:string;shell:string;cwd:string;cols:number;rows:number}> = [];
+  const geometry=new Map<string,{cols:number;rows:number}>();
   page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', async dialog => {
     if(dialog.type()==='prompt') return dialog.accept(proof);
@@ -23,8 +24,11 @@ async function pairWorkstation(page: Page, suffix: string) {
   page.on('response', response => {
     const url=new URL(response.url());
     if(url.pathname==='/api/hardware/profile') void response.json().then((raw:{ok?:boolean;data?:HardwareProfileResponseT})=>{if(raw.ok && raw.data) sample=raw.data;});
+    if(response.request().method()==='GET' && url.pathname==='/api/terminal/sessions'){
+      void response.json().then((raw:{data?:{sessions?:Array<{sessionId:string;cols:number;rows:number}>}})=>{for(const session of raw.data?.sessions??[]) geometry.set(session.sessionId,{cols:session.cols,rows:session.rows});});
+    }
     if(response.request().method()==='POST' && url.pathname==='/api/terminal/sessions'){
-      void response.json().then((raw:{ok?:boolean;data?:{session?:{provider:string;shell:string;cwd:string}}})=>{if(raw.ok && raw.data?.session) sessions.push(raw.data.session);});
+      void response.json().then((raw:{ok?:boolean;data?:{session?:{sessionId:string;provider:string;shell:string;cwd:string;cols:number;rows:number}}})=>{if(raw.ok && raw.data?.session) sessions.push(raw.data.session);});
     }
   });
   await page.addInitScript(() => {
@@ -33,7 +37,7 @@ async function pairWorkstation(page: Page, suffix: string) {
   await page.goto('/');
   await page.getByRole('button',{name:'Pair browser session',exact:true}).click();
   await expect(page.locator('[aria-label="Authority paired: PAIRED"]')).toBeVisible();
-  return {errors,sessions,get sample() {return sample;}};
+  return {errors,sessions,geometry,get sample() {return sample;}};
 }
 
 test('Resource Monitor projects real hardware owner samples through workstation lifecycle', async ({page}) => {
@@ -66,18 +70,25 @@ test('Resource Monitor projects real hardware owner samples through workstation 
 
 test('selected WSL terminal executes in the exact distribution without native fallback', async ({page}) => {
   test.skip(process.platform !== 'win32', 'Windows WSL proof requires the Windows host');
-  const {errors,sessions}=await pairWorkstation(page,'wsl');
+  const {errors,sessions,geometry}=await pairWorkstation(page,'wsl');
+  await page.setViewportSize({width:1440,height:900});
   page.on('response', response => {
     if(response.request().method()==='POST'&&new URL(response.url()).pathname==='/api/terminal/sessions'){
       void response.json().then((raw:{error?:unknown;data?:{session?:unknown}})=>console.log('WSL_OWNER_RESPONSE',response.status(),JSON.stringify(raw.error??raw.data?.session))).catch(()=>{});
     }
   });
   const frame=page.locator('.desktop-window[data-instance-id="terminal"]');
+  const second=page.locator('.desktop-window[data-instance-id="terminal:2"]');
+  const focus=async(label:string)=>page.getByRole('button',{name:`Focus or restore ${label}, open`,exact:true}).click();
+  await focus('Terminal 01');
   const wsl=frame.locator('.terminal-provider').filter({hasText:/^WSL/});
   await expect(wsl).toContainText('AVAILABLE');
   await frame.locator('.terminal-open .terminal-select').first().selectOption('wsl');
   const distro=frame.locator('.terminal-open .terminal-select').nth(1);
+  await distro.selectOption('Ubuntu-24.04');
   const distroId=await distro.inputValue();
+  expect(distroId).toBe('Ubuntu-24.04');
+  console.log('WSL_OBSERVED_START_STATE',await distro.locator('option:checked').innerText());
   expect(distroId).not.toContain('\0');
   await expect(distro.locator('option:checked')).toContainText(/\[(STOPPED|RUNNING|UNKNOWN)\]/);
   try {
@@ -94,7 +105,47 @@ test('selected WSL terminal executes in the exact distribution without native fa
     await frame.locator('.xterm-helper-textarea').press('Enter');
     await expect(frame.locator('.xterm-screen')).toContainText(marker);
     await expect(frame.locator('.xterm-screen')).toContainText(sessions[0]!.cwd);
+    await focus('Terminal 02');
+    await second.locator('.terminal-open .terminal-select').first().selectOption('wsl');
+    await second.locator('.terminal-open .terminal-select').nth(1).selectOption(distroId);
+    await second.getByRole('button',{name:'OPEN SESSION',exact:true}).click();
+    await expect(second.locator('.terminal-session-state')).toContainText('RUNNING');
+    await expect.poll(()=>sessions.length).toBe(2);
+    expect(new Set(sessions.map(session=>session.sessionId)).size).toBe(2);
+    expect(sessions.every(session=>session.provider==='wsl'&&session.shell===distroId)).toBe(true);
+    const warmSuffix=randomUUID().replaceAll('-','');
+    const warmMarker=`COVERT_WARM_${warmSuffix}`;
+    await second.locator('.xterm-helper-textarea').pressSequentially(`printf 'COVERT_WARM_%s\\n' '${warmSuffix}'`);
+    await second.locator('.xterm-helper-textarea').press('Enter');
+    await expect(second.locator('.xterm-screen')).toContainText(warmMarker);
+    await expect(frame.locator('.xterm-screen')).not.toContainText(warmMarker);
+    await expect(second.locator('.xterm-screen')).not.toContainText(marker);
+    await focus('Terminal 01');
+    await frame.getByRole('button',{name:'REFRESH',exact:true}).click();
+    const sessionId=sessions[0]!.sessionId;
+    await expect.poll(()=>geometry.get(sessionId)?.cols??0).toBeGreaterThan(0);
+    const beforeCols=geometry.get(sessionId)!.cols;
+    await frame.getByRole('button',{name:'Maximize or restore window',exact:true}).click();
+    await expect.poll(async()=>{
+      await frame.getByRole('button',{name:'REFRESH',exact:true}).click();
+      return geometry.get(sessionId)?.cols??beforeCols;
+    }).not.toBe(beforeCols);
+    await frame.getByRole('button',{name:'Maximize or restore window',exact:true}).click();
+    const sleepSuffix=randomUUID().replaceAll('-','');
+    await frame.locator('.xterm-helper-textarea').pressSequentially(`printf 'COVERT_SLEEP_%s\\n' '${sleepSuffix}'; sleep 30`);
+    await frame.locator('.xterm-helper-textarea').press('Enter');
+    await expect(frame.locator('.xterm-screen')).toContainText(`COVERT_SLEEP_${sleepSuffix}`);
+    await frame.locator('.xterm-helper-textarea').press('Control+c');
+    const cancelSuffix=randomUUID().replaceAll('-','');
+    await frame.locator('.xterm-helper-textarea').pressSequentially(`printf 'COVERT_CANCELLED_%s\\n' '${cancelSuffix}'`);
+    await frame.locator('.xterm-helper-textarea').press('Enter');
+    await expect(frame.locator('.xterm-screen')).toContainText(`COVERT_CANCELLED_${cancelSuffix}`);
     await page.screenshot({path:test.info().outputPath('covert-wsl-terminal.png'),fullPage:true});
+    await focus('Terminal 02');
+    await second.locator('.xterm-helper-textarea').pressSequentially('exit');
+    await second.locator('.xterm-helper-textarea').press('Enter');
+    await expect(second.locator('.terminal-session')).toContainText(/Session stopped/i);
+    await focus('Terminal 01');
     await frame.locator('.xterm-helper-textarea').pressSequentially('exit');
     await frame.locator('.xterm-helper-textarea').press('Enter');
     await expect(frame.locator('.terminal-session')).toContainText(/Session stopped/i);
@@ -104,10 +155,13 @@ test('selected WSL terminal executes in the exact distribution without native fa
     await page.screenshot({path:test.info().outputPath('covert-wsl-failure.png'),fullPage:true});
     throw error;
   } finally {
-    const stop=frame.getByRole('button',{name:'STOP SESSION',exact:true});
-    if(!page.isClosed() && await stop.isVisible()) {
-      await stop.click();
-      await expect(frame.locator('.terminal-session')).toContainText(/Session stopped/i);
+    for(const [index,terminal] of (page.isClosed()?[]:[frame,second]).entries()){
+      const stop=terminal.getByRole('button',{name:'STOP SESSION',exact:true});
+      if(await stop.isVisible()){
+        await focus(index===0?'Terminal 01':'Terminal 02');
+        await stop.click();
+        await expect(terminal.locator('.terminal-session')).toContainText(/Session stopped/i);
+      }
     }
   }
 });
