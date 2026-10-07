@@ -9,6 +9,7 @@ Status: **BOUNDED TEST FIX VERIFIED LOCALLY; ORIGINAL AUTHORITY AUDIT TIMEOUT OP
 - Worktree: `E:\covert-agent-fixture-cleanup-20261007`
 - Branch: `codex/agent-fixture-cleanup-20261007`
 - Base and pre-change HEAD: `cfaad716a01af06dfe61dcfb3d1acd7dea9b4b2c`
+- Candidate source commit: `dda9d00204b48327160a43c42ac5aa1e0510ade0`
 - Changed production behavior: none
 - Changed test file: `tests/arch/agent-execution-integrity.test.ts`
 - Test-file SHA-256 at verification: `5CA615E7A7B406854DA5345FDA14FE744681B5A4BFDCA466B203DC96E030C76F`
@@ -31,17 +32,23 @@ All commands ran in the isolated candidate worktree against the modified source 
 | TypeScript | `node node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit` | exit 0; includes `tests/**/*.ts` |
 | Focused regression | `node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 --test-name-pattern '(selected skill read failure|governed cancellation cleanup)' tests/arch/agent-execution-integrity.test.ts` | 2 tests, 2 passed, 0 failed, exit 0 |
 | Affected architecture file | `node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/agent-execution-integrity.test.ts` | 30 tests, 30 passed, 0 failed, 0 skipped, 0 cancelled; 21.142 seconds; exit 0 |
+| Full Windows pre-push | `AIDE_FULL_BATTERY=1 ./pre-push` via Git Bash | 987 tests, 976 passed, 0 failed, 11 skipped, 0 cancelled; 834.301 seconds; hook reported `arch battery passed` and `checks passed`; exit 0 |
+| Exact-SHA GitHub CI | AIDE CI run [37563723097](https://github.com/AnonymousNomad/covert-coder/actions/runs/37563723097) on `dda9d00204b48327160a43c42ac5aa1e0510ade0` | **SUCCESS**; backend/integration, browser regressions, type/lint, architecture, Veritas, generated-file/worktree, cleanup and required summary steps all succeeded |
 
 The retained fixture `arch.log` SHA-256 is `FACF21DD68E2E1A7A0339F57E658BA547A23ECC190C2B528728D568B2CE4A47B`. The fixture is local and is not part of this repository change.
 
 Resource sample near the full-file run: 4.38 GiB free physical RAM; 6.67 GiB free commit; 24.36 GiB commit limit; system drive had 7.05 GiB free and data drive about 73 GiB free. No process was terminated, no model was started, and no pagefile setting was changed.
 
+The focused instrumented rerun passed 2/2 in 5.970 seconds. Across 96 state-file appends, `sync` was the slowest step (p95 105.347 ms, max 196.308 ms); measured status requests took 24–435 ms. Its retained redacted log SHA-256 is `8926ECFE5AAFE61EEFF4458E4FCBF8A671F69808380B90CEDBBA8C850324572B`. This did **not** reproduce the earlier 30-second Authority timeout and does not prove its cause.
+
+The full Windows battery also passed the previously failing selected-skill test and the new cancellation/reuse regression in aggregate. Its retained log SHA-256 is `50F3FC41BAFBAC9790F0AF2CE3D159C11D7861750B1CE5B4295D69BFBF6C85E6`. The exact source SHA was `dda9d00204b48327160a43c42ac5aa1e0510ade0`.
+
+Issue #38 was checked after the exact-SHA CI and again after the local full gate. The newest visible comment remains owner comment `5976321663` from 2026-10-04; no newer Sol corrective comment was present. PR #31 remains frozen.
+
 ## Not established by this candidate
 
 - The original durable Authority audit append timeout's lower-level cause.
-- Aggregate Windows pre-push status after this candidate.
-- Full architecture battery or Veritas after this candidate.
-- Exact-SHA GitHub CI for this candidate.
+- Why the same status request exceeded 30 seconds in the original aggregate run when the current focused and full Windows runs completed it successfully.
 - Any integration or acceptance into the canonical convergence branch.
 
-The original red remains open. This is an isolated test-fixture cleanup candidate only; PR #31 and the canonical worktree were not modified.
+The fixture-cleanup correction is locally and exact-SHA CI verified. The prior timeout's lower-level cause remains **UNKNOWN**; the clean reruns do not erase the original red. This is an isolated test-fixture cleanup candidate only; PR #31 and the canonical worktree were not modified.

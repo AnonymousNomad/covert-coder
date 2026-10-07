@@ -4,6 +4,7 @@
   "worktree": "E:\\covert-agent-fixture-cleanup-20261007",
   "branch": "codex/agent-fixture-cleanup-20261007",
   "base_head": "cfaad716a01af06dfe61dcfb3d1acd7dea9b4b2c",
+  "candidate_source_commit": "dda9d00204b48327160a43c42ac5aa1e0510ade0",
   "changed_production_behavior": false,
   "changed_files": [
     "tests/arch/agent-execution-integrity.test.ts"
@@ -48,8 +49,37 @@
       "cancelled": 0,
       "duration_seconds": 21.142,
       "exit_code": 0
+    },
+    {
+      "gate": "full-windows-pre-push",
+      "command": "AIDE_FULL_BATTERY=1 ./pre-push (Git Bash)",
+      "tests": 987,
+      "passed": 976,
+      "failed": 0,
+      "skipped": 11,
+      "cancelled": 0,
+      "duration_seconds": 834.301,
+      "hook_arch_battery": "passed",
+      "hook_checks": "passed",
+      "exit_code": 0,
+      "source_commit": "dda9d00204b48327160a43c42ac5aa1e0510ade0",
+      "retained_log_sha256": "50F3FC41BAFBAC9790F0AF2CE3D159C11D7861750B1CE5B4295D69BFBF6C85E6"
     }
   ],
+  "diagnostic_io_observation": {
+    "kind": "diagnostic_only_no_product_source_change",
+    "tests": 2,
+    "passed": 2,
+    "exit_code": 0,
+    "duration_seconds": 5.9696,
+    "timings_ms": {
+      "sync": {"count": 96, "total": 1953.152, "p95": 105.347, "max": 196.308},
+      "status_route_ms_observed": {"min": 24, "max": 435}
+    },
+    "retained_log_sha256": "8926ECFE5AAFE61EEFF4458E4FCBF8A671F69808380B90CEDBBA8C850324572B",
+    "did_not_reproduce_original_timeout": true,
+    "original_timeout_lower_level_cause": "UNKNOWN"
+  },
   "retained_fixture_arch_log_sha256": "FACF21DD68E2E1A7A0339F57E658BA547A23ECC190C2B528728D568B2CE4A47B",
   "resource_sample": {
     "free_physical_ram_gib": 4.38,
@@ -61,10 +91,26 @@
   "processes_terminated": 0,
   "models_started": 0,
   "pagefile_changed": false,
-  "aggregate_windows_pre_push": "NOT_RUN_AFTER_CANDIDATE",
-  "architecture_battery": "NOT_RUN_AFTER_CANDIDATE",
-  "veritas": "NOT_RUN_AFTER_CANDIDATE",
-  "exact_sha_github_ci": "NOT_RUN",
+  "aggregate_windows_pre_push": {
+    "status": "PASS",
+    "source_commit": "dda9d00204b48327160a43c42ac5aa1e0510ade0",
+    "tests": 987,
+    "passed": 976,
+    "failed": 0,
+    "skipped": 11,
+    "cancelled": 0
+  },
+  "architecture_battery": "PASS",
+  "veritas_ci_step": "SUCCESS",
+  "exact_sha_github_ci": {
+    "run_id": 37563723097,
+    "head_sha": "dda9d00204b48327160a43c42ac5aa1e0510ade0",
+    "conclusion": "success",
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/37563723097"
+  },
+  "issue_38_latest_comment_checked": 5976321663,
+  "newer_sol_correction_present": false,
+  "original_authority_timeout_cause": "UNKNOWN",
   "canonical_integration": "NOT_PERFORMED",
   "pr_31_modified": false
 }
