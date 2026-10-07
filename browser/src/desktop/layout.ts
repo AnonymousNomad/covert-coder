@@ -15,8 +15,8 @@ interface PresetWindow {
 const PRESETS: Record<Exclude<LayoutId, 'CUSTOM'>, readonly PresetWindow[]> = {
   WORKSTATION: [
     { appId: 'editor', bounds: { x: 0.02, y: 0.03, width: 0.60, height: 0.61 } },
-    { appId: 'terminal', bounds: { x: 0.02, y: 0.63, width: 0.56, height: 0.34 } },
-    { appId: 'terminal', instanceId: 'terminal:2', bounds: { x: 0.08, y: 0.56, width: 0.48, height: 0.38 } },
+    { appId: 'terminal', bounds: { x: 0.02, y: 0.63, width: 0.32, height: 0.34 } },
+    { appId: 'terminal', instanceId: 'terminal:2', bounds: { x: 0.36, y: 0.63, width: 0.32, height: 0.34 } },
     { appId: 'resources', bounds: { x: 0.65, y: 0.03, width: 0.33, height: 0.27 } },
     { appId: 'cipher-laptop', bounds: { x: 0.60, y: 0.35, width: 0.38, height: 0.62 } }
   ],
