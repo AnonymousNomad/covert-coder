@@ -1,0 +1,6 @@
+﻿{
+    "ProcessId":  24340,
+    "ParentProcessId":  20204,
+    "CreationDate":  "\/Date(1791383285191)\/",
+    "CommandLine":  "\"E:\\nodejs\\node-v26.4.0-win-x64\\node.exe\" --max-old-space-size=256 node_modules/eslint/bin/eslint.js browser/src/cockpit/CockpitShell.ts browser/src/desktop/window-manager-view.ts browser/src/panels/cipher-laptop.ts browser/src/services/api.ts common/contracts/project.ts tests/unit/test-cipher-laptop-panel.test.mjs tests/unit/test-desktop-launcher-view.test.mjs"
+}

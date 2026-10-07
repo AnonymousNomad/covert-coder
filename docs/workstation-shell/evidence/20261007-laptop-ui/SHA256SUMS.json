@@ -1,0 +1,87 @@
+{
+  "utc": "2026-10-07T14:49:16.690Z",
+  "worktree": "E:\\covert-workstation-integration-saul-20261006",
+  "branch": "feat/workstation-integration-saul-20261006",
+  "codeSha": "c5db51a97bd2dc11b39ad18ebd387e0a9992791c",
+  "upstream": "origin/feat/workstation-integration-saul-20261006 [ahead 14]",
+  "relationTo14b9ad9": "0\t14",
+  "statusBeforeEvidence": "?? docs/workstation-shell/CIPHER_LAPTOP_UI_CHECKPOINT_20261007.md\n?? docs/workstation-shell/evidence/20261007-laptop-ui/final-precommit-source.json\n?? docs/workstation-shell/evidence/20261007-laptop-ui/final-resources.json\n?? docs/workstation-shell/evidence/20261007-laptop-ui/lint-stall-owner.json\n?? docs/workstation-shell/evidence/20261007-laptop-ui/upstream.txt",
+  "files": [
+    {
+      "path": "laptop-project-red.log",
+      "bytes": 17488,
+      "sha256": "3d4d5ee8df35ea1e14b07ecc0a5299f57242511ef53e27d83a101abab3abb8e0"
+    },
+    {
+      "path": "laptop-project-first.log",
+      "bytes": 7468,
+      "sha256": "2f3378b48d277e5f7c6590e3a9bfa09221c4662e7733ee886d9453d3fbfefbc9"
+    },
+    {
+      "path": "laptop-project-green.log",
+      "bytes": 3406,
+      "sha256": "0338ae7eff11505f5f058cd7b3ede80984c2643f2f25e027b7bf49421d4f84fd"
+    },
+    {
+      "path": "laptop-review-red.log",
+      "bytes": 9874,
+      "sha256": "d271281937ef090c330b7e2afe3d7783d32dc5b068e58d97a91fa9d48cbd3d76"
+    },
+    {
+      "path": "launcher-red.log",
+      "bytes": 4672,
+      "sha256": "a0e4afe568291b2db3e974767b042ee3b2df557d792cfe7e8179eca9d1da06a2"
+    },
+    {
+      "path": "ui-project-launcher-green.log",
+      "bytes": 4242,
+      "sha256": "0a0778d8b5df5603cecfa8dd51a92941c4cf662006c9ff47eeab5a0c07da7323"
+    },
+    {
+      "path": "workstation-regression.log",
+      "bytes": 6230,
+      "sha256": "c64a6fe534dc8285fea1d09bcdbda2363aadb2dcb0d75166c3158a882159f9a9"
+    },
+    {
+      "path": "project-laptop-owner-regression.log",
+      "bytes": 5276,
+      "sha256": "e804e0cc9ad2e016d3d21bf58278d14627cb6d0ed1bfcc89e01f7be225f22c13"
+    },
+    {
+      "path": "ui-scoped-lint-debug.log",
+      "bytes": 42312,
+      "sha256": "9b48ba25a4e69a02ad62e2fac5bca22fbc1e5247433b8abdf88e962c0a272634"
+    },
+    {
+      "path": "lint-stall-owner.json",
+      "bytes": 508,
+      "sha256": "d86247125d9f79c658ba706d80179c273e8a5c46c05a967494da46f15c349876"
+    },
+    {
+      "path": "final-precommit-source.json",
+      "bytes": 55011,
+      "sha256": "5b6be0ffcdcb70b97a58d9353acfa168025179d9d5ef1d850af6144ebe854911"
+    },
+    {
+      "path": "final-resources.json",
+      "bytes": 109,
+      "sha256": "2b49f025224e015b4b0786fa843c0b1fa528bb063e036968ccdd838aa4de1130"
+    },
+    {
+      "path": "upstream.txt",
+      "bytes": 61,
+      "sha256": "30242f5b9ec5ceac942a89fe0b188a676564209b742daadc8f510c15e5425baa"
+    },
+    {
+      "path": "code-commit.log",
+      "bytes": 702,
+      "sha256": "63e3d95e3ad9051ec46ff075479e89b65bc5e226c11ad3a020962eb0b0a2f86d"
+    },
+    {
+      "path": "checkpoint-resource-gate.json",
+      "bytes": 109,
+      "sha256": "7d67b6dc68c406cd3f197dddda5986fa91ab848182759debb299aa02ce338bee"
+    }
+  ],
+  "claimScope": "71 focused/regression tests; scoped lint. Full typing/build/browser/packaged acceptance resource-gated."
+}
