@@ -126,7 +126,10 @@ test('real paired AgentLoop mutation reaches the same Monaco session and preserv
   phase = 'operator-draft-input';
   await editor.click();
   await page.keyboard.press('Control+a');
-  await page.keyboard.type('export const value = "operator draft";');
+  // Monaco owns an asynchronous keyboard pipeline; use real individual key presses.
+  // Exact draft acceptance remains a precondition for the governed mutation proof.
+  const operatorDraft = 'export const value = "operator draft";';
+  for (const character of operatorDraft) await page.keyboard.press(character === ' ' ? 'Space' : character);
   await expect(editor.locator('.view-line').first()).toHaveText('export const value = "operator draft";');
   phase = 'agent-loop-execution';
   await expect(tab).toHaveClass(/dirty/);
