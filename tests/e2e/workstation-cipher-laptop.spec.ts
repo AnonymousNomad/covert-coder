@@ -40,7 +40,7 @@ test('Cipher Laptop shows real governed file lineage and preserves it across win
  expect(terminalPalette.title).toBe(terminalPalette.expected);expect(terminalPalette.selected).toBe(terminalPalette.expected);
  await page.keyboard.press('Alt+9');
  const laptop=page.locator('.desktop-window[data-app-id="cipher-laptop"]');
- await expect(laptop).toBeVisible();await expect(laptop.locator('.cipher-laptop-status')).toContainText('HASH_CHAIN_VERIFIED');
+ await expect(laptop).toBeVisible();await laptop.getByRole('button',{name:'Refresh Cipher Laptop',exact:true}).click();await expect(laptop.locator('.cipher-laptop-status')).toContainText('HASH_CHAIN_VERIFIED');
  const rows=laptop.locator('tbody tr').filter({hasText:actionId});await expect(rows).toHaveCount(4);
  for(const stage of ['PREPARE','AUTHORITY_DECISION','EFFECT_ATTEMPT','OBSERVATION'])await expect(rows.filter({hasText:stage})).toHaveCount(1);
  await expect(rows.filter({hasText:'OBSERVATION'})).toContainText('OBSERVED');

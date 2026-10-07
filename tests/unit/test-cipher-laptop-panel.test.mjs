@@ -19,10 +19,11 @@ const address=()=>({project:{project_id:projectId,created_at:'2026-10-07T01:00:0
 const snapshot=(state='NORMAL')=>({records:[{sequence:0,recorded_at:'2026-10-07T01:00:00.000Z',action_id:'action',project_id:projectId,checkout_id:checkoutId,principal_kind:'operator',capability:'workspace.write',event_type:'OBSERVATION',result_state:'OBSERVED'}],status:{state,integrity:'HASH_CHAIN_VERIFIED',resident_id:'covert.resident.cipher',ledger_id:'ledger',signature_state:'SIGNATURE_UNAVAILABLE',record_count:1,unresolved_actions:[],operator_ack_required:state==='LOCKDOWN',reasons:[],limitations:['Unsigned local hash chain.']}});
 function harness(provider=async()=>snapshot(),options={}){
  const parent=new Element('section'),timers=new Map();let calls=0,projectCalls=0,notebookCalls=0,writes=0,now=10000,signal;
+ const documentEvents=new Map();const document={hidden:false,createElement:tag=>new Element(tag),addEventListener:(name,fn)=>documentEvents.set(name,fn),removeEventListener:(name,fn)=>{if(documentEvents.get(name)===fn)documentEvents.delete(name);}};
  const exports={};const window={setTimeout:fn=>{timers.set('timeout',fn);return 'timeout';},clearTimeout:id=>timers.delete(id),setInterval:fn=>{timers.set('interval',fn);return 'interval';},clearInterval:id=>timers.delete(id)};
- vm.runInNewContext(script,{exports,require:name=>{assert.equal(name,'../services/api.ts');return {api:{projectsCurrent:s=>{projectCalls++;signal=s;return options.project?options.project(s):Promise.resolve(address());},cipherNotebook:async()=>{notebookCalls++;return options.notebook?options.notebook():{resident_id:'covert.resident.cipher',records:[]};},cipherNotebookPut:async()=>{writes++;},cipherNotebookRemove:async()=>{writes++;},cipherLaptopActivity:(s,p)=>{calls++;signal=s;return provider(s,p);}}};},document:{hidden:false,createElement:tag=>new Element(tag)},window,AbortController,Date:class extends Date {static now(){return now;}}});
+ vm.runInNewContext(script,{exports,require:name=>{assert.equal(name,'../services/api.ts');return {api:{projectsCurrent:s=>{projectCalls++;signal=s;return options.project?options.project(s):Promise.resolve(address());},cipherNotebook:async()=>{notebookCalls++;return options.notebook?options.notebook():{resident_id:'covert.resident.cipher',records:[]};},cipherNotebookPut:async()=>{writes++;},cipherNotebookRemove:async()=>{writes++;},cipherLaptopActivity:(s,p)=>{calls++;signal=s;return provider(s,p);}}};},document,window,AbortController,Date:class extends Date {static now(){return now;}}});
  const handle=exports.createCipherLaptopPanel(parent);
- return {parent,handle,timers,get calls(){return calls;},get projectCalls(){return projectCalls;},get notebookCalls(){return notebookCalls;},get writes(){return writes;},get signal(){return signal;},setTime:value=>{now=value;},click:text=>{const button=all(parent).find(node=>node.tag==='button'&&node.textContent===text);assert.ok(button);button.listeners.get('click')();}};
+ return {parent,handle,timers,pair:()=>documentEvents.get('covert:authority-paired')?.(),get documentEvents(){return documentEvents;},get calls(){return calls;},get projectCalls(){return projectCalls;},get notebookCalls(){return notebookCalls;},get writes(){return writes;},get signal(){return signal;},setTime:value=>{now=value;},click:text=>{const button=all(parent).find(node=>node.tag==='button'&&node.textContent===text);assert.ok(button);button.listeners.get('click')();}};
 }
 test('Laptop projects OBSERVED distinctly from verification and signature trust',async()=>{
  const h=harness();await tick();assert.match(textOf(h.parent),/OBSERVED is not VERIFIED/);
@@ -118,4 +119,23 @@ test('failed Notebook refresh retains only explicitly stale records and cannot i
  let calls=0;const h=harness(undefined,{project:async()=>{if(++calls>2)throw new Error('binding owner unavailable');return address();},notebook:async()=>({records:[{record_id:'approved-note',content:'withheld-after-binding-failure',revision:1,source:'USER_PROVIDED',retention:'RETAIN',provenance_ref:'operator:explicit'}]})});await tick();h.click('NOTEBOOK');
  const form=all(h.parent).find(n=>n.tag==='form');all(form).find(n=>n.attributes.get('aria-label')==='Notebook record identity').value='new-note';all(form).find(n=>n.attributes.get('aria-label')==='Notebook approved content').value='New note';all(form).find(n=>n.type==='checkbox').checked=true;
  form.listeners.get('submit')({preventDefault(){}});await tick();assert.equal(h.writes,0);assert.match(textOf(h.parent),/PROJECT.*UNAVAILABLE/);assert.doesNotMatch(textOf(h.parent),/withheld-after-binding-failure/);assert.equal(all(h.parent).filter(n=>n.tag==='form').length,0);h.click('INTEGRITY');assert.match(textOf(h.parent),/SIGNATURE_UNAVAILABLE/);h.handle.dispose();
+});
+
+
+test('visible Laptop refreshes failed startup reads after real session pairing without issuing effects',async()=>{
+ let paired=false;const h=harness(async()=>{if(!paired)throw new Error('UNAUTHORIZED');return snapshot();});await tick();
+ assert.match(textOf(h.parent),/UNAVAILABLE.*record owner request failed/);paired=true;h.pair();await tick();
+ assert.match(textOf(h.parent),/SNAPSHOT.*HASH_CHAIN_VERIFIED/);assert.equal(h.calls,2);assert.equal(h.writes,0);
+ h.handle.dispose();assert.equal(h.documentEvents.size,0);h.pair();await tick();assert.equal(h.calls,2);
+});
+test('pairing during an unauthenticated read queues one fresh read rather than losing recovery',async()=>{
+ let release;const pending=new Promise(resolve=>{release=resolve;});let reads=0;
+ const h=harness(async()=>{if(++reads===1){await pending;throw new Error('UNAUTHORIZED');}return snapshot();});await tick();
+ h.pair();h.pair();release();await tick();await tick();
+ assert.match(textOf(h.parent),/SNAPSHOT.*HASH_CHAIN_VERIFIED/);assert.equal(h.calls,2);assert.equal(h.writes,0);h.handle.dispose();
+});
+
+test('a hidden Laptop waits for restore instead of fetching owner records on pairing',async()=>{
+ const h=harness();await tick();h.handle.root.closest=()=>({hidden:true});h.pair();await tick();assert.equal(h.calls,1);
+ h.handle.root.closest=()=>null;h.handle.activate();await tick();assert.equal(h.calls,2);assert.equal(h.writes,0);h.handle.dispose();
 });

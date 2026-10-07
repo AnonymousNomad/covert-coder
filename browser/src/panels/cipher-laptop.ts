@@ -46,7 +46,7 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  const note=el('p','cipher-laptop-note','Shared platform, separate principals. Authority, tasks, projects and verification retain their own truth.');
  const desk=el('div','cipher-laptop-desk');desk.append(tabs,content);
  root.append(toolbar,projectStatus,status,desk,note);parent.appendChild(root);
- let alive=true,inFlight=false,failed=false,receivedAt=0;
+ let alive=true,inFlight=false,failed=false,receivedAt=0,refreshAfterPair=false;
  let projection:CipherLedgerListResponseT|null=null;
  let selected:Section='ACTIVITY';
  let project:CurrentProjectResponseT|null=null,scopeError='',projectReceivedAt=0;
@@ -192,11 +192,19 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
    }
   }
   catch{if(alive){invalidateProject('canonical project binding unavailable');failed=true;}}
-  finally{window.clearTimeout(timeout);requestTimeout=null;request=null;inFlight=false;if(alive){refresh.disabled=writing;root.setAttribute('aria-busy','false');paint();}}
+  finally{window.clearTimeout(timeout);requestTimeout=null;request=null;inFlight=false;if(alive){refresh.disabled=writing;root.setAttribute('aria-busy','false');paint();if(refreshAfterPair){refreshAfterPair=false;void read();}}}
  }
+ // Pairing changes credential availability, not authority. Recover only owner
+ // reads; never replay Notebook writes or any platform effect.
+ const paired=():void=>{
+  if(!alive||!root.isConnected||root.closest('[hidden]'))return;
+  if(inFlight){refreshAfterPair=true;return;}
+  void read();
+ };
+ document.addEventListener('covert:authority-paired',paired);
  refresh.addEventListener('click',()=>{void read();});
  for(const [name,button] of sectionButtons)button.addEventListener('click',()=>{selected=name;paint();});
  paint();void read();
  const timer=window.setInterval(()=>{if(alive&&!document.hidden&&root.isConnected&&!root.closest('[hidden]'))paintStatus();},5000);
- return {root,refresh:read,activate:()=>{void read();},dispose(){alive=false;clearNotebookDraft();request?.abort();if(requestTimeout!==null)window.clearTimeout(requestTimeout);window.clearInterval(timer);parent.innerHTML='';}};
+ return {root,refresh:read,activate:()=>{void read();},dispose(){alive=false;refreshAfterPair=false;document.removeEventListener('covert:authority-paired',paired);clearNotebookDraft();request?.abort();if(requestTimeout!==null)window.clearTimeout(requestTimeout);window.clearInterval(timer);parent.innerHTML='';}};
 }
