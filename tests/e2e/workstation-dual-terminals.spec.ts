@@ -98,16 +98,18 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await expect(page.locator('.desktop-window[data-app-id="editor"] .monaco-editor')).toBeVisible();
     await page.keyboard.press('Alt+8');
     const monitor = page.locator('.desktop-window[data-app-id="resources"]');
+    await monitor.getByRole('button', { name: 'Refresh resource snapshot', exact: true }).click();
     await expect(monitor.locator('.resource-monitor-status')).toContainText('SNAPSHOT');
     await page.keyboard.press('Alt+9');
     const laptop = page.locator('.desktop-window[data-app-id="cipher-laptop"]');
+    await laptop.getByRole('button', { name: 'Refresh Cipher Laptop', exact: true }).click();
     await expect(laptop.locator('.cipher-laptop-project')).toContainText('SNAPSHOT');
     await expect(laptop.locator('.cipher-laptop-status')).toContainText('SNAPSHOT');
     await expect(first.locator('.terminal-session-state')).toContainText('RUNNING');
     await expect(second.locator('.terminal-session-state')).toContainText('RUNNING');
     expect(opened.length).toBe(2);
     await page.screenshot({ path: test.info().outputPath('covert-production-workstation-composition.png'), fullPage: true });
-    await page.getByRole('button', { name: 'Focus or restore Terminal, open', exact: true }).click();
+    await page.getByRole('button', { name: 'Focus or restore Terminal 01, open', exact: true }).click();
     await page.screenshot({ path: test.info().outputPath('covert-retro-coding-native-terminals.png'), fullPage: true });
     await first.getByRole('button', { name: 'REFRESH', exact: true }).click();
     await expect.poll(() => geometry.get(firstSessionId)?.cols ?? 0).toBeGreaterThan(0);
@@ -120,7 +122,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     await first.getByRole('button', { name: 'Maximize or restore window', exact: true }).click();
     await first.getByRole('button', { name: 'Minimize window', exact: true }).click();
     await expect(first).toBeHidden();
-    await page.getByRole('button', { name: 'Focus or restore Terminal, minimized', exact: true }).click();
+    await page.getByRole('button', { name: 'Focus or restore Terminal 01, minimized', exact: true }).click();
     await expect(first).toBeVisible();
     await second.getByRole('button', { name: 'Close window', exact: true }).click();
     await expect(second).toHaveCount(0);
@@ -159,7 +161,7 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     for (const [index, frame] of (page.isClosed() ? [] : [first, second]).entries()) {
       const stop = frame.getByRole('button', { name: 'STOP SESSION', exact: true });
       if (await stop.isVisible()) {
-        const label = index === 0 ? 'Terminal' : 'Terminal 2';
+        const label = index === 0 ? 'Terminal 01' : 'Terminal 02';
         await page.getByRole('button', { name: `Focus or restore ${label}, open`, exact: true }).click();
         await stop.click();
         await expect(frame.locator('.terminal-session')).toContainText(/Session stopped/i);
