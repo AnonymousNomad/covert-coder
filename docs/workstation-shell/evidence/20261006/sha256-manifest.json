@@ -1,0 +1,64 @@
+﻿{
+    "ApplicationCommit":  "56c977b46a3a66df4a657d5bbd0aeb1f6618c1aa",
+    "FocusedTests":  66,
+    "NativeJourneys":  3,
+    "RecordedAt":  "2026-10-07T00:08:54.0001916Z",
+    "Scope":  "Observed fixture/native browser evidence; hashes are integrity data, not publisher authentication or independent verifier signatures",
+    "Artifacts":  [
+                      {
+                          "Name":  ".gitattributes",
+                          "Bytes":  197,
+                          "SHA256":  "83b77f9c6b61009dcee2326919b5fd6d8320874910367370a2208837deea10d9"
+                      },
+                      {
+                          "Name":  "active-refresh-red.log",
+                          "Bytes":  3278,
+                          "SHA256":  "ed5297da17fd72e094926506af3eeaf1784da3183e97fb66b64bd7b6b9225ee6"
+                      },
+                      {
+                          "Name":  "focused-regression.log",
+                          "Bytes":  6604,
+                          "SHA256":  "a91860612eefe020ac33735fd5d41ccdd3bf94962a50b4750a3ab52ab4ccd636"
+                      },
+                      {
+                          "Name":  "focused-resource-measurement.json",
+                          "Bytes":  817,
+                          "SHA256":  "f8af0f9578810d1f153797e4fc6b1959356404fcc5782ac69e3ada219e1843bf"
+                      },
+                      {
+                          "Name":  "native-coding.png",
+                          "Bytes":  121930,
+                          "SHA256":  "38f9ceae69f097eb001c0a9278073154637614450fe7fd596be0bef63f1b71ea"
+                      },
+                      {
+                          "Name":  "native-restored.png",
+                          "Bytes":  129806,
+                          "SHA256":  "3c90ec19c6042bf4b3c67197140fd1f37cba6549baa5c2c8ff44707872fd904a"
+                      },
+                      {
+                          "Name":  "parser-replay-red.log",
+                          "Bytes":  4632,
+                          "SHA256":  "607207c5876ef9b99f37211ca941849bb1589d5b7996c9a5e7d702006de32233"
+                      },
+                      {
+                          "Name":  "post-slice-source-preservation.json",
+                          "Bytes":  474,
+                          "SHA256":  "532a5e33efff3a518a78e0bf65210720b52e730f612f16f609dbe9a9f55a8947"
+                      },
+                      {
+                          "Name":  "workstation-native-regression-before-parser-fix.log",
+                          "Bytes":  12367,
+                          "SHA256":  "0a89e74d1a01ce66bb5f3eb286081cdee3b84611e50026efe4d15c6d3509ea6f"
+                      },
+                      {
+                          "Name":  "workstation-native-regression.log",
+                          "Bytes":  9010,
+                          "SHA256":  "b94de495992c9a9f40f9ed03f7de1eddf531533867571e866d403fcf44434e14"
+                      },
+                      {
+                          "Name":  "workstation-native-resource-measurement.json",
+                          "Bytes":  4050,
+                          "SHA256":  "5d8ccc7f40670f4671b56b8a24af9578a0124a713011d75e3fc9a33f4f2112a1"
+                      }
+                  ]
+}

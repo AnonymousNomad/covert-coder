@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-10-07T00:04:35.716Z",
+  "shellHead": "12b999d329b59fd7dd480504ce84670b0de521f5",
+  "shellHeadUnchanged": true,
+  "shellStatusUnchanged": true,
+  "sourceFiles": 40,
+  "sourceFilesUnchanged": true,
+  "changedSinceSnapshot": [],
+  "packHead": "da320b96fc9ab2ec4da7d0c24150d24ce90d2c17",
+  "packStatus": "",
+  "targetHead": "56c977b46a3a66df4a657d5bbd0aeb1f6618c1aa",
+  "targetBranch": "feat/workstation-integration-saul-20261006",
+  "targetStatus": ""
+}
