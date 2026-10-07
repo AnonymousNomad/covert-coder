@@ -36,6 +36,22 @@ after(async () => {
   await fs.rm(dir, { recursive: true, force: true });
 });
 
+async function subscribeSocket(socket: WebSocket, channels: string[]): Promise<void> {
+  const ack = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('ws subscription ack timeout')), 5000);
+    const handler = (raw: RawData) => {
+      const message = JSON.parse(String(raw)) as { type?: string; channels?: string[] };
+      if (message.type !== 'subscribed') return;
+      clearTimeout(timer);
+      socket.off('message', handler);
+      try { assert.deepEqual(message.channels, channels); resolve(); } catch (error) { reject(error); }
+    };
+    socket.on('message', handler);
+  });
+  socket.send(JSON.stringify({ type: 'subscribe', channels }));
+  await ack;
+}
+
 async function subscribe(channel: string): Promise<{ socket: WebSocket; received: unknown[] }> {
   const socket = new WebSocket(wsUrl, { origin: owner.headers.Origin });
   await new Promise<void>((resolve, reject) => {
@@ -58,12 +74,11 @@ async function subscribe(channel: string): Promise<{ socket: WebSocket; received
   });
   socket.send(JSON.stringify({ type: 'authenticate', token: owner.headers.Authorization.slice(7) }));
   await ack;
+  await subscribeSocket(socket, [channel]);
   const received: unknown[] = [];
   socket.on('message', raw => {
     received.push(JSON.parse(String(raw)));
   });
-  socket.send(JSON.stringify({ type: 'subscribe', channels: [channel] }));
-  await new Promise(resolve => setTimeout(resolve, 150));
   return { socket, received };
 }
 

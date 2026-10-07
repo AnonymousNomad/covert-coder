@@ -10095,6 +10095,9 @@
                       "type": "number",
                       "minimum": 0
                     },
+                    "freeVramKnown": {
+                      "type": "boolean"
+                    },
                     "vramSource": {
                       "type": "string",
                       "enum": [

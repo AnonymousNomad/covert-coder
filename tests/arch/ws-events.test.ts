@@ -57,6 +57,22 @@ async function openAuthenticatedSocket(): Promise<WebSocket> {
   return socket;
 }
 
+async function subscribeSocket(socket: WebSocket, channels: string[]): Promise<void> {
+  const ack = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('ws subscription ack timeout')), 5000);
+    const handler = (raw: RawData) => {
+      const message = JSON.parse(String(raw)) as { type?: string; channels?: string[] };
+      if (message.type !== 'subscribed') return;
+      clearTimeout(timer);
+      socket.off('message', handler);
+      try { assert.deepEqual(message.channels, channels); resolve(); } catch (error) { reject(error); }
+    };
+    socket.on('message', handler);
+  });
+  socket.send(JSON.stringify({ type: 'subscribe', channels }));
+  await ack;
+}
+
 after(async () => {
   server.events.close();
   await server.logger.flush();
@@ -75,6 +91,7 @@ test('openapi.json is served raw (no envelope) with documented paths', async () 
 
 test('ws client receives log events after subscribing to the log channel', async () => {
   const socket = await openAuthenticatedSocket();
+  await subscribeSocket(socket, ['log']);
   const received: unknown[] = [];
   const done = new Promise<void>(resolve => {
     socket.on('message', raw => {
@@ -84,7 +101,6 @@ test('ws client receives log events after subscribing to the log channel', async
       if (received.length >= 2) resolve();
     });
   });
-  socket.send(JSON.stringify({ type: 'subscribe', channels: ['log'] }));
 
   const health = await fetch(`${base}/api/health`);
   assert.equal(health.status, 200);
@@ -109,11 +125,11 @@ test('ws client receives log events after subscribing to the log channel', async
 
 test('ws client receives nothing on unsubscribed channels', async () => {
   const socket = await openAuthenticatedSocket();
+  await subscribeSocket(socket, []);
   const received: unknown[] = [];
   socket.on('message', raw => {
     received.push(raw);
   });
-  socket.send(JSON.stringify({ type: 'subscribe', channels: [] }));
 
   await fetch(`${base}/api/health`);
   await new Promise(resolve => setTimeout(resolve, 300));
@@ -123,11 +139,11 @@ test('ws client receives nothing on unsubscribed channels', async () => {
 
 test('invalid event payload is never sent (fail closed)', async () => {
   const socket = await openAuthenticatedSocket();
+  await subscribeSocket(socket, ['log']);
   const received: unknown[] = [];
   socket.on('message', raw => {
     received.push(raw);
   });
-  socket.send(JSON.stringify({ type: 'subscribe', channels: ['log'] }));
   server.events.publish('log', { level: 'bogus' } as never);
   await new Promise(resolve => setTimeout(resolve, 300));
   socket.close();

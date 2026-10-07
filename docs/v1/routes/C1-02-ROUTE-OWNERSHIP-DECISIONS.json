@@ -7344,7 +7344,7 @@
       "currentFrontendCallers": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 278,
+          "line": 280,
           "methodEvidence": "GET",
           "source": "return call('/api/readiness', { schema: ReadinessResponse });"
         }
@@ -8416,11 +8416,11 @@
         },
         {
           "file": "tests/arch/ws-events.test.ts",
-          "line": 68
+          "line": 84
         },
         {
           "file": "tests/unit/test-facade.mjs",
-          "line": 343
+          "line": 365
         }
       ],
       "requestShape": {
@@ -9355,7 +9355,7 @@
         },
         {
           "file": "browser/src/services/api.ts",
-          "line": 286,
+          "line": 288,
           "methodEvidence": "POST",
           "source": "return call('/api/file', { query: query.data, schema: FileReadResponse });"
         }
@@ -9466,7 +9466,7 @@
       "otherFrontendMethodReferences": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 297,
+          "line": 299,
           "methodEvidence": "POST",
           "source": "return call('/api/search', { query: query.data, schema: SearchResponse });"
         }
