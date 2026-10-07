@@ -14,9 +14,9 @@ interface PresetWindow {
 
 const PRESETS: Record<Exclude<LayoutId, 'CUSTOM'>, readonly PresetWindow[]> = {
   CODING: [
-    { appId: 'editor', bounds: { x: 0.02, y: 0.025, width: 0.96, height: 0.64 } },
-    { appId: 'terminal', bounds: { x: 0.02, y: 0.69, width: 0.47, height: 0.30 } },
-    { appId: 'terminal', instanceId: 'terminal:2', bounds: { x: 0.51, y: 0.69, width: 0.47, height: 0.30 } }
+    { appId: 'editor', bounds: { x: 0.02, y: 0.025, width: 0.96, height: 0.55 } },
+    { appId: 'terminal', bounds: { x: 0.02, y: 0.60, width: 0.47, height: 0.39 } },
+    { appId: 'terminal', instanceId: 'terminal:2', bounds: { x: 0.51, y: 0.60, width: 0.47, height: 0.39 } }
   ],
   DEBUGGING: [
     { appId: 'editor', bounds: { x: 0.02, y: 0.03, width: 0.56, height: 0.91 } },

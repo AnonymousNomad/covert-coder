@@ -135,9 +135,11 @@ test('two workstation windows own distinct native PTYs and preserve their sessio
     expect(errors).toEqual([]);
   } finally {
     // Isolated fixture shutdown owns cleanup if timeout has already closed the page.
-    for (const frame of page.isClosed() ? [] : [first, second]) {
+    for (const [index, frame] of (page.isClosed() ? [] : [first, second]).entries()) {
       const stop = frame.getByRole('button', { name: 'STOP SESSION', exact: true });
       if (await stop.isVisible()) {
+        const label = index === 0 ? 'Terminal' : 'Terminal 2';
+        await page.getByRole('button', { name: `Focus or restore ${label}, open`, exact: true }).click();
         await stop.click();
         await expect(frame.locator('.terminal-session')).toContainText(/Session stopped/i);
       }
