@@ -82,6 +82,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
   let outputProjection = new TerminalOutputProjection();
   let outputRecoveryGeneration = 0;
   let outputRecoveryInProgress = false;
+  let outputRecoveryQueued = false;
   let legacyOutput = false;
   let resizeObserver: ResizeObserver | null = null;
   let termElement: HTMLElement | null = null;
@@ -300,6 +301,12 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     return result.needsSnapshot;
   }
 
+  function requestOutputRecovery(): void {
+    if (!alive || activeSessionId === null || !xterm) return;
+    if (resumeInProgress || outputRecoveryInProgress) { outputRecoveryQueued = true; return; }
+    if (controlConfirmed) void recoverOutput();
+  }
+
   async function recoverOutput(attempt = 0): Promise<void> {
     if (!alive || !controlConfirmed || resumeInProgress || activeSessionId === null || !xterm || outputRecoveryInProgress) return;
     if (typeof api.terminalSessionOutput !== 'function') { legacyOutput = true; outputStatus('LIVE OUTPUT ONLY · replay snapshot unsupported'); return; }
@@ -325,8 +332,10 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     } finally {
       if (generation === outputRecoveryGeneration) {
         outputRecoveryInProgress = false;
-        if (retryNeeded && attempt < 2) void recoverOutput(attempt + 1);
-        else if (retryNeeded) outputStatus('OUTPUT STALE · buffer gap persists; use REFRESH to retry');
+        const needsRecovery = retryNeeded || outputRecoveryQueued;
+        outputRecoveryQueued = false;
+        if (needsRecovery && attempt < 2) void recoverOutput(attempt + 1);
+        else if (needsRecovery) outputStatus('OUTPUT STALE · buffer gap persists; use REFRESH to retry');
       }
     }
   }
@@ -378,6 +387,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     controlConfirmed = false;
     outputRecoveryGeneration++;
     outputRecoveryInProgress = false;
+    outputRecoveryQueued = false;
     outputProjection = new TerminalOutputProjection();
     sessionsInitialized = false;
     renderOpenControls();
@@ -467,6 +477,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
     if (!alive || activeSessionId !== null || resumeInProgress || openInProgress || candidate.state !== 'running') return;
     if (view && !view.bindings.claim(view.viewId, candidate.sessionId)) return;
     let recoveryNeeded = false;
+    outputRecoveryQueued = false;
     controlConfirmed = false;
     legacyOutput = false;
     outputProjection = new TerminalOutputProjection();
@@ -500,7 +511,12 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       }
     } finally {
       resumeInProgress = false;
-      if (alive) { synchronizeInput(); renderOpenControls(); scheduleFit(); if (controlConfirmed && recoveryNeeded) void recoverOutput(); }
+      if (alive) {
+        synchronizeInput(); renderOpenControls(); scheduleFit();
+        const needsRecovery = recoveryNeeded || outputRecoveryQueued;
+        outputRecoveryQueued = false;
+        if (controlConfirmed && needsRecovery) void recoverOutput();
+      }
     }
   }
 
@@ -570,7 +586,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       } else {
         const result = outputProjection.accept({ data: event.data, endOffset: event.endOffset });
         if (result.append) xterm.write(result.append);
-        if (result.needsSnapshot && controlConfirmed) void recoverOutput();
+        if (result.needsSnapshot) requestOutputRecovery();
       }
     }
     else if (event.kind === 'state' && event.state === 'running' && !sessionsInitialized) {
@@ -587,7 +603,7 @@ export function createTerminalPanel(parent: HTMLElement, _store: Store<AppState>
       xterm.write(`\r\n[terminal: ${event.message}]\r\n`);
     }
   });
-  const unsubscribeSubscribed = bus?.onSubscribed?.('terminal', () => { if (controlConfirmed) void recoverOutput(); });
+  const unsubscribeSubscribed = bus?.onSubscribed?.('terminal', requestOutputRecovery);
   const unsubscribeStatus = bus?.subscribeStatus?.(connected => {
     transportConnected = connected;
     if (!xterm || !controlConfirmed) return;

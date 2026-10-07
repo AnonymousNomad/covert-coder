@@ -191,3 +191,34 @@ test('reattach snapshot gaps still fetch canonical missing history before comple
   assert.equal(h.terminals[0].options.disableStdin, false);
   view.handle.dispose();
 });
+
+for (const signal of ['gap', 'subscription']) {
+  test(`reattach retains ${signal} recovery requested during asynchronous parser completion`, async () => {
+    const h = harness(); const view = h.create('terminal'); await tick(); h.deferParsing(true);
+    h.setSnapshotProvider(async () => ({ sessionId: 'session:a', output: 'snapshotGAP!tail', endOffset: 16, truncated: false }));
+    find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+    h.resuming.resolve({ session: h.sessions[0], output: { sessionId: 'session:a', output: 'snapshot', endOffset: 8, truncated: false } }); await tick();
+    if (signal === 'gap') h.event({ kind: 'output', sessionId: 'session:a', data: 'tail', endOffset: 16 });
+    else h.subscriptionReady();
+    h.terminals[0].input('input during replay'); assert.deepEqual(h.sent, []);
+    h.deferParsing(false); h.finishParsing(); await tick();
+    assert.equal(h.snapshotCalls, 1, 'deferred owner recovery must run after safe reattachment');
+    assert.equal(h.terminals[0].output, 'snapshotGAP!tail');
+    assert.equal(h.terminals[0].options.disableStdin, false);
+    view.handle.dispose();
+  });
+}
+
+
+for (const ending of ['denied', 'disposed']) {
+  test(`queued subscription recovery cannot read or transmit after reattach is ${ending}`, async () => {
+    const h = harness(); const view = h.create('terminal'); await tick();
+    find(view.root, e => e.className.includes('terminal-resume-btn')).click();
+    h.subscriptionReady();
+    if (ending === 'disposed') { view.handle.dispose(); h.resuming.resolve({ session: h.sessions[0] }); }
+    else h.resuming.reject(new Error('Authority denied reattachment'));
+    await tick(); h.terminals[0].input('forbidden queued input'); h.flushFrames();
+    assert.equal(h.snapshotCalls, 0); assert.deepEqual(h.sent, []);
+    view.handle.dispose();
+  });
+}
