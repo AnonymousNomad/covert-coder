@@ -641,8 +641,10 @@ test('registered local GGUF imports appear in Model Access without implying qual
   const id = 'lfm2.5-2.6b-q4_k_m-fixture';
   const filename = 'LFM2.5-2.6B-Q4_K_M.gguf';
   const missingId = 'lfm-missing-fixture';
+  const sourceRevision = 'e7caca5d835a3901a8e0d63e94009429bafafdfc';
+  const sourceRepo = 'LiquidAI/LFM2.5-2.6B-GGUF';
   const registered = [
-    { id, name: 'registered-display-id', model: filename, file: path.join(workspace, 'private-model-directory', filename), artifact_uri: 'local://' + filename, context_tokens: 32768, sha256: HASH_A, ingested: true },
+    { id, name: 'registered-display-id', model: filename, file: path.join(workspace, 'private-model-directory', filename), artifact_uri: 'local://' + filename, context_tokens: 32768, sha256: HASH_A, source_repo: sourceRepo, revision: sourceRevision, license: 'other', ingested: true },
     { id: missingId, name: 'missing-display-id', model: 'missing.gguf', file: path.join(workspace, 'private-model-directory', 'missing.gguf'), artifact_uri: 'local://missing.gguf', ingested: true }
   ];
   const view = createModelManagerView({
@@ -674,6 +676,9 @@ test('registered local GGUF imports appear in Model Access without implying qual
   assert.equal(artifact.format, 'GGUF');
   assert.equal(artifact.availability, 'INSTALLED');
   assert.equal(artifact.expected_sha256, HASH_A);
+  assert.equal(artifact.source_ref, sourceRepo);
+  assert.equal(artifact.revision, sourceRevision);
+  assert.equal(artifact.license, 'other');
   assert.equal(artifact.hash_status, 'EXPECTED');
   assert.equal(artifact.observed_sha256, null);
   const missing = snapshot.models.find(item => item.identity.canonical_id === missingId);

@@ -318,6 +318,9 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
         context_tokens: entry.context_tokens,
         quant_label: entry.quant_label,
         sha256: entry.sha256,
+        source_repo: entry.source_repo,
+        revision: entry.revision,
+        license: entry.license,
         ingested: true
       });
     }

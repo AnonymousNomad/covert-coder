@@ -1,5 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +13,15 @@ let tmpRoot;
 let ws;
 let modelsDir;
 const allowExternalEgress = () => true;
+const REVISION = 'a'.repeat(40);
+
+function verifiedArtifact(payload) {
+  return {
+    revision: REVISION,
+    expected_sha256: createHash('sha256').update(payload).digest('hex'),
+    expected_size_bytes: payload.length
+  };
+}
 
 beforeEach(async () => {
   tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-m-hub-'));
@@ -121,8 +131,75 @@ test('m1: metadata fetches abort on the configured timeout instead of hanging', 
   await assert.rejects(() => hub.listRepoFiles('org/hung'), error => error?.code === 'TIMEOUT' && /timed out/i.test(error.message));
 });
 
+test('m1: repository inspection returns immutable revision, LFS digest, size, and license label', async () => {
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: async () => new Response(JSON.stringify({
+      sha: REVISION,
+      cardData: { license: 'other' },
+      siblings: [
+        { rfilename: 'LFM2.5-Q4_K_M.gguf', size: 12, lfs: { oid: 'D'.repeat(64), size: 12 } },
+        { rfilename: 'README.md', size: 40 }
+      ]
+    }), { status: 200 })
+  });
+  const listing = await hub.listRepoFiles('LiquidAI/model');
+  assert.deepEqual(listing, {
+    repo_id: 'LiquidAI/model',
+    revision: REVISION,
+    license: 'other',
+    files: [{ filename: 'LFM2.5-Q4_K_M.gguf', size: 12, lfs_sha256: 'd'.repeat(64) }]
+  });
+});
+
+test('m1: download rejects missing immutable pins before network contact', () => {
+  let calls = 0;
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: async () => { calls += 1; return new Response('unexpected', { status: 200 }); }
+  });
+  assert.throws(() => hub.beginDownload({ repo_id: 'org/repo', filename: 'model.gguf' }), error => error?.code === 'VALIDATION');
+  assert.equal(calls, 0);
+});
+
+test('m1: mismatched LFS digest and invalid GGUF never publish a final artifact or ready manifest', async () => {
+  const payload = synthesizeGguf();
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: async () => new Response(payload, { status: 200, headers: { 'content-length': String(payload.length) } })
+  });
+  await hub.startDownload({
+    repo_id: 'org/repo', filename: 'mismatch.gguf', quant_label: null,
+    ...verifiedArtifact(payload), expected_sha256: 'f'.repeat(64)
+  });
+  assert.equal(hub.listDownloads()[0]?.status, 'error');
+  await assert.rejects(() => fs.access(path.join(modelsDir, 'mismatch.gguf')));
+  await assert.rejects(() => fs.access(path.join(modelsDir, 'mismatch.gguf.manifest.json')));
+
+  const invalid = Buffer.from('not-a-gguf');
+  const invalidHub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: async () => new Response(invalid, { status: 200, headers: { 'content-length': String(invalid.length) } })
+  });
+  await invalidHub.startDownload({
+    repo_id: 'org/repo', filename: 'invalid.gguf', quant_label: null,
+    ...verifiedArtifact(invalid)
+  });
+  assert.equal(invalidHub.listDownloads()[0]?.status, 'error');
+  await assert.rejects(() => fs.access(path.join(modelsDir, 'invalid.gguf')));
+  await assert.rejects(() => fs.access(path.join(modelsDir, 'invalid.gguf.manifest.json')));
+});
+
 test('m1: happy-path download streams to final file with manifest and no .part left', { timeout: 15000 }, async () => {
-  const payload = Buffer.alloc(64 * 1024, 0xAB);
+  const payload = synthesizeGguf();
   const server = http.createServer((_req, res) => {
     res.setHeader('content-length', String(payload.length));
     res.setHeader('etag', '"abc123"');
@@ -141,7 +218,8 @@ test('m1: happy-path download streams to final file with manifest and no .part l
       repo_id: 'testorg/tiny-gguf',
       filename: 'tiny-q4.gguf',
       quant_label: 'Q4_K_M',
-      urlTemplate: `http://127.0.0.1:${port}/resolve/main/{filename}`
+      ...verifiedArtifact(payload),
+      urlTemplate: `http://127.0.0.1:${port}/resolve/{revision}/{filename}`
     });
     const doneEvent = hub.listEvents().find(event => event.event === 'done');
     assert.ok(doneEvent, 'expected a done event');
@@ -154,6 +232,9 @@ test('m1: happy-path download streams to final file with manifest and no .part l
     const manifest = JSON.parse(await fs.readFile(path.join(modelsDir, 'tiny-q4.gguf.manifest.json'), 'utf8'));
     assert.equal(manifest.repo_id, 'testorg/tiny-gguf');
     assert.equal(manifest.size_bytes, payload.length);
+    assert.equal(manifest.revision, REVISION);
+    assert.equal(manifest.expected_sha256, verifiedArtifact(payload).expected_sha256);
+    assert.equal(manifest.sha256, verifiedArtifact(payload).expected_sha256);
     assert.equal(manifest.source, 'hf');
     assert.equal(manifest.status, 'ready');
     assert.equal(manifest.etag, '"abc123"');
@@ -167,7 +248,8 @@ test('m1: happy-path download streams to final file with manifest and no .part l
 });
 
 test('m1: interrupted download auto-resumes via Range request and completes', { timeout: 20000 }, async () => {
-  const payload = Buffer.alloc(48 * 1024, 0xCD);
+  const header = synthesizeGguf();
+  const payload = Buffer.concat([header, Buffer.alloc(48 * 1024 - header.length, 0xCD)]);
   let requests = 0;
   const prefixLength = 16 * 1024;
   const rangeHeaders = [];
@@ -205,14 +287,15 @@ test('m1: interrupted download auto-resumes via Range request and completes', { 
   });
   await hub.startDownload({
     repo_id: 'testorg/resume',
-    filename: 'resume.bin',
+    filename: 'resume.gguf',
     quant_label: null,
-    urlTemplate: 'http://fixture.invalid/resolve/main/{filename}'
+    ...verifiedArtifact(payload),
+    urlTemplate: 'http://fixture.invalid/resolve/{revision}/{filename}'
   });
   const doneEvent = hub.listEvents().find(event => event.event === 'done');
   assert.ok(doneEvent, 'expected done after resume');
   assert.equal(doneEvent.bytes_total, payload.length);
-  const saved = await fs.readFile(path.join(modelsDir, 'resume.bin'));
+  const saved = await fs.readFile(path.join(modelsDir, 'resume.gguf'));
   assert.equal(saved.equals(payload), true);
   assert.deepEqual(rangeHeaders, [null, `bytes=${prefixLength}-`], 'retry resumes from the fully persisted prefix');
   assert.equal(requests, 2);
@@ -241,9 +324,12 @@ test('m1: stalled download stream hits the idle timeout, retries boundedly, and 
     const started = Date.now();
     await hub.startDownload({
       repo_id: 'testorg/stalled',
-      filename: 'stalled.bin',
+      filename: 'stalled.gguf',
       quant_label: null,
-      urlTemplate: `http://127.0.0.1:${port}/resolve/main/{filename}`
+      revision: REVISION,
+      expected_sha256: 'b'.repeat(64),
+      expected_size_bytes: 1024,
+      urlTemplate: `http://127.0.0.1:${port}/resolve/{revision}/{filename}`
     });
     assert.ok(Date.now() - started < 2000, 'three bounded retries must settle quickly in the fixture');
     assert.equal(requests, 3, 'transient timeout retries are capped at three attempts');
@@ -251,8 +337,8 @@ test('m1: stalled download stream hits the idle timeout, retries boundedly, and 
     assert.equal(job.status, 'error');
     assert.match(job.error ?? '', /timed out/i);
     assert.equal(hub.listEvents().some(event => event.event === 'done'), false);
-    await assert.rejects(() => fs.access(path.join(modelsDir, 'stalled.bin')));
-    const part = await fs.stat(path.join(modelsDir, 'stalled.bin.part'));
+    await assert.rejects(() => fs.access(path.join(modelsDir, 'stalled.gguf')));
+    const part = await fs.stat(path.join(modelsDir, 'stalled.gguf.part'));
     assert.ok(part.size > 0, 'partial bytes remain resumable after a timeout');
   } finally {
     server.closeAllConnections();
@@ -277,9 +363,12 @@ test('m1: cancel aborts mid-stream, deletes .part, emits cancelled and never don
   try {
     const jobPromise = hub.startDownload({
       repo_id: 'testorg/slow',
-      filename: 'slow.bin',
+      filename: 'slow.gguf',
       quant_label: null,
-      urlTemplate: `http://127.0.0.1:${port}/resolve/main/{filename}`
+      revision: REVISION,
+      expected_sha256: 'c'.repeat(64),
+      expected_size_bytes: 10 * 1024 * 1024,
+      urlTemplate: `http://127.0.0.1:${port}/resolve/{revision}/{filename}`
     });
     jobPromise.catch(() => {});
     await new Promise(resolve => setTimeout(resolve, 400));
@@ -289,8 +378,8 @@ test('m1: cancel aborts mid-stream, deletes .part, emits cancelled and never don
     assert.equal(cancelled.cancelled, true);
     await jobPromise;
     await new Promise(resolve => setTimeout(resolve, 200));
-    await assert.rejects(() => fs.access(path.join(modelsDir, 'slow.bin.part')));
-    await assert.rejects(() => fs.access(path.join(modelsDir, 'slow.bin')));
+    await assert.rejects(() => fs.access(path.join(modelsDir, 'slow.gguf.part')));
+    await assert.rejects(() => fs.access(path.join(modelsDir, 'slow.gguf')));
     const events = hub.listEvents();
     assert.equal(events.some(event => event.event === 'cancelled'), true);
     assert.equal(events.some(event => event.event === 'done'), false);

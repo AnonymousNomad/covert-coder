@@ -61,6 +61,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
 
   let alive = true;
   let pending = false;
+  const hubPolls = new Set<number>();
 
   function render(view: ModelManagerResponseT): void {
     body.textContent = '';
@@ -238,6 +239,180 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     }
     if (view.routes.length === 0) routeList.appendChild(el('div', 'models-empty', 'No exact provider/model routes are currently reported.'));
     body.appendChild(routeList);
+    appendHubAcquisition();
+  }
+
+  function appendHubAcquisition(): void {
+    const section = el('section', 'model-profile-config modelhub-acquisition');
+    section.appendChild(el('div', 'models-section-header', 'HUGGING FACE → LOCAL ARTIFACT'));
+    section.appendChild(el('p', 'model-card-meta', 'Search and inspect a GGUF source, then acquire its immutable revision only after explicit Authority approval. The verified file is written under the current workspace models/ directory; model weights are not bundled with Covert.'));
+
+    const searchRow = el('div', 'modelhub-search-row');
+    const query = document.createElement('input');
+    query.className = 'modelhub-search-input';
+    query.type = 'search';
+    query.maxLength = 200;
+    query.value = 'LFM2.5-2.6B-GGUF';
+    query.setAttribute('aria-label', 'Hugging Face model search');
+    const searchButton = document.createElement('button');
+    searchButton.className = 'model-profile-save';
+    searchButton.type = 'button';
+    searchButton.textContent = 'Search Hugging Face';
+    searchRow.append(query, searchButton);
+    section.appendChild(searchRow);
+
+    const status = el('p', 'model-card-meta model-profile-status', 'No Hugging Face request has been made.');
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    section.appendChild(status);
+    const results = el('div', 'models-list');
+    section.appendChild(results);
+
+    searchButton.addEventListener('click', async () => {
+      const term = query.value.trim();
+      if (!term) {
+        status.textContent = 'Enter a model search term.';
+        return;
+      }
+      searchButton.disabled = true;
+      status.textContent = 'Preparing the exact external search operation. Covert will ask for one-time approval before contacting Hugging Face…';
+      results.textContent = '';
+      try {
+        const response = await api.modelHubSearch(term);
+        status.textContent = `Hugging Face returned ${response.models.length} GGUF repository result(s). Inspect a repository to pin its current revision and file digest.`;
+        for (const model of response.models) {
+          const card = el('div', 'model-card dim');
+          const head = el('div', 'model-card-head');
+          head.appendChild(el('span', 'model-card-name', model.repo_id));
+          head.appendChild(el('span', 'model-card-status dim', `${model.downloads.toLocaleString()} downloads`));
+          card.appendChild(head);
+          card.appendChild(metadata(`likes: ${model.likes}`, `tags: ${model.tags.slice(0, 8).join(', ') || 'none reported'}`));
+          const inspect = document.createElement('button');
+          inspect.className = 'model-profile-save';
+          inspect.type = 'button';
+          inspect.textContent = 'Inspect GGUF files';
+          const files = el('div', 'models-list');
+          inspect.addEventListener('click', async () => {
+            inspect.disabled = true;
+            files.textContent = 'Preparing an exact repository metadata request…';
+            try {
+              const listing = await api.modelHubFiles(model.repo_id);
+              files.textContent = '';
+              files.appendChild(metadata(`immutable revision: ${listing.revision}`, `repository license label: ${listing.license ?? 'not reported'}`));
+              files.appendChild(el('p', 'model-card-meta model-card-meta-warn', 'Review the source license terms before redistribution. A repository license label is not legal approval.'));
+              if (listing.files.length === 0) files.appendChild(el('div', 'models-empty', 'This repository reported no GGUF files.'));
+              for (const file of listing.files) {
+                const fileCard = el('div', 'model-card dim');
+                fileCard.appendChild(el('div', 'model-card-name', file.filename));
+                fileCard.appendChild(metadata(
+                  `size: ${file.size === null ? 'unknown' : `${file.size.toLocaleString()} bytes`}`,
+                  `LFS SHA-256: ${file.lfs_sha256 ?? 'not available'}`
+                ));
+                const acquire = document.createElement('button');
+                acquire.className = 'model-profile-save';
+                acquire.type = 'button';
+                acquire.textContent = 'Download and verify';
+                acquire.disabled = file.lfs_sha256 === null || file.size === null;
+                const jobStatus = el('p', 'model-card-meta model-profile-status', acquire.disabled
+                  ? 'This file lacks the pinned size or LFS SHA-256 required for verified acquisition.'
+                  : 'No download started.');
+                const register = document.createElement('button');
+                register.className = 'model-profile-save';
+                register.type = 'button';
+                register.textContent = 'Register in Model Manager';
+                register.disabled = true;
+                acquire.addEventListener('click', async () => {
+                  acquire.disabled = true;
+                  jobStatus.textContent = 'Preparing the exact external download operation. Covert will ask for one-time approval before downloading…';
+                  const quant = /(?:^|[._-])(Q\d(?:_[A-Z0-9]+)*(?:_[A-Z])?)(?:[._-]|$)/i.exec(file.filename)?.[1]?.toUpperCase();
+                  try {
+                    const started = await api.modelHubDownload({
+                      repo_id: model.repo_id,
+                      filename: file.filename,
+                      quant_label: quant ?? null,
+                      revision: listing.revision,
+                      expected_sha256: file.lfs_sha256!,
+                      expected_size_bytes: file.size!
+                    });
+                    jobStatus.textContent = 'Approved download started. Waiting for size, SHA-256, and GGUF verification…';
+                    const poll = window.setInterval(async () => {
+                      try {
+                        const snapshot = await api.modelHubDownloads();
+                        const job = snapshot.jobs.find(item => item.job_id === started.job_id);
+                        if (!job) {
+                          window.clearInterval(poll);
+                          hubPolls.delete(poll);
+                          jobStatus.textContent = 'Download job disappeared before a terminal result; verification is unknown.';
+                          acquire.disabled = false;
+                          return;
+                        }
+                        if (job.status === 'running') {
+                          const total = job.bytes_total ?? job.expected_size_bytes;
+                          jobStatus.textContent = `Downloading and verifying: ${job.bytes_done.toLocaleString()} / ${total.toLocaleString()} bytes · ${job.revision}`;
+                          return;
+                        }
+                        window.clearInterval(poll);
+                        hubPolls.delete(poll);
+                        if (job.status === 'done') {
+                          jobStatus.textContent = `Verified and stored: SHA-256 ${job.expected_sha256}; immutable revision ${job.revision}.`;
+                          register.disabled = false;
+                        } else {
+                          jobStatus.textContent = `Download ${job.status}: ${job.error ?? 'no error detail was returned'}. No registration is offered.`;
+                          acquire.disabled = false;
+                        }
+                      } catch (error) {
+                        window.clearInterval(poll);
+                        hubPolls.delete(poll);
+                        jobStatus.textContent = 'Could not read download verification status: ' + (error instanceof Error ? error.message : String(error));
+                        acquire.disabled = false;
+                      }
+                    }, 1500);
+                    hubPolls.add(poll);
+                  } catch (error) {
+                    jobStatus.textContent = 'Download was not started: ' + (error instanceof Error ? error.message : String(error));
+                    acquire.disabled = false;
+                  }
+                });
+                register.addEventListener('click', async () => {
+                  register.disabled = true;
+                  jobStatus.textContent = 'Registering the verified artifact through the canonical Model Manager route; Authority may request approval…';
+                  try {
+                    const registered = await api.modelRegister({
+                      filename: file.filename,
+                      repo_id: model.repo_id,
+                      ...(quantFromFilename(file.filename) ? { quant_label: quantFromFilename(file.filename)! } : {})
+                    });
+                    jobStatus.textContent = `Registered as ${registered.id}. This records local availability; it does not start or qualify the model.`;
+                    const latest = await api.modelManager();
+                    if (alive) render(latest);
+                  } catch (error) {
+                    jobStatus.textContent = 'Registration was not completed: ' + (error instanceof Error ? error.message : String(error));
+                    register.disabled = false;
+                  }
+                });
+                fileCard.append(acquire, register, jobStatus);
+                files.appendChild(fileCard);
+              }
+            } catch (error) {
+              files.textContent = 'Repository inspection failed: ' + (error instanceof Error ? error.message : String(error));
+            } finally {
+              inspect.disabled = false;
+            }
+          });
+          card.append(inspect, files);
+          results.appendChild(card);
+        }
+      } catch (error) {
+        status.textContent = 'Hugging Face search failed or was not approved: ' + (error instanceof Error ? error.message : String(error));
+      } finally {
+        searchButton.disabled = false;
+      }
+    });
+    body.appendChild(section);
+  }
+
+  function quantFromFilename(filename: string): string | null {
+    return /(?:^|[._-])(Q\d(?:_[A-Z0-9]+)*(?:_[A-Z])?)(?:[._-]|$)/i.exec(filename)?.[1]?.toUpperCase() ?? null;
   }
 
   async function refresh(): Promise<void> {
@@ -263,6 +438,8 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     dispose() {
       alive = false;
       window.clearInterval(interval);
+      for (const poll of hubPolls) window.clearInterval(poll);
+      hubPolls.clear();
       parent.textContent = '';
     }
   };

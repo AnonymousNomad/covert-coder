@@ -9,6 +9,7 @@
 // import route remains migration-waived and is asserted as such.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import type http from 'node:http';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -21,7 +22,27 @@ import { pairFixture } from './authority-fixture.ts';
 
 const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-m-arch-'));
 const modelsDir = path.join(workspace, 'models');
-const PAYLOAD = Buffer.from('M-ARCH-PAYLOAD-BYTES');
+const REVISION = 'c'.repeat(40);
+
+function u32(value: number): Buffer { const buffer = Buffer.alloc(4); buffer.writeUInt32LE(value); return buffer; }
+function u64(value: number): Buffer { const buffer = Buffer.alloc(8); buffer.writeBigUInt64LE(BigInt(value)); return buffer; }
+function ggufString(value: string): Buffer { return Buffer.concat([u64(Buffer.byteLength(value)), Buffer.from(value, 'utf8')]); }
+function synthesizeGguf(): Buffer {
+  const key = ggufString('general.architecture');
+  const value = ggufString('llama');
+  return Buffer.concat([Buffer.from('GGUF'), u32(3), u64(0), u64(1), key, u32(8), value, Buffer.alloc(32)]);
+}
+
+const PAYLOAD = synthesizeGguf();
+const PAYLOAD_SHA = createHash('sha256').update(PAYLOAD).digest('hex');
+const downloadBody = (repo_id: string, filename: string, quant_label: string | null) => ({
+  repo_id,
+  filename,
+  quant_label,
+  revision: REVISION,
+  expected_sha256: PAYLOAD_SHA,
+  expected_size_bytes: PAYLOAD.length
+});
 let server: ArchServer;
 let httpServer: http.Server;
 let base: string;
@@ -46,7 +67,11 @@ const fakeFetch = (async (input: unknown, init?: RequestInit) => {
   fetchedUrls.push(target);
   authorizationAttached.push(new Headers(init?.headers).has('authorization'));
   if (target.includes('?blobs=true')) {
-    return new Response(JSON.stringify({ siblings: [{ rfilename: 'model.gguf', size: 42 }] }), {
+    return new Response(JSON.stringify({
+      sha: REVISION,
+      cardData: { license: 'other' },
+      siblings: [{ rfilename: 'model.gguf', size: PAYLOAD.length, lfs: { oid: PAYLOAD_SHA, size: PAYLOAD.length } }]
+    }), {
       status: 200, headers: { 'content-type': 'application/json' }
     });
   }
@@ -73,7 +98,7 @@ const fakeFetch = (async (input: unknown, init?: RequestInit) => {
       }
     }), { status: 200, headers: { 'content-length': String(PAYLOAD.length) } });
   }
-  return new Response(PAYLOAD, {
+  return new Response(new Uint8Array(PAYLOAD), {
     status: 200,
     headers: { 'content-length': String(PAYLOAD.length), etag: '"arch"' }
   });
@@ -186,7 +211,7 @@ async function searchJournal(): Promise<Array<{ action: string; url: string }>> 
 }
 
 test('download: approved exact operation is the only way to start an egress job', async () => {
-  const body = { repo_id: 'org/repo', filename: 'arch-model.gguf', quant_label: 'Q4_K_M' };
+  const body = downloadBody('org/repo', 'arch-model.gguf', 'Q4_K_M');
 
   assert.equal((await anonymousPost('/api/modelhub/download', body)).status, 403, 'anonymous rejected');
   assert.equal((await post('/api/modelhub/download', body)).status, 409, 'unapproved denied');
@@ -199,6 +224,9 @@ test('download: approved exact operation is the only way to start an egress job'
   assert.equal((await post('/api/modelhub/download', { ...body, repo_id: 'other/repo' }, headers)).status, 409, 'changed repo_id rejected');
   assert.equal((await post('/api/modelhub/download', { ...body, filename: 'other.gguf' }, headers)).status, 409, 'changed filename rejected');
   assert.equal((await post('/api/modelhub/download', { ...body, quant_label: 'Q8_0' }, headers)).status, 409, 'changed quant_label rejected');
+  assert.equal((await post('/api/modelhub/download', { ...body, revision: 'd'.repeat(40) }, headers)).status, 409, 'changed revision rejected');
+  assert.equal((await post('/api/modelhub/download', { ...body, expected_sha256: 'e'.repeat(64) }, headers)).status, 409, 'changed digest rejected');
+  assert.equal((await post('/api/modelhub/download', { ...body, expected_size_bytes: body.expected_size_bytes + 1 }, headers)).status, 409, 'changed size rejected');
   assert.equal(fetchedUrls.length, 0, 'changed inputs reject before any egress');
 
   const urlsBefore = fetchedUrls.length;
@@ -209,32 +237,35 @@ test('download: approved exact operation is the only way to start an egress job'
   await waitForJob(jobId, 'done');
   await waitForDoneEvent(jobId);
   assert.equal(fetchedUrls.length, urlsBefore + 1);
-  assert.equal(fetchedUrls[urlsBefore], 'https://huggingface.co/org/repo/resolve/main/arch-model.gguf');
+  assert.equal(fetchedUrls[urlsBefore], `https://huggingface.co/org/repo/resolve/${REVISION}/arch-model.gguf`);
   assert.equal((await fs.readFile(path.join(modelsDir, 'arch-model.gguf'))).equals(PAYLOAD), true);
   const manifest = JSON.parse(await fs.readFile(path.join(modelsDir, 'arch-model.gguf.manifest.json'), 'utf8'));
   assert.equal(manifest.repo_id, 'org/repo');
   assert.equal(manifest.quant_label, 'Q4_K_M');
+  assert.equal(manifest.revision, REVISION);
+  assert.equal(manifest.expected_sha256, PAYLOAD_SHA);
+  assert.equal(manifest.sha256, PAYLOAD_SHA);
 
   assert.equal((await post('/api/modelhub/download', body, headers)).status, 409, 'consumed download approval cannot replay');
   assert.equal(fetchedUrls.length, urlsBefore + 1, 'replay performs no second egress');
 });
 
 test('download: hostile-looking repo id cannot redirect the egress host', async () => {
-  const body = { repo_id: 'evil.com/x', filename: 'hostile.gguf', quant_label: null };
+  const body = downloadBody('evil.com/x', 'hostile.gguf', null);
   const headers = await owner.approve('POST', '/api/modelhub/download', body, 'task:hub-hostile');
   const started = await post<{ job_id: string }>('/api/modelhub/download', body, headers);
   assert.equal(started.status, 200);
   await waitForJob(started.body.data!.job_id, 'done');
   const url = fetchedUrls[fetchedUrls.length - 1]!;
   assert.ok(url.startsWith('https://huggingface.co/'), `host must stay pinned: ${url}`);
-  assert.ok(url.includes('/evil.com/x/resolve/main/'), url);
+  assert.ok(url.includes(`/evil.com/x/resolve/${REVISION}/`), url);
 });
 
 test('download: authority approval never overrides containment (nested junction fails closed)', async () => {
   const outside = path.join(workspace, 'outside-target');
   await fs.mkdir(outside, { recursive: true });
   await fs.symlink(outside, path.join(modelsDir, 'sub'), 'junction');
-  const body = { repo_id: 'org/repo', filename: 'sub/evil.gguf', quant_label: null };
+  const body = downloadBody('org/repo', 'sub/evil.gguf', null);
   const headers = await owner.approve('POST', '/api/modelhub/download', body, 'task:hub-contained');
   const started = await post<{ job_id: string }>('/api/modelhub/download', body, headers);
   assert.equal(started.status, 200, 'authority approves the exact operation');
@@ -261,7 +292,7 @@ test('cancel: approved exact operation targets only the owned job', async () => 
   assert.equal(done.body.data?.cancelled, false, 'completed job preserves the false contract');
 
   slowMode = true;
-  const activeBody = { repo_id: 'org/repo', filename: 'slow-cancel.gguf', quant_label: null };
+  const activeBody = downloadBody('org/repo', 'slow-cancel.gguf', null);
   const activeHeaders = await owner.approve('POST', '/api/modelhub/download', activeBody, 'task:hub-download-slow');
   const activeStarted = await post<{ job_id: string }>('/api/modelhub/download', activeBody, activeHeaders);
   assert.equal(activeStarted.status, 200);
@@ -422,9 +453,15 @@ test('files: external enrollment binds repo identity and blocks unapproved or cr
   const response = await owner.request(pathname, {
     headers: { 'X-AIDE-Operation': proposed.operation_id, 'X-AIDE-Task': 'task:files-c4-04' }
   });
-  const responseBody = await response.json() as Envelope<{ repo_id: string; files: Array<{ filename: string; size: number | null }> }>;
+  const responseBody = await response.json() as Envelope<{
+    repo_id: string; revision: string; license: string | null;
+    files: Array<{ filename: string; size: number | null; lfs_sha256: string | null }>
+  }>;
   assert.equal(response.status, 200);
-  assert.deepEqual(responseBody.data, { repo_id: 'org/model-1', files: [{ filename: 'model.gguf', size: 42 }] });
+  assert.deepEqual(responseBody.data, {
+    repo_id: 'org/model-1', revision: REVISION, license: 'other',
+    files: [{ filename: 'model.gguf', size: PAYLOAD.length, lfs_sha256: PAYLOAD_SHA }]
+  });
   assert.equal(fetchedUrls.length, beforeFetch + 1);
   assert.equal(authorizationAttached[beforeAuth], true);
   const log = await fs.readFile(path.join(workspace, 'arch-m.log'), 'utf8');

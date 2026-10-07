@@ -8,6 +8,9 @@ export interface HubDownloadJobSnapshot {
   job_id: string;
   repo_id: string;
   filename: string;
+  revision: string;
+  expected_sha256: string;
+  expected_size_bytes: number;
   status: 'running' | 'done' | 'error' | 'cancelled';
   bytes_done: number;
   bytes_total: number | null;
@@ -29,6 +32,9 @@ export interface StartDownloadArgs {
   repo_id: string;
   filename: string;
   quant_label?: string | null;
+  revision: string;
+  expected_sha256: string;
+  expected_size_bytes: number;
   urlTemplate?: string;
 }
 
@@ -44,7 +50,7 @@ export declare function createHubService(options: {
 }): {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<HubSearchResult>;
-  listRepoFiles(repoId: string): Promise<{ repo_id: string; files: Array<{ filename: string; size: number | null }> }>;
+  listRepoFiles(repoId: string): Promise<{ repo_id: string; revision: string; license: string | null; files: Array<{ filename: string; size: number | null; lfs_sha256: string | null }> }>;
   startDownload(args: StartDownloadArgs): Promise<void>;
   beginDownload(args: StartDownloadArgs): { job_id: string };
   cancel(jobId: string): Promise<{ cancelled: boolean }>;

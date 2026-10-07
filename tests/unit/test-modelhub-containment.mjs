@@ -5,10 +5,30 @@
 // outside the canonical models root.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHubService } from '../../node/src/services/modelhub.mjs';
+
+const REVISION = 'b'.repeat(40);
+
+function u32(value) { const buffer = Buffer.alloc(4); buffer.writeUInt32LE(value); return buffer; }
+function u64(value) { const buffer = Buffer.alloc(8); buffer.writeBigUInt64LE(BigInt(value)); return buffer; }
+function string(value) { return Buffer.concat([u64(Buffer.byteLength(value)), Buffer.from(value, 'utf8')]); }
+function validGguf() {
+  const key = string('general.architecture');
+  const value = string('llama');
+  return Buffer.concat([Buffer.from('GGUF'), u32(3), u64(0), u64(1), key, u32(8), value, Buffer.alloc(32)]);
+}
+
+function expectedArtifact(payload) {
+  return {
+    revision: REVISION,
+    expected_sha256: createHash('sha256').update(payload).digest('hex'),
+    expected_size_bytes: payload.length
+  };
+}
 
 async function makeRoot() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mh-contain-'));
@@ -21,11 +41,15 @@ async function makeRoot() {
 }
 
 function okFetch(payload, etag = '"e1"') {
-  return async () => new Response(payload, { status: 200, headers: { 'content-length': String(payload.length), etag } });
+  const fetchImpl = async () => new Response(payload, { status: 200, headers: { 'content-length': String(payload.length), etag } });
+  fetchImpl.expectedArtifact = expectedArtifact(payload);
+  return fetchImpl;
 }
 
 function makeHub({ ws, models, fetchImpl }) {
-  return createHubService({ workspace: ws, modelsDir: models, fetchImpl, onEvent: () => {}, assertExternalEgressAllowed: () => true });
+  const hub = createHubService({ workspace: ws, modelsDir: models, fetchImpl, onEvent: () => {}, assertExternalEgressAllowed: () => true });
+  hub.expectedArtifact = fetchImpl.expectedArtifact ?? expectedArtifact(validGguf());
+  return hub;
 }
 
 async function waitFor(predicate, timeoutMs = 8000, label = 'condition') {
@@ -42,7 +66,7 @@ async function jobById(hub, id) {
 }
 
 async function runDownload(hub, filename) {
-  const { job_id } = hub.beginDownload({ repo_id: 'org/repo', filename, quant_label: null });
+  const { job_id } = hub.beginDownload({ repo_id: 'org/repo', filename, quant_label: null, ...hub.expectedArtifact });
   // The status flips to its terminal value before post-status work (manifest
   // publication / event emission) finishes; wait for the matching terminal
   // event, which is the authoritative completion signal.
@@ -73,7 +97,7 @@ async function isEmpty(dir) {
 test('contained writes: root, existing nested, missing nested, manifest shape, no leftovers', async () => {
   const { root, ws, models, outside } = await makeRoot();
   try {
-    const payload = Buffer.from('CONTAINED-PAYLOAD');
+    const payload = validGguf();
     const hub = makeHub({ ws, models, fetchImpl: okFetch(payload) });
     await fs.mkdir(path.join(models, 'existing'), { recursive: true });
 
@@ -127,7 +151,7 @@ test('immediate parent junction fails closed with zero outside writes', async ()
   try {
     await fs.symlink(outside, path.join(models, 'sub'), 'junction');
     const hub = makeHub({ ws, models, fetchImpl: okFetch(Buffer.from('escape-attempt')) });
-    const job = await runDownload(hub, 'sub/evil.bin');
+    const job = await runDownload(hub, 'sub/evil.gguf');
     assert.equal(job.status, 'error');
     assert.match(job.error, /containment/i);
     assert.equal(await isEmpty(outside), true);
@@ -141,7 +165,7 @@ test('deeper nested junction fails closed', async () => {
   try {
     await fs.symlink(outside, path.join(models, 'a'), 'junction');
     const hub = makeHub({ ws, models, fetchImpl: okFetch(Buffer.from('escape-attempt')) });
-    const job = await runDownload(hub, 'a/b/evil.bin');
+    const job = await runDownload(hub, 'a/b/evil.gguf');
     assert.equal(job.status, 'error');
     assert.match(job.error, /containment/i);
     assert.equal(await isEmpty(outside), true);
@@ -157,7 +181,7 @@ test('sibling-prefix junction target (models-evil) is not treated as contained',
     await fs.mkdir(evil, { recursive: true });
     await fs.symlink(evil, path.join(models, 'sub'), 'junction');
     const hub = makeHub({ ws, models, fetchImpl: okFetch(Buffer.from('escape-attempt')) });
-    const job = await runDownload(hub, 'sub/evil.bin');
+    const job = await runDownload(hub, 'sub/evil.gguf');
     assert.equal(job.status, 'error');
     assert.match(job.error, /containment/i);
     assert.equal(await isEmpty(evil), true);
@@ -172,7 +196,8 @@ test('artifact destination symlink is refused; sentinel untouched', async () => 
     const sentinel = path.join(outside, 'sentinel.bin');
     await fs.writeFile(sentinel, 'SENTINEL');
     await fs.symlink(sentinel, path.join(models, 'target.gguf'), 'file');
-    const hub = makeHub({ ws, models, fetchImpl: okFetch(Buffer.from('new-bytes')) });
+    const payload = validGguf();
+    const hub = makeHub({ ws, models, fetchImpl: okFetch(payload) });
     const job = await runDownload(hub, 'target.gguf');
     assert.equal(job.status, 'error');
     assert.match(job.error, /symbolic-link model artifact/i);
@@ -221,7 +246,7 @@ test('manifest symlink is refused after artifact publication; sentinel untouched
     const sentinel = path.join(outside, 'sentinel-manifest.json');
     await fs.writeFile(sentinel, 'SENTINEL-MANIFEST');
     await fs.symlink(sentinel, path.join(models, 'm.gguf.manifest.json'), 'file');
-    const payload = Buffer.from('manifest-link-payload');
+    const payload = validGguf();
     const hub = makeHub({ ws, models, fetchImpl: okFetch(payload) });
     const job = await runDownload(hub, 'm.gguf');
     // The artifact itself is contained and published; the manifest entry is
@@ -241,7 +266,7 @@ test('manifest hardlink is replaced at the entry; sentinel inode untouched', asy
     const sentinel = path.join(outside, 'sentinel-manifest-hard.json');
     await fs.writeFile(sentinel, 'SENTINEL-HARD');
     await fs.link(sentinel, path.join(models, 'h.gguf.manifest.json'));
-    const hub = makeHub({ ws, models, fetchImpl: okFetch(Buffer.from('hard-manifest-payload')) });
+    const hub = makeHub({ ws, models, fetchImpl: okFetch(validGguf()) });
     const job = await runDownload(hub, 'h.gguf');
     assert.equal(job.status, 'done');
     assert.equal(await fs.readFile(sentinel, 'utf8'), 'SENTINEL-HARD');
@@ -259,7 +284,7 @@ test('final destination hardlink is replaced at the entry; sentinel untouched', 
     const sentinel = path.join(outside, 'sentinel-final.bin');
     await fs.writeFile(sentinel, 'SENTINEL-FINAL');
     await fs.link(sentinel, path.join(models, 'z.gguf'));
-    const payload = Buffer.from('final-hardlink-payload');
+    const payload = validGguf();
     const hub = makeHub({ ws, models, fetchImpl: okFetch(payload) });
     const job = await runDownload(hub, 'z.gguf');
     assert.equal(job.status, 'done');
@@ -274,7 +299,7 @@ test('artifact destination directory is refused', async () => {
   const { root, ws, models } = await makeRoot();
   try {
     await fs.mkdir(path.join(models, 'dir.gguf'), { recursive: true });
-    const hub = makeHub({ ws, models, fetchImpl: okFetch(Buffer.from('dir-payload')) });
+    const hub = makeHub({ ws, models, fetchImpl: okFetch(validGguf()) });
     const job = await runDownload(hub, 'dir.gguf');
     assert.equal(job.status, 'error');
     assert.match(job.error, /non-file model artifact/i);
@@ -291,7 +316,7 @@ test('models root junction outside the workspace fails closed', async () => {
     await fs.mkdir(ws, { recursive: true });
     await fs.mkdir(outside, { recursive: true });
     await fs.symlink(outside, path.join(ws, 'models'), 'junction');
-    const hub = createHubService({ workspace: ws, modelsDir: path.join(ws, 'models'), fetchImpl: okFetch(Buffer.from('root-escape')), onEvent: () => {}, assertExternalEgressAllowed: () => true });
+    const hub = makeHub({ ws, models: path.join(ws, 'models'), fetchImpl: okFetch(Buffer.from('root-escape')) });
     const job = await runDownload(hub, 'r.gguf');
     assert.equal(job.status, 'error');
     assert.match(job.error, /models root resolves outside the canonical workspace/i);
@@ -304,7 +329,7 @@ test('models root junction outside the workspace fails closed', async () => {
 test('resume through a safe partial still completes via Range', async () => {
   const { root, ws, models } = await makeRoot();
   try {
-    const payload = Buffer.from('0123456789ABCDEF');
+    const payload = validGguf();
     await fs.writeFile(path.join(models, 'r.gguf.part'), payload.subarray(0, 5));
     const fetchImpl = async (_url, options) => {
       const range = options?.headers?.range;
@@ -314,6 +339,7 @@ test('resume through a safe partial still completes via Range', async () => {
         headers: { 'content-length': String(payload.length - start) }
       });
     };
+    fetchImpl.expectedArtifact = expectedArtifact(payload);
     const hub = makeHub({ ws, models, fetchImpl });
     const job = await runDownload(hub, 'r.gguf');
     assert.equal(job.status, 'done');
@@ -339,9 +365,10 @@ test('cancellation keeps containment: contained cleanup, sentinel preserved, fai
         try { controller.enqueue(Buffer.alloc(64 * 1024, 0x22)); controller.close(); } catch { /* closed */ }
       }
     }), { status: 200, headers: { 'content-length': String(total) } });
+    slowFetch.expectedArtifact = { revision: REVISION, expected_sha256: 'c'.repeat(64), expected_size_bytes: total };
     const hub = makeHub({ ws, models, fetchImpl: slowFetch });
 
-    const { job_id } = hub.beginDownload({ repo_id: 'org/repo', filename: 'slow.gguf', quant_label: null });
+    const { job_id } = hub.beginDownload({ repo_id: 'org/repo', filename: 'slow.gguf', quant_label: null, ...hub.expectedArtifact });
     await waitFor(async () => { try { await fs.access(path.join(models, 'slow.gguf.part')); return true; } catch { return false; } }, 8000, 'partial file');
     const cancelled = await hub.cancel(job_id);
     assert.equal(cancelled.cancelled, true);
@@ -354,7 +381,7 @@ test('cancellation keeps containment: contained cleanup, sentinel preserved, fai
 
     // Cancel of a job that failed containment is a defined no-op.
     await fs.symlink(outside, path.join(models, 'sub'), 'junction');
-    const failed = await runDownload(hub, 'sub/evil.bin');
+    const failed = await runDownload(hub, 'sub/evil.gguf');
     assert.equal(failed.status, 'error');
     const retry = await hub.cancel(failed.job_id);
     assert.equal(retry.cancelled, false);

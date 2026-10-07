@@ -141,6 +141,9 @@ export interface ModelEntry {
   fileSize?: number;
   sha256?: string;
   repo_id?: string;
+  source_repo?: string;
+  revision?: string;
+  license?: string;
   quant_label?: string;
 }
 
@@ -258,6 +261,9 @@ export class ModelRuntime {
     if (typeof raw.system_prompt === 'string') entry.system_prompt = raw.system_prompt;
     if (typeof raw.file_size === 'number') entry.fileSize = raw.file_size;
     if (typeof raw.repo_id === 'string') entry.repo_id = raw.repo_id;
+    if (typeof raw.source_repo === 'string') entry.source_repo = raw.source_repo;
+    if (typeof raw.revision === 'string') entry.revision = raw.revision;
+    if (typeof raw.license === 'string') entry.license = raw.license;
     if (typeof raw.quant_label === 'string') entry.quant_label = raw.quant_label;
     if (typeof raw.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(raw.sha256)) entry.sha256 = raw.sha256.toLowerCase();
     return entry;
@@ -1077,15 +1083,98 @@ export class ModelRuntime {
     return repoCandidate;
   }
 
+  private async assertContainedModelPath(candidate: string): Promise<void> {
+    const actual = await fs.realpath(candidate).catch(() => null);
+    if (actual === null) throw new ModelRuntimeError('BAD_REQUEST', 'model artifact path is unavailable');
+    const roots = await Promise.all([this.modelDir, path.join(this.workspace, 'models')].map(root => fs.realpath(root).catch(() => null)));
+    const contained = roots.some(root => {
+      if (root === null) return false;
+      const relative = path.relative(root, actual);
+      return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+    });
+    if (!contained) throw new ModelRuntimeError('BAD_REQUEST', 'model artifact path resolves outside the configured models roots');
+  }
+
   async register(options: { filename: string; repo_id?: string; quant_label?: string; context_tokens?: number }): Promise<{ id: string; status: string; endpoint: string }> {
     const rel = validateRegistrationFilename(this.modelDir, options.filename);
     const file = this.resolveArtifactPath(rel);
-    const stat = await fs.stat(file).catch(() => {
+    const stat = await fs.lstat(file).catch(() => {
       throw new ModelRuntimeError('BAD_REQUEST', `artifact not found in models directory: ${rel}`);
     });
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new ModelRuntimeError('BAD_REQUEST', `artifact is not a regular file: ${rel}`);
+    await this.assertContainedModelPath(file);
+    const sidecarPath = path.join(path.dirname(file), `${path.basename(file)}.manifest.json`);
+    let sidecar: Record<string, unknown> | null = null;
+    const sidecarStat = await fs.lstat(sidecarPath).catch(error => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw new ModelRuntimeError('BAD_REQUEST', `artifact verification manifest is unavailable: ${rel}`);
+    });
+    if (sidecarStat !== null && (!sidecarStat.isFile() || sidecarStat.isSymbolicLink())) {
+      throw new ModelRuntimeError('BAD_REQUEST', `artifact verification manifest is not a regular file: ${rel}`);
+    }
+    if (sidecarStat !== null) await this.assertContainedModelPath(sidecarPath);
+    try {
+      if (sidecarStat !== null) sidecar = JSON.parse(await fs.readFile(sidecarPath, 'utf8')) as Record<string, unknown>;
+    } catch {
+      throw new ModelRuntimeError('BAD_REQUEST', `artifact verification manifest is invalid: ${rel}`);
+    }
+    if (sidecar !== null) {
+      if (sidecar.filename !== rel || sidecar.status !== 'ready' ||
+          !Number.isSafeInteger(sidecar.size_bytes) || sidecar.size_bytes !== stat.size ||
+          typeof sidecar.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(sidecar.sha256)) {
+        throw new ModelRuntimeError('BAD_REQUEST', `artifact verification manifest does not match the file: ${rel}`);
+      }
+      let sidecarInfo;
+      try {
+        sidecarInfo = await probeGguf(file);
+      } catch {
+        throw new ModelRuntimeError('BAD_REQUEST', `artifact verification manifest points to an invalid GGUF: ${rel}`);
+      }
+      if (sidecarInfo.architecture !== sidecar.architecture || !ALLOWED_ARCHITECTURES.includes(sidecarInfo.architecture)) {
+        throw new ModelRuntimeError('BAD_REQUEST', `artifact architecture does not match the supported verified manifest: ${rel}`);
+      }
+      if (sidecar.source === 'hf' && (
+        typeof sidecar.revision !== 'string' || !/^[a-f0-9]{40}$/i.test(sidecar.revision) ||
+        typeof sidecar.expected_sha256 !== 'string' || sidecar.expected_sha256.toLowerCase() !== sidecar.sha256.toLowerCase()
+      )) {
+        throw new ModelRuntimeError('BAD_REQUEST', `Hugging Face artifact manifest is missing pinned source or matching digest: ${rel}`);
+      }
+      if (options.repo_id && typeof sidecar.repo_id === 'string' && options.repo_id !== sidecar.repo_id) {
+        throw new ModelRuntimeError('BAD_REQUEST', `registration repository does not match the verified artifact: ${rel}`);
+      }
+    }
+    const statAfter = await fs.lstat(file);
+    if (!statAfter.isFile() || statAfter.isSymbolicLink()) throw new ModelRuntimeError('BAD_REQUEST', `artifact is not a regular file: ${rel}`);
+    await this.assertContainedModelPath(file);
+    const cachedHash = this.hashCache.get(file);
+    let digestHex: string;
+    if (cachedHash !== undefined && cachedHash.mtimeMs === statAfter.mtimeMs && cachedHash.size === statAfter.size) {
+      digestHex = cachedHash.hash;
+    } else {
+      const hash = crypto.createHash('sha256');
+      await new Promise<void>((resolve, reject) => {
+        const stream = createReadStream(file);
+        stream.on('data', chunk => hash.update(chunk));
+        stream.on('end', () => resolve());
+        stream.on('error', reject);
+      });
+      digestHex = hash.digest('hex');
+      this.hashCache.set(file, { mtimeMs: statAfter.mtimeMs, size: statAfter.size, hash: digestHex });
+    }
+    if (sidecar !== null && sidecar.sha256 !== digestHex) {
+      throw new ModelRuntimeError('BAD_REQUEST', `artifact bytes do not match the verified manifest: ${rel}`);
+    }
+    if (sidecar?.source === 'hf' && sidecar.expected_sha256 !== digestHex) {
+      throw new ModelRuntimeError('BAD_REQUEST', `artifact bytes do not match the Hugging Face LFS digest: ${rel}`);
+    }
     const id = path.basename(rel).replace(/\.gguf$/i, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
     const existing = this.models.get(id);
-    if (existing) return { id: existing.id, status: 'ready', endpoint: existing.endpoint };
+    if (existing) {
+      if (existing.sha256 !== undefined && existing.sha256.toLowerCase() !== digestHex) {
+        throw new ModelRuntimeError('CONFLICT', 'registered model identity already points at different artifact bytes');
+      }
+      return { id: existing.id, status: 'ready', endpoint: existing.endpoint };
+    }
     const port = nextFreePort(this.models);
     const entry: ModelEntry = {
       id,
@@ -1098,10 +1187,16 @@ export class ModelRuntime {
       context_tokens: Number(options.context_tokens) || 2048,
       ingested: true,
       file,
-      fileSize: stat.size
+      fileSize: statAfter.size,
+      sha256: digestHex
     };
-    if (options.repo_id) entry.repo_id = options.repo_id;
+    if (typeof sidecar?.repo_id === 'string') entry.repo_id = sidecar.repo_id;
+    else if (options.repo_id) entry.repo_id = options.repo_id;
+    if (typeof sidecar?.repo_id === 'string' && sidecar.source === 'hf') entry.source_repo = sidecar.repo_id;
+    if (typeof sidecar?.revision === 'string') entry.revision = sidecar.revision;
+    if (typeof sidecar?.license === 'string') entry.license = sidecar.license;
     if (options.quant_label) entry.quant_label = options.quant_label;
+    else if (typeof sidecar?.quant_label === 'string') entry.quant_label = sidecar.quant_label;
     this.models.set(id, entry);
     await this.persistIngested();
     this.logger?.info('model registered', { id, endpoint: entry.endpoint, source: rel });
@@ -1226,6 +1321,9 @@ export class ModelRuntime {
         file_size: model.fileSize,
         sha256: model.sha256,
         repo_id: model.repo_id,
+        source_repo: model.source_repo,
+        revision: model.revision,
+        license: model.license,
         quant_label: model.quant_label,
         ingested: true
       }));

@@ -1945,6 +1945,37 @@ body {
   margin-top: 6px;
 }
 
+.modelhub-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.modelhub-search-input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--covert-line);
+  border-radius: 3px;
+  background: var(--covert-bg-graphite);
+  color: var(--covert-text);
+  font: inherit;
+}
+
+.modelhub-acquisition button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.modelhub-acquisition .models-list {
+  margin-top: 8px;
+}
+
+.modelhub-acquisition .model-card > .model-profile-save {
+  margin: 4px 6px 4px 0;
+}
+
 .model-card-endpoint,
 .terminal-job-cmd {
   font-size: 10px;

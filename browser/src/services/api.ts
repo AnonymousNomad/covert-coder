@@ -55,12 +55,24 @@ import {
   ModelProfileRequest,
   ModelProfileResponse,
   type ModelProfileRequestT,
-  type ModelProfileResponseT
+  type ModelProfileResponseT,
+  ModelRegisterRequest,
+  ModelRegisterResponse
 } from '../../../common/contracts/models.ts';
 import {
   ModelManagerResponse,
   type ModelManagerResponseT
 } from '../../../common/contracts/model-access.ts';
+import {
+  HubSearchQuery,
+  HubSearchResponse,
+  HubFilesQuery,
+  HubFilesResponse,
+  HubDownloadRequest,
+  HubDownloadStartedResponse,
+  HubDownloadsListResponse
+} from '../../../common/contracts/modelhub.ts';
+import type { HubDownloadRequestT } from '../../../common/contracts/modelhub.ts';
 import {
   ClosedLoopStatusResponse,
   type ClosedLoopStatusT
@@ -348,6 +360,29 @@ export const api = {
     const body = ModelProfileRequest.safeParse(request);
     if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid model profile request');
     return call('/api/models/profile', { body: body.data, schema: ModelProfileResponse });
+  },
+  modelHubSearch(q: string): Promise<z.infer<typeof HubSearchResponse>> {
+    const query = HubSearchQuery.safeParse({ q, sort: 'downloads', limit: 20 });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid Hugging Face model search');
+    return call('/api/modelhub/search', { query: query.data, schema: HubSearchResponse });
+  },
+  modelHubFiles(repo_id: string): Promise<z.infer<typeof HubFilesResponse>> {
+    const query = HubFilesQuery.safeParse({ repo_id });
+    if (!query.success) throw new ApiError('BAD_REQUEST', 'invalid Hugging Face repository');
+    return call('/api/modelhub/files', { query: query.data, schema: HubFilesResponse });
+  },
+  modelHubDownload(request: HubDownloadRequestT): Promise<z.infer<typeof HubDownloadStartedResponse>> {
+    const body = HubDownloadRequest.safeParse(request);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'Hugging Face download requires an inspected immutable revision, LFS SHA-256, and exact size');
+    return call('/api/modelhub/download', { body: body.data, schema: HubDownloadStartedResponse });
+  },
+  modelHubDownloads(): Promise<z.infer<typeof HubDownloadsListResponse>> {
+    return call('/api/modelhub/downloads', { schema: HubDownloadsListResponse });
+  },
+  modelRegister(request: { filename: string; repo_id?: string; quant_label?: string }): Promise<z.infer<typeof ModelRegisterResponse>> {
+    const body = ModelRegisterRequest.safeParse(request);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid verified model registration');
+    return call('/api/models/register', { body: body.data, schema: ModelRegisterResponse });
   },
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });

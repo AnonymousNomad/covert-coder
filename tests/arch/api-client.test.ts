@@ -63,6 +63,81 @@ test('api.modelProfileSave posts the validated exact runtime profile through the
   }
 });
 
+test('Model Access Hugging Face calls preserve pinned source and exact artifact identity', async () => {
+  const revision = 'a'.repeat(40);
+  const digest = 'b'.repeat(64);
+  const seen: Array<{ url: string; method: string; body: unknown }> = [];
+  mock.method(globalThis, 'fetch', async (url: string | URL | Request, init?: RequestInit) => {
+    const pathname = new URL(String(url)).pathname + new URL(String(url)).search;
+    seen.push({
+      url: pathname,
+      method: init?.method ?? 'GET',
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
+    });
+    const payload = pathname.startsWith('/api/modelhub/search')
+      ? { models: [{ repo_id: 'LiquidAI/LFM2.5-2.6B-GGUF', downloads: 3, likes: 1, tags: ['gguf'] }] }
+      : pathname.startsWith('/api/modelhub/files')
+        ? { repo_id: 'LiquidAI/LFM2.5-2.6B-GGUF', revision, license: 'other', files: [{ filename: 'LFM2.5-Q4_K_M.gguf', size: 99, lfs_sha256: digest }] }
+        : pathname === '/api/modelhub/download'
+          ? { job_id: 'job-1' }
+          : pathname === '/api/modelhub/downloads'
+            ? { jobs: [] }
+            : { id: 'lfm-local', status: 'ready', endpoint: 'http://127.0.0.1:8091/v1' };
+    return new Response(JSON.stringify(ok(payload)), { status: 200 });
+  });
+  try {
+    const search = await api.modelHubSearch('LFM2.5');
+    assert.equal(search.models[0]?.repo_id, 'LiquidAI/LFM2.5-2.6B-GGUF');
+    const files = await api.modelHubFiles('LiquidAI/LFM2.5-2.6B-GGUF');
+    assert.equal(files.revision, revision);
+    const download = await api.modelHubDownload({
+      repo_id: files.repo_id,
+      filename: files.files[0]!.filename,
+      revision: files.revision,
+      expected_sha256: files.files[0]!.lfs_sha256!,
+      expected_size_bytes: files.files[0]!.size!,
+      quant_label: 'Q4_K_M'
+    });
+    assert.equal(download.job_id, 'job-1');
+    assert.deepEqual(await api.modelHubDownloads(), { jobs: [] });
+    assert.equal((await api.modelRegister({ filename: files.files[0]!.filename, repo_id: files.repo_id })).id, 'lfm-local');
+    assert.deepEqual(seen.map(item => [item.url.split('?')[0], item.method]), [
+      ['/api/modelhub/search', 'GET'],
+      ['/api/modelhub/files', 'GET'],
+      ['/api/modelhub/download', 'POST'],
+      ['/api/modelhub/downloads', 'GET'],
+      ['/api/models/register', 'POST']
+    ]);
+    assert.deepEqual(seen[2]?.body, {
+      repo_id: 'LiquidAI/LFM2.5-2.6B-GGUF',
+      filename: 'LFM2.5-Q4_K_M.gguf',
+      quant_label: 'Q4_K_M',
+      revision,
+      expected_sha256: digest,
+      expected_size_bytes: 99
+    });
+  } finally {
+    mock.restoreAll();
+  }
+});
+
+test('Model Access rejects an unpinned Hugging Face download before transport', async () => {
+  let calls = 0;
+  mock.method(globalThis, 'fetch', async () => {
+    calls += 1;
+    return new Response(JSON.stringify(ok({ job_id: 'unexpected' })), { status: 200 });
+  });
+  try {
+    assert.throws(
+      () => api.modelHubDownload({ repo_id: 'org/model', filename: 'model.gguf' } as never),
+      (error: unknown) => error instanceof ApiError && error.code === 'BAD_REQUEST'
+    );
+    assert.equal(calls, 0);
+  } finally {
+    mock.restoreAll();
+  }
+});
+
 test('api throws ApiError with code and message on an error envelope', async () => {
   mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(fail('NOT_READY', 'still warming up')), { status: 409 }));
   await assert.rejects(api.health(), (error: unknown) => {

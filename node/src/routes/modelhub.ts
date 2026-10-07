@@ -18,8 +18,8 @@ type HubService = {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<unknown>;
   listRepoFiles(repoId: string): Promise<unknown>;
-  startDownload(args: { repo_id: string; filename: string; quant_label?: string | null; urlTemplate?: string }): Promise<unknown>;
-  beginDownload(args: { repo_id: string; filename: string; quant_label?: string | null }): { job_id: string };
+  startDownload(args: { repo_id: string; filename: string; quant_label?: string | null; revision: string; expected_sha256: string; expected_size_bytes: number; urlTemplate?: string }): Promise<unknown>;
+  beginDownload(args: { repo_id: string; filename: string; quant_label?: string | null; revision: string; expected_sha256: string; expected_size_bytes: number }): { job_id: string };
   cancel(jobId: string): Promise<{ cancelled: boolean }>;
   listDownloads(): unknown;
   importFromPath(sourcePath: string): Promise<{ manifest: unknown }>;
@@ -94,11 +94,20 @@ export function routesForModelHub(service: HubService): Route[] {
       // are deterministic server-derived effects; the service containment layer
       // independently proves every mutation target stays inside the models root.
       describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
-        const { repo_id, filename, quant_label } = body as { repo_id: string; filename: string; quant_label?: string | null };
-        return { workspace: service.workspace, taskId, kind: 'capability.external', args: { body: { repo_id, filename, quant_label: quant_label ?? null } } };
+        const { repo_id, filename, quant_label, revision, expected_sha256, expected_size_bytes } = body as {
+          repo_id: string; filename: string; quant_label?: string | null; revision: string; expected_sha256: string; expected_size_bytes: number
+        };
+        return {
+          workspace: service.workspace,
+          taskId,
+          kind: 'capability.external',
+          args: { body: { repo_id, filename, quant_label: quant_label ?? null, revision, expected_sha256, expected_size_bytes } }
+        };
       },
       handler: wrap(async ({ body }) => {
-        const request = body as { repo_id: string; filename: string; quant_label?: string | null };
+        const request = body as {
+          repo_id: string; filename: string; quant_label?: string | null; revision: string; expected_sha256: string; expected_size_bytes: number
+        };
         return service.beginDownload(request);
       })
     },

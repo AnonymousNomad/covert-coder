@@ -1,5 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import { promises as fs } from 'node:fs';
@@ -18,6 +19,15 @@ let server: ArchServer;
 let httpServer: http.Server;
 let base: string;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
+
+function u32(value: number): Buffer { const buffer = Buffer.alloc(4); buffer.writeUInt32LE(value); return buffer; }
+function u64(value: number): Buffer { const buffer = Buffer.alloc(8); buffer.writeBigUInt64LE(BigInt(value)); return buffer; }
+function ggufString(value: string): Buffer { return Buffer.concat([u64(Buffer.byteLength(value)), Buffer.from(value, 'utf8')]); }
+function verifiedGguf(): Buffer {
+  const key = ggufString('general.architecture');
+  const value = ggufString('llama');
+  return Buffer.concat([Buffer.from('GGUF'), u32(3), u64(0), u64(1), key, u32(8), value, Buffer.alloc(32)]);
+}
 
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-model-register-'));
@@ -91,6 +101,77 @@ test('POST /api/models/register adds a gguf engine and is idempotent', async () 
   const secondData = okData(await second.json()) as { id: string; status: string; endpoint: string };
   assert.equal(secondData.id, 'fantom-4b');
   assert.equal(secondData.endpoint, firstData.endpoint);
+});
+
+test('POST /api/models/register verifies and preserves pinned Hugging Face artifact identity', async () => {
+  const filename = 'hub-owned.gguf';
+  const bytes = verifiedGguf();
+  const digest = createHash('sha256').update(bytes).digest('hex');
+  const revision = 'a'.repeat(40);
+  await fs.writeFile(path.join(modelDir, filename), bytes);
+  await fs.writeFile(path.join(modelDir, `${filename}.manifest.json`), JSON.stringify({
+    repo_id: 'LiquidAI/LFM2.5-2.6B-GGUF',
+    filename,
+    revision,
+    quant_label: 'Q4_K_M',
+    size_bytes: bytes.length,
+    architecture: 'llama',
+    expected_sha256: digest,
+    sha256: digest,
+    license: 'other',
+    downloaded_at: new Date().toISOString(),
+    source: 'hf',
+    status: 'ready'
+  }));
+
+  const response = await mutate('/api/models/register', { filename, repo_id: 'LiquidAI/LFM2.5-2.6B-GGUF' }, 'task:mr-hub-exact');
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  const data = okData(await response.json()) as { id: string };
+  assert.equal(data.id, 'hub-owned');
+
+  const entries = JSON.parse(await ingestedRaw()) as Array<Record<string, unknown>>;
+  const registered = entries.find(entry => entry.id === 'hub-owned');
+  assert.ok(registered);
+  assert.equal(registered.sha256, digest);
+  assert.equal(registered.repo_id, 'LiquidAI/LFM2.5-2.6B-GGUF');
+  assert.equal(registered.source_repo, 'LiquidAI/LFM2.5-2.6B-GGUF');
+  assert.equal(registered.revision, revision);
+  assert.equal(registered.license, 'other');
+});
+
+test('registration rejects a pinned artifact whose bytes no longer match its verified manifest', async () => {
+  const filename = 'tampered.gguf';
+  const bytes = verifiedGguf();
+  const expected = 'f'.repeat(64);
+  await fs.writeFile(path.join(modelDir, filename), bytes);
+  await fs.writeFile(path.join(modelDir, `${filename}.manifest.json`), JSON.stringify({
+    repo_id: 'org/model', filename, revision: 'b'.repeat(40), quant_label: null,
+    size_bytes: bytes.length, architecture: 'llama', expected_sha256: expected, sha256: expected,
+    license: null, downloaded_at: new Date().toISOString(), source: 'hf', status: 'ready'
+  }));
+  const response = await mutate('/api/models/register', { filename, repo_id: 'org/model' }, 'task:mr-hub-mismatch');
+  assert.equal(response.status, 400);
+  assert.equal(errorCode(await response.json()), 'BAD_REQUEST');
+  assert.equal(runtime.get('tampered'), undefined);
+});
+
+test('registration rejects artifact and manifest symlinks before reading or hashing through them', async () => {
+  const outsideArtifact = path.join(dir, 'outside-model.gguf');
+  await fs.writeFile(outsideArtifact, verifiedGguf());
+  await fs.symlink(outsideArtifact, path.join(modelDir, 'linked-model.gguf'), 'file');
+  await assert.rejects(
+    runtime.register({ filename: 'linked-model.gguf' }),
+    (error: unknown) => error instanceof ModelRuntimeError && error.code === 'BAD_REQUEST' && /regular file/i.test(error.message)
+  );
+
+  const filename = 'sidecar-linked.gguf';
+  await fs.writeFile(path.join(modelDir, filename), verifiedGguf());
+  await fs.writeFile(path.join(dir, `${filename}.manifest.json`), '{}');
+  await fs.symlink(path.join(dir, `${filename}.manifest.json`), path.join(modelDir, `${filename}.manifest.json`), 'file');
+  await assert.rejects(
+    runtime.register({ filename }),
+    (error: unknown) => error instanceof ModelRuntimeError && error.code === 'BAD_REQUEST' && /manifest is not a regular file/i.test(error.message)
+  );
 });
 
 test('POST /api/models/register rejects non-gguf and escaping filenames', async () => {

@@ -1,6 +1,7 @@
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomUUID, randomBytes, createHash } from 'node:crypto';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import { probeGguf } from './gguf.ts';
 import { logEgress } from './egress-journal.mjs';
 
@@ -9,11 +10,21 @@ const USER_AGENT = 'aide-sovereign-workbench';
 const SUPPORTED_ARCHS = new Set([
   'llama', 'qwen2', 'qwen3', 'falcon', 'gemma', 'gemma2', 'phi2', 'phi3',
   'starcoder', 'starchat', 'mamba', 'minicpm', 'nomic-bert', 'bert', 'stablelm',
-  'deepseek2', 'olmo', 'internlm2', 'baichuan'
+  'deepseek2', 'olmo', 'internlm2', 'baichuan', 'lfm2'
 ]);
 const MAX_EVENTS = 500;
 const DEFAULT_METADATA_TIMEOUT_MS = 15_000;
 const DEFAULT_DOWNLOAD_IDLE_TIMEOUT_MS = 45_000;
+
+function sha256File(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    const stream = createReadStream(filePath);
+    stream.on('data', chunk => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
 
 // Effective-filesystem containment doctrine, mirrored from the accepted
 // daemon/eval-export.mjs implementation: lexical checks are necessary but not
@@ -243,13 +254,25 @@ export function createHubService({
       throw error;
     }
     const data = await response.json();
+    if (typeof data.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(data.sha)) {
+      const error = new Error('huggingface repo lookup omitted an immutable repository revision');
+      error.code = 'UPSTREAM';
+      throw error;
+    }
+    const rawLicense = data.cardData?.license;
     const files = (Array.isArray(data.siblings) ? data.siblings : [])
       .filter(sibling => typeof sibling.rfilename === 'string' && sibling.rfilename.toLowerCase().endsWith('.gguf'))
       .map(sibling => ({
         filename: sibling.rfilename,
-        size: typeof sibling.size === 'number' ? sibling.size : null
+        size: Number.isSafeInteger(sibling.lfs?.size) ? sibling.lfs.size : Number.isSafeInteger(sibling.size) ? sibling.size : null,
+        lfs_sha256: typeof sibling.lfs?.oid === 'string' && /^[a-f0-9]{64}$/i.test(sibling.lfs.oid) ? sibling.lfs.oid.toLowerCase() : null
       }));
-    return { repo_id: repoId, files };
+    return {
+      repo_id: repoId,
+      revision: data.sha.toLowerCase(),
+      license: typeof rawLicense === 'string' ? rawLicense.slice(0, 120) : null,
+      files
+    };
   }
 
   // Publish a manifest with the accepted secure pattern: fresh exclusive temp
@@ -278,26 +301,22 @@ export function createHubService({
     }
   }
 
-  async function persistManifest(job) {
+  async function persistManifest(job, verified) {
     const manifest = {
       repo_id: job.repo_id,
       filename: job.filename,
+      revision: job.revision,
       quant_label: job.quant_label ?? null,
       size_bytes: job.bytes_done,
-      architecture: '',
-      sha256: null,
+      architecture: verified.info.architecture,
+      expected_sha256: job.expected_sha256,
+      sha256: verified.sha256,
+      license: verified.info.license || null,
       etag: job.etag ?? null,
       downloaded_at: new Date().toISOString(),
       source: 'hf',
-      status: 'ready'
+      status: SUPPORTED_ARCHS.has(verified.info.architecture) ? 'ready' : 'unsupported-runtime'
     };
-    try {
-      const info = await probeGguf(path.join(modelsDirLexical, job.filename));
-      manifest.architecture = info.architecture;
-      if (!SUPPORTED_ARCHS.has(info.architecture)) manifest.status = 'unsupported-runtime';
-    } catch {
-      // payload without a readable GGUF header: record what we know
-    }
     await publishManifest(job.filename, manifest);
     return manifest;
   }
@@ -305,7 +324,7 @@ export function createHubService({
   async function runDownload(job, urlTemplate) {
     const partPath = path.join(modelsDirLexical, `${job.filename}.part`);
     const finalPath = path.join(modelsDirLexical, job.filename);
-    const finalUrl = urlTemplate.replace('{filename}', encodeURIComponent(job.filename));
+    const finalUrl = urlTemplate.replace('{revision}', job.revision).replace('{filename}', encodeURIComponent(job.filename));
     let idleTimer = null;
     let idleTimedOut = false;
     let idleController = null;
@@ -385,14 +404,30 @@ export function createHubService({
         await fileHandle.close();
       }
 
+      const partialStat = await fs.stat(partPath);
+      if (partialStat.size !== job.expected_size_bytes) {
+        throw Object.assign(new Error(`artifact size mismatch: expected ${job.expected_size_bytes}, received ${partialStat.size}`), { code: 'VALIDATION' });
+      }
+      const observedSha256 = await sha256File(partPath);
+      if (observedSha256 !== job.expected_sha256) {
+        throw Object.assign(new Error(`artifact SHA-256 mismatch: expected ${job.expected_sha256}, received ${observedSha256}`), { code: 'VALIDATION' });
+      }
+      let info;
+      try {
+        info = await probeGguf(partPath);
+      } catch (error) {
+        throw Object.assign(new Error(`downloaded artifact is not a valid GGUF: ${String(error?.message ?? error)}`), { code: 'VALIDATION' });
+      }
+      const verified = { sha256: observedSha256, info };
+
       // Publication boundary: re-prove effective containment and destination
       // object safety immediately before the final rename.
       const { modelsReal: publishRootReal } = await canonicalModelsRoot();
       await ensureContainedParent(publishRootReal, finalPath, 'model artifact');
       await assertSafeDestination(finalPath, 'model artifact');
       await fs.rename(partPath, finalPath);
+      const manifest = await persistManifest(job, verified);
       job.status = 'done';
-      const manifest = await persistManifest(job);
       emit({ event: 'done', job_id: job.job_id, bytes_done: job.bytes_done, bytes_total: job.bytes_total, filename: job.filename, manifest });
     } catch (error) {
       if (idleTimedOut && error?.code !== 'TIMEOUT') error = timeoutError('huggingface download', downloadIdleTimeout);
@@ -438,8 +473,33 @@ export function createHubService({
     }
   }
 
-  function createJob({ repo_id, filename, quant_label = null }) {
+  function createJob({ repo_id, filename, quant_label = null, revision, expected_sha256, expected_size_bytes }) {
     safeFilename(filename);
+    if (!filename.toLowerCase().endsWith('.gguf')) {
+      const error = new Error('only GGUF artifacts can be downloaded');
+      error.code = 'VALIDATION';
+      throw error;
+    }
+    if (typeof repo_id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(repo_id)) {
+      const error = new Error('repo_id must identify one Hugging Face model repository');
+      error.code = 'VALIDATION';
+      throw error;
+    }
+    if (typeof revision !== 'string' || !/^[a-f0-9]{40}$/i.test(revision)) {
+      const error = new Error('download requires an immutable Hugging Face repository revision');
+      error.code = 'VALIDATION';
+      throw error;
+    }
+    if (typeof expected_sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(expected_sha256)) {
+      const error = new Error('download requires the inspected Hugging Face LFS SHA-256');
+      error.code = 'VALIDATION';
+      throw error;
+    }
+    if (!Number.isSafeInteger(expected_size_bytes) || expected_size_bytes <= 0) {
+      const error = new Error('download requires the inspected positive artifact size');
+      error.code = 'VALIDATION';
+      throw error;
+    }
     for (const job of jobs.values()) {
       if (job.filename === filename && job.status === 'running') {
         const error = new Error(`a download for ${filename} is already running`);
@@ -451,6 +511,9 @@ export function createHubService({
       job_id: randomUUID(),
       repo_id,
       filename,
+      revision: revision.toLowerCase(),
+      expected_sha256: expected_sha256.toLowerCase(),
+      expected_size_bytes,
       quant_label,
       status: 'running',
       bytes_done: 0,
@@ -466,7 +529,7 @@ export function createHubService({
 
   function startDownload(args) {
     const job = createJob(args);
-    const template = args.urlTemplate ?? `https://huggingface.co/${args.repo_id}/resolve/main/{filename}`;
+    const template = args.urlTemplate ?? `https://huggingface.co/${args.repo_id}/resolve/${job.revision}/{filename}`;
     return runWithRetry(job, template).finally(() => {
       job.controller = null;
     });
@@ -475,7 +538,7 @@ export function createHubService({
   function beginDownload(args) {
     assertSafeArtifactName(args.filename);
     const job = createJob(args);
-    const template = `https://huggingface.co/${args.repo_id}/resolve/main/{filename}`;
+    const template = `https://huggingface.co/${args.repo_id}/resolve/${job.revision}/{filename}`;
     void runWithRetry(job, template).catch(() => {}).finally(() => {
       job.controller = null;
     });
@@ -507,6 +570,9 @@ export function createHubService({
       job_id: job.job_id,
       repo_id: job.repo_id,
       filename: job.filename,
+      revision: job.revision,
+      expected_sha256: job.expected_sha256,
+      expected_size_bytes: job.expected_size_bytes,
       status: job.status,
       bytes_done: job.bytes_done,
       bytes_total: job.bytes_total,
@@ -530,12 +596,16 @@ export function createHubService({
     await assertSafeDestination(target, 'imported model artifact');
     await fs.copyFile(sourcePath, target);
     const stat = await fs.stat(target);
+    const sha256 = await sha256File(target);
     const manifest = {
       repo_id: 'local-import',
       filename: base,
+      revision: null,
       size_bytes: stat.size,
       architecture: info.architecture,
-      sha256: null,
+      expected_sha256: null,
+      sha256,
+      license: info.license || null,
       etag: null,
       downloaded_at: new Date().toISOString(),
       source: 'manual',
