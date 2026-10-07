@@ -1,0 +1,10 @@
+{
+  "scope": "diagnostic differential only; system ConPTY is NOT enabled in production; natural-exit-only avoids unsafe legacy kill path",
+  "output": [
+    "\u001b[?9001h\u001b[?1004h",
+    "\u001b[?25l\u001b[2J\u001b[m\u001b[HCOVERT_SYSTEM_PROBE/mnt/e/pip_temp\r\n\u001b]0;C:\\Windows\\System32\\wsl.exe\u0007\u001b[?25h"
+  ],
+  "exit": 0,
+  "pid": 11156,
+  "backend": "system-conpty"
+}

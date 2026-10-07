@@ -1,0 +1,11 @@
+{
+  "scope": "owned ConPTY diagnostic command, not platform qualification",
+  "cwd": "E:\\pip_temp\\covert-wsl-command-probe-9riwtj",
+  "output": [
+    "\u001b[1t",
+    "\u001b[c\u001b[?1004h\u001b[?9001h"
+  ],
+  "answered": true,
+  "exit": 1,
+  "pid": 19712
+}

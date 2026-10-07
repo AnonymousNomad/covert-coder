@@ -1,0 +1,22 @@
+﻿{
+    "ExitCode":  0,
+    "ElapsedSeconds":  11.155,
+    "SampledPeakOwnedNodeTreeWorkingSetMB":  203.39,
+    "SampledOwnedNodeCpuMilliseconds":  5766,
+    "OwnedNodeProcessIds":  [
+                                24656,
+                                1232,
+                                1932,
+                                23588,
+                                19644,
+                                23384,
+                                25012,
+                                25588,
+                                2304,
+                                23604
+                            ],
+    "SampleIntervalMilliseconds":  250,
+    "AvailablePhysicalMB":  4692,
+    "FreeCommitMB":  6191,
+    "RecordedAt":  "2026-10-07T01:44:12.2191138Z"
+}

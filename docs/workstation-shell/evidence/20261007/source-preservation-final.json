@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-10-07T02:22:30.942Z",
+  "shellHead": "12b999d329b59fd7dd480504ce84670b0de521f5",
+  "shellHeadUnchanged": true,
+  "shellStatusUnchanged": true,
+  "sourceFiles": 40,
+  "sourceFilesUnchanged": true,
+  "changedSinceSnapshot": [],
+  "packHead": "da320b96fc9ab2ec4da7d0c24150d24ce90d2c17",
+  "packStatus": "",
+  "targetHead": "36e0f11f1de592c7d4f5a1780460528ccddfa0ae",
+  "targetBranch": "feat/workstation-integration-saul-20261006",
+  "targetStatus": " M browser/src/cockpit/CockpitShell.ts\n M browser/src/cockpit/SystemTelemetry.ts\n M browser/src/desktop/app-registry.ts\n M browser/src/desktop/desktop.css\n M browser/src/shell/shell.ts\n M browser/src/store/state.ts\n M common/contracts/hardware.ts\n M node/src/services/hardware-profile.mjs\n M node/src/services/hardware.ts\n M playwright.workstation.config.ts\n M scripts/run-workstation-e2e.mjs\n M tests/e2e/workstation-real-mutation.spec.ts\n M tests/e2e/workstation-test-server.mjs\n?? node/src/services/hardware-profile.d.mts\n?? tests/arch/hardware-snapshot-truth.test.ts\n?? tests/e2e/workstation-utilities.spec.ts\n?? tests/unit/test-resource-monitor.test.mjs\n"
+}

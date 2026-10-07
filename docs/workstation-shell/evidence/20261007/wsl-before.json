@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-07T01:45:02.827Z",
+  "probes": [
+    {
+      "args": [
+        "-l",
+        "-q"
+      ],
+      "bytes": 28,
+      "prefixHex": "5500620075006e00740075002d00320034002e00300034000d000a00",
+      "utf8": "U\u0000b\u0000u\u0000n\u0000t\u0000u\u0000-\u00002\u00004\u0000.\u00000\u00004\u0000\r\u0000\n\u0000",
+      "utf16le": "Ubuntu-24.04\r\n"
+    },
+    {
+      "args": [
+        "--list",
+        "--running",
+        "--quiet"
+      ],
+      "bytes": 0,
+      "prefixHex": "",
+      "utf8": "",
+      "utf16le": ""
+    }
+  ],
+  "info": {
+    "id": "wsl",
+    "label": "WSL",
+    "state": "available",
+    "detail": "Interactive sessions in U\u0000b\u0000u\u0000n\u0000t\u0000u\u0000-\u00002\u00004\u0000.\u00000\u00004\u0000\r\u0000, \u0000.",
+    "shells": [
+      {
+        "id": "U\u0000b\u0000u\u0000n\u0000t\u0000u\u0000-\u00002\u00004\u0000.\u00000\u00004\u0000\r\u0000",
+        "label": "U\u0000b\u0000u\u0000n\u0000t\u0000u\u0000-\u00002\u00004\u0000.\u00000\u00004\u0000\r\u0000",
+        "path": "/bin/sh"
+      },
+      {
+        "id": "\u0000",
+        "label": "\u0000",
+        "path": "/bin/sh"
+      }
+    ]
+  }
+}

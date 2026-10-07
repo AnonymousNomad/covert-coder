@@ -1,0 +1,27 @@
+{
+  "capturedAt": "2026-10-07T04:02:42.146Z",
+  "shellHead": "12b999d329b59fd7dd480504ce84670b0de521f5",
+  "shellHeadUnchanged": true,
+  "shellStatusUnchanged": false,
+  "sourceFiles": 40,
+  "sourceFilesUnchanged": false,
+  "changedSinceSnapshot": [
+    {
+      "path": "docs/v1/routes/C1-02-ROUTE-OWNERSHIP-DECISIONS.json",
+      "unchanged": false
+    },
+    {
+      "path": "docs/v1/routes/C1-02-ROUTE-OWNERSHIP-DECISIONS.md",
+      "unchanged": false
+    },
+    {
+      "path": "node/src/routes/terminal-sessions.ts",
+      "unchanged": false
+    }
+  ],
+  "packHead": "da320b96fc9ab2ec4da7d0c24150d24ce90d2c17",
+  "packStatus": "",
+  "targetHead": "e8829ba99d1c176d4036fa187952dcb41c90d554",
+  "targetBranch": "feat/workstation-integration-saul-20261006",
+  "targetStatus": " M browser/src/cockpit/CockpitShell.ts\n M browser/src/desktop/app-registry.ts\n M browser/src/desktop/desktop.css\n M browser/src/services/api.ts\n M browser/src/shell/shell.ts\n M browser/src/store/state.ts\n M docs/workstation-shell/SECURITY_ACCEPTANCE_20261006.csv\n M docs/workstation-shell/WORKSTATION_CONTINUATION_20261007.md\n M node/src/routes/fs.ts\n M node/src/services/agent-tools.mjs\n M node/src/services/workspace.ts\n M playwright.workstation.config.ts\n M scripts/run-workstation-e2e.mjs\n M tests/arch/cipher-laptop-routes.test.ts\n M tests/e2e/workstation-test-server.mjs\n?? browser/src/panels/cipher-laptop.ts\n?? common/security/private-platform-state.d.mts\n?? common/security/private-platform-state.mjs\n?? docs/nightshift/CIPHER_BRANCH_REVIEW_20261007.md\n?? docs/workstation-shell/WSL_RUNTIME_HANDOFF_20261007.md\n?? docs/workstation-shell/evidence/20261007/.gitattributes\n?? docs/workstation-shell/evidence/20261007/.gitignore\n?? docs/workstation-shell/evidence/20261007/cipher-native-notebook-resource.json\n?? docs/workstation-shell/evidence/20261007/cipher-native-notebook-runtime.log\n?? docs/workstation-shell/evidence/20261007/cipher-notebook-boundary-red.log\n?? docs/workstation-shell/evidence/20261007/cipher-notebook-integrated-first.log\n?? docs/workstation-shell/evidence/20261007/cipher-regression-final.log\n?? docs/workstation-shell/evidence/20261007/cipher-review-green-first.log\n?? docs/workstation-shell/evidence/20261007/cipher-review-red.log\n?? docs/workstation-shell/evidence/20261007/cipher-running-observation-red.log\n?? docs/workstation-shell/evidence/20261007/covert-pack-green.log\n?? docs/workstation-shell/evidence/20261007/covert-pack-red.log\n?? docs/workstation-shell/evidence/20261007/covert-resource-monitor.png\n?? docs/workstation-shell/evidence/20261007/covert-retro-coding-native-terminals.png\n?? docs/workstation-shell/evidence/20261007/covert-retro-dual-native-terminals.png\n?? docs/workstation-shell/evidence/20261007/focused-regression.log\n?? docs/workstation-shell/evidence/20261007/focused-resource-measurement.json\n?? docs/workstation-shell/evidence/20261007/initial-covert-cipher-laptop-activity.png\n?? docs/workstation-shell/evidence/20261007/initial-covert-cipher-laptop-integrity.png\n?? docs/workstation-shell/evidence/20261007/initial-covert-cipher-laptop-notebook.png\n?? docs/workstation-shell/evidence/20261007/measure-cipher-generation-repaired.ps1\n?? docs/workstation-shell/evidence/20261007/measure-nightshift-arch-expanded.ps1\n?? docs/workstation-shell/evidence/20261007/nightshift-browser-types.log\n?? docs/workstation-shell/evidence/20261007/nightshift-focused-final.log\n?? docs/workstation-shell/evidence/20261007/nightshift-lint.log\n?? docs/workstation-shell/evidence/20261007/nightshift-node-types.log\n?? docs/workstation-shell/evidence/20261007/nightshift-verification-receipts.jsonl\n?? docs/workstation-shell/evidence/20261007/resident-pack-green.log\n?? docs/workstation-shell/evidence/20261007/resource-age-green.log\n?? docs/workstation-shell/evidence/20261007/resource-age-red.log\n?? docs/workstation-shell/evidence/20261007/resource-node-types.log\n?? docs/workstation-shell/evidence/20261007/resource-red.log\n?? docs/workstation-shell/evidence/20261007/resource-verification-receipts.jsonl\n?? docs/workstation-shell/evidence/20261007/shared-capability-first.log\n?? docs/workstation-shell/evidence/20261007/shared-capability-red.log\n?? docs/workstation-shell/evidence/20261007/source-preservation-final.json\n?? docs/workstation-shell/evidence/20261007/workstation-native-regression.log\n?? docs/workstation-shell/evidence/20261007/workstation-native-regression.stderr\n?? docs/workstation-shell/evidence/20261007/workstation-native-resource-measurement.json\n?? docs/workstation-shell/evidence/20261007/wsl-after.json\n?? docs/workstation-shell/evidence/20261007/wsl-before.json\n?? docs/workstation-shell/evidence/20261007/wsl-bundled-backend-identity.json\n?? docs/workstation-shell/evidence/20261007/wsl-command-probe.json\n?? docs/workstation-shell/evidence/20261007/wsl-focused-final.log\n?? docs/workstation-shell/evidence/20261007/wsl-launch-red.log\n?? docs/workstation-shell/evidence/20261007/wsl-pty-probe.json\n?? docs/workstation-shell/evidence/20261007/wsl-red.log\n?? docs/workstation-shell/evidence/20261007/wsl-system-conpty-probe.json\n?? docs/workstation-shell/evidence/20261007/wsl-verification-receipts.jsonl\n?? tests/e2e/workstation-cipher-laptop.spec.ts\n?? tests/unit/test-cipher-laptop-panel.test.mjs\n"
+}

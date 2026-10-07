@@ -1,0 +1,12 @@
+﻿{
+    "At":  "2026-10-07T04:08:00.2566321Z",
+    "PhysicalMiB":  8015,
+    "FreeCommitMiB":  6287,
+    "ObservedOwnedGenerationsStillLive":  [
+
+                                          ],
+    "FixturePortListeners":  [
+
+                             ],
+    "Boundary":  "Exact recorded PID and creation generation only; no foreign process terminated. Short descendants missed by sampling remain outside this receipt."
+}

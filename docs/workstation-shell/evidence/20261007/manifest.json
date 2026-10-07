@@ -1,0 +1,386 @@
+{
+  "generatedAt": "2026-10-07T04:09:05.067Z",
+  "basis": "SHA256 establishes archived bytes, not signature, verification authority or product acceptance.",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 71,
+      "sha256": "2ed2a675d54df9331ab5bf22e3e137018a1003bb3e35c667e05ed109957b2347"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 7,
+      "sha256": "e027cf8ebf80d6dcdacced8a4dbd1c440e2436fb1868ec851db4061cb67bb787"
+    },
+    {
+      "path": "cipher-native-notebook-resource.json",
+      "bytes": 2477,
+      "sha256": "4b6021086a78ed9c59409e6cac0c8ac558d05fce070566dd44cf229e29d4aaa5"
+    },
+    {
+      "path": "cipher-native-notebook-runtime.log",
+      "bytes": 8708,
+      "sha256": "e2b30dc1db53289b26f85f3014d93710461f29078ccd0f5296c9465a784b4d86"
+    },
+    {
+      "path": "cipher-notebook-boundary-red.log",
+      "bytes": 5040,
+      "sha256": "15edb4f5d4e1926feb0fbc5e270b1ca9cc7fbd56b98213952b8288a879cd98d1"
+    },
+    {
+      "path": "cipher-notebook-integrated-first.log",
+      "bytes": 3344,
+      "sha256": "0de0d19ef59d2e6eede9fe8aa2a36d35561e8ae358e5e959d010dd6f1a8cd59d"
+    },
+    {
+      "path": "cipher-private-alias-red.log",
+      "bytes": 2272,
+      "sha256": "87319c123e8605cd0dee838cf0426d3c7aea06731de53f7fc523133bf6302430"
+    },
+    {
+      "path": "cipher-private-file-green-first.log",
+      "bytes": 4958,
+      "sha256": "7355992cc2f25e988b05cb2554893f80017fad9a0f4c3702a11cf2eedf41cf1a"
+    },
+    {
+      "path": "cipher-private-file-red.log",
+      "bytes": 2102,
+      "sha256": "505ac72df6348ed411667b41d5c8109e1fb1672e79d0f0633f226b52e27aa191"
+    },
+    {
+      "path": "cipher-regression-final.log",
+      "bytes": 33692,
+      "sha256": "019a8bf2140bb84b6d9f03bb714f198575b7cd8acf1c183a37de540ecf54f04a"
+    },
+    {
+      "path": "cipher-review-green-first.log",
+      "bytes": 8414,
+      "sha256": "befa023eb6ad06f7f50f14baa4f0c1b268f8e3f2376bcc8a94914cf1097e831b"
+    },
+    {
+      "path": "cipher-review-red.log",
+      "bytes": 16100,
+      "sha256": "bacb940c047ae5673baf4e66baa6389bbde036c1d1a7208ca47bf50facb2d230"
+    },
+    {
+      "path": "cipher-running-observation-red.log",
+      "bytes": 2438,
+      "sha256": "2106afdcf5cd5cec81b6268f6ca37fe324c5c96c360f20495c9006046de4a1c0"
+    },
+    {
+      "path": "covert-pack-green.log",
+      "bytes": 1394,
+      "sha256": "b214bfe1c855301318a34031f6e9a5156beb6747604962230da25b83c828ed35"
+    },
+    {
+      "path": "covert-pack-red.log",
+      "bytes": 2988,
+      "sha256": "c3d2870bafd37b4ba05b081bca47ba070fe668000a01545a2c0166e629378fc8"
+    },
+    {
+      "path": "covert-resource-monitor.png",
+      "bytes": 129919,
+      "sha256": "e64f924425824b21125f80cb76f953a4bbf1f3f3b793b15997b0ca5e1c31321e"
+    },
+    {
+      "path": "covert-retro-coding-native-terminals.png",
+      "bytes": 125047,
+      "sha256": "ed2dc10fd491dba998829d97eaa2867c4d2c7cd1e492c88187bcfe24971a1c5b"
+    },
+    {
+      "path": "covert-retro-dual-native-terminals.png",
+      "bytes": 131202,
+      "sha256": "0ce214ced5166f3e3fad1daefbf372128e49aef6b4a6e97d513b1b881d7b04ea"
+    },
+    {
+      "path": "expanded-architecture-resource.json",
+      "bytes": 44578,
+      "sha256": "bdea16f4b4cf1ab7adb37eb381c17d8201a2313b210c6d8e23b63d003fdee5d3"
+    },
+    {
+      "path": "expanded-architecture-runtime.log",
+      "bytes": 106141,
+      "sha256": "32be2997e7f73988b0dc09fde7a849355a0a430570d88f00747620a077953ecc"
+    },
+    {
+      "path": "expanded-architecture-runtime.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-covert-cipher-laptop-activity.png",
+      "bytes": 133629,
+      "sha256": "9a91da15af37dd17cf8564abaeb853b15392954eadd7e9ffdf4ed0631ce99b4e"
+    },
+    {
+      "path": "final-covert-cipher-laptop-integrity.png",
+      "bytes": 132495,
+      "sha256": "0ddeb83a4f0aef630320d8172a34403be556aa61a57ff8ff76d6201845bb3feb"
+    },
+    {
+      "path": "final-covert-cipher-laptop-notebook.png",
+      "bytes": 113922,
+      "sha256": "8d2b11ab43ded124c3f438dc1c14f6dade5eced7346190e32705a126b8e83a4c"
+    },
+    {
+      "path": "final-covert-resource-monitor.png",
+      "bytes": 131858,
+      "sha256": "c05a6ca5af5eeecd1a49294f0c47b2248c54eac9a88061057091015e83eae2a1"
+    },
+    {
+      "path": "final-covert-retro-coding-native-terminals.png",
+      "bytes": 125803,
+      "sha256": "b537f5cff45106990fbf51ca48e33a7bc78fd3158889769735f086433c2f55e5"
+    },
+    {
+      "path": "final-covert-retro-dual-native-terminals.png",
+      "bytes": 134036,
+      "sha256": "6f30dccdd8a4de0645140f8194e930d9d56382a95cd78af70724adea38f9116e"
+    },
+    {
+      "path": "final-native-resource.json",
+      "bytes": 5996,
+      "sha256": "d5db7876ebc508c9bd6a21a933885cd9ae5118879453acd2346bf93847fc8c13"
+    },
+    {
+      "path": "final-native-runtime.log",
+      "bytes": 11383,
+      "sha256": "2dc144dca3265696eb64e61081f4edcb97a9545d0cdb9da63a83e0d3f2c6f267"
+    },
+    {
+      "path": "final-native-runtime.stderr",
+      "bytes": 844,
+      "sha256": "bac40553a3826b3f48370bb6bfd60499bda8ad6cd52850a2e8280e3be2a05c4a"
+    },
+    {
+      "path": "final-resource-process-receipt.json",
+      "bytes": 435,
+      "sha256": "432b61bea96b676838655d20c43a254ca75ef8dc0a390d5ef48878ae60dbde22"
+    },
+    {
+      "path": "focused-regression.log",
+      "bytes": 6600,
+      "sha256": "c94fd951540ffd500ad6a32116664aca07ad24ca0effe286408246719b004534"
+    },
+    {
+      "path": "focused-resource-measurement.json",
+      "bytes": 777,
+      "sha256": "cda4b7fcb4a8bcbb5b4d47453ac1fd90fc005173209089025b624f96fc856700"
+    },
+    {
+      "path": "helix-isolated-first.log",
+      "bytes": 758,
+      "sha256": "b0d5920007c0b4dd7d5b7d432c02b7b701f70cab1f795e840f9bace307f90c5e"
+    },
+    {
+      "path": "initial-covert-cipher-laptop-activity.png",
+      "bytes": 124716,
+      "sha256": "4d00e473c5b5d9a3f937dd1252058311bae4c8d3abd0bd10178c43b220c68378"
+    },
+    {
+      "path": "initial-covert-cipher-laptop-integrity.png",
+      "bytes": 132924,
+      "sha256": "b8ed8f9418157543af49f49fa747513e1e6f8dd146f488ea99bdf230fa4261d6"
+    },
+    {
+      "path": "initial-covert-cipher-laptop-notebook.png",
+      "bytes": 115370,
+      "sha256": "872041c81a7ce095d0be36b818878c1c6f115cbe878d9dd5cd7217170f1a58f9"
+    },
+    {
+      "path": "measure-cipher-generation-repaired.ps1",
+      "bytes": 4135,
+      "sha256": "13a78182d8f51b24daf602a5cf395f8ee1ebf3835a2f3eba72c564fee47da1de"
+    },
+    {
+      "path": "measure-nightshift-arch-expanded.ps1",
+      "bytes": 4002,
+      "sha256": "95867d8d2ebf05ae89c0cb1eeab6775494bc80f5969dff906a19d2dae40ef5d5"
+    },
+    {
+      "path": "measure-nightshift-native-final.ps1",
+      "bytes": 4091,
+      "sha256": "cdf589e199bb5a021b5a826532db8e78af3bb6f79180baa8452154a955444862"
+    },
+    {
+      "path": "nightshift-browser-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nightshift-focused-final.log",
+      "bytes": 39296,
+      "sha256": "5ddf72562804777b077a201cdaa126b53ab296515c523672c3ac16f0ae7813e4"
+    },
+    {
+      "path": "nightshift-latest-browser-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nightshift-latest-contract-drift.log",
+      "bytes": 2634,
+      "sha256": "75450b8f1e3fdeba747b62fbbdf790d41e1e88e1cf3f5f1f550bef7de0c92a0d"
+    },
+    {
+      "path": "nightshift-latest-focused.log",
+      "bytes": 44624,
+      "sha256": "f8cc33fedf5fd45f3ca8f4a1f0cd23a36b7fcb3b1cfa17018716ab15e4d9efd1"
+    },
+    {
+      "path": "nightshift-latest-lint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nightshift-latest-node-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nightshift-lint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nightshift-node-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "nightshift-verification-receipts-final.jsonl",
+      "bytes": 3002,
+      "sha256": "f1b6a9f2134aeb94b1bcecfa5748bdf96f9924ba0eb6e0d1e95fef8561b5ff52"
+    },
+    {
+      "path": "nightshift-verification-receipts.jsonl",
+      "bytes": 1488,
+      "sha256": "7eec0c943cfbb577582157458b139cf91161037d4d74916fdcf3571dc9ce581a"
+    },
+    {
+      "path": "production-source-receipt.json",
+      "bytes": 18337,
+      "sha256": "0cf5ecdf80c77450acfc5463830cd5a7d453f2c9338bdbf8317abce99b6d0e10"
+    },
+    {
+      "path": "resident-pack-green.log",
+      "bytes": 2418,
+      "sha256": "9108912999cfaec5789904eab9918e79a6ede62810f33abee734491dcaa3c204"
+    },
+    {
+      "path": "resource-age-green.log",
+      "bytes": 5020,
+      "sha256": "7621fa51559386fac772426ac78dc78c69bc95c06b1a0715e2583ac7cec6fe91"
+    },
+    {
+      "path": "resource-age-red.log",
+      "bytes": 4748,
+      "sha256": "468a769f6e310350d2d6d83565b145fc8ef7df4a47144365dadd093fabe2a206"
+    },
+    {
+      "path": "resource-node-types.log",
+      "bytes": 556,
+      "sha256": "b72b5476bae9199c755ff0a3f06202c8113d41ee8c6adfd66564078c9814a638"
+    },
+    {
+      "path": "resource-red.log",
+      "bytes": 18932,
+      "sha256": "423b2de0612976d3c4e7562f1168380a2f6017b4bcc14bff22643217ca3d283b"
+    },
+    {
+      "path": "resource-verification-receipts.jsonl",
+      "bytes": 1792,
+      "sha256": "b9c496eb61d9bf4ea66d0e4dc4be8d0d09426c69258a444627dd4cb509b94695"
+    },
+    {
+      "path": "shared-capability-first.log",
+      "bytes": 4050,
+      "sha256": "69309b058541096bfbe2c11ff5269467c8265abbc219908b2b5e3a617288059e"
+    },
+    {
+      "path": "shared-capability-red.log",
+      "bytes": 3594,
+      "sha256": "4ebe805c143bfb7a9c17306920173e24fee612d658cb618068ad5e84eb933e50"
+    },
+    {
+      "path": "source-preservation-final.json",
+      "bytes": 1150,
+      "sha256": "c5452e7454355b52ccc59bfa7c414f64f5e807603fcdbf1fcacf0f206c7dbf18"
+    },
+    {
+      "path": "source-reconciliation-after-foreign-update.json",
+      "bytes": 5328,
+      "sha256": "ef2388c29b3b4af95bbfb0fdabbff9dd99079f412bc602ea09aab91a97a840cf"
+    },
+    {
+      "path": "verify-nightshift-latest.ps1",
+      "bytes": 4009,
+      "sha256": "cf4ad1af92bdccf2804dc3d341224a0b29abc9789152ee1a5968396affcb9d23"
+    },
+    {
+      "path": "workstation-native-regression.log",
+      "bytes": 11132,
+      "sha256": "4845730e88ae52ad02f58e68b3e0483a378c2ba2017532ed7c168eebdb9d38ae"
+    },
+    {
+      "path": "workstation-native-regression.stderr",
+      "bytes": 844,
+      "sha256": "c278d33c97399f8062fa01211af8e0ec872b62aa81a7f83a7bd9824aa0c01d79"
+    },
+    {
+      "path": "workstation-native-resource-measurement.json",
+      "bytes": 4173,
+      "sha256": "946cc0534672d20d9786e13452cf4b60064758442b0927912ab738da10c60f6d"
+    },
+    {
+      "path": "wsl-after.json",
+      "bytes": 938,
+      "sha256": "297a941cd39889e32e73d332e9c58520516cd8844fffb0d36d5f9c049c52a6e5"
+    },
+    {
+      "path": "wsl-before.json",
+      "bytes": 1151,
+      "sha256": "b76efeed50dd9458e065f9f4c2bce5371f85993720c888c5cad8b443ef4202c9"
+    },
+    {
+      "path": "wsl-bundled-backend-identity.json",
+      "bytes": 633,
+      "sha256": "af1b0e62d2e26d2206bfc4bcd751612614572eec122528bb238af4f4222b6ac3"
+    },
+    {
+      "path": "wsl-command-probe.json",
+      "bytes": 260,
+      "sha256": "ee5529455f136eabc4370f27ec75107d07df811e8036ef06dea9b1d52f1a0cc4"
+    },
+    {
+      "path": "wsl-focused-final.log",
+      "bytes": 7100,
+      "sha256": "1650982b0302511ff62ba148febc92d3c249d6f6ab1a8a9e7e14c57755c77dec"
+    },
+    {
+      "path": "wsl-launch-red.log",
+      "bytes": 4108,
+      "sha256": "10ee95e37b7a77eb66a18ad6c81a239a236de4f3541c9fb259be1cf506b055e8"
+    },
+    {
+      "path": "wsl-pty-probe.json",
+      "bytes": 308,
+      "sha256": "51f785b1fee78ae51880e54d20c24bf6fb938007ae9b39f5ddf7a3dc76347dcc"
+    },
+    {
+      "path": "wsl-red.log",
+      "bytes": 13704,
+      "sha256": "0e8be159367e79c8d21c19c22e150cc101a4a230967c33e8ce6469634393c18d"
+    },
+    {
+      "path": "wsl-system-conpty-probe.json",
+      "bytes": 388,
+      "sha256": "a9defa0982985fcee50dfdf5d0a58854bff3eb115b2dbf5293113fb29f0dab93"
+    },
+    {
+      "path": "wsl-verification-receipts.jsonl",
+      "bytes": 1152,
+      "sha256": "d966cf826f97c73aa1d1d6aa5a527b5256b0d213b325c67d126df4bb699ecc9f"
+    }
+  ]
+}

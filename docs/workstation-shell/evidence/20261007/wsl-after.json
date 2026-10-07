@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-07T01:50:34.398Z",
+  "probes": [
+    {
+      "args": [
+        "-l",
+        "-q"
+      ],
+      "bytes": 28,
+      "prefixHex": "5500620075006e00740075002d00320034002e00300034000d000a00",
+      "utf8": "U\u0000b\u0000u\u0000n\u0000t\u0000u\u0000-\u00002\u00004\u0000.\u00000\u00004\u0000\r\u0000\n\u0000",
+      "utf16le": "Ubuntu-24.04\r\n"
+    },
+    {
+      "args": [
+        "--list",
+        "--running",
+        "--quiet"
+      ],
+      "bytes": 0,
+      "prefixHex": "",
+      "utf8": "",
+      "utf16le": ""
+    }
+  ],
+  "info": {
+    "id": "wsl",
+    "label": "WSL",
+    "state": "available",
+    "installationState": "installed",
+    "detail": "Installed: Ubuntu-24.04. Runtime state is observed; opening a stopped distribution starts it.",
+    "shells": [
+      {
+        "id": "Ubuntu-24.04",
+        "label": "Ubuntu-24.04",
+        "path": "/bin/sh",
+        "runtimeState": "stopped"
+      }
+    ]
+  }
+}
