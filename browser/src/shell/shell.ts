@@ -106,7 +106,8 @@ export function createShell(app: HTMLElement, store: Store<AppState>): Shell {
     'memory': document.getElementById('stage-memory'),
     'security': document.getElementById('stage-security'),
     'extensions': null,
-    'settings': null
+    'settings': null,
+    'resources': null
   };
 
   function applyPanelState(panel: Panel): void {

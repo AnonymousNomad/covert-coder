@@ -1,8 +1,5 @@
-// Phase 5 — System Telemetry.
-// Honest resource projection from /api/hardware/profile (snapshot).
-// CPU live usage and disk space have no backend endpoint today \u2014 shown as
-// UNAVAILABLE with documented reason. Never invent values.
-
+// Presentation of the canonical hardware owner. Snapshot age is source age,
+// never response time. Unsupported metrics remain explicit, without fake gauges.
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
@@ -11,35 +8,11 @@ import type { HardwareProfileResponseT } from '../../../common/contracts/hardwar
 export interface SystemTelemetryHandles {
   root: HTMLElement;
   refresh(): Promise<void>;
+  activate(): void;
   dispose(): void;
 }
-
-interface TelemetryData {
-  hardware: HardwareProfileResponseT | null;
-}
-
-const BYTES_PER_GB = 1024 ** 3;
-const BYTES_PER_MB = 1024 ** 2;
-
-function fmtGB(bytes: number): string {
-  return `${(bytes / BYTES_PER_GB).toFixed(1)} GB`;
-}
-function fmtMB(bytes: number): string {
-  return `${(bytes / BYTES_PER_MB).toFixed(0)} MB`;
-}
-
-function usableRam(h: HardwareProfileResponseT): { used: number; total: number } | null {
-  if (h.totalRamBytes <= 0) return null;
-  const free = Math.max(0, Math.min(h.totalRamBytes, h.freeRamBytes));
-  return { used: h.totalRamBytes - free, total: h.totalRamBytes };
-}
-
-function usableVram(h: HardwareProfileResponseT): { used: number; total: number } | null {
-  if (h.vramSource === 'none' || h.vramBytes <= 0) return null;
-  const free = Math.max(0, Math.min(h.vramBytes, h.freeVramBytes));
-  return { used: h.vramBytes - free, total: h.vramBytes };
-}
-
+const GB = 1024 ** 3;
+const MB = 1024 ** 2;
 function el(tag: string, cls: string, text?: string): HTMLElement {
   const node = document.createElement(tag);
   node.className = cls;
@@ -47,101 +20,120 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
   return node;
 }
 
-function gauge(label: string, valueText: string, pct: number | null, status: 'ok' | 'warn' | 'err' | 'dim' = 'dim'): HTMLElement {
-  const card = el('section', `cockpit-telemetry-card cockpit-telemetry-card-${status}`);
-  const title = el('h3', 'cockpit-telemetry-card-title', label);
-  card.appendChild(title);
-  const value = el('div', 'cockpit-telemetry-card-value', valueText);
-  card.appendChild(value);
-  if (pct !== null) {
-    const track = el('div', 'cockpit-telemetry-track');
-    const fill = el('div', `cockpit-telemetry-fill cockpit-telemetry-fill-${status}`);
-    fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-    track.appendChild(fill);
-    card.appendChild(track);
-  } else {
-    card.appendChild(el('div', 'cockpit-telemetry-unavailable', 'Backend does not expose a live sample for this metric.'));
-  }
-  return card;
-}
-
 export function createSystemTelemetry(parent: HTMLElement, _store: Store<AppState>): SystemTelemetryHandles {
   parent.innerHTML = '';
-  const root = el('div', 'cockpit-telemetry');
-
-  const header = el('header', 'cockpit-telemetry-header');
-  header.appendChild(el('h2', 'cockpit-telemetry-title', 'SYSTEM RESOURCES'));
-  header.appendChild(el('span', 'cockpit-telemetry-subtitle', 'Honest snapshot refresh'));
-  root.appendChild(header);
-
-  const grid = el('div', 'cockpit-telemetry-grid');
-  root.appendChild(grid);
-
+  const root = el('div', 'cockpit-telemetry resource-monitor');
+  const header = el('header', 'resource-monitor-toolbar');
+  const refreshButton = document.createElement('button');
+  refreshButton.type = 'button';
+  refreshButton.className = 'resource-monitor-refresh';
+  refreshButton.textContent = 'REFRESH';
+  refreshButton.setAttribute('aria-label', 'Refresh resource snapshot');
+  header.append(el('h2', 'resource-monitor-title', 'SYSTEM RESOURCES'), refreshButton);
+  const status = el('div', 'resource-monitor-status', 'UNAVAILABLE · awaiting hardware owner');
+  status.setAttribute('role', 'status');
+  const table = el('table', 'resource-monitor-table');
+  table.setAttribute('aria-label', 'Observed host resource snapshot');
+  const headings = el('thead', '');
+  const columns = el('tr', '');
+  for (const name of ['RESOURCE', 'VALUE', 'USAGE', 'SOURCE']) columns.appendChild(el('th', '', name));
+  headings.appendChild(columns);
+  const body = el('tbody', '');
+  table.append(headings, body);
+  const note = el('div', 'resource-monitor-note', 'HOST SCOPE · /api/hardware/profile · snapshot cache up to 30s');
+  root.append(header, status, table, note);
   parent.appendChild(root);
-
   let alive = true;
+  let inFlight = false;
+  let hardware: HardwareProfileResponseT | null = null;
+  let failed = false;
 
-  async function refresh(): Promise<void> {
-    if (!alive) return;
-    let hardware: HardwareProfileResponseT | null = null;
-    try { hardware = await api.hardwareProfile(); }
-    catch { hardware = null; }
-    if (!alive) return;
-    const data: TelemetryData = { hardware };
-    paint(data);
+  function row(label: string, value: string, usage: number | null, source: string): void {
+    const item = el('tr', 'resource-monitor-row');
+    item.append(el('th', '', label), el('td', 'resource-monitor-value', value));
+    const meter = el('td', 'resource-monitor-usage');
+    if (usage !== null) {
+      const track = el('div', 'resource-monitor-track');
+      track.setAttribute('role', 'meter');
+      track.setAttribute('aria-label', `${label} used percent`);
+      track.setAttribute('aria-valuemin', '0');
+      track.setAttribute('aria-valuemax', '100');
+      track.setAttribute('aria-valuenow', String(Math.round(usage)));
+      const fill = el('div', 'resource-monitor-fill telemetry-fill');
+      fill.style.width = `${usage}%`;
+      track.appendChild(fill);
+      meter.appendChild(track);
+    } else meter.textContent = '—';
+    item.append(meter, el('td', 'resource-monitor-source', source));
+    body.appendChild(item);
   }
 
-  function paint(data: TelemetryData): void {
-    grid.innerHTML = '';
-    if (data.hardware === null) {
-      grid.appendChild(el('div', 'cockpit-telemetry-unavailable', '/api/hardware/profile unavailable; resource samples are not available.'));
-      return;
+  function paintStatus(): void {
+    if (hardware === null) return;
+    const age = Date.now() - hardware.detectedAt;
+    const timeKnown = Number.isFinite(age) && age >= 0;
+    const stale = failed || !timeKnown || age > 40000;
+    status.textContent = `${stale ? 'STALE' : 'SNAPSHOT'} · ${timeKnown ? `${Math.floor(age / 1000)}s` : 'age UNKNOWN'} · ${failed ? 'refresh unavailable; retaining last observation' : 'owner observation time'}${inFlight ? ' · refresh pending' : ''}`;
+  }
+
+  function paint(): void {
+    paintStatus();
+    body.innerHTML = '';
+    if (hardware === null) {
+      status.textContent = 'UNAVAILABLE · hardware owner did not return a sample';
+      row('RAM', 'UNAVAILABLE', null, 'no sample');
+      row('VRAM', 'UNAVAILABLE', null, 'no sample');
+    } else {
+      const h = hardware;
+      const ramKnown = h.totalRamBytes > 0 && h.freeRamBytes >= 0 && h.freeRamBytes <= h.totalRamBytes;
+      const ramUsed = h.totalRamBytes - h.freeRamBytes;
+      row('RAM', ramKnown ? `${(ramUsed / GB).toFixed(1)} / ${(h.totalRamBytes / GB).toFixed(1)} GB` : 'UNAVAILABLE',
+        ramKnown ? ramUsed / h.totalRamBytes * 100 : null, 'host memory');
+      const vramKnown = h.vramSource !== 'none' && h.freeVramKnown === true && h.vramBytes > 0 && h.freeVramBytes >= 0 && h.freeVramBytes <= h.vramBytes;
+      const vramUsed = h.vramBytes - h.freeVramBytes;
+      row('VRAM', vramKnown ? `${Math.round(vramUsed / MB)} / ${Math.round(h.vramBytes / MB)} MB` : 'UNAVAILABLE',
+        vramKnown ? vramUsed / h.vramBytes * 100 : null, vramKnown ? h.vramSource : 'free memory UNKNOWN');
+      note.textContent = `HOST SCOPE · ${h.logicalCpus} logical CPUs · ${h.tier} / ${h.backend.toUpperCase()} · snapshot cache up to 30s`;
     }
-    const h = data.hardware;
-
-    const ram = usableRam(h);
-    grid.appendChild(ram === null
-      ? gauge('RAM', 'UNAVAILABLE', null, 'dim')
-      : gauge('RAM',
-        `${fmtGB(ram.used)} / ${fmtGB(ram.total)}`,
-        Math.round((ram.used / ram.total) * 100),
-        ram.used / ram.total > 0.9 ? 'warn' : 'ok'));
-
-    const vram = usableVram(h);
-    grid.appendChild(vram === null
-      ? gauge('VRAM', 'UNAVAILABLE', null, 'dim')
-      : gauge('VRAM',
-        `${fmtMB(vram.used)} / ${fmtMB(vram.total)}`,
-        Math.round((vram.used / vram.total) * 100),
-        vram.used / vram.total > 0.9 ? 'warn' : 'ok'));
-
-    grid.appendChild(gauge('CPU',
-      'UNAVAILABLE',
-      null,
-      'dim'));
-
-    grid.appendChild(gauge('DISK',
-      'UNAVAILABLE',
-      null,
-      'dim'));
-
-    const tierCard = el('div', 'cockpit-telemetry-card cockpit-telemetry-card-info');
-    tierCard.appendChild(el('h3', 'cockpit-telemetry-card-title', 'DEVICE TIER'));
-    const tierRow = el('div', 'cockpit-telemetry-tier-row');
-    tierRow.appendChild(el('span', 'cockpit-telemetry-tier', h.tier));
-    tierRow.appendChild(el('span', 'cockpit-telemetry-backend', h.backend.toUpperCase()));
-    tierCard.appendChild(tierRow);
-    tierCard.appendChild(el('div', 'cockpit-telemetry-card-value', `${h.logicalCpus} cores \u00b7 ${fmtGB(h.totalRamBytes)} RAM`));
-    tierCard.appendChild(el('div', 'cockpit-telemetry-card-note', `Source: ${h.vramSource} \u00b7 CPU usage and disk capacity are not exposed by the current hardware contract.`));
-    grid.appendChild(tierCard);
+    row('CPU', 'UNAVAILABLE', null, 'usage not exposed');
+    row('DISK', 'UNAVAILABLE', null, 'capacity not exposed');
+    row('COMMIT', 'UNAVAILABLE', null, 'commit not exposed');
+    row('GPU', 'UNAVAILABLE', null, 'utilization not exposed');
   }
 
-  void refresh();
-  const interval = window.setInterval(() => { void refresh(); }, 8000);
-
+  async function readSnapshot(force = false): Promise<void> {
+    if (!alive) return;
+    paintStatus();
+    if (inFlight) return;
+    if (!force && (document.hidden || !root.isConnected || root.closest('[hidden]'))) return;
+    inFlight = true;
+    refreshButton.disabled = true;
+    root.setAttribute('aria-busy', 'true');
+    try {
+      const sample = await api.hardwareProfile();
+      if (!alive) return;
+      hardware = sample;
+      failed = false;
+    } catch {
+      if (!alive) return;
+      failed = true;
+    } finally {
+      inFlight = false;
+      if (alive) {
+        refreshButton.disabled = false;
+        root.setAttribute('aria-busy', 'false');
+        paint();
+      }
+    }
+  }
+  refreshButton.addEventListener('click', () => { void readSnapshot(true); });
+  paint();
+  void readSnapshot(true);
+  const interval = window.setInterval(() => { void readSnapshot(); }, 8000);
   return {
     root,
-    refresh,
+    refresh: () => readSnapshot(),
+    activate: () => { void readSnapshot(true); },
     dispose() {
       alive = false;
       window.clearInterval(interval);

@@ -17,6 +17,8 @@ export const HardwareProfileResponse = z
     logicalCpus: z.number().int().nonnegative(),
     vramBytes: z.number().nonnegative(),
     freeVramBytes: z.number().nonnegative(),
+    // Older peers may omit this; absence never implies a measured free value.
+    freeVramKnown: z.boolean().optional(),
     vramSource: z.enum(['nvidia-smi', 'none']),
     tier: DeviceTier,
     backend: HardwareBackend,

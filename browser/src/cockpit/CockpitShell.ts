@@ -196,6 +196,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const projectsRoot = appRoot('projects');
   const terminalRoot = appRoot('terminal');
   const modelsRoot = appRoot('models');
+  const resourcesRoot = appRoot('resources');
   const skillsRoot = appRoot('skills');
   const memoryRoot = appRoot('memory');
   const verificationRoot = appRoot('verification');
@@ -224,6 +225,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const terminal = lazyPanel(terminalRoot, () => createTerminalPanel(terminalRoot, store, theme, { viewId: 'terminal', bindings: terminalBindings }));
   const terminalInstances = new Map<string, PanelRegistration>([['terminal', terminal]]);
   const models = lazyPanel(modelsRoot, () => createModelsPanel(modelsRoot, store));
+  const resources = lazyPanel(resourcesRoot, () => createSystemTelemetry(resourcesRoot, store));
   const skills = lazyPanel(skillsRoot, () => createSkillsPanel(skillsRoot, store));
   const memory = lazyPanel(memoryRoot, () => createMemoryPanel(memoryRoot, store));
   const verification = lazyPanel(verificationRoot, () => createVerificationPanel(verificationRoot, store));
@@ -272,6 +274,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     editor: editorPanel,
     terminal,
     models,
+    resources,
     skills,
     memory,
     verification,

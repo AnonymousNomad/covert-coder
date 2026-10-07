@@ -23,6 +23,7 @@ export type Panel =
   | 'editor'
   | 'terminal'
   | 'models'
+  | 'resources'
   | 'skills'
   | 'memory'
   | 'verification'

@@ -73,10 +73,11 @@ export async function getDeviceProfile() {
     logicalCpus: hw.logicalCpus,
     vramBytes: hw.vramBytes,
     freeVramBytes: hw.freeVramBytes,
+    freeVramKnown: hw.freeVramKnown,
     vramSource: hw.vramSource,
     tier: deriveTier(hw.totalRamBytes),
     backend: deriveBackend(hw.vramBytes),
-    detectedAt: Date.now()
+    detectedAt: hw.detectedAt
   };
 }
 

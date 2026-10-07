@@ -176,7 +176,7 @@ test('real paired AgentLoop mutation reaches the same Monaco session and preserv
   await expect(tab).toHaveClass(/dirty/);
   await expect.poll(() => browserFileWrites).toBe(0);
   expect(await fs.readFile(path.join(workspace, 'fixture.ts'), 'utf8')).toBe('export const value = "agent edit";\n');
-  expect(authorityDialogs.filter(entry => entry.includes('authority-confirm · PUT /api/session · dismissed')).length)
+  await expect.poll(() => authorityDialogs.filter(entry => entry.includes('authority-confirm · PUT /api/session · dismissed')).length)
     .toBeGreaterThan(0);
   expect(authorityDialogs.filter(entry => entry.includes('other-confirm') && !entry.includes('dirty-draft-save-refusal'))).toEqual([]);
   await expect(page.locator('[data-aide-toast-region] .aide-toast').filter({

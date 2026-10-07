@@ -17,7 +17,7 @@ process.env.AIDE_WORKSTATION_E2E_PORT = '4878';
 
 export default defineConfig({
   testDir: 'tests/e2e',
-  testMatch: ['workstation-real-mutation.spec.ts', 'terminal-authority-refresh.spec.ts', 'workstation-dual-terminals.spec.ts'],
+  testMatch: ['workstation-real-mutation.spec.ts', 'terminal-authority-refresh.spec.ts', 'workstation-dual-terminals.spec.ts', 'workstation-utilities.spec.ts'],
   timeout: 60000,
   expect: { timeout: 15000 },
   fullyParallel: false,

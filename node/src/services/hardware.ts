@@ -13,7 +13,12 @@ export interface HardwareInfo {
   vramSource: 'nvidia-smi' | 'none';
 }
 
-let cached: HardwareInfo | null = null;
+export interface HardwareSample extends HardwareInfo {
+  detectedAt: number;
+  freeVramKnown: boolean;
+}
+
+let cached: HardwareSample | null = null;
 let cachedAt = 0;
 const CACHE_MS = 30_000;
 
@@ -25,13 +30,16 @@ export function parseNvidiaSmiMemory(text: string): { totalMib: number; freeMib:
   if (!Number.isFinite(totalRaw) || totalRaw <= 0) return null;
   const freeRaw = parts[1] ?? NaN;
   const totalMib = totalRaw;
-  const freeMib = Number.isFinite(freeRaw) && freeRaw > 0 ? freeRaw : null;
+  const freeText = line.split(',')[1]?.trim() ?? '';
+  const freeMib = freeText !== '' && Number.isFinite(freeRaw) && freeRaw >= 0 && freeRaw <= totalMib ? freeRaw : null;
   return { totalMib, freeMib };
 }
 
-export async function probeHardware(): Promise<HardwareInfo> {
+export async function probeHardware(): Promise<HardwareSample> {
   if (cached !== null && Date.now() - cachedAt < CACHE_MS) return cached;
-  const info: HardwareInfo = {
+  const info: HardwareSample = {
+    detectedAt: Date.now(),
+    freeVramKnown: false,
     totalRamBytes: os.totalmem(),
     freeRamBytes: os.freemem(),
     logicalCpus: os.cpus().length,
@@ -46,6 +54,7 @@ export async function probeHardware(): Promise<HardwareInfo> {
       if (parsed !== null) {
         info.vramBytes = Math.round(parsed.totalMib * 1024 * 1024);
         info.freeVramBytes = parsed.freeMib === null ? 0 : Math.round(parsed.freeMib * 1024 * 1024);
+        info.freeVramKnown = parsed.freeMib !== null;
         info.vramSource = 'nvidia-smi';
       }
     } catch {

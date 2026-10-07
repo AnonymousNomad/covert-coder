@@ -713,3 +713,16 @@ body,
 .covert-desktop-shell[data-density="compact"] .desktop-window-titlebar { flex-basis: 30px; }
 .covert-desktop-shell[data-glow="off"] .topbar-chip-dot { box-shadow: none; }
 .covert-desktop-shell[data-glow="off"] { --ck-glow-cyan: none; --ck-glow-blue: none; --ck-glow-purple: none; --ck-glow-green: none; --ck-glow-amber: none; }
+
+/* Resource Monitor is a technical host utility; no dashboard cards or effects. */
+.covert-desktop-shell .resource-monitor { padding: 8px; color: var(--desktop-text); font: 12px/1.4 var(--desktop-font-mono); }
+.covert-desktop-shell .resource-monitor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 0 6px; border-bottom: 1px solid var(--desktop-border); }
+.covert-desktop-shell .resource-monitor-title { margin: 0; font: inherit; color: var(--desktop-accent); }
+.covert-desktop-shell .resource-monitor-refresh { padding: 2px 7px; border: 1px solid var(--desktop-border-focus); border-radius: 0; background: var(--desktop-inset); color: var(--desktop-text); font: inherit; }
+.covert-desktop-shell .resource-monitor-status, .covert-desktop-shell .resource-monitor-note { margin: 6px 0; color: var(--desktop-text-muted); overflow-wrap: anywhere; }
+.covert-desktop-shell .resource-monitor-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.covert-desktop-shell .resource-monitor-table th, .covert-desktop-shell .resource-monitor-table td { padding: 5px 4px; border-bottom: 1px solid var(--desktop-border); text-align: left; font-weight: normal; overflow-wrap: anywhere; vertical-align: middle; }
+.covert-desktop-shell .resource-monitor-table th:first-child { width: 18%; color: var(--desktop-accent); }
+.covert-desktop-shell .resource-monitor-source { color: var(--desktop-text-muted); }
+.covert-desktop-shell .resource-monitor-track { height: 5px; border: 1px solid var(--desktop-border-focus); background: var(--desktop-inset); }
+.covert-desktop-shell .resource-monitor-fill { height: 100%; background: var(--desktop-accent); }
