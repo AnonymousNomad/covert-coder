@@ -29,6 +29,9 @@ test('real Authority effect gets durable prepare/decision/attempt/observation wi
  assert.deepEqual(records.map(r=>r.event_type),['PREPARE','AUTHORITY_DECISION','EFFECT_ATTEMPT','OBSERVATION']);
  assert.ok(records.every(r=>r.action_id===op.operation_id));
  assert.equal(records.at(-1)?.result_state,'OBSERVED');
+ assert.equal(records.at(-1)?.effect_generation,'authority:'+op.operation_id+':1');
+ assert.equal(records.at(-1)?.authority_decision_ref,'authority:'+op.operation_id+':approve');
+ assert.equal(records.at(-1)?.admission_decision_ref,undefined,'Authority must not invent an Admission receipt');
  assert.equal(records.at(-1)?.evidence_ref,undefined);
  assert.equal((await createCipherLedger({storageRoot:path.join(root,'laptop'),residentId:'covert.resident.cipher'}).status()).state,'NORMAL');
 }));

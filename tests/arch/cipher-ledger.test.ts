@@ -164,3 +164,34 @@ test('missing effect lineage is a security invariant failure and unsupported rec
  assert.equal((await owner.status()).state,'LOCKDOWN');
  await assert.rejects(()=>owner.append({...prepare('mismatch'),event_type:'RECONCILIATION',result_state:'VERIFIED',evidence_ref:'fake:evidence'}),/LOCKDOWN/);
 }));
+
+for (const result of ['OBSERVED','FAILED','UNKNOWN_PENDING_RECONCILIATION','VERIFIED'] as const) {
+ for (const field of ['effect_generation','authority_decision_ref','admission_decision_ref'] as const) {
+  test(result+' cannot contradict the admitted effect '+field,()=>fixture(async root=>{
+   const owner=createCipherLedger({storageRoot:root,residentId});
+   const base=prepare('correlation'),refs={authority_decision_ref:'authority:correlation:approve',effect_generation:'correlation:1',admission_decision_ref:'admission:correlation:allow'};
+   await owner.append(base);
+   await owner.append({...base,event_type:'AUTHORITY_DECISION',result_state:'ALLOWED',authority_decision_ref:refs.authority_decision_ref});
+   await owner.append({...base,...refs,event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED'});
+   if(result==='VERIFIED')await owner.append({...base,...refs,event_type:'OBSERVATION',result_state:'OBSERVED',observation_ref:'observed:correlation'});
+   const before=await fs.readFile(path.join(root,'ledger.json'),'utf8');
+   await assert.rejects(()=>owner.append({...base,...refs,[field]:'different:effect',event_type:result==='VERIFIED'?'VERIFICATION':'OBSERVATION',result_state:result,observation_ref:'observed:correlation',...(result==='VERIFIED'?{evidence_ref:'evidence:correlation'}:{})}),/lineage/);
+   assert.equal(await fs.readFile(path.join(root,'ledger.json'),'utf8'),before,'contradictory outcome must not alter durable action history');
+   assert.equal((await owner.status()).state,'LOCKDOWN');
+   assert.equal((await createCipherLedger({storageRoot:root,residentId}).status()).state,'LOCKDOWN');
+  }));
+ }
+}
+test('historical outcomes without correlation references remain readable without manufactured backfill',()=>fixture(async root=>{
+ const owner=createCipherLedger({storageRoot:root,residentId}),base=prepare('legacy');
+ await owner.append(base);
+ await owner.append({...base,event_type:'AUTHORITY_DECISION',result_state:'ALLOWED',authority_decision_ref:'authority:legacy:approve'});
+ await owner.append({...base,event_type:'EFFECT_ATTEMPT',result_state:'ALLOWED',authority_decision_ref:'authority:legacy:approve',effect_generation:'legacy:1'});
+ await owner.append({...base,event_type:'OBSERVATION',result_state:'OBSERVED',observation_ref:'observed:legacy'});
+ const before=await fs.readFile(path.join(root,'ledger.json'),'utf8'),reopened=createCipherLedger({storageRoot:root,residentId});
+ assert.equal((await reopened.status()).state,'NORMAL');
+ const outcome=(await reopened.list()).at(-1);
+ assert.equal(outcome?.effect_generation,undefined);
+ assert.equal(outcome?.authority_decision_ref,undefined);
+ assert.equal(await fs.readFile(path.join(root,'ledger.json'),'utf8'),before);
+}));
