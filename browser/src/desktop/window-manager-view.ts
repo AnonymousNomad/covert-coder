@@ -8,6 +8,7 @@ import { bindWindowInteractions } from './window-interactions.ts';
 export interface WindowManagerViewOptions {
   layer: HTMLElement;
   dock: HTMLElement;
+  launcherHost?: HTMLElement;
   paletteHost: HTMLElement;
   manager: WindowManager;
   onAttach(appId: DesktopAppId, content: HTMLElement, instanceId: string): void;
@@ -118,6 +119,7 @@ export class WindowManagerView {
     this.taskButtons.clear();
     this.palette.remove();
     this.options.dock.replaceChildren();
+    this.options.launcherHost?.replaceChildren();
   }
 
   private renderDock(): void {
@@ -133,6 +135,10 @@ export class WindowManagerView {
 
     for (const manifest of APP_REGISTRY) {
       const appButton = button(`Open ${manifest.title}`, manifest.icon, 'desktop-launcher-app', `${manifest.title} application`);
+      const caption = document.createElement('span');
+      caption.className = 'desktop-application-caption';
+      caption.textContent = manifest.title;
+      appButton.appendChild(caption);
       appButton.dataset.appId = manifest.id;
       appButton.setAttribute('aria-haspopup', 'false');
       if (manifest.maturity !== 'AVAILABLE') {
@@ -178,7 +184,12 @@ export class WindowManagerView {
     newTerminal.dataset.action = 'new-terminal';
     newTerminal.addEventListener('click', () => this.options.manager.openNew('terminal'));
     layoutTools.append(newTerminal, layoutSelect, save, restore, reset, startup, palette);
-    this.options.dock.append(launcher, tasks, layoutTools);
+    if (this.options.launcherHost) {
+      this.options.launcherHost.replaceChildren(launcher);
+      this.options.dock.append(tasks, layoutTools);
+    } else {
+      this.options.dock.append(launcher, tasks, layoutTools);
+    }
     this.renderWindowTasks(this.options.manager.snapshot());
   }
 
@@ -339,6 +350,10 @@ export class WindowManagerView {
       let task = this.taskButtons.get(instanceId);
       if (!task) {
         task = button(`Restore ${manifest.title}`, manifest.icon, 'desktop-window-task', `${manifest.title} window`);
+        const caption = document.createElement('span');
+        caption.className = 'desktop-task-caption';
+        caption.textContent = displayTitle;
+        task.appendChild(caption);
         task.addEventListener('click', () => this.options.manager.restore(instanceId));
         this.taskButtons.set(instanceId, task);
       }

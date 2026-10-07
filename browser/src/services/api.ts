@@ -18,6 +18,7 @@ import {
   type SearchReplaceResponseT
 } from '../../../common/contracts/search.ts';
 import { CipherNotebookPut,CipherNotebookRemove,CipherNotebookRecord,CipherNotebookListResponse,CipherNotebookRemoveResponse,type CipherNotebookPutT,type CipherNotebookRemoveT } from '../../../common/contracts/cipher-notebook.ts';
+import { CurrentProjectResponse, type CurrentProjectResponseT } from '../../../common/contracts/project.ts';
 import { CipherLedgerListResponse, type CipherLedgerListResponseT } from '../../../common/contracts/cipher-laptop.ts';
 import { HealthResponse, type HealthResponseT } from '../../../common/contracts/health.ts';
 import { ReadinessResponse, type ReadinessResponseT } from '../../../common/contracts/readiness.ts';
@@ -363,6 +364,9 @@ export const api = {
   closedLoopStatus(): Promise<ClosedLoopStatusT> {
     return call('/api/closed-loop/status', { schema: ClosedLoopStatusResponse });
   },
+  projectsCurrent(signal?: AbortSignal): Promise<CurrentProjectResponseT> {
+    return call('/api/projects/current', { schema: CurrentProjectResponse, ...(signal !== undefined ? { signal } : {}) });
+  },
   cipherNotebook(signal?: AbortSignal) {
     return call('/api/cipher/laptop/notebook', { schema: CipherNotebookListResponse, ...(signal !== undefined ? { signal } : {}) });
   },
@@ -372,8 +376,8 @@ export const api = {
   cipherNotebookRemove(input: CipherNotebookRemoveT) {
     return call('/api/cipher/laptop/notebook/remove', { body: CipherNotebookRemove.parse(input), schema: CipherNotebookRemoveResponse });
   },
-  cipherLaptopActivity(signal?: AbortSignal): Promise<CipherLedgerListResponseT> {
-    return call('/api/cipher/laptop/activity', { schema: CipherLedgerListResponse, ...(signal !== undefined ? { signal } : {}) });
+  cipherLaptopActivity(signal?: AbortSignal, projectId?: string): Promise<CipherLedgerListResponseT> {
+    return call('/api/cipher/laptop/activity', { schema: CipherLedgerListResponse, ...(projectId !== undefined ? { query: { project_id: projectId } } : {}), ...(signal !== undefined ? { signal } : {}) });
   },
   hardwareProfile(): Promise<HardwareProfileResponseT> {
     return call('/api/hardware/profile', { schema: HardwareProfileResponse });

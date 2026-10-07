@@ -124,10 +124,13 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
     <div class="cockpit-ambient desktop-ambient" aria-hidden="true"></div>
     <div class="desktop-systembar" id="cockpit-topbar"></div>
     <main class="desktop-work-area" aria-label="Covert workstation">
-      <div class="desktop-window-layer" id="desktop-window-layer"></div>
-      <div class="desktop-resident-anchor" id="desktop-resident-anchor"></div>
+      <aside class="desktop-application-rail" id="desktop-application-launcher" aria-label="Application launcher"></aside>
+      <div class="desktop-workspace">
+        <div class="desktop-window-layer" id="desktop-window-layer"></div>
+        <div class="desktop-resident-anchor" id="desktop-resident-anchor"></div>
+      </div>
     </main>
-    <footer class="desktop-dock-wrap" id="desktop-dock" aria-label="Desktop dock"></footer>
+    <footer class="desktop-dock-wrap" id="desktop-dock" aria-label="Workstation taskbar"></footer>
     <div class="desktop-shell-status" id="cockpit-status" aria-live="polite">
       <span id="cockpit-lsp-status">LSP: UNKNOWN</span>
     </div>
@@ -141,10 +144,11 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const layer = shell.querySelector<HTMLElement>('#desktop-window-layer');
   const residentAnchor = shell.querySelector<HTMLElement>('#desktop-resident-anchor');
   const dock = shell.querySelector<HTMLElement>('#desktop-dock');
+  const launcherHost = shell.querySelector<HTMLElement>('#desktop-application-launcher');
   const statusRoot = shell.querySelector<HTMLElement>('#cockpit-status');
   const lspStatus = shell.querySelector<HTMLElement>('#cockpit-lsp-status');
   const paletteHost = shell.querySelector<HTMLElement>('#desktop-palette-host');
-  if (!topbarHost || !layer || !residentAnchor || !dock || !statusRoot || !lspStatus || !paletteHost) {
+  if (!topbarHost || !layer || !residentAnchor || !dock || !launcherHost || !statusRoot || !lspStatus || !paletteHost) {
     throw new Error('desktop shell mounts failed');
   }
 
@@ -293,6 +297,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const view = new WindowManagerView({
     layer,
     dock,
+    launcherHost,
     paletteHost,
     manager,
     onAttach(appId: DesktopAppId, content: HTMLElement, instanceId: string): void {

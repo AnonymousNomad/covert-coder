@@ -766,3 +766,28 @@ body,
   --covert-bg-gunmetal: var(--desktop-inset);
   --covert-line: var(--desktop-border);
 }
+
+/* Platform composition: compact application rail, independent window canvas, taskbar. */
+.covert-desktop-shell .desktop-work-area { display: grid; grid-template-columns: 76px minmax(0, 1fr); }
+.covert-desktop-shell .desktop-workspace { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.covert-desktop-shell .desktop-application-rail { min-height: 0; overflow-y: auto; border-right: 1px solid var(--desktop-border); background: var(--desktop-surface); scrollbar-width: thin; }
+.covert-desktop-shell .desktop-application-rail .desktop-launcher { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 4px; overflow-x: hidden; }
+.covert-desktop-shell .desktop-application-rail .desktop-launcher-app { display: flex; flex-direction: column; justify-content: center; gap: 3px; flex: 0 0 auto; width: 100%; min-height: 48px; height: auto; padding: 4px 2px; box-sizing: border-box; }
+.covert-desktop-shell .desktop-application-caption { display: none; }
+.covert-desktop-shell .desktop-application-rail .desktop-application-caption { display: block; font: 10px/1.2 var(--desktop-font-mono); overflow-wrap: anywhere; }
+.covert-desktop-shell .desktop-dock-wrap { min-height: 34px; gap: 6px; padding: 4px 6px; }
+.covert-desktop-shell .desktop-window-tasks { flex: 1 1 auto; scrollbar-width: thin; }
+.covert-desktop-shell .desktop-window-task { display: flex; justify-content: flex-start; gap: 5px; flex: 0 0 auto; width: auto; max-width: 180px; height: 28px; padding: 0 6px; border-color: var(--desktop-border); }
+.covert-desktop-shell .desktop-task-caption { font: 10px/1.2 var(--desktop-font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.covert-desktop-shell .desktop-layout-tools { flex: 0 1 auto; overflow-x: auto; scrollbar-width: thin; }
+.covert-desktop-shell .desktop-layout-action, .covert-desktop-shell .desktop-layout-select { flex-shrink: 0; min-height: 28px; padding: 0 6px; }
+.covert-desktop-shell .cipher-laptop-project { flex: 0 0 auto; margin-top: 6px; color: var(--desktop-text-muted); overflow-wrap: anywhere; }
+.covert-desktop-shell .cipher-laptop-desk { display: grid; grid-template-columns: 142px minmax(0, 1fr); gap: 8px; flex: 1 1 auto; min-height: 0; }
+.covert-desktop-shell .cipher-laptop-desk .cipher-laptop-tabs { flex-direction: column; align-items: stretch; gap: 3px; margin: 0; padding-right: 6px; border-right: 1px solid var(--desktop-border); overflow-y: auto; min-height: 0; }
+.covert-desktop-shell .cipher-laptop-tabs button { flex: 0 0 auto; text-align: left; font-size: 10px; }
+.covert-desktop-shell .cipher-laptop button:disabled { color: var(--desktop-text-muted); cursor: not-allowed; }
+.covert-desktop-shell .cipher-laptop button:focus-visible { outline: 1px solid var(--desktop-accent); outline-offset: 1px; }
+@media (max-width: 720px) {
+  .covert-desktop-shell .desktop-work-area { grid-template-columns: 64px minmax(0, 1fr); }
+  .covert-desktop-shell .cipher-laptop-desk { grid-template-columns: 118px minmax(0, 1fr); }
+}

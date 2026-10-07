@@ -25,3 +25,4 @@ export const CurrentProjectResponse = z.object({
 export type ProjectCheckoutT = z.infer<typeof ProjectCheckout>;
 export type ProjectCatalogT = z.infer<typeof ProjectCatalog>;
 export type ProjectAddressT = z.infer<typeof ProjectAddress>;
+export type CurrentProjectResponseT = z.infer<typeof CurrentProjectResponse>;
