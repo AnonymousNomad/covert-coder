@@ -123,9 +123,11 @@ test('real paired AgentLoop mutation reaches the same Monaco session and preserv
   };
 
   const editor = page.locator('.monaco-editor').first();
+  phase = 'operator-draft-input';
   await editor.click();
   await page.keyboard.press('Control+a');
   await page.keyboard.type('export const value = "operator draft";');
+  await expect(editor.locator('.view-line').first()).toHaveText('export const value = "operator draft";');
   phase = 'agent-loop-execution';
   await expect(tab).toHaveClass(/dirty/);
 
