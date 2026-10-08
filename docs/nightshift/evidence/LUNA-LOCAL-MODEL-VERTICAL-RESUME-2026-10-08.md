@@ -49,6 +49,8 @@ The only existing qualified local profile suitable for this lane is the narrow U
 
 The prior passport is historical exact-artifact qualification, not proof that the artifact is present in this workspace, that the live Hub still reports this revision metadata, or that this branch has completed a new run.
 
+The current mutable Hugging Face model page labels the repository license `lfm1.0`, reports the GGUF architecture as `lfm2`, and lists the Q4_K_M artifact at about 1.67 GB. Its llama.cpp example uses temperature `0.1`, top-k `50`, and repeat penalty `1.1`. This page is not the pinned revision record and does not override the existing Covert-tested profile. The pinned license/revision/file metadata must be reconfirmed through Covert inspection; the downloaded GGUF template and stop behavior must be inspected before runtime claims. No configuration was inferred from the filename or copied from that mutable page.
+
 ## Verification on this branch
 
 Pre-repair bounded suite at the unchanged starting HEAD:
@@ -86,4 +88,4 @@ exit 0; 55 passed; 0 failed; 0 skipped; 0 cancelled
 
 ## Next action
 
-Checkpoint the bounded LFS metadata mapping repair, then continue with live Covert search/inspection/download in a process whose `AIDE_WORKSPACE` is this branch root. Re-measure with canonical Resource Admission before any runtime start. Preserve every refusal; do not start or infer while either physical RAM or commit remains below its floor.
+The LFS metadata mapping repair is committed at this checkpoint. Continue with live Covert search/inspection/download in an isolated branch-launched process whose `AIDE_WORKSPACE` is this branch root; the currently running stack uses a different workspace and remains untouched. Re-measure with canonical Resource Admission before any runtime start. Preserve every refusal; do not start or infer while either physical RAM or commit remains below its floor.
