@@ -18,11 +18,11 @@
   },
   "counts": {
     "openApiOperationsBefore": 235,
-    "openApiOperationsAfter": 245,
+    "openApiOperationsAfter": 253,
     "openApiPathsBefore": 223,
-    "openApiPathsAfter": 232,
+    "openApiPathsAfter": 240,
     "typedRegistrationsBefore": 236,
-    "typedRegistrationsAfter": 245,
+    "typedRegistrationsAfter": 253,
     "typedPrefixRegistrationsAfter": 0,
     "facadeTypedToLegacyBefore": 35,
     "facadeTypedToLegacyAfter": 0,
@@ -1927,7 +1927,14 @@
         "classification": "PUBLIC_TYPED",
         "match": "exact"
       },
-      "currentFrontendCallers": [],
+      "currentFrontendCallers": [
+        {
+          "file": "browser/src/cockpit/WorkerExecutionPanel.ts",
+          "line": 392,
+          "methodEvidence": "POST",
+          "source": "void call('/api/worker-handoff/create', { method: 'POST', body: request, schema: WorkerHandoffCreateResponse })"
+        }
+      ],
       "otherFrontendMethodReferences": [],
       "unresolvedFrontendPathReferences": [],
       "currentBackendInternalCallers": [],
@@ -1936,31 +1943,31 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 152
+          "line": 153
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 163
+          "line": 166
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 172
+          "line": 175
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 201
+          "line": 204
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 239
+          "line": 242
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 291
+          "line": 294
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 329
+          "line": 332
         }
       ],
       "requestShape": {
@@ -2244,6 +2251,31 @@
                     {
                       "type": "string",
                       "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "project": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     {
                       "type": "null"
@@ -2635,27 +2667,27 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 285
+          "line": 286
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 210
+          "line": 213
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 215
+          "line": 218
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 219
+          "line": 222
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 248
+          "line": 251
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 298
+          "line": 301
         }
       ],
       "requestShape": {
@@ -2780,6 +2812,31 @@
                     {
                       "type": "string",
                       "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "project": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     {
                       "type": "null"
@@ -3171,19 +3228,19 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 222
+          "line": 225
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 226
+          "line": 229
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 250
+          "line": 253
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 306
+          "line": 309
         }
       ],
       "requestShape": {
@@ -3269,6 +3326,31 @@
                     {
                       "type": "string",
                       "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "project": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     {
                       "type": "null"
@@ -3660,11 +3742,11 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 273
+          "line": 274
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 229
+          "line": 232
         }
       ],
       "requestShape": {
@@ -3750,6 +3832,31 @@
                     {
                       "type": "string",
                       "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "project": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     {
                       "type": "null"
@@ -4141,7 +4248,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 254
+          "line": 257
         }
       ],
       "requestShape": {
@@ -4228,6 +4335,31 @@
                       {
                         "type": "string",
                         "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "project": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "project_id",
+                          "checkout_id"
+                        ],
+                        "properties": {
+                          "project_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "checkout_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "additionalProperties": false
                       },
                       {
                         "type": "null"
@@ -4632,31 +4764,31 @@
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 195
+          "line": 196
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 215
+          "line": 216
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 233
+          "line": 234
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 248
+          "line": 249
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 298
+          "line": 299
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 326
+          "line": 327
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 269
+          "line": 272
         }
       ],
       "requestShape": {
@@ -4741,6 +4873,31 @@
                     {
                       "type": "string",
                       "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "project": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     {
                       "type": "null"
@@ -5132,15 +5289,15 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 338
+          "line": 341
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 350
+          "line": 353
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
-          "line": 360
+          "line": 363
         }
       ],
       "requestShape": {
@@ -5278,12 +5435,78 @@
                   "type": "number",
                   "minimum": 0,
                   "maximum": 1
+                },
+                "minimum_free_memory_mb": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "free_commit_strictly_above_mb": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
                 }
               },
               "additionalProperties": false
             },
             "disposable": {
               "type": "boolean"
+            },
+            "workload": {
+              "type": "object",
+              "required": [
+                "worker_session_id",
+                "project_id",
+                "checkout_id",
+                "route_id",
+                "model_id",
+                "artifact_sha256",
+                "runtime_id",
+                "runtime_version",
+                "context_tokens"
+              ],
+              "properties": {
+                "worker_session_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "project_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "checkout_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "route_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 240
+                },
+                "model_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 240
+                },
+                "artifact_sha256": {
+                  "type": "string"
+                },
+                "runtime_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "runtime_version": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "context_tokens": {
+                  "type": "integer",
+                  "maximum": 9007199254740991
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -5389,7 +5612,14 @@
       "unresolvedFrontendPathReferences": [],
       "currentBackendInternalCallers": [],
       "otherBackendMethodReferences": [],
-      "unresolvedBackendPathReferences": [],
+      "unresolvedBackendPathReferences": [
+        {
+          "file": "node/src/services/app-catalog.ts",
+          "line": 62,
+          "methodEvidence": "UNKNOWN",
+          "source": "['evidence', 'verification', 'Evidence', 'ProvenanceLedger', [capability('evidence.provenance.read', 'ProvenanceLedger', '/api/provenance/runs', 'capability.read', ['OPERATOR', 'RESIDENT'])]],"
+        }
+      ],
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/harness-attempt.test.ts",
@@ -6346,7 +6576,14 @@
         "classification": "PUBLIC_TYPED",
         "match": "exact"
       },
-      "currentFrontendCallers": [],
+      "currentFrontendCallers": [
+        {
+          "file": "browser/src/cockpit/WorkerExecutionPanel.ts",
+          "line": 278,
+          "methodEvidence": "GET",
+          "source": "attempt = await call('/api/harness/attempt', { query: { id: attemptId }, schema: AttemptDetail });"
+        }
+      ],
       "otherFrontendMethodReferences": [],
       "unresolvedFrontendPathReferences": [],
       "currentBackendInternalCallers": [],
@@ -6756,6 +6993,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "reference": {
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -6920,6 +7160,458 @@
                       "type": "string"
                     }
                   ]
+                },
+                "context_aperture": {
+                  "type": "object",
+                  "required": [
+                    "schema",
+                    "aperture_id",
+                    "project",
+                    "source",
+                    "task_id",
+                    "objective",
+                    "acceptance_criteria",
+                    "included_files",
+                    "decision_refs",
+                    "evidence_refs",
+                    "sop_refs",
+                    "handoff_id",
+                    "handoff_context",
+                    "destination_session_id",
+                    "destination",
+                    "allowed_capabilities",
+                    "protocol_tools",
+                    "exclusions",
+                    "content",
+                    "approx_tokens",
+                    "created_at",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "schema": {
+                      "type": "string"
+                    },
+                    "aperture_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project": {
+                      "type": "object",
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "source": {
+                      "type": "object",
+                      "required": [
+                        "revision",
+                        "branch",
+                        "working_tree",
+                        "observed_at"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 64
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "branch": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 240
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "working_tree": {
+                          "type": "string",
+                          "enum": [
+                            "CLEAN",
+                            "DIRTY",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "observed_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "task_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "objective": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2000
+                    },
+                    "acceptance_criteria": {
+                      "type": "array",
+                      "maxItems": 8,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      }
+                    },
+                    "included_files": {
+                      "type": "array",
+                      "maxItems": 32,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      }
+                    },
+                    "decision_refs": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      }
+                    },
+                    "evidence_refs": {
+                      "type": "array",
+                      "maxItems": 32,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      }
+                    },
+                    "sop_refs": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      }
+                    },
+                    "handoff_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "handoff_context": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 12000
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "destination_session_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "destination": {
+                      "type": "object",
+                      "required": [
+                        "worker",
+                        "provider",
+                        "model",
+                        "role"
+                      ],
+                      "properties": {
+                        "worker": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "provider": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "model": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "plan",
+                            "act",
+                            "utility",
+                            "planner",
+                            "coder",
+                            "reviewer"
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "allowed_capabilities": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "string",
+                        "maxLength": 120
+                      }
+                    },
+                    "protocol_tools": {
+                      "type": "array",
+                      "maxItems": 4,
+                      "items": {}
+                    },
+                    "exclusions": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180
+                      }
+                    },
+                    "content": {
+                      "type": "string",
+                      "maxLength": 20000
+                    },
+                    "approx_tokens": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "sha256": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "worker_binding": {
+                  "type": "object",
+                  "required": [
+                    "worker_session_id",
+                    "principal_id",
+                    "parent_request_id",
+                    "task_id",
+                    "project",
+                    "source_sha",
+                    "working_tree",
+                    "capability_id",
+                    "route",
+                    "aperture_id",
+                    "aperture_sha256",
+                    "authority_operation_id",
+                    "resource_admission_ref",
+                    "runtime_process_id",
+                    "runtime_started_at",
+                    "created_at"
+                  ],
+                  "properties": {
+                    "worker_session_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "principal_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "parent_request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "task_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "project": {
+                      "type": "object",
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "source_sha": {
+                      "type": "string"
+                    },
+                    "working_tree": {
+                      "type": "string",
+                      "enum": [
+                        "CLEAN",
+                        "DIRTY"
+                      ]
+                    },
+                    "capability_id": {
+                      "type": "string"
+                    },
+                    "route": {
+                      "type": "object",
+                      "required": [
+                        "route_id",
+                        "model_id",
+                        "provider_id",
+                        "provider_model",
+                        "adapter_id",
+                        "artifact_sha256",
+                        "runtime_id",
+                        "runtime_version",
+                        "target_revision"
+                      ],
+                      "properties": {
+                        "route_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "model_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "provider_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 120
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "provider_model": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 240
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "adapter_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "artifact_sha256": {
+                          "type": "string"
+                        },
+                        "runtime_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "runtime_version": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "target_revision": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "aperture_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "aperture_sha256": {
+                      "type": "string"
+                    },
+                    "authority_operation_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "resource_admission_ref": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "runtime_process_id": {
+                      "type": "integer",
+                      "maximum": 9007199254740991
+                    },
+                    "runtime_started_at": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -7344,7 +8036,7 @@
       "currentFrontendCallers": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 282,
+          "line": 283,
           "methodEvidence": "GET",
           "source": "return call('/api/readiness', { schema: ReadinessResponse });"
         }
@@ -8491,7 +9183,7 @@
       "otherBackendMethodReferences": [
         {
           "file": "node/src/routes/git.ts",
-          "line": 83,
+          "line": 82,
           "methodEvidence": "POST",
           "source": "{ method: 'POST', path: '/api/git/diff', body: GitDiffRequest, response: GitDiffResponse, handler: wrap(async ({ body }) => git.diff((body as { path?: string }).path, (body as { cached?: boolean }).cached === true)) },"
         }
@@ -8556,7 +9248,7 @@
       "otherBackendMethodReferences": [
         {
           "file": "node/src/routes/git.ts",
-          "line": 107,
+          "line": 106,
           "methodEvidence": "POST",
           "source": "{ method: 'POST', path: '/api/git/log', body: GitLogRequest, response: GitLogResponse, handler: wrap(async ({ body }) => git.log((body as { limit?: number }).limit)) },"
         }
@@ -9355,7 +10047,7 @@
         },
         {
           "file": "browser/src/services/api.ts",
-          "line": 290,
+          "line": 291,
           "methodEvidence": "POST",
           "source": "return call('/api/file', { query: query.data, schema: FileReadResponse });"
         }
@@ -9466,7 +10158,7 @@
       "otherFrontendMethodReferences": [
         {
           "file": "browser/src/services/api.ts",
-          "line": 301,
+          "line": 302,
           "methodEvidence": "POST",
           "source": "return call('/api/search', { query: query.data, schema: SearchResponse });"
         }

@@ -1,6 +1,8 @@
 import { type ZodTypeAny } from 'zod';
 import path from 'node:path';
 import http from 'node:http';
+import https from 'node:https';
+import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { fail, ok, type ErrorCode } from '../../common/errors.ts';
@@ -23,6 +25,7 @@ import { CIPHER_RESIDENT_ID } from '../../common/contracts/cipher-laptop.ts';
 import { CapabilitySeatRequest, type CapabilitySeatRequestT } from '../../common/contracts/capability-seat.ts';
 import { createProjectRegistry } from './services/project-registry.ts';
 import { createProjectSeat, bindProjectSeat, type ProjectSeat } from './services/project-seat.ts';
+import { listenPartnerProtocol, type PartnerProtocolOptions } from './services/partner-protocol.ts';
 
 export class RouteError extends Error {
   readonly code: ErrorCode;
@@ -94,6 +97,7 @@ export class ArchServer {
   readonly logFile: string;
   private readonly routes: Route[] = [];
   private readonly shutdownHooks: Array<() => Promise<void>> = [];
+  private partnerListener?: https.Server;
   private controlHandler?: WsControlHandler;
   legacyDescribe?: (input: { method: string; path: string; task_id: string; body?: unknown }) => Promise<OperationInput>;
 
@@ -135,6 +139,7 @@ export class ArchServer {
   }
 
   async listen(port: number, host = '127.0.0.1'): Promise<http.Server> {
+    if (host !== '127.0.0.1') throw new Error('broad workstation API must remain bound to 127.0.0.1');
     // Verify history before ingress. LOCKDOWN retains operator read/recovery access.
     await this.cipherLedger.status();
     try { await this.projects.initialize(await this.cipherLedger.recordedProjectAddress()); }
@@ -173,6 +178,18 @@ export class ArchServer {
     });
     this.installShutdown(server);
     return server;
+  }
+
+  async listenPartner(options: Omit<PartnerProtocolOptions, 'authority' | 'logger'>): Promise<https.Server> {
+    if (this.partnerListener?.listening) throw new Error('Partner listener is already active');
+    const listener = await listenPartnerProtocol({ ...options, authority: this.authority, logger: this.logger });
+    this.partnerListener = listener;
+    listener.once('close', () => this.authority.partner.close());
+    this.addShutdownHook(async () => {
+      if (!listener.listening) return;
+      await new Promise<void>((resolve, reject) => listener.close(error => error ? reject(error) : resolve()));
+    });
+    return listener;
   }
 
   private async handle(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
@@ -528,6 +545,34 @@ export async function main(): Promise<void> {
   const listener = await server.listen(port);
   resolveReady(listener.address());
   server.logger.info('arch daemon listening', { port, workspace });
+
+  const partnerConfig = {
+    bindHost: process.env.AIDE_PARTNER_LAN_HOST,
+    lanCidr: process.env.AIDE_PARTNER_LAN_CIDR,
+    port: process.env.AIDE_PARTNER_PORT,
+    certificateFile: process.env.AIDE_PARTNER_TLS_CERT_FILE,
+    privateKeyFile: process.env.AIDE_PARTNER_TLS_KEY_FILE
+  };
+  const partnerConfigured = Object.values(partnerConfig).some(value => value !== undefined && value !== '');
+  if (partnerConfigured) {
+    if (Object.values(partnerConfig).some(value => value === undefined || value === '')) {
+      server.logger.error('Partner listener disabled: explicit TLS and LAN settings are incomplete', { code: 'PARTNER_CONFIG_INCOMPLETE' });
+    } else {
+      try {
+        const tlsCertificate = await fs.readFile(partnerConfig.certificateFile!);
+        const tlsKey = await fs.readFile(partnerConfig.privateKeyFile!);
+        const partnerPort = Number(partnerConfig.port);
+        if (!Number.isSafeInteger(partnerPort) || partnerPort < 1 || partnerPort > 65535) throw new Error('invalid port');
+        await server.listenPartner({ bind_host: partnerConfig.bindHost!, lan_cidr: partnerConfig.lanCidr!, port: partnerPort,
+          tls_key: tlsKey, tls_certificate: tlsCertificate });
+        server.logger.info('Partner TLS listener started', { bind_host: partnerConfig.bindHost, port: partnerPort, lan_cidr: partnerConfig.lanCidr });
+      } catch (error) {
+        const rawCode = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+        const code = /^[A-Z0-9_]{1,40}$/.test(rawCode) ? rawCode : 'PARTNER_START_FAILED';
+        server.logger.error('Partner listener unavailable; loopback workstation service remains active', { code });
+      }
+    }
+  }
 
   // Closed-loop on by default (aid-closed-loop-on-by-default skill). The
   // selfimprove runner is a SCRIPT, not a library: spawn it detached so it

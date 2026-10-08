@@ -7,9 +7,12 @@ test('Windows platform record aliases including default alternate streams stay p
     '.aide/platform-projects/catalog.json', '.AIDE/PLATFORM-PROJECTS /catalog.json',
     '.aide/platform-projects-enrollment.json', '.AIDE/PLATFORM-PROJECTS-ENROLLMENT.JSON.',
     '.aide/platform-projects-enrollment.json::$DATA', '.aide/platform-projects-enrollment.json:notes',
+    '.aide/platform-authority/partner-devices.json', '.AIDE/PLATFORM-AUTHORITY /partner-devices.json',
+    '.aide/platform-authority/partner-devices.json::$DATA',
     '.aide/cipher-laptop::$DATA/ledger.json'
   ]) assert.equal(isPrivatePlatformStatePath(target, 'win32'), true, target);
   assert.equal(isPrivatePlatformStatePath('src/project.ts', 'win32'), false);
   assert.equal(isPrivatePlatformStatePath('.aide/platform-projects-public.json', 'win32'), false);
+  assert.equal(isPrivatePlatformStatePath('.aide/platform-authority-public.json', 'win32'), false);
   assert.equal(isPrivatePlatformStatePath('.aide/platform-projects-enrollment.json:notes', 'linux'), false);
 });

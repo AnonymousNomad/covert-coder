@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { normalizeOperation } from '../../../common/security/operation-policy.mjs';
 import { readRoutingPreference } from './routing-preference.mjs';
+import { PartnerDeviceError, createPartnerDeviceStore } from './partner-device-store.mjs';
 
 export class AuthorityError extends Error {
   constructor(code, message, detail = undefined) {
@@ -23,6 +24,7 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
   const operations = new Map();
   const executions = new WeakMap();
   const claimedExecutions = new WeakSet();
+  const partnerDevices = createPartnerDeviceStore({ workspace, clock });
   const decisionWaiters = new Set();
   const notifyDecisions = () => { for (const wake of [...decisionWaiters]) wake(); };
   const telegramMessages = new WeakMap();
@@ -33,6 +35,11 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
     if (!entry || entry.handle !== handle || entry.revoked || clock() >= entry.expiresAt) deny('actor is unknown, expired or revoked');
     const owner = actors.get(entry.ownerId);
     if (!owner || owner.revoked || clock() >= owner.expiresAt) deny('actor owner is expired or revoked');
+    return entry;
+  }
+  function operatorFor(handle) {
+    const entry = actorFor(handle);
+    if (handle.kind !== 'operator' || entry.ownerId !== handle.id) deny('operator actor required for Partner device administration');
     return entry;
   }
   function audit(event) {
@@ -123,6 +130,28 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
     return message;
   }
 
+  const partner = Object.freeze({
+    initialize: fingerprint => partnerDevices.initialize(fingerprint),
+    workstation: () => partnerDevices.workstation(),
+    close: () => partnerDevices.close(),
+    submitPairingConfirmation: async confirmation => {
+      try {
+        const pending = await partnerDevices.submitPairingConfirmation(confirmation);
+        await required({ operation_id: `partner-pairing:${pending.pending_id}`, actor_id: pending.device_id,
+          actor_kind: 'adapter', owner_id: pending.device_id, task_id: 'partner-pairing',
+          kind: 'partner.device.pairing.request', digest: hash(`${pending.key_thumbprint}:${pending.requested_scopes.join(',')}`),
+          decision: 'pending', origin: 'partner-device' });
+        return pending;
+      } catch (error) {
+        if (error instanceof PartnerDeviceError) throw error;
+        throw new AuthorityError('NOT_READY', 'Partner pairing could not be persisted');
+      }
+    },
+    createProofChallenge: deviceId => partnerDevices.createProofChallenge(deviceId),
+    verifyRequestProof: (proof, binding) => partnerDevices.verifyRequestProof(proof, binding),
+    requireScope: (deviceId, scope) => partnerDevices.requireScope(deviceId, scope)
+  });
+
   const control = Object.freeze({
     async telegramAdapter(execution, input) {
       const op = executionFor(execution, 'authority.grant', input);
@@ -156,6 +185,69 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
       pairings.set(hash(proof), { origin, expiresAt: clock() + operationTtlMs });
       return proof;
     },
+    async createPartnerPairingChallenge(actor, requestedScopes) {
+      operatorFor(actor);
+      try {
+        const challenge = await partnerDevices.createPairingChallenge(requestedScopes);
+        await required({ operation_id: `partner-pairing-challenge:${challenge.challenge_id}`, actor_id: actor.id,
+          actor_kind: actor.kind, owner_id: actor.id, task_id: 'partner-pairing',
+          kind: 'partner.device.pairing.challenge', digest: hash(`${challenge.challenge_id}:${challenge.workstation_fingerprint}:${challenge.requested_scopes.join(',')}`),
+          decision: 'issued', origin: 'workstation' });
+        return challenge;
+      } catch (error) {
+        if (error instanceof PartnerDeviceError || error instanceof AuthorityError) throw error;
+        throw new AuthorityError('NOT_READY', 'Partner pairing challenge could not be persisted');
+      }
+    },
+    async pendingPartnerPairings(actor) {
+      operatorFor(actor);
+      return partnerDevices.pendingPairings();
+    },
+    async confirmPartnerPairing(actor, pendingId, scopes) {
+      operatorFor(actor);
+      try {
+        return await partnerDevices.approvePairing(pendingId, scopes, async approval => {
+          await required({ operation_id: `partner-pairing:${pendingId}`, actor_id: actor.id,
+            actor_kind: actor.kind, owner_id: actor.id, task_id: 'partner-pairing',
+            kind: 'partner.device.pairing.approval', digest: hash(`${approval.key_thumbprint}:${[...approval.approved_scopes].sort().join(',')}`),
+            decision: 'operator-approved', origin: 'workstation' });
+        });
+      } catch (error) {
+        if (error instanceof PartnerDeviceError || error instanceof AuthorityError) throw error;
+        throw new AuthorityError('NOT_READY', 'Partner device approval could not be persisted');
+      }
+    },
+    async rejectPartnerPairing(actor, pendingId) {
+      operatorFor(actor);
+      try {
+        await partnerDevices.rejectPairing(pendingId);
+        await required({ operation_id: `partner-pairing:${pendingId}`, actor_id: actor.id,
+          actor_kind: actor.kind, owner_id: actor.id, task_id: 'partner-pairing',
+          kind: 'partner.device.pairing.approval', decision: 'operator-rejected', origin: 'workstation' });
+        return { rejected: true };
+      } catch (error) {
+        if (error instanceof PartnerDeviceError || error instanceof AuthorityError) throw error;
+        throw new AuthorityError('NOT_READY', 'Partner pairing rejection could not be persisted');
+      }
+    },
+    async revokePartnerDevice(actor, deviceId) {
+      operatorFor(actor);
+      try {
+        const principal = await partnerDevices.revokeDevice(deviceId);
+        await required({ operation_id: `partner-device-revocation:${deviceId}`, actor_id: actor.id,
+          actor_kind: actor.kind, owner_id: actor.id, task_id: 'partner-device-revocation',
+          kind: 'partner.device.revoke', digest: hash(principal.key_thumbprint),
+          decision: 'revoked', origin: 'workstation' });
+        return principal;
+      } catch (error) {
+        if (error instanceof PartnerDeviceError || error instanceof AuthorityError) throw error;
+        throw new AuthorityError('NOT_READY', 'Partner device revocation could not be persisted');
+      }
+    },
+    async listPartnerDevices(actor) {
+      operatorFor(actor);
+      return partnerDevices.listDevices();
+    },
     delegate(owner, kind, scope) {
       const parent = actorFor(owner);
       if (owner.kind !== 'operator' || !['agent', 'adapter', 'service'].includes(kind)) deny('only operator-owned delegation is permitted');
@@ -178,12 +270,14 @@ export function createExecutionAuthority({ workspace, record, clock = Date.now, 
     close() {
       revision += 1;
       actors.clear(); credentials.clear(); pairings.clear(); operations.clear();
+      partnerDevices.close();
       notifyDecisions();
     }
   });
 
   return Object.freeze({
     control,
+    partner,
     async pair(proof, origin) {
       if (typeof proof !== 'string' || proof.length > 256) deny('invalid pairing proof');
       const key = hash(proof);

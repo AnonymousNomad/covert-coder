@@ -678,6 +678,24 @@
     },
     {
       "method": "GET",
+      "path": "/api/partner/devices",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/partner/pairings/pending",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/plugins",
       "match": "exact",
       "target": "ts",
@@ -1872,6 +1890,42 @@
       "classification": "OUT_OF_V1",
       "owner": "V1 facade contract",
       "reason": "No current supported caller or V1 requirement was found for this legacy-only operator endpoint."
+    },
+    {
+      "method": "POST",
+      "path": "/api/partner/devices/revoke",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/partner/pairings/challenge",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/partner/pairings/confirm",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/partner/pairings/reject",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
     },
     {
       "method": "POST",

@@ -1,8 +1,19 @@
 import type { OperationDescriptor, OperationInput } from '../../../common/security/operation-policy.mjs';
+import type { PairingChallengeT, PairingConfirmationT, PartnerDevicePrincipalT, PartnerPairingPendingT,
+  PartnerProofChallengeT, PartnerRequestProofT, PartnerScopeT } from '../../../common/contracts/partner.ts';
 export interface ActorHandle { readonly id: string; readonly kind: 'operator' | 'agent' | 'adapter' | 'service' }
 export interface ExecutionHandle { readonly operation_id: string }
 export interface TelegramMessageHandle { readonly __telegramMessage?: never }
 export interface TelegramAdapterPort { receive(update: unknown): TelegramMessageHandle; close(): void }
+export interface PartnerAuthorityPort {
+  initialize(certificateFingerprint: string): Promise<{ workstation_id: string; workstation_fingerprint: string }>;
+  workstation(): { workstation_id: string; workstation_fingerprint: string };
+  close(): void;
+  submitPairingConfirmation(confirmation: PairingConfirmationT): Promise<PartnerPairingPendingT>;
+  createProofChallenge(deviceId: string): Promise<PartnerProofChallengeT>;
+  verifyRequestProof(proof: PartnerRequestProofT, binding: { method: 'GET' | 'POST'; path: string; body_sha256: string; issued_at: string }): Promise<PartnerDevicePrincipalT>;
+  requireScope(deviceId: string, scope: PartnerScopeT): Promise<PartnerDevicePrincipalT>;
+}
 export interface AuthorityOperation {
   readonly operation_id: string; readonly actor_id: string; readonly task_id: string;
   readonly workspace: string; readonly kind: string; readonly digest: string; readonly risk: string;
@@ -13,11 +24,18 @@ export interface ExecutionAuthority {
   control: {
     telegramAdapter(execution: ExecutionHandle, input: { chat_id: number; user_id: number }): Promise<TelegramAdapterPort>;
     createPairing(origin: string): string;
+    createPartnerPairingChallenge(actor: ActorHandle, requestedScopes: PartnerScopeT[]): Promise<PairingChallengeT>;
+    pendingPartnerPairings(actor: ActorHandle): Promise<PartnerPairingPendingT[]>;
+    confirmPartnerPairing(actor: ActorHandle, pendingId: string, scopes: PartnerScopeT[]): Promise<PartnerDevicePrincipalT>;
+    rejectPartnerPairing(actor: ActorHandle, pendingId: string): Promise<{ rejected: true }>;
+    revokePartnerDevice(actor: ActorHandle, deviceId: string): Promise<PartnerDevicePrincipalT>;
+    listPartnerDevices(actor: ActorHandle): Promise<PartnerDevicePrincipalT[]>;
     delegate(owner: ActorHandle, kind: 'agent' | 'adapter' | 'service', scope: string[]): ActorHandle;
     revoke(actor: ActorHandle): void;
     revokePending(): void;
     close(): void;
   };
+  partner: PartnerAuthorityPort;
   pair(proof: string, origin: string): Promise<{ token: string; actor_id: string; expires_at: number }>;
   authenticate(token: string, origin: string): ActorHandle;
   assertActor(actor: ActorHandle): void;
