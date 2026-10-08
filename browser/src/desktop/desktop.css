@@ -857,3 +857,24 @@ body,
   --border: var(--desktop-border);
   --mono: var(--desktop-font-mono);
 }
+/* Operational records remain exact; compact rows expose full action identity on demand. */
+.covert-desktop-shell .cipher-laptop-project { font-size: 10px; overflow-x: auto; overflow-wrap: normal; }
+.covert-desktop-shell .cipher-laptop-address { white-space: nowrap; }
+.covert-desktop-shell .cipher-laptop-table { table-layout: auto; }
+.covert-desktop-shell .cipher-laptop-event > strong,
+.covert-desktop-shell .cipher-laptop-event > span,
+.covert-desktop-shell .cipher-laptop-owner > strong,
+.covert-desktop-shell .cipher-laptop-owner > span,
+.covert-desktop-shell .cipher-laptop-owner > code { display: block; }
+.covert-desktop-shell .cipher-laptop-time { display: block; font-size: 10px; white-space: normal; overflow-wrap: normal; }
+.covert-desktop-shell .cipher-laptop-action { margin-top: 3px; font-size: 10px; }
+.covert-desktop-shell .cipher-laptop-action summary { cursor: pointer; white-space: nowrap; }
+.covert-desktop-shell .cipher-laptop-action code { display: block; overflow-wrap: anywhere; }
+.covert-desktop-shell .cipher-laptop-event > strong,
+.covert-desktop-shell .cipher-laptop-owner > strong { color: var(--desktop-accent); font-weight: normal; }
+/* Notices reserve a shell row instead of covering live PTY/editor content. */
+.covert-desktop-shell .desktop-work-area { order: 1; }
+.covert-desktop-shell .desktop-shell-status { position: relative; order: 2; left: auto; bottom: auto; flex: 0 0 32px; height: 32px; min-height: 32px; max-height: 32px; box-sizing: border-box; overflow-y: auto; padding: 2px 6px; border-top: 1px solid var(--desktop-border); gap: 8px; pointer-events: auto; }
+.covert-desktop-shell .desktop-taskbar { order: 3; }
+.covert-desktop-shell .aide-toast-region { flex: 1 1 auto; min-width: 0; align-items: stretch; gap: 2px; }
+.covert-desktop-shell .aide-toast { max-width: none; padding: 3px 6px; font: 10px/1.3 var(--desktop-font-mono); box-shadow: none; background: var(--desktop-surface); overflow-wrap: anywhere; }

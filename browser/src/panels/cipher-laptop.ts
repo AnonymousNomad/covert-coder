@@ -73,7 +73,8 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
   for(const {node,locked} of notebookControls)node.disabled=locked||!canWrite();
   if(project){
    const age=Math.max(0,Math.floor((Date.now()-projectReceivedAt)/1000));
-   projectStatus.textContent=`PROJECT · ${age>30?'STALE':'SNAPSHOT'} · ${project.project.project_id} / CHECKOUT ${project.checkout.checkout_id} · ${project.foreground_state} · ${project.switching} · receipt ${age}s ago`;
+   projectStatus.textContent='';
+   projectStatus.append(el('div','',`PROJECT · ${age>30?'STALE':'SNAPSHOT'} · ${project.foreground_state} · receipt ${age}s ago`),el('div','cipher-laptop-address',`PROJECT ${project.project.project_id}`),el('div','cipher-laptop-address',`CHECKOUT ${project.checkout.checkout_id}`),el('div','',project.switching));
   }else projectStatus.textContent=`PROJECT · UNAVAILABLE · ${scopeError||'awaiting canonical Project owner'}`;
   if(!projection){status.textContent=failed?'UNAVAILABLE · record owner request failed':'UNAVAILABLE · awaiting canonical record owner';return;}
   const age=Math.max(0,Math.floor((Date.now()-receivedAt)/1000));
@@ -101,10 +102,20 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
   if(!project){content.append(el('p','','Canonical project binding unavailable. Project action rows are withheld; INTEGRITY remains inspectable.'));return;}
   const records=projection.records.filter(record=>record.project_id===project!.project.project_id&&record.checkout_id===project!.checkout.checkout_id);
   const table=el('table','cipher-laptop-table');table.setAttribute('aria-label','Durable Cipher action chronology');
-  const head=el('thead',''),columns=el('tr','');for(const name of ['SEQ / TIME','ACTION / OWNER','STAGE','RESULT'])columns.append(el('th','',name));
+  const head=el('thead',''),columns=el('tr','');for(const name of ['EVENT / TIME','OWNER / RESULT'])columns.append(el('th','',name));
   head.append(columns);const body=el('tbody','');
   for(const record of [...records].reverse()){
-   const row=el('tr','');row.append(el('td','',`${record.sequence} / ${record.recorded_at}`),el('td','',`${record.action_id} / ${record.principal_kind} / ${record.capability}`),el('td','',record.event_type),el('td','',record.result_state));
+   const row=el('tr','');
+   const event=el('td','cipher-laptop-event');
+   event.append(el('strong','',record.event_type),el('span','',`SEQ ${record.sequence}`));
+   const time=el('time','cipher-laptop-time',record.recorded_at.replace('T',' '));
+   time.setAttribute('datetime',record.recorded_at);time.setAttribute('title',record.recorded_at);event.append(time);
+   const action=el('details','cipher-laptop-action');
+   action.append(el('summary','',`ACTION ${record.action_id.length>16?record.action_id.slice(0,8)+'…'+record.action_id.slice(-4):record.action_id}`),el('code','',record.action_id));
+   event.append(action);
+   const owner=el('td','cipher-laptop-owner');
+   owner.append(el('strong','',record.result_state),el('span','',record.principal_kind),el('code','',record.capability));
+   row.append(event,owner);
    body.append(row);
   }
   table.append(head,body);content.append(table);
