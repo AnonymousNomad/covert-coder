@@ -356,6 +356,8 @@ The existing BrokerModelRuntime is the profile owner. Its bound Unsloth profile 
 
 The profile must be saved through `/api/models/profile` after registration so the canonical sidecar is bound to the acquired file and actual runtime version. Registration is availability only. The Model start route and the Broker manager each perform canonical Resource Admission; both must pass. Neither this profile plan nor the older Unsloth Passport permits bypassing the current 6,656 MiB physical / 5,120 MiB commit / 4,608 MiB VRAM / `<50%` GPU floors.
 
+A final read-only readback of the existing sidecar at `E:\models\house-model\lfm25_gguf\LFM2.5-2.6B-Q4_K_M.gguf.profile.json` confirmed schema version 1, binding SHA-256 `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed`, runtime `UNSLOTH` version `2026.9.11`, custom preset, temperature `0`, context `2048`, and max output `512`. The GGUF was not rehashed or loaded. This sidecar is outside the fresh acquisition workspace and cannot register, start, or qualify a newly downloaded copy.
+
 ### Prepared proof sequence
 
 After a fresh passing Admission and isolated-stack preflight:

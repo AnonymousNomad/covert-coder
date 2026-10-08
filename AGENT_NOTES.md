@@ -5,6 +5,11 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-08 11:22] Actor: Luna — current reference profile sidecar readback
+- Type: read-only profile source verification
+- The existing sidecar beside E:\\models\\house-model\\lfm25_gguf\\LFM2.5-2.6B-Q4_K_M.gguf currently reports schema_version 1, artifact_sha256 02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed, runtime_id UNSLOTH, runtime_version 2026.9.11, preset custom, sampler temperature 0, context_tokens 2048, and max_tokens 512.
+- The profile-file readback was read-only. The 1.67 GB artifact was not rehashed or loaded; the sidecar is outside the isolated acquisition workspace and does not register, start, or qualify a newly downloaded copy.
+
 ### [2026-10-08 11:18] Actor: Luna — local-model source reconciliation / admission hold
 - Type: source-truth, resource and profile checkpoint
 - The requested base 8e34dab7aa118bb83e7b77208c0c02f6997a2067 exists and is an ancestor of current HEAD ddd590ca791c7a3dc90182c17559293ed0069c9e; 16 later commits are on this branch. Preserve the later work; no reset. Current branch feat/local-model-demo-proof-20261007 has no upstream. At resume, only AGENT_NOTES.md and the local-model evidence note were modified.
