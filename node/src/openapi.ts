@@ -127,10 +127,11 @@ import { SessionStore } from './services/session-store.ts';
 import { WorkspaceService } from './services/workspace.ts';
 import { LspManager } from './services/lsp.ts';
 import { DapManager, type DapAdapterConfig } from './services/dap.ts';
-import { ModelRuntime } from './services/model-runtime.ts';
+import { ModelRuntime, resolveLlamaBinary } from './services/model-runtime.ts';
 import { BrokerModelRuntime, UNSLOTH_V1_QUALIFICATION } from './services/broker-model-runtime.ts';
 import { RuntimeBroker } from './services/runtime-adapter.ts';
 import { UnslothRuntimeAdapter } from './services/unsloth-runtime-adapter.ts';
+import { LlamaCppRuntimeAdapter } from './services/llama-cpp-runtime-adapter.ts';
 import { createHealthSupervisor } from './services/health-supervisor.ts';
 import { createReadinessService } from './services/readiness.ts';
 import { routesForReadiness } from './routes/readiness.ts';
@@ -242,19 +243,56 @@ export async function createDapManager(repoRoot: string, workspace: string, opti
   });
 }
 
+export type ConfiguredLocalRuntimeBackend = 'UNSLOTH' | 'LLAMA_CPP';
+
+export function configuredLocalRuntimeBackend(env: NodeJS.ProcessEnv = process.env): ConfiguredLocalRuntimeBackend {
+  const raw = String(env.AIDE_LOCAL_RUNTIME_BACKEND ?? '').trim().toLowerCase();
+  if (raw === '' || raw === 'unsloth') return 'UNSLOTH';
+  if (raw === 'llama-cpp' || raw === 'llama_cpp') return 'LLAMA_CPP';
+  throw new Error('AIDE_LOCAL_RUNTIME_BACKEND must be "unsloth" or "llama-cpp"');
+}
+
 export async function createModelRuntime(repoRoot: string, workspace: string, options: BuildRoutesOptions): Promise<ModelRuntime> {
   const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
-  const runtime = new BrokerModelRuntime({
+  const runtimeOptions = {
     workspace,
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
     ingestedPath: path.join(workspace, '.aide', 'ingested-models.json'),
     modelDir: path.join(repoRoot, 'models'),
     logger: options.logger,
-    onStatusChange: (id, status) => {
+    onStatusChange: (id: string, status: string) => {
       const eventStatus = status === 'running' ? 'ready' : status === 'starting' ? 'loading' : status === 'stopped' ? 'stopped' : 'error';
       options.events?.publish('model', { id, status: eventStatus });
     }
-  }, new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), null, workspace), UNSLOTH_V1_QUALIFICATION, resourceAdmission);
+  };
+
+  // Both backends use the canonical RuntimeBroker -> BrokerModelRuntime path.
+  // The legacy ModelRuntime methods remain the single inventory/process owner
+  // behind the llama.cpp adapter; callbacks bypass BrokerModelRuntime overrides
+  // so adapter operations do not recurse back into RuntimeBroker.
+  const selectedBackend = configuredLocalRuntimeBackend();
+  let runtime: BrokerModelRuntime;
+  const llamaAdapter = new LlamaCppRuntimeAdapter({
+    workspace,
+    listModels: () => runtime.list(),
+    getModel: id => runtime.get(id),
+    isOwned: id => runtime.ownsRunningProcess(id),
+    pidForModel: id => runtime.ownedProcessPid(id),
+    engineName: () => runtime.runtimeEngineName(),
+    start: id => ModelRuntime.prototype.start.call(runtime, id),
+    waitReady: id => runtime.waitForDirectModelReady(id),
+    stop: id => ModelRuntime.prototype.stop.call(runtime, id),
+    chat: (id, messages, chatOptions) => ModelRuntime.prototype.chat.call(runtime, id, messages, chatOptions),
+    chatStream: (id, messages, onDelta, signal, chatOptions) => ModelRuntime.prototype.chatStream.call(runtime, id, messages, onDelta, signal, chatOptions),
+    available: async () => resolveLlamaBinary(workspace) !== null,
+    accelerator: () => resolveLlamaBinary(workspace)?.accelerator ?? 'unknown'
+  });
+  runtime = new BrokerModelRuntime(
+    runtimeOptions,
+    new RuntimeBroker(new UnslothRuntimeAdapter({ workspace }), llamaAdapter, workspace, selectedBackend),
+    UNSLOTH_V1_QUALIFICATION,
+    resourceAdmission
+  );
   await runtime.load();
   return runtime;
 }

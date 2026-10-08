@@ -10087,19 +10087,141 @@
                       "minimum": 0,
                       "maximum": 9007199254740991
                     },
+                    "devices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "vendor": {
+                            "type": "string",
+                            "enum": [
+                              "NVIDIA",
+                              "AMD",
+                              "INTEL",
+                              "APPLE",
+                              "UNKNOWN"
+                            ]
+                          },
+                          "deviceName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "driverVersion": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "architecture": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "vramBytes": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "freeVramBytes": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "nvidia-smi",
+                              "amd-smi",
+                              "windows-pnp"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "vendor",
+                          "deviceName",
+                          "driverVersion",
+                          "architecture",
+                          "vramBytes",
+                          "freeVramBytes",
+                          "source"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "vendor": {
+                      "type": "string",
+                      "enum": [
+                        "NVIDIA",
+                        "AMD",
+                        "INTEL",
+                        "APPLE",
+                        "CPU",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "deviceName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "driverVersion": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "architecture": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "vramBytes": {
-                      "type": "number",
-                      "minimum": 0
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "freeVramBytes": {
-                      "type": "number",
-                      "minimum": 0
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "vramSource": {
                       "type": "string",
                       "enum": [
                         "nvidia-smi",
-                        "none"
+                        "amd-smi",
+                        "windows-pnp",
+                        "multiple",
+                        "unknown"
                       ]
                     },
                     "tier": {
@@ -10116,8 +10238,10 @@
                       "enum": [
                         "vulkan",
                         "cuda",
+                        "rocm",
                         "cpu",
-                        "apple"
+                        "apple",
+                        "unknown"
                       ]
                     },
                     "detectedAt": {
@@ -10129,6 +10253,11 @@
                     "totalRamBytes",
                     "freeRamBytes",
                     "logicalCpus",
+                    "devices",
+                    "vendor",
+                    "deviceName",
+                    "driverVersion",
+                    "architecture",
                     "vramBytes",
                     "freeVramBytes",
                     "vramSource",
@@ -10171,8 +10300,10 @@
                           "enum": [
                             "vulkan",
                             "cuda",
+                            "rocm",
                             "cpu",
-                            "apple"
+                            "apple",
+                            "unknown"
                           ]
                         },
                         "totalRamGb": {
@@ -10185,8 +10316,15 @@
                           "maximum": 9007199254740991
                         },
                         "vramMb": {
-                          "type": "number",
-                          "minimum": 0
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [

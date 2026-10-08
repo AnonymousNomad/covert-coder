@@ -35,7 +35,7 @@ function usableRam(h: HardwareProfileResponseT): { used: number; total: number }
 }
 
 function usableVram(h: HardwareProfileResponseT): { used: number; total: number } | null {
-  if (h.vramSource === 'none' || h.vramBytes <= 0) return null;
+  if (h.vramBytes === null || h.freeVramBytes === null || h.vramBytes <= 0) return null;
   const free = Math.max(0, Math.min(h.vramBytes, h.freeVramBytes));
   return { used: h.vramBytes - free, total: h.vramBytes };
 }

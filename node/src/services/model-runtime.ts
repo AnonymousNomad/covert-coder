@@ -91,24 +91,42 @@ export async function hashModelArtifact(file: string): Promise<string> {
   return hash.digest('hex');
 }
 
-export function resolveLlamaBinary(workspace: string): { path: string; vulkan: boolean } | null {
+export type LlamaAccelerator = 'cpu' | 'vulkan' | 'rocm' | 'unknown';
+
+export function normalizeLlamaAccelerator(value: string | undefined): LlamaAccelerator {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'cpu' || normalized === 'vulkan' || normalized === 'rocm') return normalized;
+  return 'unknown';
+}
+
+function inferLlamaAccelerator(binaryPath: string, configured?: string): LlamaAccelerator {
+  const explicit = normalizeLlamaAccelerator(configured);
+  if (explicit !== 'unknown') return explicit;
+  const dir = path.dirname(binaryPath);
+  if (['ggml-vulkan.dll', 'libggml-vulkan.so', 'libggml-vulkan.dylib'].some(name => existsSync(path.join(dir, name)))) return 'vulkan';
+  if (['ggml-hip.dll', 'libggml-hip.so', 'libggml-hip.dylib'].some(name => existsSync(path.join(dir, name)))) return 'rocm';
+  return 'unknown';
+}
+
+export function resolveLlamaBinary(workspace: string): { path: string; vulkan: boolean; accelerator: LlamaAccelerator } | null {
   const exe = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-  const candidates: Array<{ path: string; vulkan: boolean }> = [
-    process.env.AIDE_LLAMA_SERVER ? { path: process.env.AIDE_LLAMA_SERVER, vulkan: false } : null,
-    { path: path.join(workspace, 'runtime', exe), vulkan: false },
-    // CPU fallback (operator override path). Kept before Vulkan so that any
-    // operator-installed binary keeps priority over the bundled Vulkan build.
-    { path: 'E:\\llama-cpp\\llama-server.exe', vulkan: false },
-    // Bundled Vulkan build: a sibling ggml-vulkan.dll in the same directory
-    // signals Vulkan support, and llama-server --version confirms the build.
-    // Track this separately so the spawn layer can add -ngl 999 by default.
-    { path: 'E:\\llama-cpp-vulkan\\llama-server.exe', vulkan: true }
-  ].filter((candidate): candidate is { path: string; vulkan: boolean } => candidate !== null && existsSync(candidate.path));
-  for (const candidate of candidates) {
-    if (candidate.vulkan && !existsSync(path.join(path.dirname(candidate.path), 'ggml-vulkan.dll'))) continue;
-    return candidate;
+  const configured = (binaryPath: string): { path: string; vulkan: boolean; accelerator: LlamaAccelerator } => {
+    const accelerator = inferLlamaAccelerator(binaryPath, process.env.AIDE_LLAMA_ACCELERATOR);
+    return { path: binaryPath, vulkan: accelerator === 'vulkan', accelerator };
+  };
+  // An explicit operator path is an exact selection. If it is missing, fail
+  // closed instead of silently using a workspace or machine-local binary.
+  if (process.env.AIDE_LLAMA_SERVER) {
+    return existsSync(process.env.AIDE_LLAMA_SERVER) ? configured(process.env.AIDE_LLAMA_SERVER) : null;
   }
-  return null;
+  const candidates: Array<{ path: string; vulkan: boolean; accelerator: LlamaAccelerator }> = [
+    configured(path.join(workspace, 'runtime', exe)),
+    // Historical Windows CPU installation. Explicit AIDE_LLAMA_SERVER takes
+    // precedence and is the cross-platform compatibility path.
+    { path: 'E:\\llama-cpp\\llama-server.exe', vulkan: false, accelerator: 'cpu' },
+    { path: 'E:\\llama-cpp-vulkan\\llama-server.exe', vulkan: true, accelerator: 'vulkan' }
+  ].filter((candidate): candidate is { path: string; vulkan: boolean; accelerator: LlamaAccelerator } => candidate !== null && existsSync(candidate.path));
+  return candidates[0] ?? null;
 }
 
 function samplerArgs(profile: ReturnType<typeof readModelProfileSidecar>): string[] {
@@ -160,6 +178,13 @@ export interface ModelRuntimeOptions {
 interface PythonCandidate {
   interp: string;
   args: string[];
+}
+
+function childIsRunning(child: ChildProcess): boolean {
+  // On Windows, a child killed by a signal has exitCode === null and
+  // signalCode set. Checking exitCode alone mistakes a terminated child for
+  // a still-running owned process.
+  return child.exitCode === null && child.signalCode === null;
 }
 
 // GGUF import is availability only. The qualified Liquid artifact reports lfm2;
@@ -322,6 +347,7 @@ export class ModelRuntime {
     return {
       runtime: engineAvailable,
       models: [...this.models.values()].map(model => {
+        const child = this.processes.get(model.id);
         const artifactAvailable = model.file.length > 0 && existsSync(model.file);
         let modelStatus = model.status;
         if (artifactAvailable && model.status !== 'ready' && engineAvailable) modelStatus = 'ready';
@@ -331,7 +357,7 @@ export class ModelRuntime {
         const entry: Record<string, unknown> = {
           id: model.id,
           name: model.name,
-          status: this.processes.has(model.id) ? 'running' : modelStatus,
+          status: child !== undefined && childIsRunning(child) ? 'running' : modelStatus,
           declared_status: modelStatus,
           endpoint: model.endpoint,
           runtime_available: engineAvailable,
@@ -351,6 +377,37 @@ export class ModelRuntime {
 
   list(): ModelEntry[] {
     return [...this.models.values()];
+  }
+
+  /** Process ownership exposed to RuntimeAdapters without exposing mutable handles. */
+  ownsRunningProcess(id: string): boolean {
+    const child = this.processes.get(id);
+    return child !== undefined && child.pid !== undefined && childIsRunning(child);
+  }
+
+  ownedProcessPid(id: string): number | null {
+    const child = this.processes.get(id);
+    return child !== undefined && childIsRunning(child) && child.pid !== undefined ? child.pid : null;
+  }
+
+  runtimeEngineName(): string | null {
+    const binary = resolveLlamaBinary(this.workspace);
+    if (binary !== null) return path.basename(binary.path);
+    return this.pythonReady ? 'llama_cpp.server' : null;
+  }
+
+  /** Wait on the legacy llama-server endpoint directly while the adapter is loading. */
+  async waitForDirectModelReady(id: string, timeoutMs = 60_000): Promise<boolean> {
+    const model = this.models.get(id);
+    if (model === undefined) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const result = await ModelRuntime.prototype.verifyEndpointModel.call(this, id, 5000).catch(() => ({ ready: false as const, status: 'not-ready' as const, served_models: [] }));
+      if (result.ready) return true;
+      if (result.status === 'conflict') throw new ModelRuntimeError('CONFLICT', result.error ?? 'model endpoint is owned by a different runtime');
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return false;
   }
 
   private expectedModelIds(model: ModelEntry): string[] {
@@ -462,7 +519,13 @@ export class ModelRuntime {
   async start(id: string): Promise<{ id: string; status: string; endpoint: string }> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('CHILD_FAILED', 'model is not allowlisted');
-    if (this.processes.has(id)) return { id, status: 'running', endpoint: model.endpoint };
+    const existingProcess = this.processes.get(id);
+    if (existingProcess !== undefined && childIsRunning(existingProcess)) return { id, status: 'running', endpoint: model.endpoint };
+    if (existingProcess !== undefined) {
+      this.processes.delete(id);
+      this.warmed.delete(id);
+      void this.clearEnginePid(id);
+    }
     if (model.file.length === 0) throw new ModelRuntimeError('NOT_READY', `Local model setup required: model file was not found at ${model.file || '(unknown path)'}.`);
     await fs.access(model.file).catch(() => {
       throw new ModelRuntimeError('NOT_READY', `Local model setup required: model file was not found at ${model.file}.`);
@@ -488,10 +551,14 @@ export class ModelRuntime {
       const profile = readModelProfileSidecar(model.file);
       if (profile.invalid) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is invalid; inspect it before starting the model');
       if (profile.binding !== undefined) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is bound to a different canonical runtime');
-      // For a Vulkan build, the sidecar may not set ngl; default to offload-all
-      // so the model actually uses the GPU. CPU builds must NOT default to ngl,
-      // since llama-server interprets -ngl > 0 on a CPU binary as an error.
+      // GPU builds may omit ngl in older profiles. Default to offload-all for
+      // explicitly identified Vulkan or ROCm/HIP runtimes so a compatibility
+      // binary does not silently execute on CPU. Unknown/CPU binaries never get
+      // implicit GPU flags.
       const profileNgl = Number(profile.runtime?.ngl);
+      const profileBackend = String(profile.runtime?.backend ?? '').trim().toLowerCase();
+      const gpuAccelerated = llamaResolution.accelerator === 'vulkan' || llamaResolution.accelerator === 'rocm' ||
+        profileBackend === 'vulkan' || profileBackend === 'rocm' || profileBackend === 'hip';
       // LAWS (aide-inhouse-model-runtime SOP, verified 2026-08-27 A/B):
       //   - --no-warmup REQUIRED: without it the Vulkan warmup epoch
       //     crashes the process (exit code 1, empty stderr).
@@ -513,7 +580,7 @@ export class ModelRuntime {
         '--prio', '-1'
       ];
       const sampler = samplerArgs(profile);
-      const binaryArgs = llamaResolution.vulkan && !Number.isFinite(profileNgl)
+      const binaryArgs = gpuAccelerated && !Number.isFinite(profileNgl)
         ? [...baseArgs, '-ngl', '999', ...sampler]
         : [...baseArgs, ...sampler];
       const alreadyUpBinary = await this.verifyEndpointModel(id).catch(async () => {
@@ -638,15 +705,23 @@ export class ModelRuntime {
   async stop(id: string): Promise<{ id: string; status: string }> {
     const child = this.processes.get(id);
     if (!child) return { id, status: 'stopped' };
-    this.processes.delete(id);
     this.warmed.delete(id);
-    const waitExit = new Promise<void>(resolve => {
-      if (child.exitCode !== null) resolve();
-      else child.once('exit', () => resolve());
+    const waitExit = (timeoutMs: number): Promise<void> => new Promise(resolve => {
+      if (!childIsRunning(child)) return resolve();
+      let timer: ReturnType<typeof setTimeout>;
+      const onExit = (): void => {
+        clearTimeout(timer);
+        resolve();
+      };
+      child.once('exit', onExit);
+      timer = setTimeout(() => {
+        child.removeListener('exit', onExit);
+        resolve();
+      }, timeoutMs);
     });
-    if (child.exitCode === null) child.kill('SIGTERM');
-    await Promise.race([waitExit, new Promise<void>(resolve => setTimeout(resolve, 5000))]);
-    if (child.exitCode === null) {
+    if (childIsRunning(child)) child.kill('SIGTERM');
+    await waitExit(5000);
+    if (childIsRunning(child)) {
       // Windows: child.kill() cannot reap engines that ignore signals or hold
       // grandchildren; taskkill /T tree-kills the whole process tree (same
       // proven repair as the legacy model-manager orphan fix).
@@ -654,11 +729,15 @@ export class ModelRuntime {
         await new Promise<void>(resolve => {
           execFile('taskkill', ['/PID', String(child.pid), '/F', '/T'], () => resolve());
         });
-        await Promise.race([waitExit, new Promise<void>(resolve => setTimeout(resolve, 3000))]);
       } else {
         child.kill('SIGKILL');
       }
+      await waitExit(3000);
     }
+    if (childIsRunning(child)) {
+      throw new ModelRuntimeError('CHILD_FAILED', 'owned model runtime process tree did not exit after bounded termination; ownership is retained for recovery');
+    }
+    this.processes.delete(id);
     await this.clearEnginePid(id);
     return { id, status: 'stopped' };
   }

@@ -14,14 +14,7 @@ function quantFromName(name) {
 export function createOrchService({ workspace, runtime }) {
   async function hardware() {
     const probe = await probeHardware();
-    return {
-      ramFreeMb: Math.round(probe.freeRamBytes / 1048576),
-      ramTotalMb: Math.round((probe.totalRamBytes ?? os.totalmem()) / 1048576),
-      vramTotalMb: probe.vramBytes ? Math.round(probe.vramBytes / 1048576) : null,
-      vramFreeMb: probe.freeVramBytes ? Math.round(probe.freeVramBytes / 1048576) : null,
-      gpuName: probe.vramSource === 'nvidia-smi' ? 'discrete GPU' : null,
-      source: probe.vramSource
-    };
+    return mapHardwareProbe(probe);
   }
 
   function engines() {
@@ -88,4 +81,15 @@ export function createOrchService({ workspace, runtime }) {
   }
 
   return { getContext };
+}
+
+export function mapHardwareProbe(probe) {
+  return {
+    ramFreeMb: Math.round(probe.freeRamBytes / 1048576),
+    ramTotalMb: Math.round((probe.totalRamBytes ?? os.totalmem()) / 1048576),
+    vramTotalMb: probe.vramBytes === null ? null : Math.round(probe.vramBytes / 1048576),
+    vramFreeMb: probe.freeVramBytes === null ? null : Math.round(probe.freeVramBytes / 1048576),
+    gpuName: probe.deviceName,
+    source: probe.vramSource
+  };
 }

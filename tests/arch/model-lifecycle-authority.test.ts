@@ -82,9 +82,14 @@ test('model start/stop require approved exact operations over retained child han
       totalRamBytes: 8 * 1024 ** 3,
       freeRamBytes: 7 * 1024 ** 3,
       logicalCpus: 4,
-      vramBytes: 0,
-      freeVramBytes: 0,
-      vramSource: 'none'
+      devices: [],
+      vendor: 'UNKNOWN',
+      deviceName: null,
+      driverVersion: null,
+      architecture: null,
+      vramBytes: null,
+      freeVramBytes: null,
+      vramSource: 'unknown'
     })
   });
   await runtime.load();

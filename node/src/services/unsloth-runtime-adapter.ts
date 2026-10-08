@@ -199,17 +199,50 @@ function discoverExecutable(): Promise<string | null> {
   });
 }
 
+const KNOWN_NON_LISTENING_TCP_STATES = new Set([
+  'CLOSED',
+  'SYN_SENT',
+  'SYN_RECEIVED',
+  'ESTABLISHED',
+  'FIN_WAIT_1',
+  'FIN_WAIT_2',
+  'CLOSE_WAIT',
+  'CLOSING',
+  'LAST_ACK',
+  'TIME_WAIT',
+  'DELETE_TCB'
+]);
+
+function parseWindowsPortInspection(stdout: string, port: number): PortInspection {
+  let sawTcpRow = false;
+  for (const line of stdout.split(/\r?\n/)) {
+    const fields = line.trim().split(/\s+/);
+    if (fields[0]?.toUpperCase() !== 'TCP') continue;
+    sawTcpRow = true;
+    if (!fields[1]?.endsWith(`:${port}`)) continue;
+
+    const state = fields[3]?.toUpperCase();
+    if (state === undefined) return { state: 'UNKNOWN' };
+    if (state === 'LISTENING') {
+      const pid = Number(fields[4]);
+      return Number.isInteger(pid) && pid > 0 ? { state: 'LISTENING', pid } : { state: 'UNKNOWN' };
+    }
+    if (!KNOWN_NON_LISTENING_TCP_STATES.has(state)) return { state: 'UNKNOWN' };
+  }
+
+  if (sawTcpRow || /\bActive Connections\b/i.test(stdout)) return { state: 'FREE' };
+  return { state: 'UNKNOWN' };
+}
+
 function inspectListeningPort(port: number): Promise<PortInspection> {
   if (!Number.isInteger(port) || port < 1 || port > 65535) return Promise.resolve({ state: 'UNKNOWN' });
   if (process.platform === 'win32') {
-    const script = `try { $x = Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction Stop | Select-Object -First 1 -ExpandProperty OwningProcess; if ($null -eq $x) { 'FREE' } else { [string]$x } } catch { if ($_.FullyQualifiedErrorId -like 'CmdletizationQuery_NotFound,Get-NetTCPConnection*') { 'FREE' } else { exit 2 } }`;
+    const systemRoot = process.env.SystemRoot;
+    if (!systemRoot) return Promise.resolve({ state: 'UNKNOWN' });
     return new Promise(resolve => {
-      execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 3000 }, (error, stdout) => {
+      execFile(path.join(systemRoot, 'System32', 'netstat.exe'), ['-ano', '-p', 'tcp', '-a'], { windowsHide: true, timeout: 3000 }, (error, stdout) => {
         if (error) return resolve({ state: 'UNKNOWN' });
-        const value = String(stdout).trim();
-        if (value === 'FREE') return resolve({ state: 'FREE' });
-        const pid = Number(value);
-        resolve(Number.isInteger(pid) && pid > 0 ? { state: 'LISTENING', pid } : { state: 'UNKNOWN' });
+        resolve(parseWindowsPortInspection(String(stdout), port));
       });
     });
   }
@@ -999,6 +1032,7 @@ export class UnslothRuntimeAdapter implements RuntimeAdapter {
       contract_version: 1,
       canonical_backend: 'UNSLOTH',
       backend: 'UNSLOTH',
+      accelerator: 'UNKNOWN',
       version: this.version,
       engine: null,
       endpoint: this.endpoint.toString().replace(/\/$/, ''),

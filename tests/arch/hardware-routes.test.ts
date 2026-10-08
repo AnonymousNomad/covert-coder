@@ -39,9 +39,9 @@ after(async () => {
 });
 
 const TIER_RE = /^(S|M|L|XL)$/;
-const BACKEND_RE = /^(vulkan|cuda|cpu|apple)$/;
+const BACKEND_RE = /^(vulkan|cuda|rocm|cpu|apple|unknown)$/;
 
-test('hardware profile reports real RAM/CPU/VRAM with tier + backend', async () => {
+test('hardware profile reports device identity separately from unproven inference backend capability', async () => {
   const response = await owner.request('/api/hardware/profile');
   assert.equal(response.status, 200);
   const envelope = (await response.json()) as { ok: boolean; data?: Record<string, unknown> };
@@ -51,7 +51,10 @@ test('hardware profile reports real RAM/CPU/VRAM with tier + backend', async () 
   assert.ok(profile.logicalCpus as number > 0, 'CPUs detected');
   assert.match(String(profile.tier), TIER_RE, 'valid device tier');
   assert.match(String(profile.backend), BACKEND_RE, 'valid backend');
-  assert.match(String(profile.vramSource), /^(nvidia-smi|none)$/);
+  assert.match(String(profile.vendor), /^(NVIDIA|AMD|INTEL|APPLE|CPU|UNKNOWN)$/);
+  assert.match(String(profile.vramSource), /^(nvidia-smi|amd-smi|windows-pnp|multiple|unknown)$/);
+  assert.ok(profile.backend === 'unknown' || profile.backend === 'cpu', 'hardware identity does not claim an unobserved inference backend');
+  assert.ok(Array.isArray(profile.devices));
   assert.ok(typeof profile.detectedAt === 'number' && profile.detectedAt > 0, 'detectedAt timestamp');
 });
 
@@ -61,7 +64,7 @@ test('recommend returns exactly three roles with real pack ids and honest fit', 
   const envelope = (await response.json()) as {
     ok: boolean;
     data?: {
-      device: { tier: string; backend: string; totalRamGb: number; logicalCpus: number; vramMb: number };
+      device: { tier: string; backend: string; totalRamGb: number; logicalCpus: number; vramMb: number | null };
       recommendations: Array<{ role: string; modelId: string; name: string; parametersB: number; quant: string; onDisk: boolean; fit: string; reason: string }>;
     };
   };

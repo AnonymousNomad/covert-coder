@@ -42,7 +42,7 @@ test('product inventory starts, chats, streams and stops only through canonical 
   let ownership: RuntimeStatusResponseT['ownership'] = 'UNKNOWN';
   let statusReads = 0;
   const status = (): RuntimeStatusResponseT => ({
-    contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: '2026.9.11', engine: 'vulkan',
+    contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', accelerator: 'UNKNOWN', version: '2026.9.11', engine: 'vulkan',
     endpoint: 'http://127.0.0.1:18888', port: 18888, pid: health === 'HEALTHY' ? 12 : null,
     started_at: null, health, ownership,
     loaded_model: loaded, capabilities: unknownCapabilities(), metrics: unknownMetrics(),
@@ -197,7 +197,7 @@ test('failed or unverifiable model starts stop only a freshly confirmed Covert-o
     const adapter = {
       backendId: 'UNSLOTH', discover: async () => {}, health: async () => health,
       status: async (): Promise<RuntimeStatusResponseT> => ({
-        contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: '2026.9.11', engine: 'vulkan',
+        contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', accelerator: 'UNKNOWN', version: '2026.9.11', engine: 'vulkan',
         endpoint: 'http://127.0.0.1:18888', port: 18888, pid: health === 'HEALTHY' ? 12 : null,
         started_at: null, health, ownership, loaded_model: loaded,
         capabilities: unknownCapabilities(), metrics: unknownMetrics(), last_error: null,
@@ -277,7 +277,7 @@ test('canonical broker repeats local admission after artifact verification and b
   const adapter = {
     backendId: 'UNSLOTH', discover: async () => {}, health: async () => 'STOPPED',
     status: async (): Promise<RuntimeStatusResponseT> => ({
-      contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: '2026.9.11', engine: 'vulkan',
+      contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', accelerator: 'UNKNOWN', version: '2026.9.11', engine: 'vulkan',
       endpoint: 'http://127.0.0.1:18888', port: 18888, pid: null, started_at: null,
       health: 'STOPPED', ownership: 'UNKNOWN', loaded_model: null,
       capabilities: unknownCapabilities(), metrics: unknownMetrics(), last_error: null,
@@ -330,7 +330,7 @@ test('unavailable Unsloth CLI gives scoped setup guidance in model status', asyn
     artifact_uri: 'local://fixture.gguf', context_tokens: 2048
   }] }));
   const unavailable: RuntimeStatusResponseT = {
-    contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: null, engine: null,
+    contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', accelerator: 'UNKNOWN', version: null, engine: null,
     endpoint: 'http://127.0.0.1:18888', port: 18888, pid: null, started_at: null,
     health: 'NOT_INSTALLED', ownership: 'UNKNOWN', loaded_model: null,
     capabilities: unknownCapabilities(), metrics: unknownMetrics(),

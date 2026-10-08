@@ -18,7 +18,7 @@ async function fixture(
   let reads = 0;
   let health: RuntimeStatusResponseT['health'] = 'HEALTHY';
   const snapshot = (): RuntimeStatusResponseT => ({
-    contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', version: '2026.9.11', engine: 'vulkan',
+    contract_version: 1, canonical_backend: 'UNSLOTH', backend: 'UNSLOTH', accelerator: 'UNKNOWN', version: '2026.9.11', engine: 'vulkan',
     endpoint: 'http://127.0.0.1:18888', port: 18888, pid: null, started_at: null, health, ownership: 'COVERT_OWNED',
     loaded_model: null, capabilities: unknownCapabilities(), metrics: unknownMetrics(), last_error: null,
     fallback_event_id: null, updated_at: new Date().toISOString()

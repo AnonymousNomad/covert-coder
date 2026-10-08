@@ -8,16 +8,32 @@ import { z } from 'zod';
 
 export const DeviceTier = z.enum(['S', 'M', 'L', 'XL']);
 
-export const HardwareBackend = z.enum(['vulkan', 'cuda', 'cpu', 'apple']);
+export const HardwareBackend = z.enum(['vulkan', 'cuda', 'rocm', 'cpu', 'apple', 'unknown']);
+export const HardwareVendor = z.enum(['NVIDIA', 'AMD', 'INTEL', 'APPLE', 'CPU', 'UNKNOWN']);
+export const HardwareDeviceSource = z.enum(['nvidia-smi', 'amd-smi', 'windows-pnp']);
+export const HardwareDevice = z.object({
+  vendor: z.enum(['NVIDIA', 'AMD', 'INTEL', 'APPLE', 'UNKNOWN']),
+  deviceName: z.string().nullable(),
+  driverVersion: z.string().nullable(),
+  architecture: z.string().nullable(),
+  vramBytes: z.number().nonnegative().nullable(),
+  freeVramBytes: z.number().nonnegative().nullable(),
+  source: HardwareDeviceSource
+}).strict();
 
 export const HardwareProfileResponse = z
   .object({
     totalRamBytes: z.number().nonnegative(),
     freeRamBytes: z.number().nonnegative(),
     logicalCpus: z.number().int().nonnegative(),
-    vramBytes: z.number().nonnegative(),
-    freeVramBytes: z.number().nonnegative(),
-    vramSource: z.enum(['nvidia-smi', 'none']),
+    devices: z.array(HardwareDevice),
+    vendor: HardwareVendor,
+    deviceName: z.string().nullable(),
+    driverVersion: z.string().nullable(),
+    architecture: z.string().nullable(),
+    vramBytes: z.number().nonnegative().nullable(),
+    freeVramBytes: z.number().nonnegative().nullable(),
+    vramSource: z.enum(['nvidia-smi', 'amd-smi', 'windows-pnp', 'multiple', 'unknown']),
     tier: DeviceTier,
     backend: HardwareBackend,
     detectedAt: z.number().positive()
@@ -49,7 +65,7 @@ export const HardwareRecommendResponse = z
         backend: HardwareBackend,
         totalRamGb: z.number().nonnegative(),
         logicalCpus: z.number().int().nonnegative(),
-        vramMb: z.number().nonnegative()
+        vramMb: z.number().nonnegative().nullable()
       })
       .strict(),
     recommendations: z.array(RoleRecommendation).min(3).max(3),
@@ -59,6 +75,8 @@ export const HardwareRecommendResponse = z
 
 export type DeviceTierT = z.infer<typeof DeviceTier>;
 export type HardwareBackendT = z.infer<typeof HardwareBackend>;
+export type HardwareVendorT = z.infer<typeof HardwareVendor>;
+export type HardwareDeviceT = z.infer<typeof HardwareDevice>;
 export type CovertRoleT = z.infer<typeof CovertRole>;
 export type HardwareProfileResponseT = z.infer<typeof HardwareProfileResponse>;
 export type RoleRecommendationT = z.infer<typeof RoleRecommendation>;

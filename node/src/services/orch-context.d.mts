@@ -18,6 +18,15 @@ export interface OrchHardwareInfo {
   source: string;
 }
 
+export interface OrchHardwareProbe {
+  totalRamBytes: number;
+  freeRamBytes: number;
+  vramBytes: number | null;
+  freeVramBytes: number | null;
+  deviceName: string | null;
+  vramSource: string;
+}
+
 export interface OrchActivityInfo {
   egressEventsTotal: number;
   egressLast24h: number;
@@ -36,3 +45,5 @@ export interface OrchContext {
 export function createOrchService(opts: { workspace: string; runtime: any }): {
   getContext(): Promise<OrchContext>;
 }
+
+export function mapHardwareProbe(probe: OrchHardwareProbe): OrchHardwareInfo;

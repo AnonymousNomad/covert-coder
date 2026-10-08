@@ -44,26 +44,36 @@ export class BrokerModelRuntime extends ModelRuntime {
     resourceAdmission: Pick<ReturnType<typeof createResourceAdmission>, 'admitLocalRuntimeStart'>
   ) {
     super(options);
+    if (broker.selectedBackend === 'UNSLOTH' && qualification === null) {
+      throw new Error('Unsloth requires its exact Runtime Passport');
+    }
     this.broker = broker;
     this.qualification = qualification;
     this.resourceAdmission = resourceAdmission;
   }
 
   override async load(): Promise<void> {
-    await super.load({ sweepLegacyEngines: false });
-    await this.bindCanonicalEndpoint();
+    const compatibility = this.broker.selectedBackend === 'LLAMA_CPP';
+    await super.load({ sweepLegacyEngines: compatibility });
+    if (!compatibility) await this.bindCanonicalEndpoint();
   }
 
   override async ingest(filePath: string) {
     const result = await super.ingest(filePath);
-    await this.bindCanonicalEndpoint(result.id);
-    return { ...result, endpoint: this.get(result.id)!.endpoint };
+    if (this.broker.selectedBackend !== 'LLAMA_CPP') {
+      await this.bindCanonicalEndpoint(result.id);
+      return { ...result, endpoint: this.get(result.id)!.endpoint };
+    }
+    return result;
   }
 
   override async register(options: Parameters<ModelRuntime['register']>[0]) {
     const result = await super.register(options);
-    await this.bindCanonicalEndpoint(result.id);
-    return { ...result, endpoint: this.get(result.id)!.endpoint };
+    if (this.broker.selectedBackend !== 'LLAMA_CPP') {
+      await this.bindCanonicalEndpoint(result.id);
+      return { ...result, endpoint: this.get(result.id)!.endpoint };
+    }
+    return result;
   }
 
   private async bindCanonicalEndpoint(id?: string): Promise<void> {
@@ -135,6 +145,15 @@ export class BrokerModelRuntime extends ModelRuntime {
   }
 
   private isLoaded(id: string, status: RuntimeStatusResponseT): boolean {
+    if (status.backend === 'LLAMA_CPP') {
+      const model = this.get(id);
+      const identity = status.loaded_model;
+      return status.health === 'HEALTHY' && status.ownership === 'COVERT_OWNED' &&
+        identity?.model_id === id && identity.artifact_name === (model === undefined ? null : path.basename(model.file)) &&
+        identity.artifact_sha256 !== null && /^[a-f0-9]{64}$/i.test(identity.artifact_sha256) &&
+        identity.identity_evidence === 'REQUESTED_ARTIFACT';
+    }
+    if (this.qualification === null) return false;
     return status.backend === 'UNSLOTH' && status.version === this.qualification.backendVersion &&
       status.health === 'HEALTHY' &&
       (status.ownership === 'COVERT_OWNED' || status.ownership === 'USER_OWNED') &&
@@ -192,6 +211,12 @@ export class BrokerModelRuntime extends ModelRuntime {
   override async saveProfile(id: string, patch: ModelProfilePatch): Promise<{ id: string; preset: string; saved: true }> {
     const model = this.get(id);
     if (model === undefined) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
+    if (this.broker.selectedBackend === 'LLAMA_CPP') {
+      const current = readModelProfileSidecar(model.file);
+      if (current.invalid) throw new ModelRuntimeError('CONFLICT', 'existing model profile is invalid; inspect it before replacing it');
+      if (current.binding !== undefined) throw new ModelRuntimeError('CONFLICT', 'a runtime-bound profile cannot be reinterpreted by the unqualified llama.cpp compatibility adapter');
+      return super.saveProfile(id, patch);
+    }
     const artifactSha256 = await this.verifyQualifiedArtifact(model.file);
     const binding: ModelProfileBinding = {
       artifact_sha256: artifactSha256,
@@ -214,6 +239,34 @@ export class BrokerModelRuntime extends ModelRuntime {
 
   override async status(): Promise<{ runtime: boolean; models: Array<Record<string, unknown>> }> {
     const status = await this.observedStatus();
+    if (this.broker.selectedBackend === 'LLAMA_CPP') {
+      const runtime = status.backend === 'LLAMA_CPP' && (status.health === 'STOPPED' || status.health === 'HEALTHY');
+      return {
+        runtime,
+        models: this.list().map(model => {
+          const artifactAvailable = model.file.length > 0 && existsSync(model.file);
+          const running = this.isLoaded(model.id, status);
+          const backendEndpoint = this.endpointFor(status);
+          if (running && backendEndpoint !== null) model.endpoint = backendEndpoint;
+          return {
+            id: model.id,
+            name: model.name,
+            status: running ? 'running' : 'pending',
+            declared_status: 'unqualified',
+            endpoint: model.endpoint,
+            runtime_available: runtime,
+            artifact_available: artifactAvailable,
+            setup_required: !runtime || !artifactAvailable,
+            setup_message: !runtime ? status.health === 'NOT_INSTALLED' ?
+              'Configured llama.cpp server unavailable; set AIDE_LLAMA_SERVER to an existing operator-supplied server and restart Covert' :
+              `Selected llama.cpp runtime unavailable (${status.health})` :
+              !artifactAvailable ? 'local model artifact unavailable' : undefined,
+            qualification: 'unqualified',
+            ingested: model.ingested === true
+          };
+        })
+      };
+    }
     const runtime = status.backend === 'UNSLOTH' && (status.health === 'STOPPED' || status.health === 'HEALTHY');
     return {
       runtime,
@@ -254,6 +307,7 @@ export class BrokerModelRuntime extends ModelRuntime {
   }
 
   override async start(id: string): Promise<{ id: string; status: string; endpoint: string }> {
+    if (this.broker.selectedBackend === 'LLAMA_CPP') return this.startLlamaCompatibility(id);
     const model = this.get(id);
     if (!model) throw new ModelRuntimeError('CHILD_FAILED', 'model is not allowlisted');
     if (!model.file || !existsSync(model.file)) throw new ModelRuntimeError('NOT_READY', 'local model artifact is unavailable');
@@ -298,6 +352,59 @@ export class BrokerModelRuntime extends ModelRuntime {
         throw new ModelRuntimeError(
           'CHILD_FAILED',
           `model start failed (${startCode}) and cleanup of the Covert-owned runtime could not be confirmed (${cleanup.code}); inspect runtime status before retrying`,
+          detail
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async startLlamaCompatibility(id: string): Promise<{ id: string; status: string; endpoint: string }> {
+    const model = this.get(id);
+    if (model === undefined) throw new ModelRuntimeError('BAD_REQUEST', 'model is not allowlisted');
+    if (!model.file || !existsSync(model.file)) throw new ModelRuntimeError('NOT_READY', 'local model artifact is unavailable');
+    const current = await this.activeStatus();
+    if (current.backend !== 'LLAMA_CPP') throw new ModelRuntimeError('CONFLICT', 'explicit llama.cpp selection did not reach the selected runtime adapter');
+    if (current.loaded_model !== null) {
+      if (this.isLoaded(id, current)) {
+        const endpoint = this.endpointFor(current);
+        if (endpoint === null) throw new ModelRuntimeError('CONFLICT', 'loaded llama.cpp endpoint is not a verified loopback address');
+        model.endpoint = endpoint;
+        return { id, status: 'running', endpoint };
+      }
+      throw new ModelRuntimeError('CONFLICT', 'a loaded llama.cpp model has different or unverified identity; stop it before selecting this model');
+    }
+    if (current.health === 'NOT_INSTALLED' || current.health === 'UNKNOWN' || current.health === 'UNHEALTHY') {
+      throw new ModelRuntimeError('NOT_READY', `selected llama.cpp runtime is unavailable (${current.health})`);
+    }
+    const profile = readModelProfileSidecar(model.file);
+    if (profile.invalid) throw new ModelRuntimeError('CONFLICT', 'model runtime profile is invalid; inspect it before starting the model');
+    if (profile.binding !== undefined) throw new ModelRuntimeError('CONFLICT', 'a runtime-bound profile cannot be reinterpreted by the unqualified llama.cpp compatibility adapter');
+    const admission = await this.resourceAdmission.admitLocalRuntimeStart();
+    if (admission.decision !== 'START') {
+      throw new ModelRuntimeError('NOT_READY', `local model start refused by final Resource Admission: ${admission.reason}`, admission);
+    }
+    try {
+      await this.broker.load({
+        modelId: id,
+        modelPath: path.resolve(model.file),
+        displayName: model.name,
+        contextTokens: model.context_tokens
+      }, true);
+      this.invalidateObservedStatus();
+      const status = await this.activeStatus();
+      const endpoint = this.endpointFor(status);
+      if (!this.isLoaded(id, status) || endpoint === null) throw new ModelRuntimeError('CHILD_FAILED', 'llama.cpp did not confirm the loaded model identity and Covert-owned endpoint');
+      model.endpoint = endpoint;
+      return { id, status: 'running', endpoint };
+    } catch (error) {
+      const cleanup = await this.cleanupOwnedRuntimeAfterFailedStart();
+      if (cleanup.status === 'FAILED') {
+        const startCode = this.failureCode(error, 'RUNTIME_OPERATION_FAILED');
+        const detail = { startErrorCode: startCode, cleanupErrorCode: cleanup.code };
+        throw new ModelRuntimeError(
+          'CHILD_FAILED',
+          `llama.cpp start failed (${startCode}) and cleanup of the Covert-owned runtime could not be confirmed (${cleanup.code}); inspect runtime status before retrying`,
           detail
         );
       }
@@ -356,7 +463,7 @@ export class BrokerModelRuntime extends ModelRuntime {
   }
 
   override async chat(id: string, messages: Array<{ role: string; content: string }>, options: { maxTokens?: number; temperature?: number; timeoutMs?: number; signal?: AbortSignal } = {}): Promise<{ text: string; modelId: string; tokens?: number; timingMs: number }> {
-    if (!this.isLoaded(id, await this.activeStatus())) throw new ModelRuntimeError('NOT_READY', 'model is not loaded in Unsloth');
+    if (!this.isLoaded(id, await this.activeStatus())) throw new ModelRuntimeError('NOT_READY', `model is not loaded in ${this.broker.selectedBackend}`);
     const signal = options.signal === undefined ? AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000)) :
       AbortSignal.any([options.signal, AbortSignal.timeout(Math.min(options.timeoutMs ?? 90_000, 300_000))]);
     const result = await this.broker.infer({ modelId: id, messages,
@@ -366,7 +473,7 @@ export class BrokerModelRuntime extends ModelRuntime {
   }
 
   override async chatStream(id: string, messages: Array<{ role: string; content: string }>, onDelta: (delta: string) => void, signal: AbortSignal, options: { maxTokens?: number; temperature?: number } = {}): Promise<void> {
-    if (!this.isLoaded(id, await this.activeStatus())) throw new ModelRuntimeError('NOT_READY', 'model is not loaded in Unsloth');
+    if (!this.isLoaded(id, await this.activeStatus())) throw new ModelRuntimeError('NOT_READY', `model is not loaded in ${this.broker.selectedBackend}`);
     await this.broker.stream({ modelId: id, messages,
       ...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens }),
       ...(options.temperature === undefined ? {} : { temperature: options.temperature }) }, onDelta, signal);
