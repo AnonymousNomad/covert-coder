@@ -1,0 +1,14 @@
+✔ Partner contracts are strict, versioned, and preserve unknown metrics as unknown (8.6934ms)
+✔ Authority pairing binds host and key, consumes the challenge once, requires operator confirmation, and enforces scopes (655.2523ms)
+✔ TLS Partner adapter rejects version drift, bearer/cookie material, proof replay, and missing scopes (332.4206ms)
+✔ revocation and last-seen survive a separate Authority process restart (503.3192ms)
+✔ broad workstation API stays loopback-only and Partner pairing administration uses the existing operator route (509.6157ms)
+✔ Windows platform record aliases including default alternate streams stay private (1.5918ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3307.4647

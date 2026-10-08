@@ -1,0 +1,4 @@
+node --check common/security/partner-proof.mjs: exit 0
+node --check node/src/services/partner-device-store.mjs: exit 0
+node --check node/src/services/execution-authority.mjs: exit 0
+git diff --check: exit 0

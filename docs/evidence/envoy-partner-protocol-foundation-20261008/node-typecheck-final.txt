@@ -1,0 +1,2 @@
+Command: node node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit
+Exit code: 0

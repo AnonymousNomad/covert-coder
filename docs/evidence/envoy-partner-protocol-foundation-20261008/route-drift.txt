@@ -1,0 +1,25 @@
+✔ route ownership is generated from typed registrations and public OpenAPI, with no duplicate or shadowed operation (2015.0079ms)
+✔ committed facade ownership and legacy dispositions are reproducible from current owners (4111.3662ms)
+✔ C1-02 per-operation decisions and compatibility evidence are reproducible (13529.7706ms)
+✔ legacy diagnostics adapter has exact read Authority and refuses its query mutation form (2.4837ms)
+GET /api/health -> ts 200 1355ms
+POST /api/authority/pair -> ts 200 446ms
+GET /api/health -> ts 200 3ms
+GET /api/training/status -> ts 200 34ms
+GET /api/egress/manifest -> ts 200 25ms
+GET /api/file/extra -> unmapped 404 0ms
+GET /api/search/extra -> unmapped 404 0ms
+GET /api/filesecrets -> unmapped 404 1ms
+GET /api/diagnostics -> legacy 200 26ms
+GET /api/diagnostics -> legacy 409 2ms
+POST /api/workflow/plan -> unmapped 404 1ms
+GET /api/openapi.json -> ts 200 32ms
+✔ representative facade probes reach the canonical owner and preserve explicit legacy compatibility (6142.5928ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27007.6521

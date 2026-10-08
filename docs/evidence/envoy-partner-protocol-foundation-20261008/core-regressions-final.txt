@@ -1,0 +1,84 @@
+{"hookBoundaryWorkspace":"E:\\pip_temp\\phase2a-hook-boundary-EdFt6b","capturedExecutorCalls":0,"realProcessesSpawned":0,"realMutations":0}
+✔ workspace task hooks cannot reach a command executor without canonical authority (14.3357ms)
+{"taskHttpWorkspace":"E:\\pip_temp\\phase2a-task-http-oRqOSq","port":59982,"typedApprovalEventDelivered":true,"changedGraphRejected":true,"replayRejected":true}
+✔ task HTTP graph approval and real EventHub/WS lifecycle reject replay and changed commands (891.371ms)
+{"taskFixture":"E:\\pip_temp\\phase2a-task-authority-xOT3zH","freshOperations":["dc2fea64-da71-47ad-80f6-93c5a43fe498","52de08bb-1eaf-4125-b37a-5ae459f5f790","143c1bd8-6273-4ece-9027-ac13ceae5a91"],"deniedRecordTargetsUnchanged":true}
+✔ task/cache lifecycle requires fresh approvals; serialized pending state and consumed handles grant nothing (147.1635ms)
+{"cacheScopeFixture":"E:\\pip_temp\\phase2a-cache-scope-n1nHNt","capturedDeletionTargets":[],"outsideCacheTargets":[],"realDeletions":0,"errorObserved":"invalid canonical cache key"}
+✔ cache eviction cannot turn workspace-controlled index keys into out-of-cache deletion (9.6261ms)
+{"cacheKeyMatrix":23,"deletedTargets":[],"platform":"win32"}
+✔ cache path matrix rejects traversal, rooted, normalized, encoded and invalid keys before I/O (36.1199ms)
+{"cacheCompatibility":"record/hit/LRU/clear","root":"E:\\pip_temp\\phase2a-cache-valid-glLHvD\\.aide\\cache\\builds","hits":true}
+✔ cache canonical authority preserves record/hit/LRU/clear and denies forgery, alteration and replay (610.4009ms)
+✔ cache rejects redirected roots and linked targets, and binds resolved target identity (34.5624ms)
+✔ cache eviction deletion failure remains a failure with completed-target evidence (179.657ms)
+{"telegramFixture":"E:\\pip_temp\\phase2a-telegram-http-dSdNCp","port":59987,"negativeCases":10,"approvedIdentityBindings":1,"networkCalls":0}
+✔ Telegram HTTP routes propagate canonical authority and never grant from payloads (436.8641ms)
+{"pid":15256,"workspace":"E:\\pip_temp\\opencode\\phase2a-authority-vM2U3E","observations":[{"port":59990,"status":403,"body":{"ok":false,"error":{"code":"FORBIDDEN","message":"authenticated actor required"}}},{"port":59991,"status":403,"body":{"error":"authenticated actor required","code":"FORBIDDEN"}}],"capturedExecutions":0,"realGitMutation":false}
+{"cleanup":"closed","archListening":false,"facadeListening":false}
+✔ unpaired capability callers cannot stage through direct TS or facade (112.6215ms)
+✔ privileged WebSocket subscription requires paired actor; revocation stops delivery (149.4872ms)
+{"pid":15256,"workspace":"E:\\pip_temp\\phase2a-http-tgGWHm","closed":true,"capturedExecutions":1,"realGitMutation":false}
+✔ real HTTP pairing and action-bound approval preserve Git reads and deny forgery/replay (406.9244ms)
+✔ HTTP chat Authority binds local/external identity, enforces stream parity, and rejects target substitution (2494.2199ms)
+✔ valid log fixture is broadcast to subscribers and matches the channel schema (1878.7333ms)
+✔ invalid log payload is dropped by the send-site (fail closed) (314.8945ms)
+✔ valid model fixture is broadcast to subscribers and matches the channel schema (317.4912ms)
+✔ invalid model payload is dropped by the send-site (fail closed) (316.196ms)
+✔ valid diagnostics fixture is broadcast to subscribers and matches the channel schema (316.0077ms)
+✔ invalid diagnostics payload is dropped by the send-site (fail closed) (310.2536ms)
+✔ valid training fixture is broadcast to subscribers and matches the channel schema (311.2656ms)
+✔ invalid training payload is dropped by the send-site (fail closed) (306.8254ms)
+✔ diagnostics fixture variant with zero markers still broadcasts (315.9036ms)
+✔ training fixture variant without optional loss/epoch still broadcasts (314.746ms)
+✔ an event published before subscribe is not delivered (no buffering) (423.615ms)
+✔ decision wait observes canonical approval, rejection, revocation and expiry without granting permission (117.3029ms)
+✔ pairing requires a single-use supervisor proof; claims and origins cannot mint actors (2.4081ms)
+✔ authentication is not mutation approval; forged approved fields confer nothing (2.7835ms)
+✔ read-only policy needs no mutation approval and execution is still single-use (0.6625ms)
+✔ approved immutable descriptor binds content, task, operation, actor and workspace (1.3552ms)
+✔ agent cannot self-approve or acquire permission-administration scope (1.5162ms)
+✔ expiry and revocation prevent execution with zero side effects (1.0784ms)
+✔ concurrent replay cannot cross a pending audit write (0.6368ms)
+✔ revocation during audit persistence stops the reserved operation (0.4695ms)
+✔ required decision/consumption receipts fail closed; completion failure never permits replay (1.2156ms)
+✔ unknown operations and malformed non-JSON descriptors are rejected (0.4698ms)
+✔ execution handles are opaque, argument-bound and invalid after executor returns (0.7339ms)
+✔ Telegram identities need private ingress proof, exact action confirmation and single-use consumption (1.5813ms)
+✔ Telegram confirmation cannot cross expiry, revocation or another adapter binding (2.9394ms)
+✔ Context Aperture redacts secrets, rejects path escape, and binds fresh worker sessions and handoffs (7.6085ms)
+✔ Resource Admission enforces physical memory >=3072 MiB and free commit >5120 MiB (0.7064ms)
+✔ agent route binds exact local route, ProjectSeat checkout, and one-shot Authority approval (20.7857ms)
+✔ exact local dispatch records startup failure without RUNNING and preserves failure after first output (1895.3637ms)
+✔ restart recovery classifies an interrupted worker and does not replay model dispatch (209.1572ms)
+✔ AgentLoop binds Authority, admission, lifecycle receipt, and fresh handoff continuity (822.0251ms)
+✔ Authority applies workspace Local-Only at prepare and dispatch while preserving local execution (25.0367ms)
+✔ Authority fails closed when Local-Only preference is malformed or unreadable (8.5384ms)
+✔ Authority rechecks Local-Only after consumption persistence and before external execution (10.3878ms)
+✔ openapi.json is up to date (run npm run contracts to regenerate) (1730.6295ms)
+✔ openapi.json documents every registered public operation (1594.4734ms)
+✔ Partner contracts are strict, versioned, and preserve unknown metrics as unknown (13.3185ms)
+✔ Authority pairing binds host and key, consumes the challenge once, requires operator confirmation, and enforces scopes (318.599ms)
+✔ TLS Partner adapter rejects version drift, bearer/cookie material, proof replay, and missing scopes (377.8323ms)
+✔ revocation and last-seen survive a separate Authority process restart (542.7033ms)
+✔ broad workstation API stays loopback-only and Partner pairing administration uses the existing operator route (920.3819ms)
+✔ Windows platform record aliases including default alternate streams stay private (1.2709ms)
+{"routes":253,"rawOwnership":{"PUBLIC":1,"AUTHORITY_CONTROL":10,"ENROLLED_CENTRAL":140,"ENROLLED_DESCRIPTOR":82},"finalDispositions":{"PUBLIC":1,"AUTHORITY_CONTROL":10,"ENROLLED_CENTRAL":140,"ENROLLED_DESCRIPTOR":82,"MIGRATION-WAIVED":20,"CONFLICTING":0,"UNCLASSIFIED":0},"waiver":20}
+✔ every externally reachable TS route has exactly one deliberate authority disposition (1718.7696ms)
+✔ atomic JSON replacement writes a validated same-directory temporary then replaces existing state (106.1814ms)
+✔ serialization and temp/flush/verification/replace failures preserve prior valid canonical bytes (65.125ms)
+✔ process interruption before replace preserves old state, ignores an orphan, and reclaims it after a later commit (168.8ms)
+✔ process interruption after a complete temp write but before replace leaves old canonical state (155.1729ms)
+✔ process interruption after replace leaves the new complete canonical state (148.9697ms)
+✔ missing state is an empty first run; malformed, unsupported, and unreadable state fail truthfully without mutation (17.9666ms)
+✔ session and chat save errors do not report success, alter old bytes, or publish an uncommitted in-memory chat update (60.6569ms)
+✔ concurrent session patches and independent chat stores serialize against the latest canonical state (71.9675ms)
+✔ chat-history GET restores canonical conversations in a fresh store instance (30.4398ms)
+ℹ tests 65
+ℹ suites 0
+ℹ pass 65
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31550.1611

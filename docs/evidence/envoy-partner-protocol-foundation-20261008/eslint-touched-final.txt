@@ -1,0 +1,2 @@
+Command: node node_modules/eslint/bin/eslint.js common/contracts/partner.ts common/security/partner-proof.mjs node/src/routes/authority.ts node/src/server.ts node/src/services/execution-authority.mjs node/src/services/partner-device-store.mjs node/src/services/partner-protocol.ts tests/arch/partner-protocol-security.test.ts tests/arch/project-private-state.test.ts
+Exit code: 0
