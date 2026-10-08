@@ -555,3 +555,13 @@ This identifies the durable audit append as one measurable segment and the HTTP 
 ### Exact GGUF BOS/EOS token-table confirmation
 
 At `2026-10-08T17:51Z`, a temporary read-only parser walked the existing GGUF metadata string array without loading tensor weights or starting inference. It confirmed the exact artifact's token mapping: BOS ID `124894` is `<|startoftext|>` and EOS ID `124900` is `<|im_end|>`. The embedded chat template emits that BOS token and closes each message with the exact EOS token. This resolves token-ID-to-string mapping for the byte-matched artifact, but not whether the live Unsloth server applies duplicate BOS or stops generation on EOS as expected. No `stop` override or runtime profile change was made.
+
+## Current admission refusal and owned-process shortlist (2026-10-08)
+
+At `2026-10-08T17:53:39.726Z`, canonical `createResourceAdmission().admitLocalRuntimeStart()` again returned `REFUSE_RESOURCE`: free physical RAM `4,182/6,656 MiB` (**2,474 MiB short**), free Windows commit `3,858/5,120 MiB` (**1,262 MiB short**), VRAM `5,481/4,608 MiB`, GPU utilization `16%/<50%`; load average was unknown. No app or model start followed.
+
+A read-only visible-window census at approximately `17:54Z` found: `TextInputHost` (`333 MiB` working set; OS input component); `ChatGPT` (`237 MiB`; protected Codex package); Edge (`216 MiB`; in use/protected); Explorer (`144 MiB`; OS shell); Windows Terminal (`74 MiB`; hosts protected OpenCode/Codex sessions); and NVIDIA Share (`11 MiB`; the only small visible non-protected candidate). No other visible non-protected user application had a normal close path or enough observed working set to matter.
+
+The exact previously identified Ledger Server Nuitka build remains active: PID `26228`, parent `21940`, same creation time `2026-10-08 12:15:24`, command building `E:\NuitkaBuild\output\Ledger_Server.exe` from `E:\felon_workspace`, now `1,791.2 MiB` working set / `1,788.1 MiB` private. Its working set is below the current `2,474 MiB` physical shortfall; interrupting it could discard unrelated active work, so it was not stopped. No process was closed or terminated. With Edge, OpenCode, Codex, the OS, and active builds protected, there is no presently demonstrated safe resource-recovery action sufficient to pass Admission.
+
+The gate remains `REFUSE_RESOURCE`. The next model-start opportunity requires a new canonical sample at the time of launch; current measurements do not authorize bypass, threshold reduction, or a speculative pagefile change.
