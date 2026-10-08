@@ -575,3 +575,27 @@ A foreground-window census found only Windows Input Experience, this ChatGPT ses
 A separate ad hoc `Win32_PerfFormattedData_PerfOS_Memory` arithmetic probe produced an implausible `31,541,115,706 MiB` availability value due to inconsistent counter units; it was rejected and not used for any decision. The canonical Admission result above is the authoritative gate measurement.
 
 The local-model vertical remains blocked at Admission. No admission threshold, pagefile, runtime profile, timeout, or test assertion was changed. Continue research and fixture/source diagnosis only until a new canonical Admission passes.
+
+## Authority-pair latency diagnostic reproduction (2026-10-08)
+
+I ran the isolated route file once with opt-in, payload-free stage diagnostics and the unchanged default pairing deadline:
+
+```text
+AIDE_TRACE_AUTHORITY_PAIR=1
+AIDE_TRACE_AUTHORITY_AUDIT_APPEND=1
+node --experimental-strip-types --test --test-concurrency=1 tests/arch/modelhub-routes.test.ts
+```
+
+`AIDE_FIXTURE_TIMEOUT_MS` was unset. Result: **12 passed, 0 failed, 0 cancelled, 0 skipped; exit 0**. The test runner reported total `duration_ms=120631.9938`. The fixture used its fake fetch and did not contact Hugging Face, acquire or register a model, or start a runtime. The owned Node test processes and listener were absent after exit; the run-created fixture directory was removed. The original earlier `12 failed` run remains preserved and is not erased by this pass.
+
+The pairing trace measured `2,593 ms` for `pairFixture()` and `2,561 ms` inside the HTTP handler. Its required durable audit append persisted in `2,553.11 ms`: `mkdir 0.60`, `open 0.68`, `write 0.65`, `sync 2,550.44`, `close 0.57` ms. Therefore `FileHandle.sync()` accounted for essentially all of the audit-append latency in this reproduction. This is direct stage evidence for the current run; it does not explain why the Windows/E: flush took that long, and the prior `8,708 ms` request was not instrumented by stage. **Underlying storage/host cause remains UNKNOWN.** No durability behavior, deadline, product route, assertion, or Admission floor was changed.
+
+The diagnostics are opt-in under the two named environment variables and record only durations and persistence outcome; when disabled, the audit append retains its original operation order and event contents. The captured failure boundary is narrowed to durable file sync for this reproduction. Next: inspect the E: volume/storage path and host activity without altering durability, then continue local-model preparation. Actual model start remains blocked until a fresh canonical Admission passes.
+
+## E: persistence-path inspection (2026-10-08)
+
+Read-only volume mapping at `2026-10-08T18:06:27Z` found E: is a fixed NTFS volume reported `Healthy` / `OK`, with `75,348,144,128` bytes free. `Win32_LogicalDiskToPartition` mapped it to Disk 0, whose model is `ST1000LX015-1U7172`. Seagate's data sheet identifies `ST1000LX015` as the 1 TB FireCuda 2.5 flash-accelerated hard-drive model (SATA; up to 140 MB/s) ([official data sheet](https://www.seagate.com/www-content/product-content/firecuda-family/firecuda/files/firecuda-2-5-ds1908-1-1609-gb.pdf)). This is a hybrid hard-drive storage path, not evidence of a dedicated SSD cache for the audit file.
+
+PerfDisk counters varied during the read-only inspection: one un-timestamped sample showed `124 reads/s`, `15 writes/s`, queue `13`, and `PercentDiskTime 1382`; the later timestamped sample at `18:06:27Z` showed `290 reads/s`, `0 writes/s`, queue `1`, and write-latency counter `0`. These samples were not simultaneous with the `FileHandle.sync()` trace and do not attribute the slow flush to a specific process. The model name and volatile disk counters make storage contention a plausible hypothesis, but **CAUSE UNKNOWN** remains. No drive, filesystem, Defender, pagefile, or durability setting was changed.
+
+The 12 printed subtest durations total 20,988.205 ms; the 120,631.9938 ms outer duration leaves 99,643.7888 ms outside those per-test timings. Its phase/cause is not identified by this run and remains a separate performance observation, not proof of the audit-sync cause.

@@ -127,7 +127,31 @@ before(async () => {
   const address = httpServer.address();
   assert.ok(address && typeof address === 'object');
   base = `http://127.0.0.1:${address.port}`;
-  owner = await pairFixture(server, base);
+  const tracePair = process.env.AIDE_TRACE_AUTHORITY_PAIR === '1';
+  let pairRouteDurationMs: number | null = null;
+  const originalLoggerInfo = server.logger.info;
+  if (tracePair) {
+    server.logger.info = (message, metadata) => {
+      if (message === 'request ok' && metadata?.method === 'POST' && metadata.path === '/api/authority/pair' && typeof metadata.ms === 'number') {
+        pairRouteDurationMs = metadata.ms;
+      }
+      originalLoggerInfo.call(server.logger, message, metadata);
+    };
+  }
+  const pairStartedAt = Date.now();
+  try {
+    owner = await pairFixture(server, base);
+    if (tracePair) {
+      process.stderr.write(`AUTHORITY_PAIR_FIXTURE_TRACE ${JSON.stringify({ outcome: 'ok', pairFixtureElapsedMs: Date.now() - pairStartedAt, pairRouteDurationMs })}\n`);
+    }
+  } catch (error) {
+    if (tracePair) {
+      process.stderr.write(`AUTHORITY_PAIR_FIXTURE_TRACE ${JSON.stringify({ outcome: 'error', pairFixtureElapsedMs: Date.now() - pairStartedAt, pairRouteDurationMs, errorName: error instanceof Error ? error.name : 'non-error' })}\n`);
+    }
+    throw error;
+  } finally {
+    if (tracePair) server.logger.info = originalLoggerInfo;
+  }
 });
 
 after(async () => {
