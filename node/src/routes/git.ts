@@ -76,8 +76,7 @@ function wrap(handler: (ctx: RouteContext) => Promise<unknown> | unknown): (ctx:
   };
 }
 
-export function routesForGit(workspaceRoot: string): Route[] {
-  const git = new GitService({ workspace: workspaceRoot });
+export function routesForGit(workspaceRoot: string, git: InstanceType<typeof GitService> = new GitService({ workspace: workspaceRoot })): Route[] {
   return [
     { method: 'GET', path: '/api/git/status', response: GitStatusResponse, handler: wrap(async () => git.status()) },
     { method: 'POST', path: '/api/git/diff', body: GitDiffRequest, response: GitDiffResponse, handler: wrap(async ({ body }) => git.diff((body as { path?: string }).path, (body as { cached?: boolean }).cached === true)) },

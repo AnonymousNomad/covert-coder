@@ -165,7 +165,14 @@ test('agent stream event contract validates every emitted shape', () => {
     },
     { event: 'done', session_id: 's1', summary: 'finished' },
     { event: 'error', session_id: 's1', error: 'boom' },
-    { event: 'aborted', session_id: 's1' }
+    { event: 'aborted', session_id: 's1' },
+    {
+      event: 'worker_lifecycle', session_id: '11111111-1111-4111-8111-111111111111',
+      attempt_id: '22222222-2222-4222-8222-222222222222', state: 'RUNNING',
+      project_id: '33333333-3333-4333-8333-333333333333', checkout_id: '44444444-4444-4444-8444-444444444444',
+      route_id: 'local:fixture', model_id: 'fixture-model', aperture_id: '55555555-5555-4555-8555-555555555555',
+      resource_admission_ref: null, runtime_process_id: 4321
+    }
   ];
   for (const sample of samples) {
     const parsed = AgentStreamEvent.safeParse(sample);

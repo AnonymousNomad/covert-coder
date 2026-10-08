@@ -12,6 +12,7 @@ import {
   type WorkerHandoffCreateRequestT,
   type WorkerDescriptorT
 } from '../../../common/contracts/worker-handoff.ts';
+import type { ProjectSeat } from './project-seat.ts';
 
 export type WorkerHandoffErrorCode = 'INVALID' | 'NOT_FOUND' | 'CONFLICT';
 
@@ -30,6 +31,7 @@ type WorkflowProjection = {
 export interface WorkerHandoffServiceOptions {
   workspace: string;
   workflowService?: WorkflowProjection | null;
+  projectSeat?: ProjectSeat;
   now?: () => string;
 }
 
@@ -38,6 +40,7 @@ const CONTEXT_MAX_CHARS = 6000;
 export function createWorkerHandoffService(options: WorkerHandoffServiceOptions) {
   const workspace = options.workspace;
   const workflowService = options.workflowService ?? null;
+  const projectSeat = options.projectSeat;
   const now = options.now ?? (() => new Date().toISOString());
   const dir = path.join(workspace, '.aide', 'worker-handoffs');
 
@@ -130,6 +133,10 @@ export function createWorkerHandoffService(options: WorkerHandoffServiceOptions)
   async function create(request: WorkerHandoffCreateRequestT): Promise<WorkerHandoffEnvelopeT> {
     const derived = await deriveCanonical(request.task_id);
     const { trajectory, verification, workflow } = derived;
+    const seat = projectSeat === undefined ? null : await projectSeat.current();
+    if (seat !== null && workflow && typeof workflow.project_id === 'string' && workflow.project_id !== seat.project_id) {
+      throw new WorkerHandoffError('CONFLICT', 'workflow project differs from the canonical ProjectSeat');
+    }
 
     const workerClaims: string[] = [
       `outcome: ${String(trajectory.outcome ?? 'unknown')}`,
@@ -165,7 +172,8 @@ export function createWorkerHandoffService(options: WorkerHandoffServiceOptions)
       handoff_id: randomUUID(),
       state: 'CREATED',
       workspace_id: workspace,
-      project_id: workflow && typeof workflow.project_id === 'string' ? workflow.project_id : null,
+      project_id: seat?.project_id ?? (workflow && typeof workflow.project_id === 'string' ? workflow.project_id : null),
+      ...(seat === null ? {} : { project: { project_id: seat.project_id, checkout_id: seat.checkout_id } }),
       task_id: request.task_id,
       workflow_id: workflow && typeof workflow.workflow_id === 'string' ? workflow.workflow_id : null,
       stage_id: workflow && typeof workflow.stage === 'string' ? workflow.stage : null,

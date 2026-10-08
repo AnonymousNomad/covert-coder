@@ -1,9 +1,12 @@
 import { z } from 'zod';
 import { WorkerDescriptor } from './worker-handoff.ts';
+import { ProjectAddress } from './project.ts';
+import { ContextAperture } from './context-aperture.ts';
 
 export const AgentMode = z.enum(['plan', 'act']);
 
 export const AgentSessionState = z.enum(['running', 'awaiting_approval', 'done', 'error', 'aborted']);
+export const AgentWorkerLifecycleState = z.enum(['REQUESTED', 'ADMITTED', 'STARTING', 'RUNNING', 'COMPLETED', 'STOPPED', 'CANCELLED', 'FAILED']);
 
 export const AgentStartRequest = z.object({
   task: z.string().min(1).max(8000),
@@ -36,13 +39,25 @@ export const AgentStartRequest = z.object({
   // consumes the handoff exactly at the first destination model invocation.
   handoff_id: z.string().uuid().optional(),
   worker: WorkerDescriptor.optional(),
+  governed_execution: z.strictObject({
+    capability_id: z.literal('project.worker.execute.local'),
+    worker_session_id: z.string().uuid(),
+    task_id: z.string().min(1).max(200),
+    project: ProjectAddress,
+    aperture_id: z.string().uuid(),
+    acceptance_criteria: z.array(z.string().min(1).max(300)).min(1).max(8),
+    included_files: z.array(z.string().min(1).max(300)).max(32).optional()
+  }).optional(),
   // Admission binding (Wave 5A surface; enforced only where the production
   // stack wires the readiness gate).
   readiness_id: z.string().uuid().optional()
 }).strict();
 
 export const AgentStartResponse = z.object({
-  session_id: z.string().min(1)
+  session_id: z.string().min(1),
+  attempt_id: z.string().uuid().optional(),
+  context_aperture: ContextAperture.optional(),
+  lifecycle_state: z.enum(['REQUESTED', 'ADMITTED', 'STARTING', 'RUNNING', 'COMPLETED', 'STOPPED', 'CANCELLED', 'FAILED']).optional()
 }).strict();
 
 export const AgentApproval = z.object({
@@ -99,6 +114,9 @@ export const AgentVerification = z.object({
 export const AgentStatusResponse = z.object({
   session_id: z.string().min(1),
   state: AgentSessionState,
+  worker_lifecycle: AgentWorkerLifecycleState.optional(),
+  attempt_id: z.string().uuid().optional(),
+  context_aperture_id: z.string().uuid().optional(),
   mode: AgentMode,
   iterations: z.number().int().gte(0),
   mistake_count: z.number().int().gte(0),
@@ -207,6 +225,21 @@ export const AgentPlanEvent = z.object({
   cycle: z.number().int().positive(), max_cycles: z.number().int().positive()
 }).strict();
 
+export const AgentWorkerLifecycleEvent = z.object({
+  event: z.literal('worker_lifecycle'),
+  session_id: z.string().uuid(),
+  attempt_id: z.string().uuid(),
+  state: AgentWorkerLifecycleState,
+  project_id: z.string().uuid(),
+  checkout_id: z.string().uuid(),
+  route_id: z.string().min(1).max(240),
+  model_id: z.string().min(1).max(240),
+  aperture_id: z.string().uuid(),
+  resource_admission_ref: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  runtime_process_id: z.number().int().positive().nullable(),
+  detail: z.string().max(500).optional()
+}).strict();
+
 export const AgentStreamEvent = z.discriminatedUnion('event', [
   AgentMessageEvent,
   AgentToolCallEvent,
@@ -218,11 +251,14 @@ export const AgentStreamEvent = z.discriminatedUnion('event', [
   AgentAbortedEvent,
   AgentContextEvent,
   AgentVerificationEvent,
-  AgentPlanEvent
+  AgentPlanEvent,
+  AgentWorkerLifecycleEvent
 ]);
 
 export type AgentModeT = z.infer<typeof AgentMode>;
 export type AgentStartRequestT = z.infer<typeof AgentStartRequest>;
+export type AgentWorkerLifecycleStateT = z.infer<typeof AgentWorkerLifecycleState>;
+export type AgentStartResponseT = z.infer<typeof AgentStartResponse>;
 export type AgentApprovalT = z.infer<typeof AgentApproval>;
 export type AgentStatusResponseT = z.infer<typeof AgentStatusResponse>;
 export type AgentStreamEventT = z.infer<typeof AgentStreamEvent>;

@@ -302,6 +302,10 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
       case 'awaiting_approval': return { label: 'AUTHORITY · OPERATOR DECISION REQUIRED', content: `Approval requested for ${event.approval.tool}. Use the decision controls below.` };
       case 'context': return { label: `CONTEXT · ${event.source.toUpperCase()}`, content: `${event.status.toUpperCase()}${event.error ? ` · ${event.error}` : ''}` };
       case 'verification': return { label: 'VERIFICATION · RESULT', content: `${event.status.toUpperCase()} · ${event.passed ? 'passed' : 'not passed'}` };
+      case 'worker_lifecycle': return {
+        label: `WORKER · ${event.state}`,
+        content: `${event.model_id} · ${event.route_id} · project ${event.project_id} · checkout ${event.checkout_id}${event.detail ? `\n${event.detail}` : ''}`
+      };
       case 'done': return { label: 'AGENTLOOP · COMPLETE', content: event.summary };
       case 'error': return { label: 'AGENTLOOP · ERROR', content: event.error };
       case 'aborted': return { label: 'AGENTLOOP · STOPPED', content: 'The governed task was aborted.' };

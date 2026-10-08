@@ -407,6 +407,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const dapManager = options.dapManager ?? (await createDapManager(repoRoot, workspace, options));
   const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
   const modelRuntime = options.modelRuntime ?? (await createModelRuntime(repoRoot, workspace, { ...options, resourceAdmission }));
+  const gitService = new GitService({ workspace });
   const chatStore = new ChatStore(workspace);
   const sessionStore = new SessionStore(workspace);
   const providerService =
@@ -736,7 +737,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
       return skillProvider(task + stageEmphasis(stage));
     }
   };
-  const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
+  const canonicalProjectSeat = options.authority ? projectSeatForAuthority(options.authority) : undefined;
+  const workerHandoffService = createWorkerHandoffService({ workspace, workflowService, ...(canonicalProjectSeat ? { projectSeat: canonicalProjectSeat } : {}) });
   const readinessSupervisor = createHealthSupervisor({
     workspace,
     version,
@@ -778,7 +780,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
       }
     },
     gitRepo: async () => {
-      const status = await new GitService({ workspace }).status();
+      const status = await gitService.status();
       return { git_repo: status.git_repo === true };
     },
     memoryAdmit: async () => {
@@ -863,7 +865,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForRgFiles(rgService),
     routeForRgSearch(rgService),
     routeForEditorOptions(settingsService),
-    ...routesForGit(workspace),
+    ...routesForGit(workspace, gitService),
     ...await buildNotificationWiredRoutes(workspace, { ...options, modelHubAuthorization: huggingfaceAuthorization }),
     ...routesForProblems(workspace),
     ...routesForOrch(createOrchService({ workspace: workspace, runtime: modelRuntime })),
@@ -976,6 +978,21 @@ export async function buildRoutes(workspace: string, version: string, options: B
         effectiveContext: (target: import('./services/model-router.ts').ResolvedChatAuthorityTarget) =>
           target.binding.execution_class === 'LOCAL' ? modelRuntime.getEffectiveContext(target.binding.model_id) : target.route.contextLength
       } } : {}),
+      ...(canonicalProjectSeat ? { projectSeat: canonicalProjectSeat } : {}),
+      captureSource: async () => {
+        const status = await gitService.status() as { git_repo?: boolean; oid?: string | null; branch?: string | null; changes?: unknown[] };
+        return {
+          revision: status.git_repo === true && typeof status.oid === 'string' ? status.oid : null,
+          branch: typeof status.branch === 'string' ? status.branch : null,
+          working_tree: status.git_repo !== true || typeof status.oid !== 'string' ? 'UNKNOWN' as const
+            : (Array.isArray(status.changes) && status.changes.length > 0 ? 'DIRTY' as const : 'CLEAN' as const)
+        };
+      },
+      modelManagerSnapshot: () => modelManagerView.snapshot(),
+      runtimeSnapshot: async () => {
+        const broker = modelRuntime as ModelRuntime & { runtimeStatusSnapshot?: () => Promise<import('../../common/contracts/runtime.ts').RuntimeStatusResponseT> };
+        return typeof broker.runtimeStatusSnapshot === 'function' ? broker.runtimeStatusSnapshot() : null;
+      },
       resolveProviderChatFn: role => {
         // Local-Only is a workspace-wide routing constraint and preserves the
         // local agent path even when no external-provider consent is configured.

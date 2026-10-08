@@ -1,4 +1,7 @@
-import type { AgentApprovalT, AgentStatusResponseT } from '../../../common/contracts/agent.ts';
+import type { AgentApprovalT, AgentStatusResponseT, AgentWorkerLifecycleStateT } from '../../../common/contracts/agent.ts';
+import type { ContextApertureT } from '../../../common/contracts/context-aperture.ts';
+import type { ExecutionEnvelopeT } from '../../../common/contracts/attempt.ts';
+import type { AdmissionRequestT, AdmissionResponseT } from '../../../common/contracts/admission.ts';
 import type { AuditTrailService } from './audit-trail.mjs';
 import type { PublishResult } from '../events.ts';
 import type { ExecutionAuthority, ExecutionHandle } from './execution-authority.mjs';
@@ -6,7 +9,7 @@ import type { createCheckpointService } from './agent-checkpoints.mjs';
 import type { ChatAuthorityTargetBinding } from './model-router.ts';
 import type { ModelDispatchObserverOptions } from './model-router.ts';
 
-export type AgentChatFn = (messages: Array<{ role: string; content: string }>, signal?: AbortSignal, observations?: ModelDispatchObserverOptions) => Promise<string>;
+export type AgentChatFn = (messages: Array<{ role: string; content: string }>, signal?: AbortSignal, observations?: ModelDispatchObserverOptions & { onWorkerRunning?: () => Promise<void> }) => Promise<string>;
 
 export function requiresToolApproval(workspace: string, tool: { name: string; readOnly?: boolean }, args: Record<string, string>): boolean;
 
@@ -16,7 +19,7 @@ export declare class AgentSessionError extends Error {
 }
 
 export interface AgentLoopService {
-  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: AgentChatFn | null, opts?: { execution?: ExecutionHandle | undefined; executionTarget?: Readonly<ChatAuthorityTargetBinding>; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null; handoffContext?: string | null }): Promise<{ session_id: string }>;
+  start(task: string, mode?: 'plan' | 'act', chatFnOverride?: AgentChatFn | null, opts?: { execution?: ExecutionHandle | undefined; executionTarget?: Readonly<ChatAuthorityTargetBinding>; request?: unknown; architectEditor?: boolean; effectiveContextTokens?: number | null; role?: string; residentProvider?: () => Promise<string> | string | null; skillProvider?: (task?: string) => Promise<string> | string | null; memoryProvider?: (task?: string) => Promise<string> | string | null; indexProvider?: (task?: string) => Promise<string> | string | null; evidenceProvider?: (task?: string, role?: string) => Promise<string> | string | null; workflowProvider?: () => Promise<string> | string | null; handoffContext?: string | null; governedExecution?: boolean; workerSessionId?: string; contextAperture?: ContextApertureT; workerBinding?: NonNullable<ExecutionEnvelopeT['worker_binding']> }): Promise<{ session_id: string; attempt_id?: string; context_aperture?: ContextApertureT; lifecycle_state?: AgentWorkerLifecycleStateT }>;
   decide(sessionId: string, approvalId: string, decision: 'approve' | 'reject' | 'abort', execution?: ExecutionHandle): Promise<{ ok: boolean }>;
   cancel(sessionId: string, execution?: ExecutionHandle): Promise<{ ok: boolean; state: AgentStatusResponseT['state'] }>;
   status(sessionId: string): AgentStatusResponseT;
@@ -49,6 +52,7 @@ export declare function createAgentLoop(options: {
     seal(attemptId: string): Promise<{ attempt_id: string; sealed: boolean }>;
     admit(input: unknown): Promise<{ attempt_id: string }>;
     recordEvent(attemptId: string, event: string, data?: Record<string, string | number | boolean | null>, source?: string): Promise<unknown>;
+    bindResourceAdmission(attemptId: string, decision: { decision: 'START' | 'QUEUE' | 'REFUSE_RESOURCE'; reason: string; checked_at: string; reference: string; evidence: Record<string, string | number | boolean | null> }): Promise<void>;
     assertAdmitted(attemptId: string, expectedProjectId?: string): Promise<{ admitted: boolean; reason: string }>;
     executionStarted(attemptId: string): Promise<void>;
     bindContext(attemptId: string, sha256: string, blocks: string[]): Promise<{ drift: boolean }>;
@@ -60,7 +64,7 @@ export declare function createAgentLoop(options: {
     clearMutationDispatch(attemptId: string, tool: string): void;
     uncertainAttempts: Set<string>;
   } | null;
-  resourceAdmission?: { admit(request: unknown): Promise<{ decision: string; reason: string }> } | null;
+  resourceAdmission?: { admit(request: AdmissionRequestT): Promise<AdmissionResponseT> } | null;
   effectiveContextTokens?: number | null;
 }): AgentLoopService;
 

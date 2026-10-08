@@ -13,14 +13,29 @@ export type AdmissionKindT = z.infer<typeof AdmissionKind>;
 export const AdmissionRequirement = z.strictObject({
   memory_mb: z.number().int().gte(0).optional(),
   vram_mb: z.number().int().gte(0).optional(),
-  cpu_share: z.number().gte(0).lte(1).optional()
+  cpu_share: z.number().gte(0).lte(1).optional(),
+  minimum_free_memory_mb: z.number().int().gte(0).optional(),
+  free_commit_strictly_above_mb: z.number().int().gte(0).optional()
 });
 export type AdmissionRequirementT = z.infer<typeof AdmissionRequirement>;
+
+export const AdmissionWorkerWorkload = z.strictObject({
+  worker_session_id: z.string().uuid(),
+  project_id: z.string().uuid(),
+  checkout_id: z.string().uuid(),
+  route_id: z.string().min(1).max(240),
+  model_id: z.string().min(1).max(240),
+  artifact_sha256: z.string().regex(/^[a-f0-9]{64}$/i),
+  runtime_id: z.string().min(1).max(120),
+  runtime_version: z.string().min(1).max(120),
+  context_tokens: z.number().int().positive()
+});
 
 export const AdmissionRequest = z.strictObject({
   kind: AdmissionKind,
   requirement: AdmissionRequirement,
-  disposable: z.boolean().optional()
+  disposable: z.boolean().optional(),
+  workload: AdmissionWorkerWorkload.optional()
 });
 export type AdmissionRequestT = z.infer<typeof AdmissionRequest>;
 

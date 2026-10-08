@@ -64,7 +64,7 @@ test('unknown app/capability and cross-app capability are refused rather than fa
 
 test('all capability routes present still leaves every application execution gated', () => fixture(async ({ catalog, seat, address }) => {
   const inventory = (await catalog.read(address)).apps;
-  const registered = inventory.flatMap(app => app.manifest.capabilities.map(c => ({ method: c.method, path: c.route, capabilityPolicy: { owner: c.owner, operation: c.operation_kind }, ...(c.id === 'project.identity.read' ? { describeOperation: async () => ({ kind: 'capability.read' }) } : {}) })));
+  const registered = inventory.flatMap(app => app.manifest.capabilities.map(c => ({ method: c.method, path: c.route, capabilityPolicy: { owner: c.owner, operation: c.operation_kind }, ...(['project.identity.read', 'project.worker.execute.local'].includes(c.id) ? { describeOperation: async () => ({ kind: c.operation_kind }) } : {}) })));
   const view = await createAppCatalog(seat, registered).read(address);
   assert.ok(view.apps.every(app => app.capability_bindings.every(c => c.state === 'ADDRESSABLE')));
   assert.ok(view.apps.every(app => app.execution_state === 'GATED' && app.grant_state === 'NOT_EVALUATED' && app.admission_state === 'NOT_EVALUATED'));

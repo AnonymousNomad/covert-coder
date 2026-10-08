@@ -36,6 +36,7 @@ import {
   type ExecutionEnvelopeT,
   type RetrySafetyT
 } from '../../../common/contracts/attempt.ts';
+import type { ContextApertureT } from '../../../common/contracts/context-aperture.ts';
 
 const SECRET_PATTERNS: Array<[RegExp, string]> = [
   [/sk-[A-Za-z0-9_-]{8,}/g, '[REDACTED_KEY]'],
@@ -101,6 +102,8 @@ export interface AttemptAdmissionInput {
   resource_decision: { decision: 'START' | 'QUEUE' | 'REFUSE_RESOURCE'; reason: string } | null;
   mutation_scope: string[];
   capabilities: string[];
+  context_aperture?: ContextApertureT;
+  worker_binding?: ExecutionEnvelopeT['worker_binding'];
 }
 
 export interface AttemptJournalOptions {
@@ -306,7 +309,9 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
         retry_bounds: 'no blind retry after uncertain mutation'
       },
       mode: input.mode,
-      started_by: 'agent-loop'
+      started_by: 'agent-loop',
+      ...(input.context_aperture === undefined ? {} : { context_aperture: input.context_aperture }),
+      ...(input.worker_binding === undefined ? {} : { worker_binding: input.worker_binding })
     };
   };
 
@@ -326,12 +331,63 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
       await append(attemptId, 'RESOURCE_QUEUED', { reason: envelope.resource_admission.reason });
     } else if (envelope.resource_admission.decision === 'REFUSE_RESOURCE') {
       await append(attemptId, 'RESOURCE_REFUSED', { reason: envelope.resource_admission.reason });
-    } else {
+    } else if (envelope.resource_admission.decision === 'START') {
       await append(attemptId, 'RESOURCE_ADMITTED', { decision: envelope.resource_admission.decision, reason: envelope.resource_admission.reason });
     }
     await append(attemptId, 'AUTHORITY_GRANTED', { owner: input.authority_owner, operation_kind: input.authority_operation_kind, operation_id: envelope.authority_scope.permit_identity });
+    if (input.context_aperture && input.worker_binding) {
+      await append(attemptId, 'CONTEXT_APERTURE_CREATED', {
+        aperture_id: input.context_aperture.aperture_id,
+        sha256: input.context_aperture.sha256,
+        destination: input.context_aperture.destination.worker,
+        approx_tokens: input.context_aperture.approx_tokens
+      }, 'context-control');
+      await append(attemptId, 'WORKER_REQUESTED', {
+        worker_session_id: input.worker_binding.worker_session_id,
+        principal_id: input.worker_binding.principal_id,
+        project_id: input.worker_binding.project.project_id,
+        checkout_id: input.worker_binding.project.checkout_id,
+        route_id: input.worker_binding.route.route_id
+      }, 'agent-loop');
+    }
     return envelope;
   };
+
+  const bindResourceAdmission = async (attemptId: string, decision: {
+    decision: 'START' | 'QUEUE' | 'REFUSE_RESOURCE';
+    reason: string;
+    checked_at: string;
+    reference: string;
+    evidence: Record<string, string | number | boolean | null>;
+  }): Promise<void> => serializeEnvelope(async () => {
+    const envelope = await readEnvelope(attemptId);
+    if (envelope === null) throw new Error(`attempt ${attemptId} envelope not found`);
+    if (envelope.sealed) throw new Error(`attempt ${attemptId} resource admission is already sealed`);
+    if (envelope.resource_admission.decision !== 'NOT_RECORDED') throw new Error(`attempt ${attemptId} resource admission is already bound`);
+    const updated: ExecutionEnvelopeT = {
+      ...envelope,
+      resource_admission: {
+        decision: decision.decision,
+        reason: redactSecrets(decision.reason).slice(0, 600),
+        checked_at: decision.checked_at,
+        reference: decision.reference
+      },
+      ...(envelope.worker_binding === undefined ? {} : {
+        worker_binding: { ...envelope.worker_binding, resource_admission_ref: decision.reference }
+      })
+    };
+    await writeEnvelope(updated);
+    const data = {
+      decision: decision.decision,
+      reason: decision.reason,
+      checked_at: decision.checked_at,
+      reference: decision.reference,
+      ...decision.evidence
+    };
+    if (decision.decision === 'QUEUE') await append(attemptId, 'RESOURCE_QUEUED', data, 'resource-admission');
+    else if (decision.decision === 'REFUSE_RESOURCE') await append(attemptId, 'RESOURCE_REFUSED', data, 'resource-admission');
+    else await append(attemptId, 'RESOURCE_ADMITTED', data, 'resource-admission');
+  });
 
   // Seal is the only transition that makes an attempt mutation-admissible.
   // The envelope is atomically replaced first, then ATTEMPT_ADMITTED is
@@ -583,6 +639,7 @@ export function createAttemptJournal(options: AttemptJournalOptions) {
     prepare,
     seal,
     admit,
+    bindResourceAdmission,
     rejectAdmission,
     assertAdmitted,
     executionStarted,

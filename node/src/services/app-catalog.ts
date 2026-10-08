@@ -52,7 +52,7 @@ function capability(id: string, owner: string, route: string, operation_kind: st
 // Compiled first-party inventory, NOT frontend APP_REGISTRY, an importer, an
 // installed-app store or authorization truth. Routes refer to existing owners.
 const inventory: Array<[string, string, string, string, Capability[]]> = [
-  ['projects', 'projects', 'Projects', 'ProjectSeat', [capability('project.identity.read', 'ProjectSeat', '/api/projects/current', 'capability.read', ['OPERATOR', 'RESIDENT'])]],
+  ['projects', 'projects', 'Projects', 'ProjectSeat', [capability('project.identity.read', 'ProjectSeat', '/api/projects/current', 'capability.read', ['OPERATOR', 'RESIDENT']), capability('project.worker.execute.local', 'AgentLoop', '/api/agent/start', 'agent.start', ['OPERATOR'], 'POST')]],
   ['editor', 'editor', 'Editor', 'WorkspaceService', [capability('workspace.file.read', 'WorkspaceService', '/api/file', 'workspace.read', ['OPERATOR', 'RESIDENT', 'WORKER']), capability('workspace.file.write', 'WorkspaceService', '/api/file/write', 'workspace.write', ['OPERATOR', 'WORKER'], 'POST')]],
   ['terminal', 'terminal', 'Terminal', 'TerminalSessionService', [capability('terminal.sessions.read', 'TerminalSessionService', '/api/terminal/sessions', 'terminal.read', ['OPERATOR', 'RESIDENT']), capability('terminal.session.open', 'TerminalSessionService', '/api/terminal/sessions', 'terminal.session.start', ['OPERATOR', 'RESIDENT'], 'POST')]],
   ['cipher-laptop', 'cipher-laptop', "Cipher's Laptop", 'CipherLedger-Notebook', [capability('cipher.activity.read', 'CipherLedger', '/api/cipher/laptop/activity', 'capability.read', ['OPERATOR']), capability('cipher.notebook.read', 'CipherNotebook', '/api/cipher/laptop/notebook', 'capability.read', ['OPERATOR'])]],

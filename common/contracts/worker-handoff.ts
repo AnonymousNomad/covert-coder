@@ -3,6 +3,7 @@
 // abstract workers. It carries context, never permission: no authority
 // material, no credentials, no hidden reasoning, no raw transcript.
 import { z } from 'zod';
+import { ProjectAddress } from './project.ts';
 
 export const WorkerHandoffState = z.enum(['CREATED', 'ACCEPTED', 'CONSUMED', 'FAILED', 'CANCELLED']);
 export type WorkerHandoffStateT = z.infer<typeof WorkerHandoffState>;
@@ -41,6 +42,7 @@ export const WorkerHandoffEnvelope = z.strictObject({
   state: WorkerHandoffState,
   workspace_id: z.string().min(1).max(1000),
   project_id: z.string().max(200).nullable(),
+  project: ProjectAddress.nullable().optional(),
   task_id: z.string().min(1).max(200),
   workflow_id: z.string().max(200).nullable(),
   stage_id: z.string().max(200).nullable(),

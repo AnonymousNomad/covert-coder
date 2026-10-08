@@ -92,7 +92,10 @@ export function createResourceAdmission(options: ResourceAdmissionOptions = {}) 
 
   const admit = async (request: AdmissionRequestT): Promise<AdmissionResponseT> => {
     const freeMB = memoryProbeMB();
-    const vramFreeMB = await vramProbeMB().catch(() => null);
+    const [vramFreeMB, freeCommitMB] = await Promise.all([
+      vramProbeMB().catch(() => null),
+      request.requirement.free_commit_strictly_above_mb === undefined ? Promise.resolve(null) : commitProbeMB().catch(() => null)
+    ]);
     const load = loadProbe();
     const disposable = request.disposable === true;
     const evidence: Record<string, string | number | boolean | null> = {
@@ -107,12 +110,44 @@ export function createResourceAdmission(options: ResourceAdmissionOptions = {}) 
       disposable,
       load_probe: load > 0 ? 'available' : 'unknown (platform reports no load average)'
     };
+    if (request.requirement.minimum_free_memory_mb !== undefined) {
+      evidence.minimum_free_memory_mb = request.requirement.minimum_free_memory_mb;
+    }
+    if (request.requirement.free_commit_strictly_above_mb !== undefined) {
+      evidence.free_commit_mb = freeCommitMB;
+      evidence.free_commit_strictly_above_mb = request.requirement.free_commit_strictly_above_mb;
+    }
+    if (request.workload) {
+      evidence.worker_session_id = request.workload.worker_session_id;
+      evidence.project_id = request.workload.project_id;
+      evidence.checkout_id = request.workload.checkout_id;
+      evidence.route_id = request.workload.route_id;
+      evidence.model_id = request.workload.model_id;
+      evidence.artifact_sha256 = request.workload.artifact_sha256;
+      evidence.runtime_id = request.workload.runtime_id;
+      evidence.runtime_version = request.workload.runtime_version;
+      evidence.context_tokens = request.workload.context_tokens;
+    }
     const finish = (decision: AdmissionResponseT['decision'], reason: string): AdmissionResponseT => ({
       decision, kind: request.kind, reason, evidence, checked_at: now().toISOString()
     });
 
+    if (!Number.isFinite(freeMB)) {
+      return finish('REFUSE_RESOURCE', 'system free physical memory could not be measured');
+    }
     if (freeMB < safetyMB) {
       return finish('REFUSE_RESOURCE', `system free memory ${freeMB}MB is below the ${safetyMB}MB safety floor`);
+    }
+    if (request.requirement.minimum_free_memory_mb !== undefined && freeMB < request.requirement.minimum_free_memory_mb) {
+      return finish('REFUSE_RESOURCE', `free physical memory ${freeMB}MB is below the request floor ${request.requirement.minimum_free_memory_mb}MB`);
+    }
+    if (request.requirement.free_commit_strictly_above_mb !== undefined) {
+      if (freeCommitMB === null || !Number.isFinite(freeCommitMB)) {
+        return finish('REFUSE_RESOURCE', 'free Windows commit could not be measured for this worker request');
+      }
+      if (freeCommitMB <= request.requirement.free_commit_strictly_above_mb) {
+        return finish('REFUSE_RESOURCE', `free commit ${freeCommitMB}MB must be greater than ${request.requirement.free_commit_strictly_above_mb}MB`);
+      }
     }
     const reserveApplied = request.kind === 'resident' ? 0 : residentReserveMB;
     const usableMB = freeMB - safetyMB - reserveApplied;

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { ContextAperture } from './context-aperture.ts';
+import { ProjectAddress } from './project.ts';
 
 // IMMUTABLE EXECUTION ENVELOPE (Harness vNext H3, schema v1).
 //
@@ -92,7 +94,8 @@ export const ExecutionEnvelope = z.strictObject({
   resource_admission: z.strictObject({
     decision: z.enum(['START', 'QUEUE', 'REFUSE_RESOURCE', 'NOT_RECORDED']),
     reason: z.string().max(600),
-    checked_at: z.string().nullable()
+    checked_at: z.string().nullable(),
+    reference: z.string().regex(/^[a-f0-9]{64}$/).optional()
   }),
 
   authority_scope: z.strictObject({
@@ -111,7 +114,36 @@ export const ExecutionEnvelope = z.strictObject({
   }),
 
   mode: z.string().max(20),
-  started_by: markerOrString
+  started_by: markerOrString,
+  context_aperture: ContextAperture.optional(),
+  worker_binding: z.strictObject({
+    worker_session_id: z.string().uuid(),
+    principal_id: z.string().min(1).max(200),
+    parent_request_id: z.string().min(1).max(200),
+    task_id: z.string().min(1).max(200),
+    project: ProjectAddress,
+    source_sha: z.string().regex(/^[a-f0-9]{40,64}$/i),
+    working_tree: z.enum(['CLEAN', 'DIRTY']),
+    capability_id: z.literal('project.worker.execute.local'),
+    route: z.strictObject({
+      route_id: z.string().min(1).max(240),
+      model_id: z.string().min(1).max(240),
+      provider_id: z.string().max(120).nullable(),
+      provider_model: z.string().max(240).nullable(),
+      adapter_id: z.string().min(1).max(120),
+      artifact_sha256: z.string().regex(/^[a-f0-9]{64}$/i),
+      runtime_id: z.string().min(1).max(120),
+      runtime_version: z.string().min(1).max(120),
+      target_revision: z.string().min(1).max(240)
+    }),
+    aperture_id: z.string().uuid(),
+    aperture_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    authority_operation_id: z.string().min(1).max(200).nullable(),
+    resource_admission_ref: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+    runtime_process_id: z.number().int().positive(),
+    runtime_started_at: z.string().datetime().nullable(),
+    created_at: z.string().datetime()
+  }).optional()
 });
 export type ExecutionEnvelopeT = z.infer<typeof ExecutionEnvelope>;
 
@@ -164,6 +196,17 @@ export const AttemptEventName = z.enum([
   'ATTEMPT_REJECTED',
   'ATTEMPT_FAILED',
   'ATTEMPT_ABORTED',
+  'WORKER_REQUESTED',
+  'WORKER_ADMITTED',
+  'WORKER_STARTING',
+  'WORKER_PROCESS_OBSERVED',
+  'WORKER_RUNNING',
+  'WORKER_RESULT_OBSERVED',
+  'WORKER_STOP_REQUESTED',
+  'WORKER_STOPPED',
+  'WORKER_CANCELLED',
+  'WORKER_COMPLETED',
+  'WORKER_FAILED',
   'RECOVERY_CLASSIFIED'
 ]);
 export type AttemptEventNameT = z.infer<typeof AttemptEventName>;

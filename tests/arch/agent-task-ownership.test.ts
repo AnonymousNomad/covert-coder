@@ -106,7 +106,7 @@ test('start snapshots the approved request before queued admission', async () =>
   let observedModel: unknown;
   const loop = createAgentLoop({ workspace, authority: fixture.authority, chatFn: async () => completed, attemptJournal: {
     prepare: async input => { observedModel = (input as { worker_model: unknown }).worker_model; throw new Error('controlled snapshot refusal'); },
-    seal: unexpected, admit: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
+    seal: unexpected, admit: unexpected, bindResourceAdmission: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
     executionStarted: unexpected, bindContext: unexpected, effectObserved: unexpected, effectUncertain: unexpected,
     verificationStarted: unexpected, finalize: unexpected, noteMutationDispatch: unexpected, clearMutationDispatch: unexpected,
     uncertainAttempts: new Set<string>(),
@@ -135,7 +135,7 @@ test('reservation covers asynchronous admission, and failed startup revokes its 
   const unexpected = () => { throw new Error('refused admission must not reach another journal method'); };
   const loop = createAgentLoop({ workspace, authority, chatFn: async () => completed, attemptJournal: {
     prepare: async () => { prepares++; entered.resolve(); await held.promise; throw new Error('controlled durable admission failure'); },
-    seal: unexpected, admit: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
+    seal: unexpected, admit: unexpected, bindResourceAdmission: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
     executionStarted: unexpected, bindContext: unexpected, effectObserved: unexpected, effectUncertain: unexpected,
     verificationStarted: unexpected, finalize: unexpected, noteMutationDispatch: unexpected, clearMutationDispatch: unexpected,
     uncertainAttempts: new Set<string>(),

@@ -44,11 +44,6 @@ function stubRuntime(): never {
 
 before(async () => {
   await fs.mkdir(path.join(workspace, '.aide', 'workflow'), { recursive: true });
-  await fs.writeFile(path.join(workspace, '.aide', 'workflow', 'state.json'), JSON.stringify({
-    version: 1, workflow_id: randomUUID(), workspace, project_id: 'live-switch-project', stage: 'DISCOVERY',
-    previous_stage: null, revision: 0, artifacts: [], last_transition_id: null,
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString()
-  }, null, 2), 'utf8');
   await fs.writeFile(path.join(workspace, 'README.md'), '# live switch fixture\n', 'utf8');
 
   stub = http.createServer((request, response) => {
@@ -75,6 +70,12 @@ before(async () => {
   });
 
   server = new ArchServer(workspace, path.join(workspace, 'arch-wh-live.log'));
+  const project = await server.projects.initialize();
+  await fs.writeFile(path.join(workspace, '.aide', 'workflow', 'state.json'), JSON.stringify({
+    version: 1, workflow_id: randomUUID(), workspace, project_id: project.project_id, stage: 'DISCOVERY',
+    previous_stage: null, revision: 0, artifacts: [], last_transition_id: null,
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+  }, null, 2), 'utf8');
   const { buildRoutes } = await import('../../node/src/openapi.ts');
   const store = new Map<string, string>();
   const routes = await buildRoutes(workspace, 'test', {

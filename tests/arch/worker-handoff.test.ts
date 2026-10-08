@@ -21,6 +21,7 @@ let server: ArchServer;
 let httpServer: import('node:http').Server;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
 let base = '';
+let canonicalProjectId = '';
 
 // Provider stub (transport for the remote worker session in the secret test).
 let stub: http.Server;
@@ -30,14 +31,14 @@ let stubReply = '';
 type Envelope<T> = { ok: boolean; data?: T; error?: { code: string; message: string } };
 type HandoffData = { handoff: Record<string, unknown> & { handoff_id: string; state: string; task_id: string; from: Record<string, string>; to: Record<string, string> } };
 
-async function seedWorkflowState(): Promise<void> {
+async function seedWorkflowState(projectId: string): Promise<void> {
   const stateFile = path.join(workspace, '.aide', 'workflow', 'state.json');
   await fs.mkdir(path.dirname(stateFile), { recursive: true });
   await fs.writeFile(stateFile, JSON.stringify({
     version: 1,
     workflow_id: randomUUID(),
     workspace,
-    project_id: 'handoff-gate-project',
+    project_id: projectId,
     stage: 'DISCOVERY',
     previous_stage: null,
     revision: 0,
@@ -50,7 +51,6 @@ async function seedWorkflowState(): Promise<void> {
 
 before(async () => {
   await fs.writeFile(path.join(workspace, 'README.md'), '# handoff fixture\n\nhello line\n', 'utf8');
-  await seedWorkflowState();
 
   stub = http.createServer((request, response) => {
     request.on('data', () => {});
@@ -67,6 +67,9 @@ before(async () => {
   });
 
   server = new ArchServer(workspace, path.join(workspace, 'arch-handoff.log'));
+  const project = await server.projects.initialize();
+  canonicalProjectId = project.project_id;
+  await seedWorkflowState(canonicalProjectId);
   const { buildRoutes } = await import('../../node/src/openapi.ts');
   const store = new Map<string, string>();
   const routes = await buildRoutes(workspace, 'test', {
@@ -180,7 +183,7 @@ test('creates from canonical state and refuses fabricated tasks', async () => {
   const handoff = created.body.data!.handoff;
   assert.equal(handoff.state, 'CREATED');
   assert.equal(handoff.workspace_id, workspace, 'workspace identity is server-owned');
-  assert.equal(handoff.project_id, 'handoff-gate-project', 'project identity derives from canonical workflow state');
+  assert.equal(handoff.project_id, canonicalProjectId, 'project identity remains bound to canonical ProjectSeat and workflow state');
   assert.equal(handoff.stage_id, 'DISCOVERY');
   assert.equal(handoff.task_id, sessionA);
   const facts = handoff.verified_facts as string[];
@@ -355,7 +358,7 @@ test('receiving context is bounded, prioritized, and free of raw transcript', as
   assert.match(block, /^\[WORKER HANDOFF /, 'priority header first');
   assert.match(block, /objective: secret boundary/);
   assert.match(block, /next action: continue without the secret/);
-  assert.match(block, /workflow stage: DISCOVERY · project handoff-gate-project/);
+  assert.ok(block.includes(`workflow stage: DISCOVERY · project ${canonicalProjectId}`));
   assert.match(block, /verified facts:/);
   const missing = await getJson(`/api/worker-handoff/context?id=${encodeURIComponent('00000000-0000-4000-8000-000000000000')}`);
   assert.equal(missing.status, 404, 'missing handoffs fail truthfully');
