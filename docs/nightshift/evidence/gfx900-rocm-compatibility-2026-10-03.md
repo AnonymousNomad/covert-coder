@@ -168,3 +168,38 @@ The exact-SHA CI remains valid evidence for its Linux job, but **Windows reprodu
 - No model/runtime was started and no foreign process was terminated. The temporary instrumentation file was outside the repository.
 
 This passing run is not a repair and does not erase the preserved earlier `UNKNOWN` result. The exact cause of the earlier `FOREIGN` versus `UNKNOWN` red remains **unproven**; the measured successful probe timings do not establish why the earlier run approached the two 3-second child deadlines. Exact-SHA CI is still Linux-only and does not cover this Windows-specific case. Keep PR #41 in draft and the gfx900 runtime unqualified.
+
+## Addendum — Windows port-probe deadline repair — 2026-10-08
+
+**Disposition:** `LOCAL WINDOWS RED REPAIRED / FULL LOCAL GATES PASS / GFX900 STILL UNQUALIFIED`
+
+### Preserved expanded-suite red and cause boundary
+
+- Candidate base before this repair: `e76403f37a7adcf7607db3aafffdaa6660092eba` on `feat/runtime-gfx900-compat`.
+- On 2026-10-08, the expanded runtime suite first failed before executing any tests because Node received a raw `E:\...` instrumentation path as an ESM URL (`ERR_UNSUPPORTED_ESM_URL_SCHEME`); **0 tests ran**. That invocation failure is retained in `E:\pip_temp\covert-w1-ownership-diag-20261008\runtime-focused.log` (SHA-256 `D221885F245C0E0737C63A412BFD60C1ED4EC8C7AD363C71E3C6EC973CF84735`). The corrected file URL was validated before continuing.
+- The corrected expanded run then reported **49 total / 41 pass / 2 fail / 6 skip**. The two failures were the existing Windows no-listener and occupied-foreign-listener tests. In each failing observation, the `powershell.exe` child reached the unchanged 3,000 ms timeout and was killed (`elapsed_ms` 3,039.2 and 3,039.5); adapter error handling correctly mapped the result to `UNKNOWN`, producing the fixture assertion failures. No ownership was inferred and no process was controlled.
+- A broad `rg --files E:\pip_temp` command started by the diagnostic shell was still running during that expanded run. It was identified by its exact command line and stopped as our own inspection process. Its contribution to the two PowerShell overruns is **not proven**. The direct failure mechanism is established as the subprocess deadline; the external load source for those specific overruns remains unknown.
+- After that search ended, the two unchanged PowerShell fixture tests passed in isolation with child times 1,161–1,265 ms. A temporary same-host diagnostic then observed `netstat.exe` report the fixture listener's exact PID and the released port as free in 62.5 ms and 48.6 ms. No repository file or user process was affected by that diagnostic.
+
+### Bounded repair
+
+`node/src/services/unsloth-runtime-adapter.ts` now uses the Windows system binary `%SystemRoot%\\System32\\netstat.exe` with `-ano -p tcp -a` for listener observation. It retains the existing 3,000 ms timeout, uses no command shell, and does not search `PATH`. Child failure, missing `SystemRoot`, malformed target rows, unknown TCP states, or a listener without a positive PID remain `UNKNOWN`; a proven listener retains its exact PID. The existing no-listener and foreign-listener integration fixtures exercise this path. No runtime ownership, admission, fallback, endpoint-contact, or process-termination rule changed.
+
+### Post-repair verification
+
+| Gate | Result |
+|---|---|
+| Windows no-listener + foreign-listener fixtures | **2 pass / 0 fail / 0 skip**, 0.657 s total; observed probe tests 116 ms and 135 ms |
+| Expanded runtime compatibility/model/broker/resolver suite | **49 total / 43 pass / 0 fail / 6 skip**, 5.162 s; skips are bundled-GGUF-dependent in this checkout |
+| Node TypeScript (`tsconfig.node.json --noEmit`) | exit **0** |
+| `npm run check:arch` | exit **0**; **997 total / 986 pass / 0 fail / 11 skip**; Node/browser TypeScript, repository ESLint, and architecture battery passed |
+| `npm run veritas` | exit **0**; **6/6 checks true**, score `1.0` / threshold `0.9`; compile, full `npm test`, secret scan, manifest validation, path boundary, and diff check passed |
+
+Evidence logs are outside the product repository in `E:\pip_temp\covert-w1-ownership-diag-20261008`. Exact SHA-256 values: runtime red `D221885F245C0E0737C63A412BFD60C1ED4EC8C7AD363C71E3C6EC973CF84735`; expanded post-repair runtime suite `6F95DE01CCA8E709AB38EE78245AEF7673B5DF2473D00A9CC4FE5586DF28240F`; architecture gate `6EF4CFF483216B4C2B24945986B7BBC8C24AAD5A243F611D661F2931F73B79F2`; Veritas `61403978886718C00A43FD79CED28AF9AF50C05A191F527F17D6A3558D37E3B8`.
+
+### Remaining limits and next action
+
+- No local model or runtime was launched. The host is not a gfx900/AMD system; real ROCm inference, streaming, cancellation, restart, and same-host backend comparison remain **unproven**.
+- `gfx900 = UNQUALIFIED`; do not promote it from this portability repair.
+- The pre-existing owner edit in `docs/evidence/desktop-battery.md` was preserved and excluded from this repair.
+- Next: review and commit only the runtime adapter and this append-only evidence, push `feat/runtime-gfx900-compat`, then require exact-SHA GitHub CI. Keep PR #41 draft and do not merge pending same-host hardware evidence and current-base reconciliation.
