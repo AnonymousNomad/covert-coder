@@ -288,3 +288,83 @@ Issue #38 remains unchanged at latest owner comment `6036313587` (2026-10-07T10:
 A GET to the already-running facade health endpoint at `127.0.0.1:4777` reported workspace `E:\pip_temp\covert-public-demo-workspace-20261007-luna`. Therefore this process tree is not the local-model demo workspace and cannot prove its live acquisition path. The listeners are PID 24692 (launcher), 2664 (TypeScript backend), 25004 (facade), and 7400 (legacy backend); they were created 2026-10-07 around 14:48 local time. I did not terminate, mutate, or otherwise operate this stack.
 
 Older logs under this checkout's `.aide/logs` show historical legacy daemon messages for workspace `E:\covert-local-model-demo-proof-20261007` on ports 4779 and 4879. Those file timestamps/messages are not evidence of current ownership. At the 16:02Z port sample, 5173/5183/4877/4878/4879/18888 had no listeners; all ports must be rechecked before any later launch. The current resource refusal remains the reason no second stack/model was started.
+
+## Read-only host process shortlist (2026-10-08T16:10Z)
+
+Canonical Admission at 16:07:42Z still refused on commit: 4,171 MiB free against 5,120 MiB. A separate Windows counter sample at 16:10:10Z reported 4,033 MiB free commit (limit 30,527 MiB; committed 26,494 MiB). The samples are time-separated and no process attribution is inferred from the difference.
+
+The largest candidates that may be considered for normal owner-directed closure were:
+
+| Application/process group | Observed tree | Private / working set | Relevance and normal shutdown |
+|---|---|---:|---|
+| Microsoft PC Manager | `MSPCManager.exe` PID 12396, parent Explorer PID 10524, with six embedded WebView2 children | 424 / 229 MiB | Close from PC Manager’s own window or exit control. Potentially recoverable private memory is below the current gap by itself. |
+| Phone Link / Your Phone | `PhoneExperienceHost.exe` PID 15992, child `YourPhoneAppProxyHost.exe` PID 7004 | 326 / 102 MiB | Close the Phone Link app normally. Potentially recoverable private memory is below the current gap by itself. |
+| Visual Studio Installer background download | `BackgroundDownload.exe` PID 11532, launched under Task Scheduler service PID 1372 | 322 / 215 MiB | Only cancel/exit through Visual Studio Installer if no installation/update is active; current activity is unknown and interruption could affect software maintenance. |
+
+PC Manager plus Phone Link total about 750 MiB private, below both the 949 MiB canonical shortfall and the later 1,087 MiB host-counter shortfall. Adding the installer process brings the rough private-byte sum to 1,072 MiB, still below the later gap and not equivalent to guaranteed free-commit recovery. These are options for owner selection, not termination instructions.
+
+OneDrive Sync Service PID 4632 was 137 MiB private / 38 MiB working, but its recorded parent PID 12144 was absent, so its process group was not established; active sync status is unknown. It was excluded from the clear-candidate shortlist. Windows Terminal, protected apps, ambiguous model servers, OS services, and the other-workspace Covert stack were also excluded. No process was stopped and no command lines or credentials were read.
+
+## Resume source reconciliation and exact profile design (2026-10-08)
+
+### Worktree source truth
+
+The user supplied `8e34dab7aa118bb83e7b77208c0c02f6997a2067` as the clean resume base. That commit exists and is an ancestor of the actual current branch tip, `ddd590ca791c7a3dc90182c17559293ed0069c9e`, with 16 later commits on the local-model branch. The later work includes the GGUF parser-buffer repair and successive evidence checkpoints. Preserve that lineage; no reset or checkout was performed. The active branch is `feat/local-model-demo-proof-20261007`, with no upstream configured. At resume, the only dirty files were this evidence note and `AGENT_NOTES.md`.
+
+The first attempt to sample canonical Admission with `node --import tsx` exited before any resource probes with `ERR_MODULE_NOT_FOUND: tsx`; this checkout does not depend on `tsx`. After loading the existing `failure-arch-tests-native-ts` skill, the same read-only service call was executed through Node 26's native TypeScript stripping path. No dependency, source, or test change was made for the failed invocation.
+
+### Fresh admission and host shortlist
+
+At `2026-10-08T16:17:11.553Z`, the canonical `createResourceAdmission().admitLocalRuntimeStart()` returned `REFUSE_RESOURCE`:
+
+| Probe | Observed | Required | Result |
+|---|---:|---:|---|
+| Free physical RAM | 7,090 MiB | 6,656 MiB | PASS |
+| Free Windows commit | 4,299 MiB | 5,120 MiB | **REFUSE; 821 MiB short** |
+| Free VRAM | 5,441 MiB | 4,608 MiB | PASS |
+| GPU utilization | 15% | `<50%` | PASS |
+
+A read-only candidate-app census immediately afterward measured:
+
+| Application/process group | Observed tree | Private / working set | Normal closure / limitation |
+|---|---|---:|---|
+| Microsoft PC Manager | PID 12396 plus six WebView2 descendants | 387 / 231 MiB | Close from PC Manager's own UI. This estimate alone does not cover the current commit gap. |
+| Phone Link / Your Phone | PID 15992 with child PID 7004 | 326 / 108 MiB | Close the app normally. This estimate alone does not cover the current commit gap. |
+| Visual Studio Installer background download | PID 11532; parent Task Scheduler service PID 1372 | 339 / 191 MiB | Activity is unknown; closing/canceling may interrupt an install or update. Do not close without owner selection and installer-state confirmation. |
+
+PC Manager plus Phone Link account for about 713 MiB private bytes, less than the 821 MiB gap. Including the installer yields about 1,052 MiB private bytes, but private-byte totals do not guarantee free-commit recovery. No one has established a safe sufficient closure. The processes were not terminated. Protected apps, OS processes, ambiguous model servers, the active terminal, and the other-workspace Covert stack remain excluded. The earlier 16:10Z list is retained above as historical evidence; process memory varies between samples.
+
+### Acquisition workspace and source identity
+
+`node/src/openapi.ts` sets the ModelHub destination to `path.join(workspace, 'models')`; `scripts/start.mjs` resolves that workspace from `AIDE_WORKSPACE` or defaults it to the repository root. The repository's `models/` currently contains only `BUNDLE.md`, `manifest.json`, and `PACKS.md`, no GGUF. A direct source checkout-root launch would place a large downloaded model in the Git checkout. The real run must set a fresh, isolated `AIDE_WORKSPACE` outside this repository and verify its path and free disk space before launch.
+
+The already documented candidate is `LiquidAI/LFM2.5-2.6B-GGUF`, immutable revision `e7caca5d835a3901a8e0d63e94009429bafafdfc`, file `LFM2.5-2.6B-Q4_K_M.gguf`, expected size `1,674,455,040` bytes, and expected LFS/SHA-256 `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed`. The same-sized file is present in the separate existing model collection at `E:\models\house-model\lfm25_gguf\LFM2.5-2.6B-Q4_K_M.gguf`; this turn did not rehash it. The live ModelHub inspect response in the isolated product session must independently return the same repo, immutable revision, file, size, LFS hash, and custom license before an exact approved download can begin. The prior license record is `lfm1.0` / LFM Open License v1.0, not Apache-2.0; this is local execution evidence, not redistribution clearance.
+
+### Canonical runtime-profile design
+
+The existing BrokerModelRuntime is the profile owner. Its bound Unsloth profile accepts only `samplers.temperature`, `runtime.context_tokens`, and `runtime.max_tokens`; it requires all three values and binds the sidecar to artifact SHA-256, runtime id, and observed runtime version. The reference profile for the exact pinned artifact is:
+
+| Setting | Planned value | Evidence limit |
+|---|---:|---|
+| Runtime | `UNSLOTH`, expected version `2026.9.11` | Confirm the live installed version and ownership before profile save/start; version mismatch refuses. |
+| Sampler temperature | `0` | Existing exact-artifact profile value; no model-role qualification is implied. |
+| Context request | `2,048` tokens | Prior request profile only; effective served context remains UNKNOWN. Do not substitute the 32,768 catalog value. |
+| Maximum output | `512` tokens | Bounded request limit, not measured performance. |
+| Chat template | Embedded GGUF `tokenizer.chat_template`; `chat_template_override: null` | Actual downloaded GGUF metadata must be parsed; retain model-specific template source and do not add generic stops. |
+| Stop behavior | UNKNOWN | No explicit Covert stop list or live token-level stop proof. |
+| Backend/device details | Prior Windows/Vulkan/GTX 1060 passport is the reference scope | Verify current runtime/backend/device observations; requested Vulkan placement is not proof of actual offload. |
+
+The profile must be saved through `/api/models/profile` after registration so the canonical sidecar is bound to the acquired file and actual runtime version. Registration is availability only. The Model start route and the Broker manager each perform canonical Resource Admission; both must pass. Neither this profile plan nor the older Unsloth Passport permits bypassing the current 6,656 MiB physical / 5,120 MiB commit / 4,608 MiB VRAM / `<50%` GPU floors.
+
+### Prepared proof sequence
+
+After a fresh passing Admission and isolated-stack preflight:
+
+1. In Model Access, search Hugging Face and inspect the chosen exact repo; retain the actual returned metadata and Authority receipts.
+2. Approve the exact download body, pinning repo, filename, quantization label, revision, LFS SHA-256, and exact size. Wait for the canonical service's byte, hash, and GGUF validation; independently read back the manifest and file hash.
+3. Register the downloaded file through Model Manager, record the returned model id, and save the digest/runtime/version-bound profile above.
+4. Recheck current resources; approve canonical `/api/models/start`; require exact-model health and a real local response. If current thresholds close, stop and preserve that refusal.
+5. Only after the first real inference, capture load time, request-to-first-delta TTFT, and simultaneous physical RAM / commit / VRAM / GPU samples. Record native prompt/decode tok/s only if the serving backend reports phase timings and token counts; otherwise retain `UNKNOWN` rather than deriving throughput from wall time.
+6. If resources remain safe, exercise cancellation, stop, restart, exact identity, and a second generation; verify owned child/session cleanup.
+
+No live ModelHub request, app start, download, model start, inference, or test ran in this checkpoint. Existing route coverage under `tests/arch/modelhub-routes.test.ts` uses a fake Hugging Face response; it cannot be cited as live acquisition. Preserve the known suite red: pairing the test Authority fixture at `/api/authority/pair` exceeded its unchanged 5,000 ms deadline (8,708 ms), so the 12 route assertions did not run. Cause remains UNKNOWN; no retries, deadline changes, or assertion changes were made. The only completed runtime verification in this section is the canonical resource sample, which refused the start.
