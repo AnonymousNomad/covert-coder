@@ -1,0 +1,71 @@
+{
+  "schema": "covert.governed-execution-spine-verification.v1",
+  "date": "2026-10-08",
+  "worktree": "E:\\covert-governed-execution-spine-luna-20261008-impl",
+  "branch": "feat/governed-execution-spine-luna-20261008-impl",
+  "base_sha": "682a42114450c4f7caf84e45ccdc601481dfb374",
+  "implementation_sha": "967065fd174ad0174502499f12e61da50b653a60",
+  "disposition": "BLOCKED_EXTERNAL_DEPENDENCY",
+  "live_worker_execution": {
+    "attempted": false,
+    "reason": "No exact qualified local route and matching healthy runtime was available; the only observed running Ollama process belonged to a foreign checkout and was not used.",
+    "actual_model_call": false,
+    "actual_authority_approval": false,
+    "actual_admission_for_model": false,
+    "actual_worker_receipt": false,
+    "handoff_to_second_live_worker": false
+  },
+  "observations": {
+    "configured_local_ports_listening": [],
+    "model_manager_unauthenticated_http_status": 403,
+    "free_physical_memory_mib": 7421,
+    "free_commit_mib": 7110,
+    "candidate_north_mini_code_artifact_bytes": 10480001120,
+    "candidate_north_mini_code_runtime_health": "pending",
+    "candidate_north_mini_code_coding_smoke": "pending",
+    "foreign_ollama_process_used": false,
+    "cloud_fallback_used": false,
+    "credential_access_or_copy": false
+  },
+  "tests": [
+    {"name":"governed-execution-spine","pass":6,"fail":0,"skip":0,"cancelled":0,"status":"PASS","duration_ms":5903.3979,"command":"node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/governed-execution-spine.test.ts","scope":"controlled architecture/contract fixtures; not real model execution"},
+    {"name":"worker-handoff","pass":7,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"worker-handoff-live","pass":8,"fail":0,"skip":0,"status":"PASS","scope":"controlled live-route harness; not local model inference"},
+    {"name":"resource-admission","pass":11,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"harness-attempt","pass":20,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"agent-worker-binding","pass":11,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"agent-routes","pass":8,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"platform-app-catalog","pass":22,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"resident-capability-discovery","pass":26,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"resident-routes","pass":11,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"project-addressing","pass":8,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"project-private-state","pass":1,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"capability-authority","pass":12,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"openapi-drift","pass":2,"fail":0,"skip":0,"status":"PASS"},
+    {"name":"agent-task-ownership-first-broader-run","pass":3,"fail":6,"skip":0,"status":"FAIL_THEN_PASS","cause":"UNKNOWN","followup":{"pass":9,"fail":0,"skip":0,"status":"PASS","timeout_or_assertion_changed":false}},
+    {"name":"project-registry-first-broader-run","pass":15,"fail":1,"skip":0,"status":"FAIL_THEN_PASS","cause":"UNKNOWN","followup":{"pass":16,"fail":0,"skip":0,"status":"PASS","timeout_or_assertion_changed":false}}
+  ],
+  "static_checks": {
+    "node_typescript": "PASS",
+    "browser_typescript": "PASS",
+    "openapi_regeneration_and_drift": "PASS",
+    "focused_eslint": {"status":"PASS_WITH_WARNING","errors":0,"warnings":1,"warning":"unchanged tests/arch/platform-app-catalog.test.ts:179 unused _digest"},
+    "agent_loop_node_syntax": "PASS",
+    "focused_agent_loop_mjs_rules": "PASS",
+    "configured_agent_loop_eslint": "INCOMPLETE_STALLED_AFTER_60S_OWNED_PROCESS_STOPPED",
+    "vite_build": {"status":"PASS","modules_transformed":1445,"elapsed_seconds":26.16,"warning":"existing main JS chunk approximately 4.75 MB"},
+    "git_diff_check": "PASS",
+    "full_architecture_suite": "NOT_RUN",
+    "npm_test": "NOT_RUN",
+    "veritas": "NOT_RUN",
+    "release_or_clean_machine_acceptance": "NOT_RUN",
+    "rendered_browser_acceptance": "NOT_RUN"
+  },
+  "limitations": [
+    "No actual qualified local worker execution or live receipt.",
+    "Current AgentLoop owner has a single active root task slot; concurrent root tasks across worktrees are not supported or proven.",
+    "Incremental model memory and VRAM demand are not measured or reserved by current Resource Admission integration.",
+    "Restart reconciliation does not establish shared runtime PID liveness.",
+    "The isolated lane cannot access canonical Model Manager state without the paired operator session."
+  ]
+}
