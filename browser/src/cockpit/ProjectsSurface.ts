@@ -5,6 +5,7 @@
 import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
+import { createWorkerExecutionPanel } from './WorkerExecutionPanel.ts';
 import { createWorkbenchesPanel } from '../workbenches/workbenches.ts';
 import type { EditorHost } from '../editor/host.ts';
 import type { WorkspaceListResponseT } from '../../../common/contracts/workspace.ts';
@@ -43,6 +44,8 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
   const workspaceList = el('div', 'cockpit-projects-file-list');
   workspaceSection.append(workspaceMeta, workspaceList);
   root.appendChild(workspaceSection);
+
+  const workerExecution = createWorkerExecutionPanel(root);
 
   const workbenchSection = el('section', 'cockpit-projects-workbenches');
   workbenchSection.appendChild(el('h3', 'cockpit-projects-section-title', 'WORKBENCHES'));
@@ -108,6 +111,7 @@ export function createProjectsSurface(parent: HTMLElement, store: Store<AppState
     },
     dispose() {
       alive = false;
+      workerExecution.dispose();
       parent.innerHTML = '';
     }
   };

@@ -1697,6 +1697,120 @@ html, body {
   text-align: left;
 }
 
+.worker-execution-panel {
+  margin: 18px 0;
+  padding: 12px;
+  border: 1px solid var(--ck-line-soft);
+  background: var(--ck-bg-panel);
+}
+
+.worker-execution-intro,
+.worker-execution-snapshot,
+.worker-execution-line,
+.worker-execution-events,
+.worker-execution-label,
+.worker-execution-error {
+  color: var(--ck-text-dim);
+  font-family: var(--ck-font-mono);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.worker-execution-snapshot {
+  margin: 8px 0;
+  padding: 8px;
+  white-space: pre-line;
+  border-left: 2px solid var(--ck-purple);
+  background: var(--ck-bg);
+}
+
+.worker-execution-form,
+.worker-execution-handoff {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.worker-execution-field {
+  display: grid;
+  gap: 4px;
+}
+
+.worker-execution-label {
+  color: var(--ck-text-muted);
+  letter-spacing: 0.08em;
+}
+
+.worker-execution-select,
+.worker-execution-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px;
+  color: var(--ck-text);
+  border: 1px solid var(--ck-line);
+  background: var(--ck-bg);
+  font-family: var(--ck-font-mono);
+  font-size: 10px;
+}
+
+.worker-execution-textarea {
+  resize: vertical;
+}
+
+.worker-execution-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.worker-execution-primary,
+.worker-execution-stop {
+  padding: 6px 9px;
+  color: var(--ck-text);
+  border: 1px solid var(--ck-line);
+  background: transparent;
+  font-family: var(--ck-font-mono);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.worker-execution-primary:disabled,
+.worker-execution-stop:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.worker-execution-status {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.worker-execution-error {
+  color: var(--ck-orange);
+}
+
+.worker-execution-events {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.worker-execution-aperture {
+  margin-top: 6px;
+  color: var(--ck-green);
+  font-family: var(--ck-font-mono);
+  font-size: 9px;
+}
+
+.worker-execution-aperture pre {
+  max-height: 320px;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ck-text-dim);
+  background: var(--ck-bg);
+}
+
 .cockpit-projects-file-button {
   cursor: pointer;
 }
