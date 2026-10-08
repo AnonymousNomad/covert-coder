@@ -251,3 +251,19 @@ When host conditions are safe for the unchanged focused route test, leave `AIDE_
 The startup launcher source supports isolated workspace and port values through `AIDE_WORKSPACE`, `AIDE_UI_PORT`, `AIDE_FACADE_PORT`, `AIDE_ARCH_PORT`, and `AIDE_LEGACY_PORT`. It retains the 30,000 ms default readiness bound and writes child stdout/stderr under the selected workspace's `.aide/logs`. A later startup reproduction should use a fresh workspace and currently verified free alternate ports, while capturing child PID/tree and logs before cleanup. This source inspection does not resolve the earlier TypeScript readiness failure.
 
 No test, Covert stack, model, or product code was started or modified during this source reconciliation. The real acquisition/registration/runtime path remains open.
+
+## Existing Model Access path map (2026-10-08T16:00Z)
+
+Read-only inspection found the canonical UI already connects the required stages; no parallel acquisition path is needed:
+
+| Stage | Existing owner and Authority class | Binding / truth boundary |
+|---|---|---|
+| Search | `browser/src/panels/models.ts` → `/api/modelhub/search`; `capability.external` | Search query is exact-bound and requires approval before external Hugging Face contact. |
+| Inspect | Model Access → `/api/modelhub/files`; `capability.external` | Exact repository ID; response supplies immutable revision, file size, and LFS SHA-256. |
+| Download | Model Access → `/api/modelhub/download`; `capability.external` | Single approved body binds repository, filename, quant label, revision, expected SHA-256, and exact size. Service writes under the configured workspace `models/` root and verifies bytes and GGUF before reporting `done`. |
+| Register | `/api/models/register`; `capability.write` | Enabled by the UI only after verified download completion. UI explicitly describes registration as local availability, not start or qualification. |
+| Profile | `/api/models/profile`; `capability.write` | Authority-saved profile binds the artifact digest to the canonical runtime/version and request settings. |
+| Start | `/api/models/start`; `capability.execute` | Route runs canonical Resource Admission; manager independently checks artifact/profile identity and takes its fresh Admission before the broker load. |
+| Exercise / recovery | Model Manager’s canonical runtime/chat/stream/stop path | Must prove exact served identity, real output, cancellation, stop, restart and owned cleanup from the isolated workspace. |
+
+This source map does not establish that the live UI, external requests, download, registration, admission, runtime, or inference works in this branch. No UI action or test ran while Admission remained closed. The route fixture's fake Hugging Face fetch remains only contract coverage. The user-facing evidence should follow the table's existing path and preserve `downloaded ≠ trusted`, `available ≠ qualified`, and `registered ≠ executing`.

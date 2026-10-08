@@ -5,6 +5,14 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-08 11:00] Actor: Luna
+- Type: canonical acquisition-to-runtime UI/API path mapped for live proof
+- Source truth: `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, HEAD `2d1479b5bcb36da94473ebf1d8d4a6bfe4549f68`, clean before this documentation unit.
+- The production Model Access panel already provides the requested flow: `/api/modelhub/search` and `/api/modelhub/files` each describe exact `capability.external` operations; `/api/modelhub/download` binds repo, filename, quant label, immutable revision, LFS SHA-256, and exact size in one approved external operation. The UI only enables registration after the job reports `done` with verification and says registration is availability, not start or qualification.
+- `/api/models/register` and `/api/models/profile` are explicit `capability.write`; `/api/models/start` is `capability.execute` and checks canonical Resource Admission before calling the manager. The manager verifies the bound profile/artifact and performs its own fresh Admission before broker load. No route/UI bypass was identified in this read-only pass.
+- Live sequence is now pinned: search → inspect → explicitly approve exact-revision download → independently confirm stored bytes/SHA/GGUF → register via Model Manager → Authority-save exact artifact/runtime profile → fresh Admission → broker start → health/exact model identity → inference → cancel/stop/restart/cleanup. None of these live UI actions occurred in this source-only unit; synthetic route fixtures and the old external artifact remain insufficient proof.
+- No tests or local runtime were started because canonical Admission still refuses on free commit; no code changed. Issue #38 latest comment remains `6036313587`; no new review instruction.
+
 ### [2026-10-08 10:56] Actor: Luna
 - Type: Model Hub setup-red source reconciliation and isolated test preparation
 - Repository check: worktree remains `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, HEAD `8862de4bc6eb53b80c5fe1909f5b68f6119e50a3`; clean after the evidence checkpoint. No upstream; Saul lanes untouched.
