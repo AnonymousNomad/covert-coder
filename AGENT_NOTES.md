@@ -5,6 +5,13 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-08 11:03] Actor: Luna
+- Type: fresh admission refusal and protected-stack recheck
+- Source truth before update: isolated local-model worktree at `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, HEAD `fb882a4e41b8ce5e43100efa1e8020725f1624d5`, clean. The full `git worktree list` subcommand produced no output after repeated polling and was interrupted; do not claim a current full worktree inventory. No branch/worktree mutation occurred.
+- Canonical local-runtime Admission at `2026-10-08T16:02:00.418Z` returned `REFUSE_RESOURCE`: physical free 7,438 MiB / 6,656 floor; commit free 4,202 MiB / 5,120 floor (short 918); VRAM free 5,559 MiB / 4,608 floor; GPU 38% / `<50%`. Read-only Windows sample three seconds later showed physical 7,345 MiB and commit 4,250 MiB. Variance does not establish cause. No model or app stack started; no pagefile/floor change.
+- Listener recheck found 4173/4777/4778/4779 still owned by the existing separate workstation stack (PIDs 24692/25004/2664/7400). No listeners were observed on 5173/5183/4877/4878/4879/18888 in that sample. Do not touch the existing stack; recheck ports immediately before any future launch.
+- Issue #38 rechecked after the resource result; latest remains owner comment `6036313587` dated 2026-10-07T10:47:38Z. No new Sol correction. No tests, external requests, source edits, or runtime actions; next action remains resource-gated.
+
 ### [2026-10-08 11:00] Actor: Luna
 - Type: canonical acquisition-to-runtime UI/API path mapped for live proof
 - Source truth: `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, HEAD `2d1479b5bcb36da94473ebf1d8d4a6bfe4549f68`, clean before this documentation unit.

@@ -267,3 +267,18 @@ Read-only inspection found the canonical UI already connects the required stages
 | Exercise / recovery | Model Manager’s canonical runtime/chat/stream/stop path | Must prove exact served identity, real output, cancellation, stop, restart and owned cleanup from the isolated workspace. |
 
 This source map does not establish that the live UI, external requests, download, registration, admission, runtime, or inference works in this branch. No UI action or test ran while Admission remained closed. The route fixture's fake Hugging Face fetch remains only contract coverage. The user-facing evidence should follow the table's existing path and preserve `downloaded ≠ trusted`, `available ≠ qualified`, and `registered ≠ executing`.
+
+## Fresh resource and port check (2026-10-08T16:02Z)
+
+Canonical `createResourceAdmission().admitLocalRuntimeStart()` returned `REFUSE_RESOURCE` at `2026-10-08T16:02:00.418Z`:
+
+| Probe | Observed | Required | Result |
+|---|---:|---:|---|
+| Free physical memory | 7,438 MiB | 6,656 MiB | Pass |
+| Free Windows commit | 4,202 MiB | 5,120 MiB | **Refuse; short by 918 MiB** |
+| Free VRAM | 5,559 MiB | 4,608 MiB | Pass |
+| GPU utilization | 38% | `<50%` | Pass |
+
+A Windows sample three seconds later read 7,345 MiB free physical and 4,250 MiB free commit; these time-separated probes vary and do not assign a cause. The model and branch app were not started. The existing other-workspace Covert stack still owned ports 4173/4777/4778/4779 (PIDs 24692/25004/2664/7400). Ports 5173/5183/4877/4878/4879/18888 were free in this one check only. The protected stack was not stopped.
+
+Issue #38 remains unchanged at latest owner comment `6036313587` (2026-10-07T10:47:38Z). Full `git worktree list` inspection did not return after repeated waits and was interrupted; branch/status/log were read before that subcommand, and no worktree mutation occurred. No test ran under the still-refused Admission state.
