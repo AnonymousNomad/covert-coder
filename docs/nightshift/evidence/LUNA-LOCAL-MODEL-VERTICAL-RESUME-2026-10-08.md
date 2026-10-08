@@ -804,3 +804,18 @@ The canonical `probeGguf()` parser read only the header of the existing external
 The adjacent user-model sidecar was read without modification. It binds artifact SHA-256 `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed` to runtime `UNSLOTH` version `2026.9.11`, temperature `0`, context request `2,048`, and maximum output `512`. The current `BrokerModelRuntime` accepts only `temperature`, `context_tokens`, and `max_tokens` in this qualified profile, verifies the artifact name/size/SHA and exact runtime-version binding, and requires a fresh Admission `START` at start time. It does not accept separate persisted thread, batch, mmap/mlock, or stop-sequence settings through this profile contract. No profile or model file was changed. Historical Vulkan/device/parallelism process arguments recorded in the existing model card are observations, not persisted profile fields and not newly revalidated settings.
 
 The exact artifact already has a narrow historical Runtime Passport and 2026-10-01 Broker lifecycle proof for this specific Windows Administrator + Unsloth `2026.9.11` + Vulkan + GTX 1060 Mobile scope. That prior proof remains valid only within its recorded scope; it does not complete the current isolated worktree's live HF search/inspection/download/registration path, or make the currently stopped model READY. Current worktree acquisition and registration remain **NOT PROVEN**. The earlier canonical registration-route test timeout remains **OPEN**; the separate fast pairing-route diagnostic did not clear it.
+
+## Admission refresh and pagefile observation (2026-10-08)
+
+At `2026-10-08T20:12:07.989Z`, the worktree's canonical `createResourceAdmission().admitLocalRuntimeStart()` returned **`REFUSE_RESOURCE`**:
+
+| Resource | Observed | Required | Result |
+|---|---:|---:|---|
+| Free physical memory | 3,934 MiB | 6,656 MiB | short 2,722 MiB |
+| Free Windows commit | 5,176 MiB | 5,120 MiB | pass by 56 MiB |
+| Free VRAM | 5,444 MiB | 4,608 MiB | pass |
+| GPU utilization | 10% | below 50% | pass |
+
+The physical-memory floor remains the measured refusal boundary; free commit has little margin. Read-only Windows pagefile telemetry reported `C:\pagefile.sys` allocated `13,772 MiB`, current usage `10,948 MiB`, peak usage `14,220 MiB`; `AutomaticManagedPagefile=False`. This does not establish an undersized pagefile or a Covert commit leak: canonical free commit still passes, and the pagefile configuration was not changed.
+
+The process snapshot found no safe, non-protected application that could clear the current physical shortfall. The active external Nuitka build child PID `18852` remained at about `1,566 MiB` private memory, less than the 2,722 MiB gap, and was left running to avoid interrupting that build. OpenCode remained protected; its observed private memory increased from about `1,441 MiB` at the prior snapshot to `1,768 MiB` at this snapshot while free physical RAM decreased by 340 MiB. This is concurrent observation only and does not prove causation. Codex, Edge, the active other-workspace Covert stack, Windows TextInputHost, Defender, and other OS components were left untouched. No process was terminated, no pagefile setting changed, and no local-model or app startup was attempted after refusal.
