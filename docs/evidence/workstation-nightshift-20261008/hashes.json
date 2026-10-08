@@ -1,0 +1,22 @@
+[
+    {
+        "file":  "raw-verification.zip",
+        "Hash":  "3EDC3DD626E7032EE7A258ECD554BA09DC2348B6FD87C501D122AF3670165782"
+    },
+    {
+        "file":  "resource-gate.jsonl",
+        "Hash":  "745DB756772A5AF486639C78F9EB6C0013D2CEC42526B3A425D252AA55757556"
+    },
+    {
+        "file":  "results.jsonl",
+        "Hash":  "DC03E1FF7FCD761FD1C1B3F7FF9639A9C84816776976B33FEBBED338A4FAA78D"
+    },
+    {
+        "file":  "workstation-runtime.png",
+        "Hash":  "163D929F240A5A9353D7D1CFA2852315CE0B4AFF147C468986F2BF0CE4816689"
+    },
+    {
+        "file":  "wsl-runtime.png",
+        "Hash":  "E77B7DEC20BB5F06316E3178018C35AE4B00A46ECFEB1128600D343D0DC55773"
+    }
+]
