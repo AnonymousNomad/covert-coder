@@ -24,6 +24,7 @@ export function routesForHardware(): Route[] {
     {
       method: 'GET',
       path: '/api/hardware/profile',
+      capabilityPolicy: { owner: 'HardwareService', operation: 'capability.read' },
       response: HardwareProfileResponse,
       handler: wrap(async () => getDeviceProfile())
     },

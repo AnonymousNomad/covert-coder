@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { PackageDeclaration, PackageManifest, AppDeclaration, AppManifest, InstalledAppRecord, AppInstance, AppCatalogQuery, AppCatalogResponse, type PackageManifestT, type AppManifestT, type AppCatalogResponseT } from '../../../common/contracts/platform-app.ts';
 import type { ProjectAddressT } from '../../../common/contracts/project.ts';
 import type { ProjectSeat } from './project-seat.ts';
+import { httpOperationKind, OPERATION_POLICY } from '../../../common/security/operation-policy.mjs';
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -43,21 +44,23 @@ const pkg = sealPackageManifest({
   compatibility: { contract_version: 1, hosts: ['windows', 'linux', 'darwin'] }
 });
 type Capability = AppManifestT['capabilities'][number];
-function capability(id: string, owner: string, route: string, method: Capability['method'] = 'GET'): Capability {
-  return { id, owner, method, route, effect: method === 'GET' ? 'READ' : 'WRITE', audiences: ['OPERATOR', 'RESIDENT', 'WORKER'] };
+function capability(id: string, owner: string, route: string, operation_kind: string, audiences: Capability['audiences'], method: Capability['method'] = 'GET'): Capability {
+  const effect = OPERATION_POLICY[operation_kind];
+  if (!effect) throw new AppCatalogError('OPERATION_POLICY_MISMATCH');
+  return { id, owner, method, route, operation_kind, effect: effect.toUpperCase() as Capability['effect'], audiences };
 }
 // Compiled first-party inventory, NOT frontend APP_REGISTRY, an importer, an
 // installed-app store or authorization truth. Routes refer to existing owners.
 const inventory: Array<[string, string, string, string, Capability[]]> = [
-  ['projects', 'projects', 'Projects', 'ProjectSeat', [capability('project.identity.read', 'ProjectSeat', '/api/projects/current')]],
-  ['editor', 'editor', 'Editor', 'WorkspaceService', [capability('workspace.file.read', 'WorkspaceService', '/api/file'), capability('workspace.file.write', 'WorkspaceService', '/api/file/write', 'POST')]],
-  ['terminal', 'terminal', 'Terminal', 'TerminalSessionService', [capability('terminal.sessions.read', 'TerminalSessionService', '/api/terminal/sessions'), capability('terminal.session.open', 'TerminalSessionService', '/api/terminal/sessions', 'POST')]],
-  ['cipher-laptop', 'cipher-laptop', "Cipher's Laptop", 'CipherLedger-Notebook', [capability('cipher.activity.read', 'CipherLedger', '/api/cipher/laptop/activity'), capability('cipher.notebook.read', 'CipherNotebook', '/api/cipher/laptop/notebook')]],
-  ['models', 'models', 'Models', 'ModelManagerView', [capability('models.manager.read', 'ModelManagerView', '/api/models/manager')]],
-  ['connections', 'connections', 'Connections', 'ProviderConnectionsService', [capability('connections.read', 'ProviderConnectionsService', '/api/connections')]],
-  ['resource-monitor', 'resources', 'Resource Monitor', 'HardwareService', [capability('resources.hardware.read', 'HardwareService', '/api/hardware/profile')]],
-  ['evidence', 'verification', 'Evidence', 'ProvenanceLedger', [capability('evidence.provenance.read', 'ProvenanceLedger', '/api/provenance/runs')]],
-  ['settings', 'settings', 'Settings', 'SettingsService', [capability('settings.read', 'SettingsService', '/api/settings')]]
+  ['projects', 'projects', 'Projects', 'ProjectSeat', [capability('project.identity.read', 'ProjectSeat', '/api/projects/current', 'capability.read', ['OPERATOR', 'RESIDENT'])]],
+  ['editor', 'editor', 'Editor', 'WorkspaceService', [capability('workspace.file.read', 'WorkspaceService', '/api/file', 'workspace.read', ['OPERATOR', 'RESIDENT', 'WORKER']), capability('workspace.file.write', 'WorkspaceService', '/api/file/write', 'workspace.write', ['OPERATOR', 'WORKER'], 'POST')]],
+  ['terminal', 'terminal', 'Terminal', 'TerminalSessionService', [capability('terminal.sessions.read', 'TerminalSessionService', '/api/terminal/sessions', 'terminal.read', ['OPERATOR', 'RESIDENT']), capability('terminal.session.open', 'TerminalSessionService', '/api/terminal/sessions', 'terminal.session.start', ['OPERATOR', 'RESIDENT'], 'POST')]],
+  ['cipher-laptop', 'cipher-laptop', "Cipher's Laptop", 'CipherLedger-Notebook', [capability('cipher.activity.read', 'CipherLedger', '/api/cipher/laptop/activity', 'capability.read', ['OPERATOR']), capability('cipher.notebook.read', 'CipherNotebook', '/api/cipher/laptop/notebook', 'capability.read', ['OPERATOR'])]],
+  ['models', 'models', 'Models', 'ModelManagerView', [capability('models.manager.read', 'ModelManagerView', '/api/models/manager', 'capability.read', ['OPERATOR', 'RESIDENT'])]],
+  ['connections', 'connections', 'Connections', 'ProviderConnectionsService', [capability('connections.read', 'ProviderConnectionsService', '/api/connections', 'capability.read', ['OPERATOR'])]],
+  ['resource-monitor', 'resources', 'Resource Monitor', 'HardwareService', [capability('resources.hardware.read', 'HardwareService', '/api/hardware/profile', 'capability.read', ['OPERATOR', 'RESIDENT'])]],
+  ['evidence', 'verification', 'Evidence', 'ProvenanceLedger', [capability('evidence.provenance.read', 'ProvenanceLedger', '/api/provenance/runs', 'capability.read', ['OPERATOR', 'RESIDENT'])]],
+  ['settings', 'settings', 'Settings', 'SettingsService', [capability('settings.read', 'SettingsService', '/api/settings', 'capability.read', ['OPERATOR'])]]
 ];
 const manifests = freeze(inventory.map(([id, presentation, name, owner, capabilities]) => sealApp({
   schema: 'covert.app-manifest.v1', app_id: 'covert.app.' + id, package_id: pkg.package_id, package_manifest_digest: pkg.manifest_digest, version: pkg.version,
@@ -81,13 +84,22 @@ function select(selector: { app_id?: string; capability_id?: string }) {
   return selected;
 }
 
-export function createAppCatalog(seat: ProjectSeat | undefined, registeredRoutes?: ReadonlyArray<{ method: string; path: string }>) {
+export function createAppCatalog(seat: ProjectSeat | undefined, registeredRoutes?: ReadonlyArray<{ method: string; path: string; capabilityPolicy?: { owner: string; operation: string; available?: boolean }; describeOperation?: unknown }>) {
   const generation = randomUUID();
-  const routes = registeredRoutes === undefined ? undefined : new Set(registeredRoutes.map(route => route.method + ' ' + route.path));
-  const bindings = (manifest: AppManifestT) => manifest.capabilities.map(capability => ({ id: capability.id,
-    state: routes === undefined ? 'UNOBSERVED' : routes.has(capability.method + ' ' + capability.route) ? 'ADDRESSABLE' : 'UNAVAILABLE',
-    reason: routes === undefined ? 'ROUTE_OWNER_UNOBSERVED' : routes.has(capability.method + ' ' + capability.route) ? 'ROUTE_REGISTERED' : 'OWNER_ROUTE_UNAVAILABLE'
-  }));
+  const bindings = (manifest: AppManifestT) => manifest.capabilities.map(capability => {
+    const binding = (state: 'ADDRESSABLE' | 'UNAVAILABLE' | 'UNOBSERVED', reason: AppCatalogResponseT['apps'][number]['capability_bindings'][number]['reason']) => ({ id: capability.id, state, reason });
+    if (registeredRoutes === undefined) return binding('UNOBSERVED', 'ROUTE_OWNER_UNOBSERVED');
+    const matches = registeredRoutes.filter(route => route.method === capability.method && route.path === capability.route);
+    if (!matches.length) return binding('UNAVAILABLE', 'OWNER_ROUTE_UNAVAILABLE');
+    if (matches.length !== 1) return binding('UNAVAILABLE', 'ROUTE_OWNER_AMBIGUOUS');
+    const registered = matches[0]!, policy = registered.capabilityPolicy;
+    if (!policy) return binding('UNOBSERVED', 'ROUTE_OWNER_UNOBSERVED');
+    if (policy.owner !== capability.owner) return binding('UNAVAILABLE', 'OWNER_DECLARATION_MISMATCH');
+    const central = httpOperationKind(registered.method, registered.path);
+    if (policy.operation !== capability.operation_kind || OPERATION_POLICY[policy.operation]?.toUpperCase() !== capability.effect || (central !== null ? central !== policy.operation : typeof registered.describeOperation !== 'function')) return binding('UNAVAILABLE', 'OPERATION_POLICY_MISMATCH');
+    if (policy.available === false) return binding('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+    return binding('ADDRESSABLE', 'ROUTE_REGISTERED');
+  });
   const assertProject = async (project: ProjectAddressT) => {
     if (!seat) throw new AppCatalogError('PROJECT_OWNER_UNAVAILABLE');
     await seat.assertAddress(project);

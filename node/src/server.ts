@@ -53,6 +53,8 @@ export interface Route {
   authorityMode?: 'pair' | 'control';
   query?: ZodTypeAny;
   body?: ZodTypeAny;
+  // Owner-factory discovery metadata only; never Authority or execution policy.
+  capabilityPolicy?: Readonly<{ owner: string; operation: string; available?: boolean }>;
   response: ZodTypeAny;
   describeOperation?: (ctx: RouteContext, taskId: string) => Promise<OperationInput>;
   handler: (ctx: RouteContext) => Promise<unknown> | unknown;

@@ -750,6 +750,15 @@
     },
     {
       "method": "GET",
+      "path": "/api/resident/capabilities",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/resident/context",
       "match": "exact",
       "target": "ts",

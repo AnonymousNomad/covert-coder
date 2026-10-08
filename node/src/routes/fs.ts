@@ -67,6 +67,7 @@ export function routeForFileRead(workspace: WorkspaceService): Route {
   return {
     method: 'GET',
     path: '/api/file',
+    capabilityPolicy: { owner: 'WorkspaceService', operation: 'workspace.read' },
     query: FileReadQuery,
     response: FileReadResponse,
     handler: async ({ query }): Promise<FileReadResponseT> => {
@@ -85,6 +86,7 @@ export function routeForFileWrite(workspace: WorkspaceService): Route {
   return {
     method: 'POST',
     path: '/api/file/write',
+    capabilityPolicy: { owner: 'WorkspaceService', operation: 'workspace.write' },
     body: FileWriteRequest,
     response: FileWriteResponse,
     handler: async ({ body }): Promise<FileWriteResponseT> => {

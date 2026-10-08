@@ -19,6 +19,7 @@ export function routesForProvenance(service: Service): Route[] {
     {
       method: 'GET',
       path: '/api/provenance/runs',
+      capabilityPolicy: { owner: 'ProvenanceLedger', operation: 'capability.read' },
       response: ProvenanceListResponse,
       handler: async () => await service.list(100)
     },

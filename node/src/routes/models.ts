@@ -75,6 +75,7 @@ export function routeForModelManager(manager: { snapshot(): Promise<unknown> }):
   return {
     method: 'GET',
     path: '/api/models/manager',
+    capabilityPolicy: { owner: 'ModelManagerView', operation: 'capability.read' },
     response: ModelManagerResponse,
     handler: async () => {
       try {
