@@ -209,3 +209,30 @@ exit 0; 3 passed; 0 failed; 1 skipped; 0 cancelled
 The architecture-test skip remains because no `.gguf` is committed under this checkout's `models/` directory. `git diff --check` passed before this evidence update; final diff hygiene remains to be repeated. No full TypeScript check, lint, full architecture suite, or exact-SHA CI was run. Existing Model Hub route and TypeScript startup blockers remain open. A fresh Windows OS snapshot showed `3,416 MiB` free physical and `4,274 MiB` free virtual memory; the latter is not the canonical commit probe. The separate stack still owns ports `4173/4777/4778/4779`; it was not touched, and neither a new app stack nor model runtime was launched.
 
 Issue #38 was checked after this material regression change. Its latest update is `2026-10-07T10:47:38Z`; no newer Sol correction was present. The isolated feature branch remains local-only with no upstream; do not push while the Model Hub route red and startup failure remain unresolved. The next release-critical action is to reproduce the Authority pairing delay with per-stage audit timing at safe host headroom, then resume the canonical launcher diagnostic and live Model Access path.
+
+## Canonical admission refresh and runtime-profile preparation (2026-10-08T15:52Z)
+
+The canonical read-only `createResourceAdmission().admitLocalRuntimeStart()` probe returned `REFUSE_RESOURCE` at `2026-10-08T15:52:13.840Z`:
+
+| Probe | Observed | Required | Result |
+|---|---:|---:|---|
+| Free physical memory | 7,697 MiB | 6,656 MiB | Pass |
+| Free Windows commit | 4,423 MiB | 5,120 MiB | **Refuse; short by 697 MiB** |
+| Free VRAM | 5,574 MiB | 4,608 MiB | Pass |
+| GPU utilization | 37% | `<50%` | Pass |
+
+The local model was not started. A Windows CIM snapshot immediately beforehand reported 7,858 MiB free physical and 4,539 MiB free commit; the canonical admission sample is authoritative for this decision. It also observed `C:\pagefile.sys` allocated/current/peak at 14,220 MiB. No pagefile modification is justified by these samples, and no threshold was changed. The already-running Covert stack continues to own ports 4173, 4777, 4778, and 4779 under a different workspace; no listener or process was stopped.
+
+The E: volume is healthy fixed NTFS, 878,859,776,000 bytes total with 76,129,738,752 bytes free. Current `Get-Partition`, `Get-Disk`, physical-disk, substitution, and SMB-mapping observations did not establish its physical-device mapping. Therefore the earlier slow `sync()` timing is not attributed to a disk device or media type; the Authority-pair cause remains **UNKNOWN**.
+
+### Exact profile and later measurement rules
+
+The only applicable execution profile remains the narrow existing Unsloth V1 passport; it is a profile reference, not proof for the new acquisition path:
+
+- Artifact identity: `LiquidAI/LFM2.5-2.6B-GGUF`, immutable revision `e7caca5d835a3901a8e0d63e94009429bafafdfc`, `LFM2.5-2.6B-Q4_K_M.gguf`, exactly 1,674,455,040 bytes and SHA-256 `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed`.
+- Runtime: canonical Broker → Unsloth 2026.9.11, Windows-native Administrator, Vulkan, GTX 1060 Mobile, loopback `127.0.0.1:18888`; no silent runtime fallback.
+- Authority-saved sidecar must bind this exact artifact digest to `UNSLOTH` `2026.9.11`; request profile is context 2,048, temperature 0, maximum output 512. Prefer the artifact's embedded template; the current profile has no template override. Effective served context remains unknown unless observed.
+- For the new vertical, only the artifact downloaded into this lane through the canonical Model Hub path can proceed to registration. Search and inspect must record the immutable revision and expected LFS SHA/size; download then independently validates the actual bytes, hash, and GGUF structure. The existing model under `E:\models` and historical passport do not substitute for those steps.
+- After fresh canonical Admission returns `START`, record timestamps for admission, load request, and exact-model health. Measure request-to-first non-empty streamed delta as TTFT. Record prompt/completion token counts only when the runtime returns them. Native prompt/decode rates remain UNKNOWN without phase-specific timing; any client-derived rate must be labeled end-to-end/stream-observed and must not be presented as native throughput. Sample physical RAM, commit, VRAM, and GPU use before, during, and after the real inference. Do not begin optimization.
+
+At the latest observation, standard ports are occupied by the unrelated-workspace stack, and free commit remains below the fixed floor. Therefore the isolated app stack, live Covert Model Hub acquisition, registration, and runtime sequence remain deferred. Issue #38 was rechecked; latest comment is still `6036313587`, with no newer corrective comment. The pairing setup red, startup failure, and route suite remain unresolved; this evidence does not close or waive them.
