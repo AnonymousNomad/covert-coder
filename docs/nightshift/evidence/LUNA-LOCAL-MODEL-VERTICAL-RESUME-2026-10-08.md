@@ -370,3 +370,13 @@ After a fresh passing Admission and isolated-stack preflight:
 6. If resources remain safe, exercise cancellation, stop, restart, exact identity, and a second generation; verify owned child/session cleanup.
 
 No live ModelHub request, app start, download, model start, inference, or test ran in this checkpoint. Existing route coverage under `tests/arch/modelhub-routes.test.ts` uses a fake Hugging Face response; it cannot be cited as live acquisition. Preserve the known suite red: pairing the test Authority fixture at `/api/authority/pair` exceeded its unchanged 5,000 ms deadline (8,708 ms), so the 12 route assertions did not run. Cause remains UNKNOWN; no retries, deadline changes, or assertion changes were made. The only completed runtime verification in this section is the canonical resource sample, which refused the start.
+
+## Subsequent resource/pagefile refresh (2026-10-08)
+
+At `2026-10-08T16:24:03.660Z`, canonical `createResourceAdmission().admitLocalRuntimeStart()` again returned `REFUSE_RESOURCE`: free physical RAM `7,248/6,656 MiB`, free commit `4,593/5,120 MiB` (**527 MiB short**), free VRAM `5,427/4,608 MiB`, GPU utilization `14%/<50%`. No application or model was started.
+
+A separate Windows `Get-Counter` sample at `16:25:16.161Z` reported commit limit `30,527 MiB`, committed `25,784 MiB`, and free commit `4,742 MiB`. This is 149 MiB above the canonical sample; both values remain below the required floor. Keep the canonical Admission result as the start decision and retain the variance as evidence.
+
+Read-only Windows pagefile state was `AutomaticManagedPagefile=False`, with `C:\pagefile.sys` allocated `14,220 MiB`, current usage `14,208 MiB`, and peak usage `14,220 MiB`. The pagefile is nearly fully used, but these measurements alone do not prove an objectively broken/undersized configuration, a Covert-side commit leak, or that changing the pagefile would resolve the underlying pressure. No OS/pagefile setting was changed.
+
+One fresh selected-app census found PC Manager PID 12396 plus six WebView2 descendants at `402 MiB` private / `241 MiB` working, and Phone Link PID 15992 plus child PID 7004 at `327 / 113 MiB`. Their private bytes sum to `729 MiB`, greater than the canonical `527 MiB` gap, but this is only a rough potential recovery figure; private bytes do not guarantee free-commit recovery. The earlier Visual Studio Installer BackgroundDownload process was absent from this selected-name sample; installation state remains unknown. No candidate was stopped. Owner-controlled normal closure of these apps is the only currently identified reversible user-app option; a new canonical Admission sample is required afterward.

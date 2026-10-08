@@ -5,6 +5,14 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-08 11:25] Actor: Luna — commit/pagefile read-only refresh
+- Type: resource-floor and candidate-app snapshot
+- Canonical Admission at 2026-10-08T16:24:03.660Z remained REFUSE_RESOURCE: physical free 7,248/6,656 MiB PASS; commit free 4,593/5,120 MiB REFUSE (527 MiB short); VRAM 5,427/4,608 MiB PASS; GPU 14%/<50% PASS.
+- Separate Windows Get-Counter sample at 16:25:16.161Z read commit limit 30,527 MiB, committed 25,784 MiB, free 4,742 MiB. It differs from canonical Admission by 149 MiB; both remain below the 5,120 MiB floor. Do not substitute the later counter for the canonical decision.
+- Read-only pagefile state: AutomaticManagedPagefile=False; C:\\pagefile.sys allocated 14,220 MiB, current usage 14,208 MiB, peak 14,220 MiB. This alone does not prove an objectively broken configuration or identify a Covert leak. No pagefile setting was changed.
+- Refreshed candidate groups: Microsoft PC Manager PID 12396 plus six WebView2 descendants, 402 MiB private / 241 MiB working; Phone Link PID 15992 plus child PID 7004, 327 / 113 MiB. The selected-name sample did not return the earlier BackgroundDownload.exe PID; do not infer installation status from absence. The two current private-byte totals sum to 729 MiB, above the canonical 527 MiB gap, but do not guarantee commit recovery. Both remain owner-selected normal-closure candidates; neither was closed.
+- Runtime admission remains closed. No model start, app stack, test, network download, process termination, or pagefile mutation occurred.
+
 ### [2026-10-08 11:22] Actor: Luna — current reference profile sidecar readback
 - Type: read-only profile source verification
 - The existing sidecar beside E:\\models\\house-model\\lfm25_gguf\\LFM2.5-2.6B-Q4_K_M.gguf currently reports schema_version 1, artifact_sha256 02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed, runtime_id UNSLOTH, runtime_version 2026.9.11, preset custom, sampler temperature 0, context_tokens 2048, and max_tokens 512.
