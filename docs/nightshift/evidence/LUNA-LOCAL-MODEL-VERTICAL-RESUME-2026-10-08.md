@@ -833,3 +833,18 @@ The 15.695-second pair latency remains **CAUSE UNKNOWN**. The separate content-f
 At `2026-10-08T20:15:58.551Z`, canonical Admission again returned **`REFUSE_RESOURCE`**: free physical memory was `3,925/6,656 MiB` (short `2,731 MiB`), free commit `5,146/5,120 MiB` (pass by only `26 MiB`), free VRAM `5,455/4,608 MiB` (pass), and GPU utilization `23%/<50%` (pass). Compared with `20:12:07.989Z`, free physical changed by `-9 MiB` and free commit by `-30 MiB`.
 
 The same process census showed OpenCode private memory at about `1,841 MiB`, up from `1,768 MiB`; the active Nuitka build child remained about `1,566 MiB`. This time correlation does not prove either process caused the measured changes. With only `26 MiB` free-commit margin, no focused Node/architecture diagnostic was started because it would add commit pressure and could not authorize a model start. Protected and OS processes were left untouched; no application, model, or pagefile setting was changed.
+
+## Traced registration-route rerun (2026-10-08)
+
+At `2026-10-08T20:17:43.730Z`, canonical Admission still returned **`REFUSE_RESOURCE`**: free physical memory was `4,081/6,656 MiB` (short `2,575 MiB`), free commit `5,335/5,120 MiB` (pass by `215 MiB`), free VRAM `5,455/4,608 MiB` (pass), and GPU utilization `23%/<50%` (pass). Since no model/runtime start was attempted, I used the recovered commit margin for one focused route diagnostic only. It ran with the original five-second fixture deadline and a content-free Authority audit-stage trace:
+
+```powershell
+$env:AIDE_TRACE_AUTHORITY_AUDIT_APPEND='1'
+node --experimental-strip-types --test --test-name-pattern='preserves pinned Hugging Face artifact identity' tests/arch/model-register-profile.test.ts
+```
+
+The selected `/api/models/register` test **passed** (`1 passed, 0 failed, 0 cancelled, 0 skipped`, target duration `5,970.7807 ms`; test-runner duration `10,168.243 ms`). Its prerequisite Authority pairing completed and the audit append persisted. The observed pair audit took `1,895.32 ms`: `mkdir 0.45 ms`, `open 1.13 ms`, `write 0.71 ms`, `sync 1,892.07 ms`, and `close 0.74 ms`. No deadline, assertion, or resource floor was changed. This run reached the registration assertion, but used the test's synthetic local artifact; it does not prove real Hugging Face acquisition, production-user registration, or model execution.
+
+A read-only post-run check found no remaining Node test process and no newer `aide-model-register-*` fixture directory. The earlier fixture `E:\pip_temp\aide-model-register-EywFko` remains present with its `.aide\arch-model-register.log`; its creation/update times (`2026-10-08T19:43:54.923Z` and approximately `19:44:10.670Z`) align with the separately preserved failed run's `19:44:10.663Z` late request log, not this successful rerun. It was not removed or modified.
+
+This is a successful controlled rerun after the prior five-second timeout and cleanup error, not an explanation for them. Pair audit sync varied substantially from the earlier isolated `100.60 ms` trace to `1,892.07 ms` here, while neither observation explains the original `15,695 ms` handler duration. The prior timeout and `ENOTEMPTY` remain open; pair-latency root cause remains **UNKNOWN**, and the cleanup race remains **strongly supported, not conclusively proven**. Do not treat the rerun as closure.
