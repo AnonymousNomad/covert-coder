@@ -154,6 +154,26 @@ test('m1: repository inspection returns immutable revision, LFS digest, size, an
   });
 });
 
+test('m1: repository inspection maps Hugging Face RepoFile lfs.sha256 metadata', async () => {
+  const expectedSha256 = 'e'.repeat(64);
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: async () => new Response(JSON.stringify({
+      sha: REVISION,
+      cardData: { license: 'apache-2.0' },
+      siblings: [
+        { rfilename: 'LFM2.5-Q4_K_M.gguf', size: 12, lfs: { sha256: expectedSha256, size: 12, pointer_size: 134 } }
+      ]
+    }), { status: 200 })
+  });
+
+  const listing = await hub.listRepoFiles('LiquidAI/model');
+  assert.equal(listing.files[0].lfs_sha256, expectedSha256);
+  assert.equal(listing.files[0].size, 12);
+});
+
 test('m1: download rejects missing immutable pins before network contact', () => {
   let calls = 0;
   const hub = createHubService({

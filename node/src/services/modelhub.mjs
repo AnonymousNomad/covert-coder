@@ -265,7 +265,7 @@ export function createHubService({
       .map(sibling => ({
         filename: sibling.rfilename,
         size: Number.isSafeInteger(sibling.lfs?.size) ? sibling.lfs.size : Number.isSafeInteger(sibling.size) ? sibling.size : null,
-        lfs_sha256: typeof sibling.lfs?.oid === 'string' && /^[a-f0-9]{64}$/i.test(sibling.lfs.oid) ? sibling.lfs.oid.toLowerCase() : null
+        lfs_sha256: [sibling.lfs?.sha256, sibling.lfs?.oid].find(value => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value))?.toLowerCase() ?? null
       }));
     return {
       repo_id: repoId,
