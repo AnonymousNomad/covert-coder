@@ -534,3 +534,9 @@ At `2026-10-08T17:44:13.541Z`, a fresh direct call to canonical `createResourceA
 I ran `node --test tests/unit/test-m-hub.mjs` at approximately `17:44Z`. Result: **13 passed, 0 failed, 0 skipped, 0 cancelled; exit 0; 1,531.5 ms**. The tests use an injectable fetcher and local fixture servers. They cover immutable metadata mapping including `lfs.sha256`, digest/GGUF refusal, fixture download/resume, timeout, cancellation cleanup, and import behavior. This is service-level regression evidence only: it does not prove live Hugging Face search/inspection/download, Covert UI/Authority operation, the selected artifact's registration, runtime start, or inference. No external request or model execution occurred.
 
 The next actual acquisition/execution attempt remains gated on a fresh canonical Admission returning `START`; no resource floor, timeout, assertion, or authority path was changed.
+
+## Canonical broker profile/admission regression (2026-10-08)
+
+I ran `node --experimental-strip-types --test tests/arch/broker-model-runtime.test.ts` at approximately `2026-10-08T17:46Z`. The command initially yielded with the test process still live after 10 seconds; I polled that same process and it completed normally. Result: **4 passed, 0 failed, 0 skipped, 0 cancelled; exit 0; 12,843.7 ms**. No rerun occurred.
+
+This suite uses a stub `RuntimeAdapter`, temporary synthetic artifact contents, and injectable Admission; it does not start Unsloth or a model. It exercises exact artifact/runtime profile binding, broker start/chat/stream/stop/restart behavior against the stub, and a final Admission refusal at `6,655 MiB` that asserts zero runtime-load calls. It supports the canonical contract and fail-closed ordering only; it is not evidence of actual runtime load, identity probe, generation, cancellation, or restart on this host.
