@@ -868,3 +868,27 @@ The associated process census found the largest non-protected workload in an act
 The host OS counters sampled seconds later differed from the Admission probe, as expected for separate observations: about `3,914 MiB` free physical and `5,245 MiB` free commit. Pagefile telemetry was `C:\\pagefile.sys`, allocated `13,772 MiB`, current usage `10,838 MiB`, peak `14,220 MiB`; no pagefile setting was changed. These counter differences do not establish a Covert leak or broken pagefile. Resource pressure remains an external host constraint with **CAUSE UNKNOWN**; the exact canonical decision at the model-start gate is **REFUSE_RESOURCE**.
 
 The `20:23:01.227Z` canonical refusal was the first fresh Admission measurement after the traced registration-route pass. The previously preserved `15,695 ms` pair red and its late-log cleanup error remain unresolved; this Admission probe did not rerun or explain that test failure. This checkpoint changes only the resource evidence and does not close any acquisition, registration, or runtime gate.
+
+## Authority-pair timeout and fixture-drain repair (2026-10-08)
+
+Before changing source, I inspected the exact current test lifecycle and the separately published `resident/marathon-h1` commit `b79d2480498e446cff36b26dd4b4faef7745726b`. That commit is not an ancestor of this lane and changes only `tests/arch/model-routes.test.ts`, adding one `setImmediate`, a second logger flush, and filesystem-removal retries. It does not track or await a still-running route handler, and it does not change the failing `model-register-profile.test.ts`; it was not merged or copied.
+
+The current failure source is more specific than that candidate: `ArchServer.listen()` previously launched `void this.handle(request, response)` without retaining its promise. `pairFixture()` uses `AbortSignal.timeout(5,000 ms)`. The affected test's file-level `before()` awaits that pair request before the registration assertions, while its `after()` previously flushed the logger before closing HTTP connections and deleting the temporary workspace. If the client timed out while durable Authority audit persistence continued, the route could log after teardown's flush. This matches the preserved late log and `ENOTEMPTY` evidence; the earlier occurrence's exact timing remains unknown.
+
+### Bounded repair
+
+`ArchServer` now tracks accepted request-handler promises and exposes `drainInFlightRequests()`. The affected registration fixture now closes its sockets and listener, drains handlers, flushes the logger, and only then removes its workspace. Graceful server shutdown also drains request handlers before shutdown hooks stop owned services. The existing five-second forced-shutdown fallback, pair deadline, tests, and assertions were not changed.
+
+### Verification and preserved red
+
+| Check | Result |
+|---|---|
+| `git diff --check` | **exit 0** |
+| `node --experimental-strip-types --test tests/arch/server-inflight-drain.test.ts` | **1 passed, 0 failed**; test duration `297.689 ms`, runner duration `2,432.903 ms` |
+| `node node_modules/typescript/bin/tsc -p tsconfig.node.json --pretty false` | **exit 0** |
+| `AIDE_FIXTURE_TIMEOUT_MS` override | Not provided by the test command; the follow-up shell environment was unset and the fixture source default is `5,000 ms` |
+| `node --experimental-strip-types --test --test-name-pattern='preserves pinned Hugging Face artifact identity' tests/arch/model-register-profile.test.ts` with `AIDE_TRACE_AUTHORITY_AUDIT_APPEND=1` | **failed, 0 passed / 1 failed, exit 1**; `TimeoutError` during the file-level pairing prerequisite, before the registration assertion |
+
+The preserved failing run's handler did finish its durable audit append after the client deadline: trace total `6,184.71 ms`, comprising `mkdir 35.69 ms`, `open 0.81 ms`, `write 1.01 ms`, `sync 5,920.18 ms`, and `close 226.72 ms`. The sync stage alone exceeded the unchanged five-second client deadline, directly explaining this occurrence's timeout. Why that filesystem sync took `5,920 ms`, and why the earlier handler took `15,695 ms`, remain **UNKNOWN**; do not attribute either to Covert leakage or a specific storage cause without new evidence.
+
+The runner completed after `16,508.336 ms`. A read-only post-run check found no remaining matching Node test process and no newly created `aide-model-register-*` fixture directory; only the older preserved `EywFko` fixture and its `arch-model-register.log` remained. No `ENOTEMPTY` cleanup failure recurred in this run. This supports the in-flight drain repair for the observed cleanup race but is one verification occurrence, not proof that all Windows cleanup races are closed. The Authority-pair latency red remains open. This code/test repair does not constitute live Hugging Face acquisition, model registration, or model execution.

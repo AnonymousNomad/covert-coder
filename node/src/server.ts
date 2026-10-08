@@ -70,6 +70,7 @@ export class ArchServer {
   readonly workspace: string;
   readonly logFile: string;
   private readonly routes: Route[] = [];
+  private readonly inFlightHandlers = new Set<Promise<void>>();
   private readonly shutdownHooks: Array<() => Promise<void>> = [];
   private controlHandler?: WsControlHandler;
   legacyDescribe?: (input: { method: string; path: string; task_id: string; body?: unknown }) => Promise<OperationInput>;
@@ -107,10 +108,31 @@ export class ArchServer {
     return this.routes;
   }
 
+  /**
+   * Wait for request handlers accepted before the listener was closed. Call
+   * after stopping ingress so new handlers cannot keep arriving while draining.
+   * Closing a client socket does not cancel the handler's asynchronous work.
+   */
+  async drainInFlightRequests(): Promise<void> {
+    while (this.inFlightHandlers.size > 0) {
+      await Promise.allSettled([...this.inFlightHandlers]);
+    }
+  }
+
   async listen(port: number, host = '127.0.0.1'): Promise<http.Server> {
     for (const route of routesForAuthority()) if (!this.match(route.method, route.path)) this.route(route);
     const server = http.createServer((request, response) => {
-      void this.handle(request, response);
+      const handler = this.handle(request, response);
+      this.inFlightHandlers.add(handler);
+      void handler.then(
+        () => this.inFlightHandlers.delete(handler),
+        error => {
+          this.inFlightHandlers.delete(handler);
+          this.logger.error('request handler failed outside route error handling', {
+            error_name: error instanceof Error ? error.name : typeof error
+          });
+        }
+      );
     });
     // Explicit ingress bounds. requestTimeout/headersTimeout limit how long a
     // client may take to deliver an HTTP request; keepAliveTimeout avoids the
@@ -362,6 +384,7 @@ export class ArchServer {
       shuttingDown = true;
       this.logger.info('shutdown started', { signal });
       server.close(async () => {
+        await this.drainInFlightRequests();
         await this.runShutdownHooks();
         await this.processes.shutdownAll();
         await this.logger.flush();
