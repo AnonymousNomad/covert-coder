@@ -69,7 +69,7 @@ const fakeFetch = (async (input: unknown, init?: RequestInit) => {
   if (target.includes('?blobs=true')) {
     return new Response(JSON.stringify({
       sha: REVISION,
-      cardData: { license: 'other' },
+      cardData: { license: 'other', license_name: 'lfm1.0', license_link: 'LICENSE' },
       siblings: [{ rfilename: 'model.gguf', size: PAYLOAD.length, lfs: { oid: PAYLOAD_SHA, size: PAYLOAD.length } }]
     }), {
       status: 200, headers: { 'content-type': 'application/json' }
@@ -459,7 +459,7 @@ test('files: external enrollment binds repo identity and blocks unapproved or cr
   }>;
   assert.equal(response.status, 200);
   assert.deepEqual(responseBody.data, {
-    repo_id: 'org/model-1', revision: REVISION, license: 'other',
+    repo_id: 'org/model-1', revision: REVISION, license: 'lfm1.0',
     files: [{ filename: 'model.gguf', size: PAYLOAD.length, lfs_sha256: PAYLOAD_SHA }]
   });
   assert.equal(fetchedUrls.length, beforeFetch + 1);

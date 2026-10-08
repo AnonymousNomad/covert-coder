@@ -117,6 +117,30 @@ These are code-path findings, not live search, download, registration, admission
 
 The current mutable Hugging Face model page labels the repository license `lfm1.0`, reports the GGUF architecture as `lfm2`, and lists the Q4_K_M artifact at about 1.67 GB. Its llama.cpp example uses temperature `0.1`, top-k `50`, and repeat penalty `1.1`. This page is not the pinned revision record and does not override the existing Covert-tested profile. The pinned license/revision/file metadata must be reconfirmed through Covert inspection; the downloaded GGUF template and stop behavior must be inspected before runtime claims. No configuration was inferred from the filename or copied from that mutable page.
 
+### Pinned license metadata repair and latest gate refresh (2026-10-08 15:17Z)
+
+The official Hugging Face API was queried read-only outside Covert at `https://huggingface.co/api/models/LiquidAI/LFM2.5-2.6B-GGUF?blobs=true`. It returned revision `e7caca5d835a3901a8e0d63e94009429bafafdfc`, `cardData.license="other"`, `cardData.license_name="lfm1.0"`, and `cardData.license_link="LICENSE"`. The pinned [repository README](https://huggingface.co/LiquidAI/LFM2.5-2.6B-GGUF/blob/e7caca5d835a3901a8e0d63e94009429bafafdfc/README.md) confirms those metadata fields and the llama.cpp example settings `temp 0.1`, `top-k 50`, and `repeat-penalty 1.1`. A read-only request for that revision's `LICENSE` returned HTTP 200 and identified `LFM Open License v1.0`; the official [Liquid AI license page](https://www.liquid.ai/lfm-license) describes the commercial-use threshold as annual entity revenue below USD 10 million, with separate licensing required at or above the threshold. This is license metadata and source research, not legal approval or Covert acquisition evidence.
+
+The prior local GGUF parse reported its embedded `general.license` as `other`; that artifact field and the repository card's custom `license_name` are distinct metadata sources. Neither a model's embedded metadata nor the public repository label by itself establishes legal approval.
+
+Root cause of the metadata defect: `createHubService().listRepoFiles()` read only `cardData.license`, so the real custom-license response was surfaced in Model Access and acquisition manifests as generic `other`. A regression using the observed `license` / `license_name` / `license_link` shape first failed (`actual: other`, expected `lfm1.0`). The bounded repair prefers a non-empty `license_name` and falls back to `license` for standard repositories. The existing contract and field name remain unchanged. The unit test also retains coverage for a repository that supplies only `license`.
+
+Focused verification after repair:
+
+```text
+node --test --test-concurrency=1 tests/unit/test-m-hub.mjs
+exit 0; 13 passed; 0 failed; 0 skipped; 0 cancelled
+
+node --test --test-concurrency=1 tests/arch/model-access.test.ts
+exit 0; 15 passed; 0 failed; 0 skipped; 0 cancelled
+```
+
+The affected `tests/arch/modelhub-routes.test.ts` run produced a preserved red: `12 failed, 0 passed`. The first test aborted at approximately its 5-second local HTTP deadline; subsequent tests reported the same `TimeoutError` family much sooner. Source inspection confirms the suite starts an in-process `ArchServer` on an ephemeral loopback port and pairs it before its first test. The run did not reach the later `/api/modelhub/files` assertion. The route-test fixture has since been updated to the real custom-license metadata and expects `lfm1.0`; that updated route assertion remains unverified. **CAUSE UNKNOWN.** Do not increase fixture deadlines or treat the red as unrelated. A contemporaneous post-suite host sample at `15:14:53Z` reported 3,161 MiB free physical memory and 2,774 MiB free commit; this is a possible environmental interaction, not proven causality. No repeat was started under the lower headroom.
+
+At `2026-10-08T15:10:12.564Z`, the canonical read-only `createResourceAdmission().admitLocalRuntimeStart()` returned `REFUSE_RESOURCE`: free physical memory `3,625 MiB` (< `6,656`), free commit `2,948 MiB` (< `5,120`), free VRAM `5,561 MiB` (above `4,608`), GPU utilization `23%` (below `50%`), and load average unknown. No new app or model was started in response to that measurement. A separate already-running Covert process tree owned ports `4173/4778/4779/4777` and was left untouched; its launcher command used `E:\covert-sovereign-workstation-shell` with workspace `E:\pip_temp\covert-public-demo-workspace-20261007-luna`, so it is not this local-model demo workspace. The ambiguous AES LedgerPro `ollama.exe` and unrelated host processes were also left untouched. The common ports are therefore not available for an isolated start at this observation.
+
+Issue #38 was rechecked after the resource and regression results; GitHub displayed no activity/comments. This branch remains local-only: `origin` has no `feat/local-model-demo-proof-20261007` ref and the branch has no upstream. Do not push the unresolved route red or claim this lane's exact-SHA CI.
+
 ## Verification on this branch
 
 Pre-repair bounded suite at the unchanged starting HEAD:
@@ -145,13 +169,15 @@ exit 0; 55 passed; 0 failed; 0 skipped; 0 cancelled
 | Immutable Hub revision + exact LFS SHA/size observed through Covert | OPEN |
 | Real artifact download + bytes/SHA-256/GGUF validation | OPEN |
 | Canonical Model Manager registration in this workspace | OPEN |
-| Resource Admission | `REFUSE_RESOURCE` at `2026-10-08T15:02:24Z`; free physical memory below floor and canonical free-commit measurement unavailable |
+| Resource Admission | `REFUSE_RESOURCE` at `2026-10-08T15:10:12.564Z`; physical `3,625 MiB`, commit `2,948 MiB` |
+| Custom repository license name in Model Access | Unit parser proof passes; updated Authority route fixture not yet verified |
+| Model Hub route architecture suite | `12 failed / 0 passed`; timeout cause UNKNOWN, preserved |
 | Runtime ownership/version/profile check | OPEN |
 | Real local inference output | OPEN |
 | Stop/restart and post-run cleanup | OPEN |
 | Baseline load/TTFT/prompt/decode/RAM/VRAM metrics | DEFERRED until a real inference passes and resources permit |
-| Exact-SHA CI | OPEN for the parser repair commit |
+| Exact-SHA CI | OPEN; this branch is local-only and the latest repair is not pushed |
 
 ## Next action
 
-The LFS parser repair and evidence checkpoints are committed locally; current HEAD was `298cb9d57644c62a9ce434e050a13384dccf4ab3` before this evidence update. The app startup failure reproduced with both the source checkout and a dedicated empty workspace; the TypeScript child did not report an early exit, but the blocked initialization stage and cause remain unknown. The latest canonical admission method returned `REFUSE_RESOURCE` at `2026-10-08T15:02:24Z`, so do not start a model or app stack while the physical-memory floor is closed. During the next safe reproduction, capture the exact TypeScript child PID and parent tree, process age, CPU, private/working memory, port-listener state, and each startup log while keeping the default deadline unchanged. Then fix only the proven cause and use the existing Model Access → Model Hub → workspace models → Model Manager path above. Before a real runtime start, obtain a fresh canonical `admitLocalRuntimeStart()` result of `START`; preserve every refusal and require exact runtime identity before accepting inference output.
+This turn's `license_name` repair has focused unit and Model Access coverage, while the affected Model Hub route suite remains red with `CAUSE UNKNOWN`; the updated route assertion was not reached. Keep that red open and do not push the candidate. The live startup failure also remains unresolved. The latest canonical admission result is `REFUSE_RESOURCE` at `2026-10-08T15:10:12.564Z`, and the common ports are occupied by a separate Covert stack. Do not start another app stack or any local model in this state. The next action is to reproduce the Model Hub route timeout only after a safe resource window exists, with its default deadlines unchanged; then repair its demonstrated cause and rerun the affected suite. For the startup lane, capture the exact TypeScript child PID/tree, age, CPU, private/working memory, listener state and startup logs during one safe controlled reproduction. After those gates close, use the existing Model Access → Model Hub → workspace models → Model Manager path. A real model start still requires a fresh canonical `admitLocalRuntimeStart()` result of `START` and exact runtime identity before accepting inference output.

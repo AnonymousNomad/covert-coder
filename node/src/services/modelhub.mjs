@@ -259,7 +259,15 @@ export function createHubService({
       error.code = 'UPSTREAM';
       throw error;
     }
-    const rawLicense = data.cardData?.license;
+    // Hugging Face models with a custom license expose a generic machine
+    // identifier in `license` and the actual published label in
+    // `license_name` (for example, `other` + `lfm1.0`). Prefer the latter for
+    // the operator-facing provenance field, retaining compatibility with
+    // repositories that only provide the standard `license` value.
+    const customLicenseName = data.cardData?.license_name;
+    const rawLicense = typeof customLicenseName === 'string' && customLicenseName.trim().length > 0
+      ? customLicenseName
+      : data.cardData?.license;
     const files = (Array.isArray(data.siblings) ? data.siblings : [])
       .filter(sibling => typeof sibling.rfilename === 'string' && sibling.rfilename.toLowerCase().endsWith('.gguf'))
       .map(sibling => ({

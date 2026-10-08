@@ -131,14 +131,14 @@ test('m1: metadata fetches abort on the configured timeout instead of hanging', 
   await assert.rejects(() => hub.listRepoFiles('org/hung'), error => error?.code === 'TIMEOUT' && /timed out/i.test(error.message));
 });
 
-test('m1: repository inspection returns immutable revision, LFS digest, size, and license label', async () => {
+test('m1: repository inspection returns immutable revision, LFS digest, size, and custom license name', async () => {
   const hub = createHubService({
     workspace: ws,
     modelsDir,
     assertExternalEgressAllowed: allowExternalEgress,
     fetchImpl: async () => new Response(JSON.stringify({
       sha: REVISION,
-      cardData: { license: 'other' },
+      cardData: { license: 'other', license_name: 'lfm1.0', license_link: 'LICENSE' },
       siblings: [
         { rfilename: 'LFM2.5-Q4_K_M.gguf', size: 12, lfs: { oid: 'D'.repeat(64), size: 12 } },
         { rfilename: 'README.md', size: 40 }
@@ -149,7 +149,7 @@ test('m1: repository inspection returns immutable revision, LFS digest, size, an
   assert.deepEqual(listing, {
     repo_id: 'LiquidAI/model',
     revision: REVISION,
-    license: 'other',
+    license: 'lfm1.0',
     files: [{ filename: 'LFM2.5-Q4_K_M.gguf', size: 12, lfs_sha256: 'd'.repeat(64) }]
   });
 });
@@ -170,6 +170,7 @@ test('m1: repository inspection maps Hugging Face RepoFile lfs.sha256 metadata',
   });
 
   const listing = await hub.listRepoFiles('LiquidAI/model');
+  assert.equal(listing.license, 'apache-2.0');
   assert.equal(listing.files[0].lfs_sha256, expectedSha256);
   assert.equal(listing.files[0].size, 12);
 });
