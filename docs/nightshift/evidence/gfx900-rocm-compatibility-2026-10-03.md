@@ -202,4 +202,13 @@ Evidence logs are outside the product repository in `E:\pip_temp\covert-w1-owner
 - No local model or runtime was launched. The host is not a gfx900/AMD system; real ROCm inference, streaming, cancellation, restart, and same-host backend comparison remain **unproven**.
 - `gfx900 = UNQUALIFIED`; do not promote it from this portability repair.
 - The pre-existing owner edit in `docs/evidence/desktop-battery.md` was preserved and excluded from this repair.
-- Next: review and commit only the runtime adapter and this append-only evidence, push `feat/runtime-gfx900-compat`, then require exact-SHA GitHub CI. Keep PR #41 draft and do not merge pending same-host hardware evidence and current-base reconciliation.
+- Keep PR #41 draft and do not merge pending same-host hardware evidence and current-base reconciliation.
+
+### Exact-SHA GitHub validation
+
+- Runtime repair/source evidence commit: `4fd1cca75e60500cb36f5afb78e45a44e7881aac`.
+- Push-triggered AIDE CI run **37715924324**: `SUCCESS`; all job steps passed.
+- PR-triggered AIDE CI run **37715927990**: `SUCCESS`; all job steps passed on the same exact SHA.
+- PR #41 remains OPEN / DRAFT, based on `7391b98e1e0972dd3fe4365420fe15366b77b24c`, and was not merged. The candidate remains behind current convergence and awaits base reconciliation after the W1/hardware gates are appropriately dispositioned.
+
+This remote-result addendum is an evidence-only follow-up commit. Require exact-SHA CI for that evidence commit as well; the two runs above attest to source commit `4fd1cca…`.
