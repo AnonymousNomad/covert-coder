@@ -30,6 +30,7 @@ export function routesForTerminalSessions(service: TerminalSessionService): Rout
     {
       method: 'GET',
       path: '/api/terminal/sessions',
+      capabilityPolicy: { owner: 'TerminalSessionService', operation: 'terminal.read' },
       response: TerminalSessionListResponse,
       handler: () => ({ sessions: service.list() })
     },
@@ -48,6 +49,7 @@ export function routesForTerminalSessions(service: TerminalSessionService): Rout
     {
       method: 'POST',
       path: '/api/terminal/sessions',
+      capabilityPolicy: { owner: 'TerminalSessionService', operation: 'terminal.session.start' },
       body: TerminalSessionOpenRequest,
       response: TerminalSessionOpenResponse,
       handler: async ({ body, actor }) => {

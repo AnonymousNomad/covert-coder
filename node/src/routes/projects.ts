@@ -5,6 +5,7 @@ import { RouteError, type Route } from '../server.ts';
 
 export function routesForProjects(seat: ProjectSeat | undefined, workspace: string): Route[] {
   return [{
+    capabilityPolicy: { owner: 'ProjectSeat', operation: 'capability.read', available: seat !== undefined },
     method: 'GET', path: '/api/projects/current', query: z.object({}).strict(), response: CurrentProjectResponse,
     // Pure projection. It never enrolls, selects, grants or starts another root.
     describeOperation: async (_ctx, taskId) => ({ workspace, taskId, kind: 'capability.read', args: { route: '/api/projects/current' } }),

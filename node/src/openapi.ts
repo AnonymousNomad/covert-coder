@@ -87,6 +87,8 @@ import { routesForCipherLaptop } from './routes/cipher-laptop.ts';
 import { routesForProjects } from './routes/projects.ts';
 import { routesForAppCatalog } from './routes/app-catalog.ts';
 import { createAppCatalog } from './services/app-catalog.ts';
+import { createResidentCapabilityDiscovery } from './services/resident-capability-discovery.ts';
+import { routesForResidentCapabilities } from './routes/resident-capabilities.ts';
 import { projectSeatForAuthority } from './services/project-seat.ts';
 import { cipherLedgerForAuthority, cipherNotebookForAuthority } from './services/cipher-authority-recorder.ts';
 import { createAttemptJournal } from './services/attempt-journal.ts';
@@ -1144,7 +1146,11 @@ export async function buildRoutes(workspace: string, version: string, options: B
   let doc: unknown;
   const openApiRoute = makeOpenApiRoute(() => doc);
   const appCatalog = createAppCatalog(options.authority ? projectSeatForAuthority(options.authority) : undefined, core);
-  const routes = [...core, ...routesForAppCatalog(appCatalog, workspace), openApiRoute];
+  const residentDiscovery = createResidentCapabilityDiscovery({ catalog: appCatalog,
+    ledger: options.authority ? cipherLedgerForAuthority(options.authority) : undefined,
+    workerSnapshot: async () => { const snapshot = await modelManagerView.snapshot(); return { generated_at: snapshot.generated_at, routes: snapshot.routes, execution_adapters: snapshot.execution_adapters }; }
+  });
+  const routes = [...core, ...routesForAppCatalog(appCatalog, workspace), ...routesForResidentCapabilities(residentDiscovery, workspace), openApiRoute];
   doc = generateOpenApi(routes, { title: 'AIDE Arch Daemon API', version });
   return routes;
 }

@@ -57,7 +57,7 @@ export function routesForConnections(service: ConnectionsService, workspace: str
     // Read-only unified view. Central capability.read (see HTTP_POLICY); the
     // aggregation never performs egress, never reads secrets, and reports only
     // truthful derived states.
-    { method: 'GET', path: '/api/connections', response: ConnectionsViewResponse, handler: wrap(async () => service.list()) },
+    { method: 'GET', path: '/api/connections', capabilityPolicy: { owner: 'ProviderConnectionsService', operation: 'capability.read' }, response: ConnectionsViewResponse, handler: wrap(async () => service.list()) },
     { method: 'PUT', path: '/api/connections/preference', body: ConnectionsPreferencePutRequest, response: ConnectionsViewResponse.pick({ preference: true }), describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
       const request = body as { preference: RoutingPreferenceT };
       return { workspace, taskId, kind: 'capability.write', args: { body: { preference: request.preference } } };

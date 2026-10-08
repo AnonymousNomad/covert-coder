@@ -14,6 +14,8 @@ import { pairFixture } from './authority-fixture.ts';
 import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
 import type { ProjectAddressT } from '../../common/contracts/project.ts';
+import { httpOperationKind, OPERATION_POLICY } from '../../common/security/operation-policy.mjs';
+import { routesForProjects } from '../../node/src/routes/projects.ts';
 
 async function fixture(run: (f: { root: string; catalog: ReturnType<typeof createAppCatalog>; seat: ReturnType<typeof createProjectSeat>; address: ProjectAddressT }) => Promise<void>) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-app-p1-'));
@@ -47,7 +49,7 @@ test('discovery never conflates installation, trust, grant, admission or executi
 }));
 
 test('missing optional owner routes are explicit; registered route does not mean authorized execution', () => fixture(async ({ seat, address }) => {
-  const snapshot = await createAppCatalog(seat, [{ method: 'GET', path: '/api/projects/current' }]).read(address);
+  const snapshot = await createAppCatalog(seat, [{ method: 'GET', path: '/api/projects/current', capabilityPolicy: { owner: 'ProjectSeat', operation: 'capability.read' }, describeOperation: async () => ({ kind: 'capability.read' }) }]).read(address);
   assert.equal(snapshot.apps[0]!.capability_bindings[0]!.state, 'ADDRESSABLE');
   assert.equal(snapshot.apps[2]!.capability_bindings[0]!.state, 'UNAVAILABLE');
   assert.equal(snapshot.apps[2]!.capability_bindings[0]!.reason, 'OWNER_ROUTE_UNAVAILABLE');
@@ -58,6 +60,64 @@ test('unknown app/capability and cross-app capability are refused rather than fa
   await assert.rejects(() => catalog.read(address, { app_id: 'covert.app.unknown' }), /UNKNOWN_APP/);
   await assert.rejects(() => catalog.read(address, { capability_id: 'shell.unrestricted' }), /UNKNOWN_CAPABILITY/);
   await assert.rejects(() => catalog.read(address, { app_id: 'covert.app.editor', capability_id: 'terminal.session.open' }), /UNKNOWN_CAPABILITY/);
+}));
+
+test('all capability routes present still leaves every application execution gated', () => fixture(async ({ catalog, seat, address }) => {
+  const inventory = (await catalog.read(address)).apps;
+  const registered = inventory.flatMap(app => app.manifest.capabilities.map(c => ({ method: c.method, path: c.route, capabilityPolicy: { owner: c.owner, operation: c.operation_kind }, ...(c.id === 'project.identity.read' ? { describeOperation: async () => ({ kind: 'capability.read' }) } : {}) })));
+  const view = await createAppCatalog(seat, registered).read(address);
+  assert.ok(view.apps.every(app => app.capability_bindings.every(c => c.state === 'ADDRESSABLE')));
+  assert.ok(view.apps.every(app => app.execution_state === 'GATED' && app.grant_state === 'NOT_EVALUATED' && app.admission_state === 'NOT_EVALUATED'));
+}));
+
+test('effect and audience describe exact domain policy rather than method or blanket access', () => fixture(async ({ catalog, address }) => {
+  const caps = (await catalog.read(address)).apps.flatMap(app => app.manifest.capabilities);
+  const open = caps.find(c => c.id === 'terminal.session.open')!;
+  assert.equal(open.method, 'POST'); assert.equal(open.operation_kind, 'terminal.session.start'); assert.equal(open.effect, 'EXECUTE');
+  assert.equal(OPERATION_POLICY[httpOperationKind('POST', '/api/git/diff')!], 'read');
+  assert.deepEqual(caps.find(c => c.id === 'cipher.activity.read')!.audiences, ['OPERATOR']);
+  assert.deepEqual(caps.find(c => c.id === 'settings.read')!.audiences, ['OPERATOR']);
+  assert.deepEqual(caps.find(c => c.id === 'workspace.file.write')!.audiences, ['OPERATOR', 'WORKER']);
+}));
+
+test('registered route identity alone cannot launder a foreign owner or wrong operation policy', () => fixture(async ({ seat, address }) => {
+  const path = '/api/cipher/laptop/activity';
+  const correct = { method: 'GET', path, capabilityPolicy: { owner: 'CipherLedger', operation: 'capability.read' } };
+  for (const [route, reason] of [
+    [{ ...correct, capabilityPolicy: { owner: 'CipherNotebook', operation: 'capability.read' } }, 'OWNER_DECLARATION_MISMATCH'],
+    [{ ...correct, capabilityPolicy: { owner: 'CipherLedger', operation: 'capability.write' } }, 'OPERATION_POLICY_MISMATCH']
+  ] as const) {
+    const view = await createAppCatalog(seat, [route]).read(address), binding = view.apps[3]!.capability_bindings[0]!;
+    assert.equal(binding.state, 'UNAVAILABLE'); assert.equal(binding.reason, reason);
+  }
+  const view = await createAppCatalog(seat, [correct]).read(address);
+  assert.notEqual(view.apps[3]!.manifest.canonical_state_owner, correct.capabilityPolicy.owner);
+  assert.equal(view.apps[3]!.capability_bindings[0]!.state, 'ADDRESSABLE');
+}));
+
+test('catalog read rejects a seat invalidated across its asynchronous owner read', () => fixture(async ({ seat, address }) => {
+  let calls = 0;
+  const owner = { ...seat, assertAddress: async (a: ProjectAddressT) => { if (++calls > 1) throw new Error('PROJECT_SEAT_INVALIDATED'); return seat.assertAddress(a); } };
+  await assert.rejects(() => createAppCatalog(owner).read(address), /PROJECT_SEAT_INVALIDATED/);
+}));
+
+test('canonical identifiers are lowercase case-sensitive while owner labels preserve spelling', () => fixture(async ({ catalog, address }) => {
+  const app = (await catalog.read(address)).apps[0]!.manifest;
+  assert.equal(AppManifest.safeParse({ ...app, app_id: app.app_id.toUpperCase() }).success, false);
+  assert.equal(AppCatalogQuery.safeParse({ ...address, capability_id: 'Project.Identity.Read' }).success, false);
+  assert.equal(AppCatalogQuery.safeParse({ ...address, project_id: address.project_id.toUpperCase() }).success, false);
+  assert.equal(app.canonical_state_owner, 'ProjectSeat');
+}));
+
+test('canonical project descriptor matches discovery metadata and a nonfunction cannot claim addressability', () => fixture(async ({ seat, root, address }) => {
+  const route = routesForProjects(seat, root)[0]!;
+  const operation = await route.describeOperation!({ query: {}, body: null }, 'catalog-policy-test');
+  assert.equal(operation.kind, route.capabilityPolicy!.operation);
+  assert.equal(route.capabilityPolicy!.owner, 'ProjectSeat');
+  const tampered = { ...route, describeOperation: true };
+  const view = await createAppCatalog(seat, [tampered]).read(address);
+  assert.equal(view.apps[0]!.capability_bindings[0]!.reason, 'OPERATION_POLICY_MISMATCH');
+  assert.equal(view.apps[0]!.execution_state, 'GATED');
 }));
 
 test('exact project AND checkout binding are mandatory even for metadata', () => fixture(async ({ catalog, address }) => {

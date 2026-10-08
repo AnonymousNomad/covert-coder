@@ -2847,6 +2847,12 @@
                                       "maxLength": 160,
                                       "pattern": "^[a-zA-Z0-9._:/@-]+$"
                                     },
+                                    "operation_kind": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 160,
+                                      "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                    },
                                     "method": {
                                       "type": "string",
                                       "enum": [
@@ -2864,7 +2870,11 @@
                                       "type": "string",
                                       "enum": [
                                         "READ",
-                                        "WRITE"
+                                        "WRITE",
+                                        "EXECUTE",
+                                        "EXTERNAL",
+                                        "PERMISSION",
+                                        "REVOKE"
                                       ]
                                     },
                                     "audiences": {
@@ -2884,6 +2894,7 @@
                                   "required": [
                                     "id",
                                     "owner",
+                                    "operation_kind",
                                     "method",
                                     "route",
                                     "effect",
@@ -3031,7 +3042,11 @@
                                   "enum": [
                                     "ROUTE_REGISTERED",
                                     "OWNER_ROUTE_UNAVAILABLE",
-                                    "ROUTE_OWNER_UNOBSERVED"
+                                    "ROUTE_OWNER_UNOBSERVED",
+                                    "OWNER_DECLARATION_MISMATCH",
+                                    "OPERATION_POLICY_MISMATCH",
+                                    "OWNER_UNAVAILABLE",
+                                    "ROUTE_OWNER_AMBIGUOUS"
                                   ]
                                 }
                               },
@@ -20973,6 +20988,659 @@
             }
           }
         }
+      }
+    },
+    "/api/resident/capabilities": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schema": {
+                      "type": "string",
+                      "const": "covert.resident-capabilities.v1"
+                    },
+                    "resident_id": {
+                      "type": "string",
+                      "const": "covert.resident.cipher"
+                    },
+                    "identity_state": {
+                      "type": "string",
+                      "enum": [
+                        "OBSERVED",
+                        "UNAVAILABLE"
+                      ]
+                    },
+                    "identity_source": {
+                      "type": "string",
+                      "enum": [
+                        "CipherLedger",
+                        "LOGICAL_PRODUCT_ID_UNOBSERVED"
+                      ]
+                    },
+                    "ledger_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "identity_provenance": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "owner": {
+                              "type": "string",
+                              "const": "CipherLedger"
+                            },
+                            "ledger_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "checkpoint_root": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "record_count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "integrity_generation": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "attestation": {
+                              "type": "string",
+                              "const": "UNSIGNED_HASH_CHAIN"
+                            }
+                          },
+                          "required": [
+                            "owner",
+                            "ledger_id",
+                            "checkpoint_root",
+                            "record_count",
+                            "integrity_generation",
+                            "attestation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "integrity_state": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "NORMAL",
+                            "DEGRADED",
+                            "RECONCILING",
+                            "LOCKDOWN"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "const": "UNAVAILABLE"
+                        }
+                      ]
+                    },
+                    "enrollment_state": {
+                      "type": "string",
+                      "const": "GATED"
+                    },
+                    "principal_id": {
+                      "type": "null"
+                    },
+                    "binding_generation": {
+                      "type": "null"
+                    },
+                    "context_lease_ref": {
+                      "type": "null"
+                    },
+                    "project": {
+                      "type": "object",
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        }
+                      },
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "discovery_generation": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "catalog_generation": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "catalog_digest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "observed_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "valid_until": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "freshness": {
+                      "type": "string",
+                      "const": "SNAPSHOT"
+                    },
+                    "apps": {
+                      "maxItems": 9,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "app_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160,
+                            "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                          },
+                          "manifest_digest": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "execution_state": {
+                            "type": "string",
+                            "const": "GATED"
+                          }
+                        },
+                        "required": [
+                          "app_id",
+                          "manifest_digest",
+                          "execution_state"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "capabilities": {
+                      "maxItems": 64,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160,
+                            "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                          },
+                          "app_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160,
+                            "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                          },
+                          "owner": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          },
+                          "operation_kind": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160,
+                            "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                          },
+                          "effect": {
+                            "type": "string",
+                            "enum": [
+                              "READ",
+                              "WRITE",
+                              "EXECUTE",
+                              "EXTERNAL",
+                              "PERMISSION",
+                              "REVOKE"
+                            ]
+                          },
+                          "audiences": {
+                            "minItems": 1,
+                            "maxItems": 3,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "OPERATOR",
+                                "RESIDENT",
+                                "WORKER"
+                              ]
+                            }
+                          },
+                          "method": {
+                            "type": "string",
+                            "enum": [
+                              "GET",
+                              "POST",
+                              "PUT",
+                              "DELETE"
+                            ]
+                          },
+                          "route": {
+                            "type": "string",
+                            "pattern": "^\\/api\\/[A-Za-z0-9/_-]+$"
+                          },
+                          "route_state": {
+                            "type": "string",
+                            "enum": [
+                              "ADDRESSABLE",
+                              "UNAVAILABLE",
+                              "UNOBSERVED"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "ROUTE_REGISTERED",
+                              "OWNER_ROUTE_UNAVAILABLE",
+                              "ROUTE_OWNER_UNOBSERVED",
+                              "OWNER_DECLARATION_MISMATCH",
+                              "OPERATION_POLICY_MISMATCH",
+                              "OWNER_UNAVAILABLE",
+                              "ROUTE_OWNER_AMBIGUOUS"
+                            ]
+                          },
+                          "execution_state": {
+                            "type": "string",
+                            "const": "GATED"
+                          },
+                          "execution_reason": {
+                            "type": "string",
+                            "const": "RESIDENT_ENROLLMENT_GATED"
+                          },
+                          "grant_state": {
+                            "type": "string",
+                            "const": "NOT_EVALUATED"
+                          },
+                          "admission_state": {
+                            "type": "string",
+                            "const": "NOT_EVALUATED"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "app_id",
+                          "owner",
+                          "operation_kind",
+                          "effect",
+                          "audiences",
+                          "method",
+                          "route",
+                          "route_state",
+                          "reason",
+                          "execution_state",
+                          "execution_reason",
+                          "grant_state",
+                          "admission_state"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "workers": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "OBSERVED",
+                            "UNAVAILABLE",
+                            "STALE"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "CANONICAL_OWNER_SNAPSHOT",
+                            "MODEL_OWNER_UNAVAILABLE",
+                            "MODEL_SNAPSHOT_INVALID",
+                            "MODEL_SNAPSHOT_STALE"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "const": "ModelManagerView"
+                        },
+                        "observed_at": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "references": {
+                          "maxItems": 128,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "identity_encoding": {
+                                "type": "string",
+                                "const": "OWNER_REFERENCE_DIGEST"
+                              },
+                              "route_id": {
+                                "type": "string",
+                                "pattern": "^route:[a-f0-9]{64}$"
+                              },
+                              "model_id": {
+                                "type": "string",
+                                "pattern": "^model:[a-f0-9]{64}$"
+                              },
+                              "adapter_id": {
+                                "type": "string",
+                                "pattern": "^adapter:[a-f0-9]{64}$"
+                              },
+                              "provider_id": {
+                                "type": "string",
+                                "pattern": "^provider:[a-f0-9]{64}$"
+                              },
+                              "availability": {
+                                "type": "string",
+                                "enum": [
+                                  "AVAILABLE",
+                                  "UNAVAILABLE"
+                                ]
+                              },
+                              "external_egress_required": {
+                                "type": "boolean"
+                              },
+                              "selected_roles": {
+                                "maxItems": 16,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "PLANNING",
+                                    "IMPLEMENTATION",
+                                    "REVIEW",
+                                    "UTILITY",
+                                    "BACKGROUND"
+                                  ]
+                                }
+                              },
+                              "qualification_state": {
+                                "type": "string",
+                                "const": "NOT_PROJECTED"
+                              },
+                              "execution_state": {
+                                "type": "string",
+                                "const": "GATED"
+                              }
+                            },
+                            "required": [
+                              "identity_encoding",
+                              "route_id",
+                              "model_id",
+                              "adapter_id",
+                              "provider_id",
+                              "availability",
+                              "external_egress_required",
+                              "selected_roles",
+                              "qualification_state",
+                              "execution_state"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "reason",
+                        "source",
+                        "observed_at",
+                        "references"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "grants": {
+                      "type": "object",
+                      "properties": {
+                        "owner": {
+                          "type": "string",
+                          "const": "Authority"
+                        },
+                        "state": {
+                          "type": "string",
+                          "const": "UNAVAILABLE"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "const": "LIVE_RESIDENT_PRINCIPAL_UNAVAILABLE"
+                        },
+                        "references": {
+                          "maxItems": 0,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "owner": {
+                                "type": "string",
+                                "const": "Authority"
+                              },
+                              "grant_ref": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "principal_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "project": {
+                                "type": "object",
+                                "properties": {
+                                  "project_id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "checkout_id": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  }
+                                },
+                                "required": [
+                                  "project_id",
+                                  "checkout_id"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "owner",
+                              "grant_ref",
+                              "principal_id",
+                              "project",
+                              "revision"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "owner",
+                        "state",
+                        "reason",
+                        "references"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "pending_operator_decisions": {
+                      "type": "object",
+                      "properties": {
+                        "owner": {
+                          "type": "string",
+                          "const": "Authority"
+                        },
+                        "state": {
+                          "type": "string",
+                          "const": "UNAVAILABLE"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "const": "SCOPED_AUTHORITY_DISCOVERY_UNAVAILABLE"
+                        },
+                        "references": {
+                          "maxItems": 0,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "pattern": "^[A-Za-z0-9._:/@-]+$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "owner",
+                        "state",
+                        "reason",
+                        "references"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "refresh": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "const": "BOUNDED_PULL"
+                        },
+                        "refresh_after_ms": {
+                          "type": "number",
+                          "const": 30000
+                        },
+                        "change_events": {
+                          "type": "string",
+                          "const": "GATED_NOT_IMPLEMENTED"
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "refresh_after_ms",
+                        "change_events"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "effect_replay": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "resident_id",
+                    "identity_state",
+                    "identity_source",
+                    "ledger_id",
+                    "identity_provenance",
+                    "integrity_state",
+                    "enrollment_state",
+                    "principal_id",
+                    "binding_generation",
+                    "context_lease_ref",
+                    "project",
+                    "discovery_generation",
+                    "catalog_generation",
+                    "catalog_digest",
+                    "observed_at",
+                    "valid_until",
+                    "freshness",
+                    "apps",
+                    "capabilities",
+                    "workers",
+                    "grants",
+                    "pending_operator_decisions",
+                    "refresh",
+                    "effect_replay"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "catalog_generation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "checkout_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ]
       }
     },
     "/api/resident/context": {

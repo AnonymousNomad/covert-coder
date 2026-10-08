@@ -104,6 +104,7 @@ export function routeForSettingsGet(service: SettingsService): Route {
   return {
     method: 'GET',
     path: '/api/settings',
+    capabilityPolicy: { owner: 'SettingsService', operation: 'capability.read' },
     response: SettingsGetResponse,
     handler: (): SettingsGetResponseT => ({ values: service.merged(), descriptors: service.descriptors() })
   };
