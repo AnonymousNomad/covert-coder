@@ -540,3 +540,14 @@ The next actual acquisition/execution attempt remains gated on a fresh canonical
 I ran `node --experimental-strip-types --test tests/arch/broker-model-runtime.test.ts` at approximately `2026-10-08T17:46Z`. The command initially yielded with the test process still live after 10 seconds; I polled that same process and it completed normally. Result: **4 passed, 0 failed, 0 skipped, 0 cancelled; exit 0; 12,843.7 ms**. No rerun occurred.
 
 This suite uses a stub `RuntimeAdapter`, temporary synthetic artifact contents, and injectable Admission; it does not start Unsloth or a model. It exercises exact artifact/runtime profile binding, broker start/chat/stream/stop/restart behavior against the stub, and a final Admission refusal at `6,655 MiB` that asserts zero runtime-load calls. It supports the canonical contract and fail-closed ordering only; it is not evidence of actual runtime load, identity probe, generation, cancellation, or restart on this host.
+
+## Preserved ModelHub route-fixture pairing delay — source-only isolation (2026-10-08)
+
+At code HEAD `5fd13dba8556312622e21f9fd14f27e5cb227ac3`, source inspection refined the preserved pairing-delay boundary without rerunning the red route suite:
+
+- `tests/arch/modelhub-routes.test.ts` starts an `ArchServer`, listens on a loopback ephemeral port, then calls the production-route helper `pairFixture()` before the assertions.
+- `pairFixture()` creates an in-memory one-use proof and posts to `/api/authority/pair`; its default request timeout is `5,000 ms` (`AIDE_FIXTURE_TIMEOUT_MS` is an opt-in override and was not used to change the prior result).
+- The route invokes `ExecutionAuthority.pair()`. After checking the proof, that service awaits a required durable `paired` audit receipt before returning the operator session.
+- `ArchServer` records authority events through `createAuditTrail()` into `harness/cipher-state.mjs`; its append path creates the state directory, opens `.aide/cipher-state.jsonl`, appends the row, calls `FileHandle.sync()`, and closes the file. `ArchServer.handle()` logs total request duration for a completed response.
+
+This identifies the durable audit append as one measurable segment and the HTTP handler duration as another. It does **not** prove either segment caused the previously recorded `8,708 ms` delay; event-loop scheduling, storage latency, resource contention, or another boundary remain possible. `CAUSE UNKNOWN` remains. Do not use the fixture timeout override to obtain green. On a future safe reproduction, preserve the original deadline and collect the pair request's server duration plus per-stage audit append timings and process/resource observations; retain the first failure if it recurs. No code or timeout was changed, and the route suite was not rerun.
