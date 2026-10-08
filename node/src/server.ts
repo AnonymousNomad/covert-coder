@@ -391,6 +391,12 @@ export class ArchServer {
 }
 
 export async function main(): Promise<void> {
+  const bootTraceStartedAt = Date.now();
+  const traceBootStage = (stage: string): void => {
+    if (process.env.AIDE_TRACE_BACKEND_BOOT !== '1') return;
+    process.stderr.write(`[backend-boot-trace] ${stage} elapsed_ms=${Date.now() - bootTraceStartedAt}\n`);
+  };
+  traceBootStage('main-entered');
   const home = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
   const workspace = path.resolve(process.env.AIDE_WORKSPACE || home);
   const version = process.env.AIDE_VERSION || 'dev';
@@ -428,10 +434,14 @@ export async function main(): Promise<void> {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
   const manager = createLspManager(repoRoot, workspace, { events: server.events, logger: server.logger });
   server.addShutdownHook(() => manager.stopAll());
+  traceBootStage('dap-manager-start');
   const dapManager = await createDapManager(repoRoot, workspace, { events: server.events, logger: server.logger });
+  traceBootStage('dap-manager-ready');
   server.addShutdownHook(() => dapManager.stopAll());
   const resourceAdmission = createResourceAdmission();
+  traceBootStage('model-runtime-start');
   const modelRuntime = await createModelRuntime(repoRoot, workspace, { events: server.events, logger: server.logger, resourceAdmission });
+  traceBootStage('model-runtime-ready');
   server.addShutdownHook(() => modelRuntime.stopAll());
   // Real interactive terminals (DeepSeek #1 lane). Sessions are admitted only
   // via approved terminal.session.start operations; the WS control channel
@@ -446,12 +456,16 @@ export async function main(): Promise<void> {
   });
   server.registerControlHandler((message, context) => terminalSessions.handleControl(message, context.identity));
   server.addShutdownHook(async () => terminalSessions.stopAll());
+  traceBootStage('build-routes-start');
   const routes = await buildRoutes(workspace, version, {
     authority: server.authority, events: server.events, logger: server.logger, resourceAdmission,
     lspManager: manager, dapManager, modelRuntime, terminalSessions, watchIndex: true
   });
+  traceBootStage(`build-routes-ready count=${routes.length}`);
   for (const route of routes) server.route(route);
+  traceBootStage('http-listen-start');
   const listener = await server.listen(port);
+  traceBootStage('http-listen-ready');
   resolveReady(listener.address());
   server.logger.info('arch daemon listening', { port, workspace });
 
