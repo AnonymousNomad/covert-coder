@@ -120,6 +120,15 @@
     },
     {
       "method": "GET",
+      "path": "/api/apps/catalog",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/artifacts",
       "match": "exact",
       "target": "ts",

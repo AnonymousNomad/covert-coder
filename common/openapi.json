@@ -2549,6 +2549,602 @@
         }
       }
     },
+    "/api/apps/catalog": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schema": {
+                      "type": "string",
+                      "const": "covert.app-catalog.v1"
+                    },
+                    "generation": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "catalog_digest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "project": {
+                      "type": "object",
+                      "properties": {
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "checkout_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        }
+                      },
+                      "required": [
+                        "project_id",
+                        "checkout_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "observed_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "freshness": {
+                      "type": "string",
+                      "const": "SNAPSHOT"
+                    },
+                    "selection": {
+                      "type": "object",
+                      "properties": {
+                        "app_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160,
+                              "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "capability_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160,
+                              "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "app_id",
+                        "capability_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "package": {
+                      "type": "object",
+                      "properties": {
+                        "schema": {
+                          "type": "string",
+                          "const": "covert.package-manifest.v1"
+                        },
+                        "package_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160,
+                          "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                        },
+                        "version": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160,
+                          "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                        },
+                        "publisher": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160,
+                          "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                        },
+                        "source_ref": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160,
+                          "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                        },
+                        "artifact_digest": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "artifact_state": {
+                          "type": "string",
+                          "enum": [
+                            "UNATTESTED",
+                            "DIGEST_DECLARED"
+                          ]
+                        },
+                        "compatibility": {
+                          "type": "object",
+                          "properties": {
+                            "contract_version": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "hosts": {
+                              "minItems": 1,
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "windows",
+                                  "linux",
+                                  "darwin"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "contract_version",
+                            "hosts"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "manifest_digest": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "schema",
+                        "package_id",
+                        "version",
+                        "publisher",
+                        "source_ref",
+                        "artifact_digest",
+                        "artifact_state",
+                        "compatibility",
+                        "manifest_digest"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "apps": {
+                      "maxItems": 9,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "manifest": {
+                            "type": "object",
+                            "properties": {
+                              "schema": {
+                                "type": "string",
+                                "const": "covert.app-manifest.v1"
+                              },
+                              "app_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "package_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "package_manifest_digest": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "version": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "presentation_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "canonical_state_owner": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "scope": {
+                                "type": "string",
+                                "enum": [
+                                  "WORKSTATION",
+                                  "PROJECT",
+                                  "PROJECT_OPTIONAL"
+                                ]
+                              },
+                              "storage_namespace": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160,
+                                "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                              },
+                              "contributions": {
+                                "maxItems": 3,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "window",
+                                    "launcher",
+                                    "resident-discovery"
+                                  ]
+                                }
+                              },
+                              "required_capabilities": {
+                                "maxItems": 32,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 160,
+                                  "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                }
+                              },
+                              "optional_capabilities": {
+                                "maxItems": 32,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 160,
+                                  "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                }
+                              },
+                              "capabilities": {
+                                "maxItems": 32,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 160,
+                                      "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                    },
+                                    "owner": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 160,
+                                      "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                    },
+                                    "method": {
+                                      "type": "string",
+                                      "enum": [
+                                        "GET",
+                                        "POST",
+                                        "PUT",
+                                        "DELETE"
+                                      ]
+                                    },
+                                    "route": {
+                                      "type": "string",
+                                      "pattern": "^\\/api\\/[a-zA-Z0-9/_-]+$"
+                                    },
+                                    "effect": {
+                                      "type": "string",
+                                      "enum": [
+                                        "READ",
+                                        "WRITE"
+                                      ]
+                                    },
+                                    "audiences": {
+                                      "minItems": 1,
+                                      "maxItems": 3,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "enum": [
+                                          "OPERATOR",
+                                          "RESIDENT",
+                                          "WORKER"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "owner",
+                                    "method",
+                                    "route",
+                                    "effect",
+                                    "audiences"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "dependencies": {
+                                "type": "object",
+                                "properties": {
+                                  "network_classes": {
+                                    "maxItems": 16,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 160,
+                                      "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                    }
+                                  },
+                                  "credential_classes": {
+                                    "maxItems": 16,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 160,
+                                      "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                    }
+                                  },
+                                  "external_runtimes": {
+                                    "maxItems": 16,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 160,
+                                      "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "network_classes",
+                                  "credential_classes",
+                                  "external_runtimes"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "resources": {
+                                "type": "object",
+                                "properties": {
+                                  "owner": {
+                                    "type": "string",
+                                    "const": "ResourceAdmission"
+                                  },
+                                  "budget_state": {
+                                    "type": "string",
+                                    "const": "NOT_EVALUATED"
+                                  },
+                                  "background": {
+                                    "type": "boolean",
+                                    "const": false
+                                  }
+                                },
+                                "required": [
+                                  "owner",
+                                  "budget_state",
+                                  "background"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "restore": {
+                                "type": "object",
+                                "properties": {
+                                  "presentation": {
+                                    "type": "boolean",
+                                    "const": true
+                                  },
+                                  "effects": {
+                                    "type": "boolean",
+                                    "const": false
+                                  },
+                                  "background_restart": {
+                                    "type": "boolean",
+                                    "const": false
+                                  }
+                                },
+                                "required": [
+                                  "presentation",
+                                  "effects",
+                                  "background_restart"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "manifest_digest": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              }
+                            },
+                            "required": [
+                              "schema",
+                              "app_id",
+                              "package_id",
+                              "package_manifest_digest",
+                              "version",
+                              "display_name",
+                              "presentation_id",
+                              "canonical_state_owner",
+                              "scope",
+                              "storage_namespace",
+                              "contributions",
+                              "required_capabilities",
+                              "optional_capabilities",
+                              "capabilities",
+                              "dependencies",
+                              "resources",
+                              "restore",
+                              "manifest_digest"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "capability_bindings": {
+                            "maxItems": 32,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 160,
+                                  "pattern": "^[a-zA-Z0-9._:/@-]+$"
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ADDRESSABLE",
+                                    "UNAVAILABLE",
+                                    "UNOBSERVED"
+                                  ]
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ROUTE_REGISTERED",
+                                    "OWNER_ROUTE_UNAVAILABLE",
+                                    "ROUTE_OWNER_UNOBSERVED"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "state",
+                                "reason"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "installation_state": {
+                            "type": "string",
+                            "const": "UNOBSERVED"
+                          },
+                          "grant_state": {
+                            "type": "string",
+                            "const": "NOT_EVALUATED"
+                          },
+                          "admission_state": {
+                            "type": "string",
+                            "const": "NOT_EVALUATED"
+                          },
+                          "execution_state": {
+                            "type": "string",
+                            "const": "GATED"
+                          },
+                          "execution_reason": {
+                            "type": "string",
+                            "const": "APP_PRINCIPAL_ENFORCEMENT_UNPROVEN"
+                          }
+                        },
+                        "required": [
+                          "manifest",
+                          "capability_bindings",
+                          "installation_state",
+                          "grant_state",
+                          "admission_state",
+                          "execution_state",
+                          "execution_reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "effect_replay": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "generation",
+                    "catalog_digest",
+                    "project",
+                    "observed_at",
+                    "freshness",
+                    "selection",
+                    "package",
+                    "apps",
+                    "effect_replay"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^[a-zA-Z0-9._:/@-]+$"
+            }
+          },
+          {
+            "name": "capability_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^[a-zA-Z0-9._:/@-]+$"
+            }
+          },
+          {
+            "name": "checkout_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ]
+      }
+    },
     "/api/artifacts": {
       "get": {
         "responses": {
