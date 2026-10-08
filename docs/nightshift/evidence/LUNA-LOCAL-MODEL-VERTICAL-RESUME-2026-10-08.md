@@ -147,6 +147,8 @@ Issue #38 was rechecked after the resource and regression results; GitHub displa
 
 ## Verification on this branch
 
+The recorded `55 passed` affected-suite line below has no attached raw log or run timestamp. This evidence file separately preserves a Model Hub route-suite run with `12 failed` because Authority pairing exceeded the unchanged fixture deadline before the test bodies ran. Treat the route gate as **UNRESOLVED** until a newly timestamped run passes; neither line erases the other.
+
 Pre-repair bounded suite at the unchanged starting HEAD:
 
 ```text
@@ -174,8 +176,8 @@ exit 0; 55 passed; 0 failed; 0 skipped; 0 cancelled
 | Real artifact download + bytes/SHA-256/GGUF validation | OPEN |
 | Canonical Model Manager registration in this workspace | OPEN |
 | Resource Admission | `REFUSE_RESOURCE` at `2026-10-08T15:10:12.564Z`; physical `3,625 MiB`, commit `2,948 MiB` |
-| Custom repository license name in Model Access | Unit parser proof passes; updated Authority route fixture not yet verified |
-| Model Hub route architecture suite | `12 failed / 0 passed`; Authority pair hook `8,708 ms` > `5,000 ms`; internal latency cause UNKNOWN |
+| Custom repository license name in Model Access | Unit parser proof passes; an un-timestamped 55/55 affected-suite pass is recorded; latest 12-failure setup red remains preserved |
+| Model Hub route architecture suite | UNRESOLVED: recorded 55/55 pass lacks raw log/timestamp; separately captured run has `12 failed / 0 passed` at Authority pairing, `8,708 ms` > `5,000 ms`; cause UNKNOWN |
 | Runtime ownership/version/profile check | OPEN |
 | Real local inference output | OPEN |
 | Stop/restart and post-run cleanup | OPEN |
@@ -184,4 +186,26 @@ exit 0; 55 passed; 0 failed; 0 skipped; 0 cancelled
 
 ## Next action
 
-This turn's `license_name` repair has focused unit and Model Access coverage. The Model Hub route suite's immediate failure boundary is now localized to slow durable Authority pairing in its `before` hook; the internal I/O sub-stage and host contribution remain **UNKNOWN**. Its updated route assertion was not reached. Keep that red open and do not push the candidate. The live startup failure also remains unresolved. The latest canonical admission result is `REFUSE_RESOURCE` at `2026-10-08T15:10:12.564Z`, and the common ports are occupied by a separate Covert stack. Do not start another app stack or any local model in this state. The next action is to reproduce Authority pairing under a safe resource window with the default fixture bound unchanged and capture the pairing/audit timing; then repair only a proven cause and rerun the affected suite. For the startup lane, capture the exact TypeScript child PID/tree, age, CPU, private/working memory, listener state and startup logs during one safe controlled reproduction. After those gates close, use the existing Model Access → Model Hub → workspace models → Model Manager path. A real model start still requires a fresh canonical `admitLocalRuntimeStart()` result of `START` and exact runtime identity before accepting inference output.
+This turn's `license_name` repair has focused unit and Model Access coverage. The Model Hub route suite's immediate failure boundary is now localized to slow durable Authority pairing in its `before` hook; the internal I/O sub-stage and host contribution remain **UNKNOWN**. In the `12 failed` run, the updated route assertion was not reached; the separate recorded 55/55 result has no raw log or timestamp. Keep the red open and do not push the candidate. The live startup failure also remains unresolved. The latest canonical admission result is `REFUSE_RESOURCE` at `2026-10-08T15:10:12.564Z`, and the common ports are occupied by a separate Covert stack. Do not start another app stack or any local model in this state. The next action is to reproduce Authority pairing under a safe resource window with the default fixture bound unchanged and capture the pairing/audit timing; then repair only a proven cause and rerun the affected suite. For the startup lane, capture the exact TypeScript child PID/tree, age, CPU, private/working memory, listener state and startup logs during one safe controlled reproduction. After those gates close, use the existing Model Access → Model Hub → workspace models → Model Manager path. A real model start still requires a fresh canonical `admitLocalRuntimeStart()` result of `START` and exact runtime identity before accepting inference output.
+
+## GGUF metadata buffering follow-up (2026-10-08T15:40Z)
+
+The current `probeGguf()` implementation discarded its 64 KiB read window after each skipped string-array value. The real LFM2.5 GGUF contains a large tokenizer string array. A read-only metadata attempt remained active at 34 seconds with Node CPU time `18.75 s` and working set `80.3 MiB`; its process exited before a scoped stop request, and that attempt's stdout was not retained. I therefore do not use it as a metadata result. The code path explained the repeated reads, and a deterministic synthetic regression reproduced it: parsing 128 token strings made `129` separate file reads in `337.6 ms`, exceeding the new buffered-read assertion.
+
+The bounded repair makes `skip()` consume bytes already buffered and clears the read window only when the skipped value extends past it. No parse rules, GGUF limits, metadata fields, model validation, runtime settings, or qualification states changed. The new regression passed after repair.
+
+On the actual existing host artifact, the repaired parser completed a metadata-only read in `222.63 ms` using `119` file reads. It returned GGUF v3, architecture `lfm2`, `general.file_type=15`, model context metadata `131072`, 30 blocks, embedding length `2048`, and 32 attention heads. Embedded `tokenizer.chat_template` measured `5,443` bytes with SHA-256 `ea663864491de7ade391839479860ca95541f892f72665c73251fbd4643b1bef`; the observed template included system/user/assistant markers, BOS placeholder, thinking tags, and tool-call markers. Tokenizer metadata reported BOS ID `124894`, EOS ID `124900`, and no explicit `add_bos_token` value. This matches the existing model card's recorded template hash. The sidecar was read-only and still binds the artifact hash to Unsloth `2026.9.11`, context request `2048`, temperature `0`, and maximum output `512`. This turn did not recompute the full 1.67 GB artifact SHA or start any model.
+
+Verification:
+
+```text
+node --test --test-concurrency=1 tests/unit/test-gguf-metadata-buffering.mjs tests/unit/test-m-hub.mjs
+exit 0; 14 passed; 0 failed; 0 skipped; 0 cancelled
+
+node --test --test-concurrency=1 tests/arch/gguf.test.ts
+exit 0; 3 passed; 0 failed; 1 skipped; 0 cancelled
+```
+
+The architecture-test skip remains because no `.gguf` is committed under this checkout's `models/` directory. `git diff --check` passed before this evidence update; final diff hygiene remains to be repeated. No full TypeScript check, lint, full architecture suite, or exact-SHA CI was run. Existing Model Hub route and TypeScript startup blockers remain open. A fresh Windows OS snapshot showed `3,416 MiB` free physical and `4,274 MiB` free virtual memory; the latter is not the canonical commit probe. The separate stack still owns ports `4173/4777/4778/4779`; it was not touched, and neither a new app stack nor model runtime was launched.
+
+Issue #38 was checked after this material regression change. Its latest update is `2026-10-07T10:47:38Z`; no newer Sol correction was present. The isolated feature branch remains local-only with no upstream; do not push while the Model Hub route red and startup failure remain unresolved. The next release-critical action is to reproduce the Authority pairing delay with per-stage audit timing at safe host headroom, then resume the canonical launcher diagnostic and live Model Access path.

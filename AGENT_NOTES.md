@@ -5,6 +5,14 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-08 10:40] Actor: Luna
+- Type: bounded GGUF metadata parser performance repair on isolated Covert local-model lane
+- Source truth: `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, parent HEAD `a5606e5841f69ea2f2165c578dc8a4db611c3ca2`, clean before this unit; isolated branch has no upstream. PR #31 and Saul's workstation/platform lanes untouched.
+- Root cause: `probeGguf()` discarded buffered header bytes on every skipped string-array entry. A synthetic 128-token GGUF first reproduced 129 file reads / 337.6 ms. On the existing 1.67 GB LFM2.5 host artifact, a metadata probe was still running after 34 s (18.75 s CPU, 80.3 MiB working set); it exited before scoped stop and its stdout was not captured. Do not claim data from that attempt.
+- Repair/proof: `skip()` now retains unread buffered bytes when the skipped value fits. New regression + Model Hub units: 14/14 pass; GGUF architecture: 3 pass / 1 artifact-availability skip. Repaired read-only metadata parse of the existing file completed in 222.63 ms / 119 reads; embedded template SHA matched the existing model card. No full artifact rehash or runtime start.
+- Boundary: Windows OS sample 3,416 MiB free physical / 4,274 MiB free virtual (not canonical commit); separate app stack still owns 4173/4777/4778/4779. No app launch or model load. Model Hub Authority-pair hook red and TypeScript startup failure remain unresolved; no full typecheck/lint, full architecture, CI, push, or release claim.
+- Next: investigate the Authority-pair durable audit latency with per-stage timing when host headroom permits; keep default fixture and launcher deadlines unchanged. Then resolve the observed startup failure and continue real Model Access acquisition/registration/admission/inference.
+
 ### [2026-10-01 17:08] Actor: sol61
 - Type: final exact-SHA Desktop matrix / bounded repair disposition
 - Status: Desktop 36930702318 completed SUCCESS at 22:04:33Z; all three jobs passed on exact a731730. Windows actual NSIS/MSI lifecycle proof is retained; Linux/macOS prove build/artifact smoke only. Current external-route snapshot defect is repaired and regression/cumulative/canonical/AIDE/Veritas/installed-Windows verified. Historical original untraced failures remain UNKNOWN/OPEN, not retroactively closed.

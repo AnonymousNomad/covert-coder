@@ -75,7 +75,11 @@ export async function probeGguf(filePath: string): Promise<GgufInfo> {
 
   const skip = (bytes: number): void => {
     pos += bytes;
-    window = Buffer.alloc(0);
+    if (bytes <= window.length) {
+      window = window.subarray(bytes);
+    } else {
+      window = Buffer.alloc(0);
+    }
   };
 
   try {
