@@ -144,6 +144,7 @@ export interface ModelEntry {
   source_repo?: string;
   revision?: string;
   license?: string;
+  repository_license?: string;
   quant_label?: string;
 }
 
@@ -264,6 +265,7 @@ export class ModelRuntime {
     if (typeof raw.source_repo === 'string') entry.source_repo = raw.source_repo;
     if (typeof raw.revision === 'string') entry.revision = raw.revision;
     if (typeof raw.license === 'string') entry.license = raw.license;
+    if (typeof raw.repository_license === 'string') entry.repository_license = raw.repository_license;
     if (typeof raw.quant_label === 'string') entry.quant_label = raw.quant_label;
     if (typeof raw.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(raw.sha256)) entry.sha256 = raw.sha256.toLowerCase();
     return entry;
@@ -1195,6 +1197,7 @@ export class ModelRuntime {
     if (typeof sidecar?.repo_id === 'string' && sidecar.source === 'hf') entry.source_repo = sidecar.repo_id;
     if (typeof sidecar?.revision === 'string') entry.revision = sidecar.revision;
     if (typeof sidecar?.license === 'string') entry.license = sidecar.license;
+    if (typeof sidecar?.repository_license === 'string') entry.repository_license = sidecar.repository_license;
     if (options.quant_label) entry.quant_label = options.quant_label;
     else if (typeof sidecar?.quant_label === 'string') entry.quant_label = sidecar.quant_label;
     this.models.set(id, entry);
@@ -1324,6 +1327,7 @@ export class ModelRuntime {
         source_repo: model.source_repo,
         revision: model.revision,
         license: model.license,
+        repository_license: model.repository_license,
         quant_label: model.quant_label,
         ingested: true
       }));

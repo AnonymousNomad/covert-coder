@@ -321,6 +321,7 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
         source_repo: entry.source_repo,
         revision: entry.revision,
         license: entry.license,
+        repository_license: entry.repository_license,
         ingested: true
       });
     }
@@ -368,6 +369,7 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
         observed_sha256: observedHash,
         hash_status: hashStatus,
         license: nullableText(raw.license, 120),
+        ...(typeof raw.repository_license === 'string' ? { repository_license: nullableText(raw.repository_license, 120) } : {}),
         availability: artifactAvailability,
         compatibility: hashMismatch ? 'INCOMPATIBLE' : loadedHash ? 'COMPATIBLE' : 'UNKNOWN'
       };

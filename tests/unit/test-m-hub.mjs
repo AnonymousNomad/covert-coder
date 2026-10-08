@@ -58,12 +58,13 @@ function kv(key, type, value) {
   return Buffer.concat([str(key), u32(type), u32(value)]);
 }
 
-function synthesizeGguf({ architecture = 'llama', blockCount = 2 } = {}) {
+function synthesizeGguf({ architecture = 'llama', blockCount = 2, license = null } = {}) {
   const kvs = [
     kv('general.architecture', TYPE_STRING, architecture),
     kv('general.name', TYPE_STRING, 'tiny-test'),
     kv('general.file_type', TYPE_UINT32, 1)
   ];
+  if (license !== null) kvs.push(kv('general.license', TYPE_STRING, license));
   if (architecture === 'llama') {
     kvs.push(kv(`${architecture}.block_count`, TYPE_UINT32, blockCount));
     kvs.push(kv(`${architecture}.context_length`, TYPE_UINT32, 512));
@@ -266,6 +267,79 @@ test('m1: happy-path download streams to final file with manifest and no .part l
     server.close();
     server.closeAllConnections();
   }
+});
+
+test('m1: downloaded manifest preserves pinned Hugging Face license name beside GGUF metadata', { timeout: 15000 }, async () => {
+  const payload = synthesizeGguf({ license: 'other' });
+  const pins = verifiedArtifact(payload);
+  const observedUrls = [];
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: async url => {
+      const value = String(url);
+      observedUrls.push(value);
+      if (value.startsWith('https://huggingface.co/api/models/')) {
+        return new Response(JSON.stringify({
+          sha: REVISION,
+          cardData: { license: 'other', license_name: 'lfm1.0', license_link: 'LICENSE' },
+          siblings: [{ rfilename: 'licensed-q4.gguf', size: payload.length, lfs: { sha256: pins.expected_sha256, size: payload.length } }]
+        }), { status: 200 });
+      }
+      return new Response(payload, { status: 200, headers: { 'content-length': String(payload.length) } });
+    }
+  });
+
+  const inspected = await hub.listRepoFiles('LiquidAI/LFM2.5-2.6B-GGUF');
+  assert.equal(inspected.revision, REVISION);
+  assert.equal(inspected.license, 'lfm1.0');
+  assert.equal(inspected.files[0].lfs_sha256, pins.expected_sha256);
+  assert.equal(inspected.files[0].size, pins.expected_size_bytes);
+
+  await hub.startDownload({
+    repo_id: 'LiquidAI/LFM2.5-2.6B-GGUF',
+    filename: 'licensed-q4.gguf',
+    quant_label: 'Q4_K_M',
+    ...pins
+  });
+
+  const manifest = JSON.parse(await fs.readFile(path.join(modelsDir, 'licensed-q4.gguf.manifest.json'), 'utf8'));
+  assert.equal(manifest.license, 'other', 'keep the artifact-embedded GGUF value');
+  assert.equal(manifest.repository_license, 'lfm1.0', 'preserve the exact revision card license name separately');
+  assert.ok(observedUrls.some(url => url === 'https://huggingface.co/api/models/LiquidAI/LFM2.5-2.6B-GGUF?blobs=true'), 'server-derived license came from the inspected repository response');
+});
+
+test('m1: a download cannot change file pins after its repository revision was inspected', async () => {
+  const payload = synthesizeGguf();
+  const pins = verifiedArtifact(payload);
+  let downloads = 0;
+  const hub = createHubService({
+    workspace: ws,
+    modelsDir,
+    assertExternalEgressAllowed: allowExternalEgress,
+    fetchImpl: async url => {
+      if (String(url).startsWith('https://huggingface.co/api/models/')) {
+        return new Response(JSON.stringify({
+          sha: REVISION,
+          cardData: { license: 'mit' },
+          siblings: [{ rfilename: 'pinned.gguf', size: payload.length, lfs: { sha256: pins.expected_sha256, size: payload.length } }]
+        }), { status: 200 });
+      }
+      downloads += 1;
+      return new Response(payload, { status: 200, headers: { 'content-length': String(payload.length) } });
+    }
+  });
+
+  await hub.listRepoFiles('testorg/repo');
+  assert.throws(() => hub.beginDownload({
+    repo_id: 'testorg/repo',
+    filename: 'pinned.gguf',
+    revision: REVISION,
+    expected_sha256: 'f'.repeat(64),
+    expected_size_bytes: payload.length
+  }), error => error?.code === 'VALIDATION' && /inspected Hugging Face file metadata/i.test(error.message));
+  assert.equal(downloads, 0, 'mismatched pins are rejected before artifact egress');
 });
 
 test('m1: interrupted download auto-resumes via Range request and completes', { timeout: 20000 }, async () => {

@@ -55,6 +55,7 @@ export const ModelArtifactSource = z.strictObject({
   observed_sha256: Sha256.nullable(),
   hash_status: ModelArtifactHashState,
   license: z.string().max(120).nullable(),
+  repository_license: z.string().max(120).nullable().optional(),
   availability: ModelAccessAvailability,
   compatibility: ModelArtifactCompatibility
 });

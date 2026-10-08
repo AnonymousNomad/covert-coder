@@ -13,6 +13,7 @@ const SUPPORTED_ARCHS = new Set([
   'deepseek2', 'olmo', 'internlm2', 'baichuan', 'lfm2'
 ]);
 const MAX_EVENTS = 500;
+const MAX_REPO_INSPECTIONS = 32;
 const DEFAULT_METADATA_TIMEOUT_MS = 15_000;
 const DEFAULT_DOWNLOAD_IDLE_TIMEOUT_MS = 45_000;
 
@@ -199,6 +200,11 @@ export function createHubService({
     return existing.size;
   }
   const jobs = new Map();
+  // A bounded, process-local association from an inspected immutable revision
+  // to the license/file metadata returned by the same Hugging Face response.
+  // The download request supplies the revision and LFS pins; no client-supplied
+  // license value is trusted or persisted.
+  const repoInspections = new Map();
   const eventLog = [];
   let eventListener = typeof onEvent === 'function' ? onEvent : null;
 
@@ -216,6 +222,33 @@ export function createHubService({
 
   function listEvents() {
     return [...eventLog];
+  }
+
+  function cacheRepoInspection(listing) {
+    const key = `${listing.repo_id}\u0000${listing.revision}`;
+    repoInspections.delete(key);
+    repoInspections.set(key, {
+      license: listing.license,
+      files: listing.files.map(file => ({ ...file }))
+    });
+    while (repoInspections.size > MAX_REPO_INSPECTIONS) {
+      const oldest = repoInspections.keys().next().value;
+      if (oldest === undefined) break;
+      repoInspections.delete(oldest);
+    }
+  }
+
+  function inspectedRepositoryLicense(args) {
+    const key = `${args.repo_id}\u0000${String(args.revision).toLowerCase()}`;
+    const inspection = repoInspections.get(key);
+    if (!inspection) return null;
+    repoInspections.delete(key);
+    repoInspections.set(key, inspection);
+    const file = inspection.files.find(item => item.filename === args.filename);
+    if (!file || file.size !== args.expected_size_bytes || file.lfs_sha256 !== String(args.expected_sha256).toLowerCase()) {
+      throw Object.assign(new Error('download pins do not match the inspected Hugging Face file metadata'), { code: 'VALIDATION' });
+    }
+    return inspection.license;
   }
 
   async function search(q, sort = 'downloads', limit = 20) {
@@ -275,12 +308,14 @@ export function createHubService({
         size: Number.isSafeInteger(sibling.lfs?.size) ? sibling.lfs.size : Number.isSafeInteger(sibling.size) ? sibling.size : null,
         lfs_sha256: [sibling.lfs?.sha256, sibling.lfs?.oid].find(value => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value))?.toLowerCase() ?? null
       }));
-    return {
+    const listing = {
       repo_id: repoId,
       revision: data.sha.toLowerCase(),
       license: typeof rawLicense === 'string' ? rawLicense.slice(0, 120) : null,
       files
     };
+    cacheRepoInspection(listing);
+    return listing;
   }
 
   // Publish a manifest with the accepted secure pattern: fresh exclusive temp
@@ -320,6 +355,7 @@ export function createHubService({
       expected_sha256: job.expected_sha256,
       sha256: verified.sha256,
       license: verified.info.license || null,
+      repository_license: job.repository_license,
       etag: job.etag ?? null,
       downloaded_at: new Date().toISOString(),
       source: 'hf',
@@ -523,6 +559,7 @@ export function createHubService({
       expected_sha256: expected_sha256.toLowerCase(),
       expected_size_bytes,
       quant_label,
+      repository_license: inspectedRepositoryLicense({ repo_id, filename, revision, expected_sha256, expected_size_bytes }),
       status: 'running',
       bytes_done: 0,
       bytes_total: null,

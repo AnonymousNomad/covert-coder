@@ -119,6 +119,7 @@ test('POST /api/models/register verifies and preserves pinned Hugging Face artif
     expected_sha256: digest,
     sha256: digest,
     license: 'other',
+    repository_license: 'lfm1.0',
     downloaded_at: new Date().toISOString(),
     source: 'hf',
     status: 'ready'
@@ -137,6 +138,7 @@ test('POST /api/models/register verifies and preserves pinned Hugging Face artif
   assert.equal(registered.source_repo, 'LiquidAI/LFM2.5-2.6B-GGUF');
   assert.equal(registered.revision, revision);
   assert.equal(registered.license, 'other');
+  assert.equal(registered.repository_license, 'lfm1.0');
 });
 
 test('registration rejects a pinned artifact whose bytes no longer match its verified manifest', async () => {

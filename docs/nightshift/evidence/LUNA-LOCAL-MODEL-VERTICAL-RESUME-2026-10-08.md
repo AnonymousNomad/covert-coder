@@ -711,3 +711,73 @@ At `2026-10-08T19:32:45.557Z`, a new canonical Admission call again returned `RE
 A read-only census immediately afterward found no normal-window non-protected user application with sufficient observed working set to clear the physical shortfall. The active Nuitka `Ledger_Server.exe` build process (PID `18852`) had grown to approximately `1,126 MiB` working set / `1,120 MiB` private memory. The observed command path and exited ancestor leave its owner and safe stop mechanism unconfirmed; its measured working set is still below the current shortfall, so it was left untouched. `TextInputHost.exe` (about `718 MiB` private) is an OS component. The visible Windows Terminal is occupied by a project-architecture session; the NVIDIA overlay is small. Edge, OpenCode, Codex/ChatGPT, the existing Covert stack, and OS processes remain untouched. No safe process termination was attempted.
 
 The changing process/memory samples establish that host resource pressure is varying, but do not attribute the change to Covert, the active build, or another process. Root cause remains **UNKNOWN**. Recheck canonical Admission only when an actual execution opportunity arises; do not start the model or build-enabled app while this refusal stands.
+
+## Model license provenance mismatch — failure preserved before repair (2026-10-08)
+
+A read-only request to Hugging Face's revision-specific model-info endpoint at `2026-10-08T19:40:06.640Z` returned the exact pinned commit `e7caca5d835a3901a8e0d63e94009429bafafdfc`, `cardData.license = "other"`, and `cardData.license_name = "lfm1.0"`. The selected `LFM2.5-2.6B-Q4_K_M.gguf` at that revision is reported as `1,674,455,040` bytes with LFS SHA-256 `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed`. The official `huggingface_hub.HfApi.model_info` reference accepts a `revision` parameter, supporting revision-specific metadata retrieval: https://huggingface.co/docs/huggingface_hub/main/package_reference/hf_api#huggingface_hub.HfApi.model_info.
+
+The existing local artifact's bounded GGUF-header probe reports embedded `general.license = "other"`. Source trace shows `listRepoFiles()` prefers and returns the Hugging Face `license_name`, but `persistManifest()` stores only `verified.info.license`; the strict manifest contract has no separate repository-license field. The acquisition manifest would therefore discard the more specific repository-declared `lfm1.0` label. This is metadata provenance loss, not a legal-approval defect: neither label authorizes redistribution.
+
+Before changing production code, I added the focused regression `m1: downloaded manifest preserves pinned Hugging Face license name beside GGUF metadata` and ran:
+
+```text
+node --experimental-strip-types --test --test-name-pattern='downloaded manifest preserves pinned Hugging Face license name beside GGUF metadata' tests/unit/test-m-hub.mjs
+```
+
+The first run failed as expected: **1 test, 0 passed, 1 failed** because `manifest.repository_license` was `undefined` instead of `lfm1.0`. Exit code was `1`. The failure is retained here before production repair. This fixture did not contact Hugging Face or load model weights. No product acquisition or runtime was started.
+
+## Model registration test fixture timeout — preserved (2026-10-08)
+
+After the provenance propagation changes, the focused canonical registration test was run:
+
+```text
+node --experimental-strip-types --test --test-name-pattern='preserves pinned Hugging Face artifact identity' tests/arch/model-register-profile.test.ts
+```
+
+The run failed with exit code `1`. The matching test timed out at **5,041.333 ms** before its registration assertion completed. The containing file reported a later `ENOTEMPTY` cleanup error for `E:\pip_temp\aide-model-register-EywFko\.aide`. Its retained fixture log shows the prerequisite `POST /api/authority/pair` request completed in **15,695 ms** (`2026-10-08T19:44:10.663Z`), exceeding the fixture's existing five-second pair deadline. The registration body and its new `repository_license` assertion were therefore not reached.
+
+Read-only follow-up found no remaining matching Node test process and only `arch-model-register.log` (124 bytes) under that fixture's `.aide` directory. Pre-existing listeners on ports `4173`, `4777`, `4778`, and `4779` belonged to the other Covert stack and were not touched. The test deadline and assertions were not changed. The pair latency's underlying cause remains **UNKNOWN**; storage pressure and the hybrid HDD are hypotheses only, not causal findings. The `ENOTEMPTY` cleanup cause also remains **UNKNOWN**. Preserve this red; do not treat a later rerun as closure without explaining the delay and cleanup behavior.
+
+## Provenance repair verification (2026-10-08)
+
+The bounded repair preserves the server-returned Hugging Face `license_name` separately as `repository_license`, keeps the GGUF embedded `license` field independent, rejects inspected-file pin mismatches before download egress, and carries the optional repository label through registration and Model Access. No license label is interpreted as redistribution approval.
+
+Focused results recorded after the repair:
+
+| Check | Result |
+|---|---|
+| `node --experimental-strip-types --test --test-name-pattern='downloaded manifest preserves pinned Hugging Face license name|download cannot change file pins after its repository revision was inspected' tests/unit/test-m-hub.mjs` | **2 passed, 0 failed** |
+| `node --experimental-strip-types --test tests/unit/test-m-hub.mjs` | **15 passed, 0 failed, 0 skipped** |
+| `node --experimental-strip-types --test --test-name-pattern='registered local GGUF imports appear in Model Access' tests/arch/model-access.test.ts` | **1 passed, 0 failed**; target test duration `944.829 ms`, command wall time `25.098 s` |
+| `node --experimental-strip-types --test E:\covert-local-model-demo-proof-20261007\tests\unit\test-model-registration-license-provenance.mjs` | **1 passed, 0 failed**; target duration `56.310 ms`, command exit `0` |
+| `node E:\covert-local-model-demo-proof-20261007\node_modules\typescript\bin\tsc -p E:\covert-local-model-demo-proof-20261007\tsconfig.node.json --pretty false` | **exit 0** |
+| `node E:\covert-local-model-demo-proof-20261007\node_modules\typescript\bin\tsc -p E:\covert-local-model-demo-proof-20261007\browser\tsconfig.browser.json --pretty false` | **exit 0**, command wall time `13.433 s` |
+| `git -C E:\covert-local-model-demo-proof-20261007 diff --check` | **exit 0** |
+
+The canonical `/api/models/register` route test remains unverified: its prerequisite HTTP pairing exceeded the unchanged fixture deadline before the registration test body ran, as documented above. The full architecture suite, Veritas, Windows E2E, exact-SHA CI, live HF download, canonical registration, local runtime execution, and inference lifecycle were not run or proven in this checkpoint.
+
+## Fresh canonical Admission and process check (2026-10-08)
+
+At `2026-10-08T19:57:46.982Z`, a read-only call to the worktree's canonical `createResourceAdmission().admitLocalRuntimeStart()` returned **`REFUSE_RESOURCE`**:
+
+| Resource | Observed | Required | Result |
+|---|---:|---:|---|
+| Free physical memory | 4,098 MiB | 6,656 MiB | short 2,558 MiB |
+| Free Windows commit | 5,779 MiB | 5,120 MiB | pass |
+| Free VRAM | 5,444 MiB | 4,608 MiB | pass |
+| GPU utilization | 19% | below 50% | pass |
+
+The physical-memory floor is the only measured failing boundary. The load-average probe was reported `0` with platform state unknown. No Covert app, build-enabled frontend, model process, or inference operation was started after the refusal. The temporary read-only probe script was removed after it exited.
+
+The process check found no Phone Link process by image-name search. `MSPCManagerService.exe` (PID `7676`, about `45 MiB` working set) runs as `NT AUTHORITY\\SYSTEM` and has no user-window title, so it was not closed. The earlier-observed Python/Nuitka `Ledger_Server.exe` build child (PID `18852`) now reports about `1,608,712 KiB` working set with window title `Unknown`; the current parent/owner and safe normal shutdown path were not re-established. This single working set is below the `2,558 MiB` gap and its workload is unconfirmed, so it was left untouched. Edge, OpenCode, Codex/ChatGPT, existing Covert listeners, and OS/security processes were also left untouched. No process was terminated.
+
+No clearly owned, normally closable user application was identified that could safely clear the current gap. Host pressure attribution remains **UNKNOWN**. Recheck Admission immediately before any later runtime start; do not use a larger pagefile or a resource-floor exception as a substitute.
+
+## Authority pair latency trace (2026-10-08)
+
+To investigate the prior 15.695-second pairing-route log without changing the five-second fixture deadline, I ran two isolated diagnostics on `E:\pip_temp`; neither started a Covert app or model and both temporary workspaces were removed after completion.
+
+- A direct append through the existing `createStateBus` with its content-free stage trace persisted successfully in **182.47 ms** wall time. Stages: `mkdir 0.89 ms`, `open 1.36 ms`, `write 0.87 ms`, `sync 175.21 ms`, `close 0.35 ms`.
+- A fresh `ArchServer` served the actual `POST /api/authority/pair` route from `routesForAuthority()`. The response was HTTP `200`, envelope `ok=true`, in **158.33 ms**. Its durable audit trace totaled **110.21 ms** (`mkdir 0.48 ms`, `open 7.12 ms`, `write 0.59 ms`, `sync 100.60 ms`, `close 1.23 ms`). The generated one-use token was not printed; the short-lived probe process exited after workspace cleanup.
+
+These current diagnostics show that the route and audit append completed quickly in these runs, but they do **not** explain why the earlier registration test's pair request took `15,695 ms`. The original five-second test red and its `ENOTEMPTY` cleanup error remain open and preserved; the registration assertion still has not executed. The cause is **UNKNOWN**, not cleared by this successful separate route probe.

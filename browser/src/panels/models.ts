@@ -167,6 +167,10 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
           'quantization: ' + (artifact.quantization ?? 'UNKNOWN'),
           'hash: ' + artifact.hash_status
         ));
+        card.appendChild(metadata(
+          'repository license label: ' + (artifact.repository_license ?? 'UNKNOWN'),
+          'GGUF metadata license: ' + (artifact.license ?? 'UNKNOWN')
+        ));
         if (artifact.observed_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Observed SHA-256: ' + artifact.observed_sha256));
         else if (artifact.expected_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Expected SHA-256: ' + artifact.expected_sha256));
       }

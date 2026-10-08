@@ -97,6 +97,7 @@ export const ModelManifest = z.object({
   expected_sha256: z.string().regex(/^[a-f0-9]{64}$/i).nullable(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
   license: z.string().max(120).nullable(),
+  repository_license: z.string().max(120).nullable().optional(),
   etag: z.string().nullable().optional(),
   downloaded_at: z.string(),
   source: ModelSource,
