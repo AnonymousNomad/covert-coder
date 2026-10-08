@@ -565,3 +565,13 @@ A read-only visible-window census at approximately `17:54Z` found: `TextInputHos
 The exact previously identified Ledger Server Nuitka build remains active: PID `26228`, parent `21940`, same creation time `2026-10-08 12:15:24`, command building `E:\NuitkaBuild\output\Ledger_Server.exe` from `E:\felon_workspace`, now `1,791.2 MiB` working set / `1,788.1 MiB` private. Its working set is below the current `2,474 MiB` physical shortfall; interrupting it could discard unrelated active work, so it was not stopped. No process was closed or terminated. With Edge, OpenCode, Codex, the OS, and active builds protected, there is no presently demonstrated safe resource-recovery action sufficient to pass Admission.
 
 The gate remains `REFUSE_RESOURCE`. The next model-start opportunity requires a new canonical sample at the time of launch; current measurements do not authorize bypass, threshold reduction, or a speculative pagefile change.
+
+## Admission recheck and closeable-window census (2026-10-08)
+
+At `2026-10-08T17:58:12.836Z`, the canonical `createResourceAdmission().admitLocalRuntimeStart()` again returned `REFUSE_RESOURCE`: free physical RAM `4,532/6,656 MiB` (**2,124 MiB short**), free commit `4,244/5,120 MiB` (**876 MiB short**), VRAM `5,481/4,608 MiB`, GPU utilization `11%/<50%`, and load average `0` with platform load support reported unknown. No model/runtime start was attempted.
+
+A foreground-window census found only Windows Input Experience, this ChatGPT session, Edge (in use), Windows Terminal (title identifies a project-architecture session), and NVIDIA GeForce Overlay (`11 MiB` working set). The existing Python/Nuitka process `26228` is still compiling the Ledger Server artifact; OpenCode and Codex are active. I did not close or terminate any process: the remaining visible applications are protected/in-use, OS-owned, or too small to recover the measured deficit, and the Python build is unrelated active work.
+
+A separate ad hoc `Win32_PerfFormattedData_PerfOS_Memory` arithmetic probe produced an implausible `31,541,115,706 MiB` availability value due to inconsistent counter units; it was rejected and not used for any decision. The canonical Admission result above is the authoritative gate measurement.
+
+The local-model vertical remains blocked at Admission. No admission threshold, pagefile, runtime profile, timeout, or test assertion was changed. Continue research and fixture/source diagnosis only until a new canonical Admission passes.
