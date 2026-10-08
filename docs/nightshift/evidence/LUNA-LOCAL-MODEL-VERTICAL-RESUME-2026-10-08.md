@@ -236,3 +236,18 @@ The only applicable execution profile remains the narrow existing Unsloth V1 pas
 - After fresh canonical Admission returns `START`, record timestamps for admission, load request, and exact-model health. Measure request-to-first non-empty streamed delta as TTFT. Record prompt/completion token counts only when the runtime returns them. Native prompt/decode rates remain UNKNOWN without phase-specific timing; any client-derived rate must be labeled end-to-end/stream-observed and must not be presented as native throughput. Sample physical RAM, commit, VRAM, and GPU use before, during, and after the real inference. Do not begin optimization.
 
 At the latest observation, standard ports are occupied by the unrelated-workspace stack, and free commit remains below the fixed floor. Therefore the isolated app stack, live Covert Model Hub acquisition, registration, and runtime sequence remain deferred. Issue #38 was rechecked; latest comment is still `6036313587`, with no newer corrective comment. The pairing setup red, startup failure, and route suite remain unresolved; this evidence does not close or waive them.
+
+## Model Hub setup-red source reconciliation (2026-10-08T15:56Z)
+
+Read-only inspection of the failing route fixture and the canonical call chain confirmed:
+
+- `tests/arch/modelhub-routes.test.ts` calls `pairFixture()` in its module `before()` hook. That reaches the real in-process `/api/authority/pair` route before any Model Hub assertion. The preserved failure therefore did not exercise the updated license assertion or the download route.
+- The same fixture injects `fakeFetch` and a small synthetic GGUF payload. It is contract/route coverage, not live Hugging Face search/inspection/download proof.
+- `ExecutionAuthority.pair()` consumes the one-use pairing proof, then awaits required durable audit persistence. `ArchServer` wires the audit recorder through `createAuditTrail.emitAuthority()` to `harness/cipher-state.mjs`; `append()` performs `mkdir → open → writeFile → sync → close` on `.aide/cipher-state.jsonl`.
+- The test creates its temporary fixture workspace through `os.tmpdir()`, which currently resolves to `E:\pip_temp`. The physical-device mapping of E: is not established. These facts narrow the slow request to the durable audit append path but do not prove which append stage caused the 8,708 ms pairing response or why one direct service sample spent 1,748 ms in `sync()`. **Cause remains UNKNOWN.**
+
+When host conditions are safe for the unchanged focused route test, leave `AIDE_FIXTURE_TIMEOUT_MS` unset and source/deadlines unchanged. Preserve the first new result and capture the pair request, append stage timings, resource snapshot, workspace volume, and any child/log evidence. A controlled C:-scratch comparison can test whether timing varies by temp volume, but a faster result alone cannot close the original cause. Do not relax durability or increase the fixture bound.
+
+The startup launcher source supports isolated workspace and port values through `AIDE_WORKSPACE`, `AIDE_UI_PORT`, `AIDE_FACADE_PORT`, `AIDE_ARCH_PORT`, and `AIDE_LEGACY_PORT`. It retains the 30,000 ms default readiness bound and writes child stdout/stderr under the selected workspace's `.aide/logs`. A later startup reproduction should use a fresh workspace and currently verified free alternate ports, while capturing child PID/tree and logs before cleanup. This source inspection does not resolve the earlier TypeScript readiness failure.
+
+No test, Covert stack, model, or product code was started or modified during this source reconciliation. The real acquisition/registration/runtime path remains open.

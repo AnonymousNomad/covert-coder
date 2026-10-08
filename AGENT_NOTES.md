@@ -5,6 +5,15 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-08 10:56] Actor: Luna
+- Type: Model Hub setup-red source reconciliation and isolated test preparation
+- Repository check: worktree remains `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, HEAD `8862de4bc6eb53b80c5fe1909f5b68f6119e50a3`; clean after the evidence checkpoint. No upstream; Saul lanes untouched.
+- The preserved Model Hub route-suite red happens in module `before()` while `pairFixture()` calls the real local `/api/authority/pair` route; the Model Hub test bodies did not run. That test file injects `fakeFetch` and a synthetic GGUF payload, so it cannot prove live Hugging Face acquisition.
+- Source chain confirmed: `ExecutionAuthority.pair()` consumes the one-use pairing proof, then awaits required durable audit; `ArchServer` wires that recorder through `createAuditTrail.emitAuthority()` to `harness/cipher-state.mjs`, whose append does `mkdir → open → writeFile → sync → close`. The fixture creates its workspace under `os.tmpdir()`, observed as `E:\pip_temp`. This localizes the latency path to durable pairing-audit persistence; it does not prove which stage caused the 8,708 ms route result or why the isolated sync sample took 1,748 ms. E: physical-device mapping remains unknown.
+- Later unchanged-deadline diagnostic: run only after safe host conditions, with `AIDE_FIXTURE_TIMEOUT_MS` unset and the test code unchanged; preserve first result and capture per-stage append timing plus resource/drive observations. A C:-scratch comparison may distinguish storage-path behavior but cannot alone assign root cause. Do not modify Authority durability or increase its deadline.
+- Source-only launcher prep: `scripts/start.mjs` supports `AIDE_WORKSPACE`, `AIDE_UI_PORT`, `AIDE_FACADE_PORT`, `AIDE_ARCH_PORT`, and `AIDE_LEGACY_PORT`; it defaults to a 30,000 ms startup bound and writes named child logs inside the selected workspace. Use a fresh workspace and verified free alternate ports when resources permit; capture child PID/tree and logs before teardown. This does not resolve the earlier TypeScript readiness failure.
+- No test rerun, app/model start, or product code change in this source-reconciliation unit. The previous commit 8862de4 records the canonical refusal and exact profile; this note records only the newly confirmed call chain and diagnostic design.
+
 ### [2026-10-08 10:53] Actor: Luna
 - Type: canonical admission refresh and exact runtime-profile/test preparation
 - Source truth: `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, HEAD `1aa0821a73847a79dac2824346ad55c90dba434f`, clean before this documentation update; no upstream. The user-provided `8e34dab...` is the resume base, not current HEAD after the already committed bounded parser repair. Saul's workstation/platform branches and PR #31 remain untouched.
