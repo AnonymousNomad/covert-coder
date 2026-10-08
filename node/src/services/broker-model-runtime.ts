@@ -50,8 +50,16 @@ export class BrokerModelRuntime extends ModelRuntime {
   }
 
   override async load(): Promise<void> {
+    const traceBootStage = (stage: string): void => {
+      if (process.env.AIDE_TRACE_BACKEND_BOOT !== '1') return;
+      process.stderr.write(`[backend-boot-trace] ${stage} uptime_ms=${Math.round(process.uptime() * 1000)}\n`);
+    };
+    traceBootStage('runtime-inventory-load-start');
     await super.load({ sweepLegacyEngines: false });
+    traceBootStage('runtime-inventory-load-ready');
+    traceBootStage('runtime-status-start');
     await this.bindCanonicalEndpoint();
+    traceBootStage('runtime-status-ready');
   }
 
   override async ingest(filePath: string) {

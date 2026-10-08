@@ -34,10 +34,31 @@ function defaultCommitProbeMB(): Promise<number | null> {
   if (process.platform !== 'win32') return Promise.resolve(null);
   return new Promise(resolve => {
     const script = "$ErrorActionPreference='Stop'; $s=Get-Counter -Counter '\\Memory\\Commit Limit','\\Memory\\Committed Bytes'; $limit=[double](($s.CounterSamples | Where-Object { $_.Path.ToLowerInvariant().EndsWith('\\commit limit') }).CookedValue); $used=[double](($s.CounterSamples | Where-Object { $_.Path.ToLowerInvariant().EndsWith('\\committed bytes') }).CookedValue); [Console]::Out.WriteLine([math]::Floor(($limit-$used)/1MB))";
-    execFile('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script], { timeout: 5000, windowsHide: true }, (error, stdout) => {
-      if (error) { resolve(null); return; }
+    const trace = process.env.AIDE_TRACE_ADMISSION_COMMIT === '1';
+    const startedAt = Date.now();
+    execFile('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script], { timeout: 5000, windowsHide: true }, (error, stdout, stderr) => {
+      if (error) {
+        if (trace) {
+          const failure = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null };
+          process.stderr.write(`[resource-admission-commit-probe] ${JSON.stringify({
+            outcome: 'process_error', elapsed_ms: Date.now() - startedAt, error_name: error.name,
+            error_code: failure.code ?? null, killed: failure.killed ?? false, signal: failure.signal ?? null,
+            stdout_bytes: Buffer.byteLength(String(stdout)), stderr_bytes: Buffer.byteLength(String(stderr))
+          })}\n`);
+        }
+        resolve(null);
+        return;
+      }
       const value = Number(String(stdout).trim());
-      resolve(Number.isFinite(value) && value >= 0 ? value : null);
+      const valid = Number.isFinite(value) && value >= 0;
+      if (trace) {
+        process.stderr.write(`[resource-admission-commit-probe] ${JSON.stringify({
+          outcome: valid ? 'measured' : 'invalid_output', elapsed_ms: Date.now() - startedAt,
+          value_mb: valid ? value : null, stdout_bytes: Buffer.byteLength(String(stdout)),
+          stderr_bytes: Buffer.byteLength(String(stderr))
+        })}\n`);
+      }
+      resolve(valid ? value : null);
     });
   });
 }

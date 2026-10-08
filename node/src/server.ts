@@ -17,6 +17,11 @@ import { routesForAuthority } from './routes/authority.ts';
 import { connectAuthorityChannel, type AuthorityPeer } from '../../common/security/authority-channel.mjs';
 import { StatePersistenceError } from './services/atomic-json.ts';
 
+const bootModuleEntryMatch = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (process.env.AIDE_TRACE_BACKEND_BOOT === '1') {
+  process.stderr.write(`[backend-boot-trace] module-evaluated entry_match=${Boolean(bootModuleEntryMatch)}\n`);
+}
+
 export class RouteError extends Error {
   readonly code: ErrorCode;
   readonly detail: unknown;

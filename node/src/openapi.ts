@@ -1188,7 +1188,16 @@ function makeHealthRoute(workspace: string, version: string, modelRuntime?: Mode
     method: 'GET',
     path: '/api/health',
     response: HealthResponse,
-    handler: () => supervisor.snapshot()
+    handler: async () => {
+      const traceBootStage = (stage: string): void => {
+        if (process.env.AIDE_TRACE_BACKEND_BOOT !== '1') return;
+        process.stderr.write(`[backend-boot-trace] ${stage} uptime_ms=${Math.round(process.uptime() * 1000)}\n`);
+      };
+      traceBootStage('health-snapshot-start');
+      const snapshot = await supervisor.snapshot();
+      traceBootStage('health-snapshot-ready');
+      return snapshot;
+    }
   };
 }
 
