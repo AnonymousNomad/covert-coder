@@ -781,3 +781,26 @@ To investigate the prior 15.695-second pairing-route log without changing the fi
 - A fresh `ArchServer` served the actual `POST /api/authority/pair` route from `routesForAuthority()`. The response was HTTP `200`, envelope `ok=true`, in **158.33 ms**. Its durable audit trace totaled **110.21 ms** (`mkdir 0.48 ms`, `open 7.12 ms`, `write 0.59 ms`, `sync 100.60 ms`, `close 1.23 ms`). The generated one-use token was not printed; the short-lived probe process exited after workspace cleanup.
 
 These current diagnostics show that the route and audit append completed quickly in these runs, but they do **not** explain why the earlier registration test's pair request took `15,695 ms`. The original five-second test red and its `ENOTEMPTY` cleanup error remain open and preserved; the registration assertion still has not executed. The cause is **UNKNOWN**, not cleared by this successful separate route probe.
+
+## Exact artifact template/profile reconciliation and renewed Admission (2026-10-08)
+
+At `2026-10-08T20:06:02.175Z`, the worktree's canonical `createResourceAdmission().admitLocalRuntimeStart()` returned **`REFUSE_RESOURCE`**:
+
+| Resource | Observed | Required | Result |
+|---|---:|---:|---|
+| Free physical memory | 4,274 MiB | 6,656 MiB | short 2,382 MiB |
+| Free Windows commit | 5,600 MiB | 5,120 MiB | pass |
+| Free VRAM | 5,444 MiB | 4,608 MiB | pass |
+| GPU utilization | 23% | below 50% | pass |
+
+The unchanged physical-memory floor is the only measured failure. No Covert build/start, model download, registration, model process, or inference operation was started after this refusal.
+
+The process audit identified the largest unprotected process as an active Nuitka `Ledger_Server.exe` build tree. Its largest child, PID `18852`, had about `1,571 MiB` working set / `1,566 MiB` private memory, below the measured 2,382 MiB shortfall. The process command line targets `E:\NuitkaBuild\output` and its launcher ancestry includes `E:\pip_temp\opencode\m2_packaging_logs\launch.cmd`; it has no user window and is an active build, so I left the entire tree untouched. The ChatGPT-named process tree is actually hosted under the installed `OpenAI.Codex` package and remains protected with Codex. Windows `TextInputHost` and the visible Windows Terminal (an active architecture session) were also left untouched. No process was terminated. These observations do not attribute the host pressure to Covert; cause remains **UNKNOWN**.
+
+### Embedded GGUF template and persisted profile
+
+The canonical `probeGguf()` parser read only the header of the existing external artifact at `E:\models\house-model\lfm25_gguf\LFM2.5-2.6B-Q4_K_M.gguf`; it did not load model weights or recompute the full artifact hash. It reported GGUF v3, architecture `lfm2`, file type `15`, 131,072 model-context metadata, 30 blocks, 2,048 embedding length, 32 attention heads, BOS ID `124894`, EOS ID `124900`, and no explicit `add_bos_token` value. The embedded template is 5,443 bytes with SHA-256 `ea663864491de7ade391839479860ca95541f892f72665c73251fbd4643b1bef`, matching the existing model-card fingerprint. It contains LFM message markers, a `<think>` generation section, and `<|tool_call_start|>` / `<|tool_call_end|>` markers. This confirms the inspected header and template match prior evidence; it is not a new runtime/template execution test. Preserve the embedded template as the source. Effective BOS insertion and runtime stop-token behavior remain **UNKNOWN**.
+
+The adjacent user-model sidecar was read without modification. It binds artifact SHA-256 `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed` to runtime `UNSLOTH` version `2026.9.11`, temperature `0`, context request `2,048`, and maximum output `512`. The current `BrokerModelRuntime` accepts only `temperature`, `context_tokens`, and `max_tokens` in this qualified profile, verifies the artifact name/size/SHA and exact runtime-version binding, and requires a fresh Admission `START` at start time. It does not accept separate persisted thread, batch, mmap/mlock, or stop-sequence settings through this profile contract. No profile or model file was changed. Historical Vulkan/device/parallelism process arguments recorded in the existing model card are observations, not persisted profile fields and not newly revalidated settings.
+
+The exact artifact already has a narrow historical Runtime Passport and 2026-10-01 Broker lifecycle proof for this specific Windows Administrator + Unsloth `2026.9.11` + Vulkan + GTX 1060 Mobile scope. That prior proof remains valid only within its recorded scope; it does not complete the current isolated worktree's live HF search/inspection/download/registration path, or make the currently stopped model READY. Current worktree acquisition and registration remain **NOT PROVEN**. The earlier canonical registration-route test timeout remains **OPEN**; the separate fast pairing-route diagnostic did not clear it.
