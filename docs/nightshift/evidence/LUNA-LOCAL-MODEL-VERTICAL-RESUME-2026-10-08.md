@@ -390,3 +390,16 @@ The source implementation was re-read without running tests. `GET /api/modelhub/
 At `2026-10-08T16:35:36.100Z`, the canonical `createResourceAdmission().admitLocalRuntimeStart()` returned `REFUSE_RESOURCE`: free physical RAM `7,095/6,656 MiB`, free commit `4,653/5,120 MiB` (**467 MiB short**), free VRAM `5,458/4,608 MiB`, GPU utilization `14%/<50%`, load average unknown. No model or app was started. A read-only disk sample at `16:38:28Z` showed `E:` free `75,982,409,728` bytes and `C:` free `224,018,432` bytes. The model download destination must remain on `E:` in an isolated `AIDE_WORKSPACE`; avoid staging model data on `C:`. This does not change the Admission refusal or authorize a product test under the existing hold.
 
 The separate model collection artifact still exists at `E:\models\house-model\lfm25_gguf\LFM2.5-2.6B-Q4_K_M.gguf` with the previously recorded expected size. It was not rehashed this turn and is not the acquired artifact for this lane. No Covert Model Access request, download, registration, profile save, model start, or inference was performed. The next runtime prerequisite is still a fresh canonical `START` decision with at least `6,656 MiB` free physical RAM, `5,120 MiB` free commit, `4,608 MiB` free VRAM, and GPU utilization below `50%`; continue source/test preparation while it refuses.
+
+## Refreshed owner-selectable app census and admission (2026-10-08)
+
+At approximately `16:40Z`, a read-only process-tree census found two clearly identified, normally closable user applications:
+
+| Application | Current process tree | Private bytes | Working set | Normal shutdown |
+|---|---|---:|---:|---|
+| Phone Link | `PhoneExperienceHost.exe` PID `15992` → `YourPhoneAppProxyHost.exe` PID `7004` | `328.2 MiB` | `140.4 MiB` | Close Phone Link through its normal app UI. |
+| Microsoft PC Manager | `MSPCManager.exe` PID `12396` → six `msedgewebview2.exe` descendants (PIDs `19448`, `22136`, `3008`, `21876`, `21436`, `23512`) | `421.0 MiB` | `185.1 MiB` | Close PC Manager through its own UI. |
+
+Combined private memory is about `749.2 MiB`; current free commit is `1,182 MiB` below the Admission floor. That difference is only a screening estimate: private bytes do not predict how much commit normal app closure would release. Neither application was closed. No protected, ambiguous, model-server, OS, or unrelated process was inspected for termination.
+
+At `2026-10-08T16:40:30.949Z`, canonical `createResourceAdmission().admitLocalRuntimeStart()` again returned `REFUSE_RESOURCE`: free physical RAM `7,468/6,656 MiB` (pass), free commit `3,938/5,120 MiB` (**1,182 MiB short**), free VRAM `5,384/4,608 MiB` (pass), GPU utilization `3%/<50%` (pass), and load average unknown. Compared with `16:35:36.100Z`, free physical RAM rose `373 MiB` while free commit fell `715 MiB`; the cause of that divergence is **UNKNOWN** and is not attributed to either candidate app or Covert. No app, product test, download, or model runtime was started.
