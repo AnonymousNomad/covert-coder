@@ -1,22 +1,17 @@
-[
+{
+  "hash_scope": "Committed binary artifacts; raw log/JSON bytes are preserved inside raw-verification.zip. Text projections may normalize line endings.",
+  "artifacts": [
     {
-        "file":  "raw-verification.zip",
-        "Hash":  "3EDC3DD626E7032EE7A258ECD554BA09DC2348B6FD87C501D122AF3670165782"
+      "file": "raw-verification.zip",
+      "sha256": "3edc3dd626e7032ee7a258ecd554ba09dc2348b6fd87c501d122af3670165782"
     },
     {
-        "file":  "resource-gate.jsonl",
-        "Hash":  "745DB756772A5AF486639C78F9EB6C0013D2CEC42526B3A425D252AA55757556"
+      "file": "workstation-runtime.png",
+      "sha256": "163d929f240a5a9353d7d1cfa2852315ce0b4aff147c468986f2bf0ce4816689"
     },
     {
-        "file":  "results.jsonl",
-        "Hash":  "DC03E1FF7FCD761FD1C1B3F7FF9639A9C84816776976B33FEBBED338A4FAA78D"
-    },
-    {
-        "file":  "workstation-runtime.png",
-        "Hash":  "163D929F240A5A9353D7D1CFA2852315CE0B4AFF147C468986F2BF0CE4816689"
-    },
-    {
-        "file":  "wsl-runtime.png",
-        "Hash":  "E77B7DEC20BB5F06316E3178018C35AE4B00A46ECFEB1128600D343D0DC55773"
+      "file": "wsl-runtime.png",
+      "sha256": "e77b7dec20bb5f06316e3178018c35ae4b00a46ecfeb1128600d343d0dc55773"
     }
-]
+  ]
+}
