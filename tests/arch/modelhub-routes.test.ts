@@ -192,8 +192,9 @@ async function waitForJob(jobId: string, status: string, timeoutMs = 10000): Pro
   throw new Error(`job ${jobId} did not reach ${status}`);
 }
 
-// The job status flips to done before the manifest is published (existing
-// ordering); the done event is the authoritative completion signal.
+// The status snapshot becomes done only after the validated artifact is
+// renamed and its verification manifest is published. The service then emits
+// the done event; this helper asserts that completion notification as well.
 async function waitForDoneEvent(jobId: string, timeoutMs = 10000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
