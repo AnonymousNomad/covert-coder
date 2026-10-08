@@ -494,3 +494,29 @@ After a 20-second wait, a strict timestamp-equality query returned an ambiguous 
 Issue #38 was checked again through the authenticated GitHub connector; its latest accessible comment remains `6036313587` (UI0 R6 read-only browser checkpoint), with no new instruction for this lane. No safe, normally closable, clearly owned user application sufficient to recover the remaining physical headroom was identified; Edge, OpenCode, Codex, the OS, and unrelated active work remain untouched. No Covert startup, product test, ModelHub request/download, or model runtime was started.
 
 Sources: [pinned LiquidAI model card](https://huggingface.co/LiquidAI/LFM2.5-2.6B-GGUF/blob/e7caca5d835a3901a8e0d63e94009429bafafdfc/README.md), [Liquid AI LFM Open License v1.0](https://www.liquid.ai/lfm-license). This is external source research only, not Covert's live ModelHub inspect/download proof.
+
+## Embedded GGUF template and behavior follow-up (2026-10-08)
+
+At `2026-10-08T17:39Z`, I ran this read-only command against the already-observed external artifact:
+
+```powershell
+node --experimental-strip-types --input-type=module -e "import { probeGguf } from './node/src/services/gguf.ts'; const p = await probeGguf('E:/models/house-model/lfm25_gguf/LFM2.5-2.6B-Q4_K_M.gguf'); console.log(JSON.stringify(p, null, 2));"
+```
+
+It exited `0`. `probeGguf()` reads the bounded GGUF metadata header (64 KiB chunks, 16 MiB maximum header position); it does not load model weights or start inference. The prior exact-artifact observation in this record hashed this same external path to the selected LFS SHA-256 and exact byte size. It remains outside this worktree, was not copied or registered, and is not evidence of Covert acquisition.
+
+The parser returned GGUF v3, `lfm2`, `2.7B` size label, context metadata `131072`, 30 blocks, embedding length `2048`, 32 attention heads, BOS ID `124894`, EOS ID `124900`, no `tokenizer.ggml.add_bos_token` value, and a `5,443`-character embedded `tokenizer.chat_template`. Direct inspection of that embedded template showed:
+
+- It begins with `bos_token`; the upstream template itself therefore emits BOS. Whether the selected Unsloth adapter independently adds another BOS remains **UNKNOWN** until the prepared-input/runtime behavior is captured. Do not add a template override based on assumption.
+- A system message is rendered only when supplied as the first message. The embedded template does not inject the model-card example's default system text.
+- User and assistant messages use `<|im_start|>{role}` and end with `<|im_end|>`. With `add_generation_prompt`, it opens the assistant turn with `<think>`.
+- Reasoning content is handled through `thinking`/`reasoning` fields and `preserve_thinking`; this is formatting behavior, not proof Covert preserves or interprets those fields.
+- The template serializes tool declarations into a system prompt and formats assistant tool calls as Pythonic calls inside `<|tool_call_start|>...<|tool_call_end|>`. This does not qualify Covert tool-call parsing, authorization, or execution.
+
+The pinned GGUF README documents the llama.cpp sample (`temperature 0.1`, `top-k 50`, repeat penalty `1.1`). Liquid AI's base-model README at its own initial revision `dca1825886789bd40b94368f53b1d9ada4c94598` describes the same ChatML-like pattern and tool syntax. However, the pinned GGUF metadata identifies only the base repository name, not that base-model revision. Use those pages as upstream corroboration; the embedded template from the byte-matched GGUF is the artifact-specific template evidence.
+
+The base model README also cautions that this model is not recommended for agentic coding and knowledge-heavy tasks. This candidate can still prove a local inference path, but no coding-worker capability claim follows. Keep the existing exact-artifact Unsloth V1 profile (`temperature 0`, requested context `2048`, output limit `512`) unchanged; the llama.cpp example does not authorize transferring sampling values across adapters or runtimes.
+
+Remaining template/profile unknowns: the exact tokenizer-file revision tied to the GGUF is not identified in GGUF metadata; the GGUF reports EOS ID `124900`, while the base model's current `tokenizer_config.json` maps EOS to `<|im_end|>` only as current-main corroboration; the server's actual stop-token handling, duplicate-BOS behavior, tool call generation/parsing, and effective context remain unproven. Resolve these through exact bound-source/profile evidence and the canonical runtime path when resource Admission permits. No model start, runtime test, inference, acquisition, registration, or product test ran for this research step.
+
+Sources: [pinned GGUF README](https://huggingface.co/LiquidAI/LFM2.5-2.6B-GGUF/blob/e7caca5d835a3901a8e0d63e94009429bafafdfc/README.md), [base model README at its initial revision](https://huggingface.co/LiquidAI/LFM2.5-2.6B/blob/dca1825886789bd40b94368f53b1d9ada4c94598/README.md), [base tokenizer configuration at current main](https://huggingface.co/LiquidAI/LFM2.5-2.6B/blob/main/tokenizer_config.json).
