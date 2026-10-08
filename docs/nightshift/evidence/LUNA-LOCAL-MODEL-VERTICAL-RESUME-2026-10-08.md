@@ -665,3 +665,41 @@ After startup, canonical Admission at `2026-10-08T19:19:03.282Z` returned `REFUS
 At `2026-10-08T19:25:11.838Z`, canonical Admission still returned `REFUSE_RESOURCE`: physical `5,770/6,656 MiB` (**886 MiB short**), free commit `7,780/5,120 MiB`, VRAM `5,475/4,608 MiB`, GPU `24%/<50%`. Host pressure remained after the task-owned stack exited; the cause of the low free physical memory is **UNKNOWN**. The verified PC Manager close request had not closed its window/process; Phone Link had no normal window title; the Visual Studio background downloader's activity remained unknown. Edge, OpenCode, Codex, OS/security components, Desktop Commander, and unrelated existing Covert processes were left untouched. No safe, clearly owned action was demonstrated to recover the remaining physical headroom.
 
 **Current lane status:** backend supervised startup is proven for this one run; browser Authority boot is blocked by the stale ignored build and needs a build-enabled retry; ModelHub live search/inspect/download, workspace artifact verification, registration, local runtime start, generation, cancellation, stop/restart, and performance measurements remain **NOT PROVEN**. Do not start any model until a fresh canonical Admission `START` is obtained immediately before it, with the Covert app already running.
+
+## Fresh Admission hold and safe process ownership review (2026-10-08)
+
+The local lane was re-grounded without mutation: branch `feat/local-model-demo-proof-20261007`, HEAD `233502f77dc73b990ccf2575ed360604e6a8a9ae`, clean tracked/untracked state, no upstream. No other Covert worktree or branch was changed.
+
+At `2026-10-08T19:28:50.733Z`, the actual source implementation `createResourceAdmission().admitLocalRuntimeStart()` returned `REFUSE_RESOURCE`:
+
+| Resource | Observed | Required | Result |
+|---|---:|---:|---|
+| Free physical memory | 5,005 MiB | 6,656 MiB | short 1,651 MiB |
+| Free Windows commit | 6,889 MiB | 5,120 MiB | pass |
+| Free VRAM | 5,474 MiB | 4,608 MiB | pass |
+| GPU utilization | 17% | below 50% | pass |
+
+The refusal reason is physical RAM only. No Covert build/start, model download, registration, or model runtime was initiated after this refusal.
+
+A read-only process census at `19:30:31Z` found the largest clearly classifiable workloads:
+
+- OpenCode PID `14696`: approximately `1,408 MiB` private memory; protected by the operator's instruction.
+- ChatGPT/Codex and Edge process trees: protected by the operator's instruction; Edge remains open for the current session.
+- Windows `TextInputHost.exe` PID `15036`: approximately `718 MiB` private memory; OS component, left untouched.
+- Python/Nuitka build for `Ledger_Server.exe`: root PID `3600`, active child PID `18852` at approximately `966 MiB` private / `972 MiB` working set. Its command line targets `E:\NuitkaBuild\output`; an observed ancestor command referenced `E:\pip_temp\opencode\m2_packaging_logs\launch.cmd`, but that parent had exited and the task owner/safe shutdown method could not be established. It was left untouched. There is no normal app window to close. Its current private/working memory is below the measured physical-memory gap; no recovery amount is assumed.
+- Desktop Commander Node processes and the pre-existing Covert stack were left untouched as active tooling / other-lane work. No OS process or ambiguous runtime was terminated.
+
+No clearly owned, normally closable, non-protected application with enough evidenced headroom was identified. Windows reported physical memory below the Admission floor under the current live workload; process attribution and the precise cause remain **UNKNOWN**. This is not evidence that the Covert runtime itself is leaking, nor proof that Covert is free of a resource defect.
+
+### Reconfirmed acquisition and retry path
+
+Source inspection confirms the intended real path remains available and authority-governed:
+
+1. Use the canonical build-enabled `npm start` script. The prior launch used `node scripts/start.mjs --frontend=typed` without `--build`, which served the stale ignored `browser/dist` bundle and caused that run's pairing prompt. Do not use that no-build command for the next browser acceptance attempt.
+2. Keep the isolated `AIDE_WORKSPACE` on `E:` and use ports proven free immediately before launch. Do not put downloaded weights in the source checkout.
+3. Hugging Face search and repository inspection are `capability.external` operations and require approval bound to the exact validated query or repository. Acquisition requires an immutable 40-character revision plus exact LFS SHA-256 and byte size. A missing digest or size disables the UI download action.
+4. The download operation is separately approved for repository, filename, quant label, revision, expected SHA-256, and expected byte size. The service verifies the completed file and GGUF metadata before publishing its manifest; registration is offered only after the download job reports `done`.
+5. Register with the canonical `/api/models/register` route, which is a separate `capability.write` operation. Registration records local availability and exact artifact identity; it does not establish qualification or start the model.
+6. Save the model-specific profile through the canonical profile owner, obtain a fresh Admission `START` immediately before start, and use the canonical Model Manager / Runtime Broker lifecycle. Preserve exact artifact/model identity through exact-model health and real generation; then prove cancellation, stop, restart, and a second generation before any performance sample.
+
+These source contracts are preparation, not live provider, download, registration, runtime, or inference evidence. Those gates remain **NOT PROVEN**. No tests were run for this documentation-only checkpoint; the previous focused test results and the preserved startup failure remain unchanged.
