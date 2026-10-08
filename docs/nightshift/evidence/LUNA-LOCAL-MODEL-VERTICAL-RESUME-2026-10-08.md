@@ -24,6 +24,18 @@ The exact refusal reason was that free physical memory and free commit were both
 
 An already-running Covert stack was observed on ports 4173/4777/4778/4779. Its health response reported workspace `E:\pip_temp\covert-public-demo-workspace-20261007-luna`, not this branch root. That stack was left untouched and is not used as proof for this lane. A live acquisition and registration must run with this worktree as the configured workspace.
 
+### Fresh host resource snapshot and execution pause
+
+At `2026-10-08T12:50:04.450Z`, a read-only Windows host sample reported:
+
+| Probe | Observed | Required for local model start |
+|---|---:|---:|
+| Free physical memory | 2,095 MiB | 6,656 MiB |
+| Free commit (`Commit Limit - Committed Bytes`) | 685 MiB | 5,120 MiB |
+| E: free disk | 73.3 GiB | No additional disk floor in this probe |
+
+This was a host snapshot, not a fresh `admitLocalRuntimeStart()` response. Both measured memory values are materially below the unchanged floors, so no model runtime, inference, or branch-specific Covert stack was started. The prior Covert stack remains on the wrong workspace and untouched. The low commit headroom also makes starting a second multi-process UI/backend stack an unsafe way to pursue acquisition now. No foreign process was stopped, no pagefile setting was changed, and no model collection was modified. Re-measure before any later launch; only a fresh canonical Admission `START` authorizes a model start.
+
 ## Acquisition parser defect
 
 The official Hugging Face `huggingface_hub` API reference shows LFS metadata in `RepoFile.lfs` with `sha256` and `size` fields: <https://huggingface.co/docs/huggingface_hub/en/package_reference/hf_api>.
@@ -88,4 +100,4 @@ exit 0; 55 passed; 0 failed; 0 skipped; 0 cancelled
 
 ## Next action
 
-The LFS metadata mapping repair is committed at this checkpoint. Continue with live Covert search/inspection/download in an isolated branch-launched process whose `AIDE_WORKSPACE` is this branch root; the currently running stack uses a different workspace and remains untouched. Re-measure with canonical Resource Admission before any runtime start. Preserve every refusal; do not start or infer while either physical RAM or commit remains below its floor.
+The LFS metadata mapping repair is committed at this checkpoint. With memory floors currently closed, continue only source/profile reconciliation and test preparation. When host headroom recovers, first launch the canonical app against this branch root and complete real HF search → immutable-revision inspection → exact-size/LFS/SHA download and GGUF validation → Model Manager registration through Authority. Then take a fresh canonical Resource Admission sample before runtime start. Preserve every refusal; do not start or infer while any required floor is below threshold.
