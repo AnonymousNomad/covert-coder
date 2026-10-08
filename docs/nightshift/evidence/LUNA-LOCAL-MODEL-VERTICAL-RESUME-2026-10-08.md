@@ -703,3 +703,11 @@ Source inspection confirms the intended real path remains available and authorit
 6. Save the model-specific profile through the canonical profile owner, obtain a fresh Admission `START` immediately before start, and use the canonical Model Manager / Runtime Broker lifecycle. Preserve exact artifact/model identity through exact-model health and real generation; then prove cancellation, stop, restart, and a second generation before any performance sample.
 
 These source contracts are preparation, not live provider, download, registration, runtime, or inference evidence. Those gates remain **NOT PROVEN**. No tests were run for this documentation-only checkpoint; the previous focused test results and the preserved startup failure remain unchanged.
+
+## Admission and process refresh (2026-10-08)
+
+At `2026-10-08T19:32:45.557Z`, a new canonical Admission call again returned `REFUSE_RESOURCE`: physical free memory `4,766/6,656 MiB` (**1,890 MiB short**), free commit `6,752/5,120 MiB`, VRAM `5,488/4,608 MiB`, GPU utilization `12%/<50%`. Physical RAM remains the only failed floor; no app build/start or model operation followed.
+
+A read-only census immediately afterward found no normal-window non-protected user application with sufficient observed working set to clear the physical shortfall. The active Nuitka `Ledger_Server.exe` build process (PID `18852`) had grown to approximately `1,126 MiB` working set / `1,120 MiB` private memory. The observed command path and exited ancestor leave its owner and safe stop mechanism unconfirmed; its measured working set is still below the current shortfall, so it was left untouched. `TextInputHost.exe` (about `718 MiB` private) is an OS component. The visible Windows Terminal is occupied by a project-architecture session; the NVIDIA overlay is small. Edge, OpenCode, Codex/ChatGPT, the existing Covert stack, and OS processes remain untouched. No safe process termination was attempted.
+
+The changing process/memory samples establish that host resource pressure is varying, but do not attribute the change to Covert, the active build, or another process. Root cause remains **UNKNOWN**. Recheck canonical Admission only when an actual execution opportunity arises; do not start the model or build-enabled app while this refusal stands.
