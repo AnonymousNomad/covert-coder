@@ -282,3 +282,9 @@ Canonical `createResourceAdmission().admitLocalRuntimeStart()` returned `REFUSE_
 A Windows sample three seconds later read 7,345 MiB free physical and 4,250 MiB free commit; these time-separated probes vary and do not assign a cause. The model and branch app were not started. The existing other-workspace Covert stack still owned ports 4173/4777/4778/4779 (PIDs 24692/25004/2664/7400). Ports 5173/5183/4877/4878/4879/18888 were free in this one check only. The protected stack was not stopped.
 
 Issue #38 remains unchanged at latest owner comment `6036313587` (2026-10-07T10:47:38Z). Full `git worktree list` inspection did not return after repeated waits and was interrupted; branch/status/log were read before that subcommand, and no worktree mutation occurred. No test ran under the still-refused Admission state.
+
+## Active-listener workspace identity (read-only, 2026-10-08T16:03Z)
+
+A GET to the already-running facade health endpoint at `127.0.0.1:4777` reported workspace `E:\pip_temp\covert-public-demo-workspace-20261007-luna`. Therefore this process tree is not the local-model demo workspace and cannot prove its live acquisition path. The listeners are PID 24692 (launcher), 2664 (TypeScript backend), 25004 (facade), and 7400 (legacy backend); they were created 2026-10-07 around 14:48 local time. I did not terminate, mutate, or otherwise operate this stack.
+
+Older logs under this checkout's `.aide/logs` show historical legacy daemon messages for workspace `E:\covert-local-model-demo-proof-20261007` on ports 4779 and 4879. Those file timestamps/messages are not evidence of current ownership. At the 16:02Z port sample, 5173/5183/4877/4878/4879/18888 had no listeners; all ports must be rechecked before any later launch. The current resource refusal remains the reason no second stack/model was started.

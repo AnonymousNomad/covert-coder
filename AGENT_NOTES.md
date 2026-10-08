@@ -5,6 +5,13 @@ Journal rules: append-only, newest first, timestamped `YYYY-MM-DD HH:MM`, actor 
 
 ## CURRENT STATUS
 
+### [2026-10-08 11:05] Actor: Luna
+- Type: active-listener workspace identity verified read-only
+- At HEAD `d3cb13f338c3877284dec369b206bbf5a9400842`, a GET to the existing facade health endpoint on 4777 returned workspace `E:\pip_temp\covert-public-demo-workspace-20261007-luna`. It is not the local-model demo workspace; do not use it as acquisition/registration/runtime proof and do not mutate or stop it.
+- Active listeners remain PID 24692 launcher, 2664 TypeScript backend, 25004 facade, 7400 legacy backend, all created 2026-10-07 14:48 local. Owner/worktree association beyond the returned workspace is not inferred. Worktree-local legacy logs also contain historical entries with the demo workspace on ports 4779 and 4879; those entries are not current listener proof.
+- Earlier port checks found no current listeners on 5173/5183/4877/4878/4879/18888; these are point-in-time observations and must be rechecked before use. No new stack was started. Resource Admission at 16:02Z still refuses on commit, so no stack/model action.
+- No owner action or product approval was simulated. No source change or test was run in this read-only check.
+
 ### [2026-10-08 11:03] Actor: Luna
 - Type: fresh admission refusal and protected-stack recheck
 - Source truth before update: isolated local-model worktree at `E:\covert-local-model-demo-proof-20261007`, branch `feat/local-model-demo-proof-20261007`, HEAD `fb882a4e41b8ce5e43100efa1e8020725f1624d5`, clean. The full `git worktree list` subcommand produced no output after repeated polling and was interrupted; do not claim a current full worktree inventory. No branch/worktree mutation occurred.
