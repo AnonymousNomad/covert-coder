@@ -1,0 +1,175 @@
+{
+  "schema": "covert.weekend-platform.p2-managed-client-provider-evidence.v1",
+  "recorded_at_utc": "2026-10-09T23:19:15Z",
+  "lane": "DeepSeek weekend P2 managed-client/provider integration",
+  "worktree": "E:/covert-deepseek-weekend-20261009",
+  "branch": "deepseek/weekend-native-platform-20261009",
+  "restart_preflight": {
+    "expected_checkpoint": "dd80b9f3c46599f0c0af15789a56d6c9ea05eddd",
+    "observed_initial_head": "b1a136223bdc8e23e7219b174e35768d81710a87",
+    "initial_worktree": "CLEAN",
+    "initial_local_origin_parity": "0/0",
+    "resolution": "Preserved the two legitimate later commits; no reset or reconstruction was performed."
+  },
+  "source_checkpoint": {
+    "sha": "b087378fe4ac23ad13646d2d26bad723d8f0dba3",
+    "parent_checkpoint": "c703d8b672075e307ffce187fca7d16fe79d0f8a",
+    "commit_subject": "feat(clients): add managed terminal client adapters (P2)",
+    "pushed": true,
+    "post_fetch_head": "b087378fe4ac23ad13646d2d26bad723d8f0dba3",
+    "post_fetch_origin": "b087378fe4ac23ad13646d2d26bad723d8f0dba3",
+    "post_fetch_ahead_behind": "0/0",
+    "post_push_worktree": "CLEAN",
+    "pre_push_checks": "PASS"
+  },
+  "changed_files": [
+    "common/contracts/managed-client.ts",
+    "node/src/services/client-conformance.ts",
+    "node/src/services/managed-client-registry.ts",
+    "node/src/services/managed-clients.ts",
+    "tests/arch/managed-client.test.ts",
+    "tests/arch/managed-clients.test.ts",
+    "tests/arch/opencode-bridge.test.ts",
+    "tests/arch/opencode-fixture-server.mjs"
+  ],
+  "verification": [
+    {
+      "command": "node --experimental-strip-types --no-warnings --test tests/arch/managed-client.test.ts tests/arch/managed-clients.test.ts",
+      "result": "PASS",
+      "tests": 24,
+      "passed": 24,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "command": "node --experimental-strip-types --no-warnings --test tests/arch/opencode-bridge.test.ts",
+      "result": "PASS",
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "command": "npx tsc -p tsconfig.node.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --cached --check",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "negative_evidence": [
+    "All six matrix clients receive a canonical record; missing probes are UNKNOWN/PROBE_NOT_REGISTERED with NOT_RUN evidence.",
+    "Missing client, unavailable executable, failed probe, malformed probe result, duplicate registration, unknown id, and stale discovery are covered.",
+    "TARGET_1 identity mismatch, provider/model mismatch, unobserved identity, unsupported operation, unavailable client, and no-fallback behavior are covered.",
+    "Credential-shaped probe identity/version, discovery/evidence references, and receipt fields are rejected without serializing the canary values.",
+    "Self-asserted LIVE evidence cannot promote governance without a trusted evidence verifier; the verdict is MANAGED_OBSERVED/NOT_RUN with LIVE_EVIDENCE_NOT_VERIFIED.",
+    "OpenCode uses the existing bridge method identities, preserves cancellation/timeout errors, refuses PTY launch, and fails malformed authoritative output closed with session cleanup."
+  ],
+  "governance": {
+    "claude-code": {
+      "governance_state": "MANAGED_OBSERVED",
+      "provider_qualification_state": "NOT_EVALUATED",
+      "execution_surface": "TERMINAL_PTY_DESCRIPTOR",
+      "ownership": "TERMINAL_SESSION_SERVICE"
+    },
+    "codex-cli": {
+      "governance_state": "MANAGED_OBSERVED",
+      "provider_qualification_state": "NOT_EVALUATED",
+      "execution_surface": "TERMINAL_PTY_DESCRIPTOR",
+      "ownership": "TERMINAL_SESSION_SERVICE"
+    },
+    "kimi-code": {
+      "governance_state": "MANAGED_OBSERVED",
+      "provider_qualification_state": "NOT_EVALUATED",
+      "execution_surface": "TERMINAL_PTY_DESCRIPTOR",
+      "ownership": "TERMINAL_SESSION_SERVICE"
+    },
+    "opencode": {
+      "governance_state": "MANAGED_OBSERVED",
+      "provider_qualification_state": "NOT_EVALUATED",
+      "execution_surface": "OPENCODE_BRIDGE",
+      "ownership": "OPENCODE_BRIDGE"
+    },
+    "gemini-cli": {
+      "governance_state": "UNQUALIFIED",
+      "provider_qualification_state": "UNQUALIFIED",
+      "execution_surface": "RESEARCH_ONLY",
+      "ownership": "NONE"
+    },
+    "qwen-code": {
+      "governance_state": "UNQUALIFIED",
+      "provider_qualification_state": "UNQUALIFIED",
+      "execution_surface": "RESEARCH_ONLY",
+      "ownership": "NONE"
+    },
+    "fully_governed_client": "NONE"
+  },
+  "remaining_red_or_unknown": [
+    {
+      "item": "terminal-session-routes.test.ts initial uninstrumented run",
+      "status": "RED_CAUSE_UNKNOWN",
+      "tests": 11,
+      "passed": 6,
+      "failed": 5,
+      "cancelled": 0,
+      "skipped": 0,
+      "failures": [
+        "GET /api/terminal/providers: request timeout, about 18.95 seconds including test setup",
+        "GET /api/terminal/sessions: request timeout, about 5.005 seconds",
+        "approved PTY open: request timeout, about 5.012 seconds",
+        "unknown-provider open: request timeout, about 5.012 seconds",
+        "owner stop: request timeout, about 13.526 seconds"
+      ],
+      "fixture_timeout_ms": 5000,
+      "timeout_changed": false,
+      "storage_io_failure_observed": false,
+      "disposition": "Preserved. Later instrumented focused and full-suite passes do not identify the original cause and do not erase this RED."
+    },
+    {
+      "item": "instrumented terminal route diagnostics",
+      "status": "DIAGNOSTIC_PASS_CAUSE_STILL_UNKNOWN",
+      "targeted_cases": {
+        "tests": 5,
+        "passed": 5,
+        "failed": 0,
+        "request_elapsed_ms_min": 15,
+        "request_elapsed_ms_max": 2516,
+        "event_loop_delay_max_ms": 105.64,
+        "event_loop_delay_mean_ms": 30.98
+      },
+      "full_suite": {
+        "tests": 11,
+        "passed": 11,
+        "failed": 0,
+        "request_elapsed_ms_max": 577,
+        "event_loop_delay_max_ms": 121.83,
+        "event_loop_delay_mean_ms": 30.74
+      },
+      "instrumentation": "In-memory fetch wrapper recorded method, pathname, status/error name, elapsed time, and event-loop delay only; no headers or bodies were logged. The 5000ms request deadline was unchanged."
+    },
+    {
+      "item": "scoped ESLint",
+      "status": "ENVIRONMENTAL_SPIN_NOT_PASS",
+      "command": "npx eslint common/contracts/managed-client.ts",
+      "observation": "No output for 60 seconds; process remained near 0.44 CPU seconds and 70 MB working set; exact ESLint process was stopped and verified gone; exit code 1.",
+      "current_final_source_lint": "NOT_VERIFIED"
+    },
+    {
+      "item": "live OpenCode proof",
+      "status": "LIVE_OPENCODE_PROOF_PENDING",
+      "evidence_run": "Deterministic local bridge fixture only; no live client/provider claim."
+    },
+    {
+      "item": "broader acceptance",
+      "status": "NOT_RUN",
+      "details": "Full architecture gate and exact-SHA CI were not run."
+    }
+  ],
+  "p2_status": "IMPLEMENTED_SOURCE_CHECKPOINT / ACCEPTANCE_NOT_CLOSED",
+  "credential_values_written_to_this_record": false
+}
