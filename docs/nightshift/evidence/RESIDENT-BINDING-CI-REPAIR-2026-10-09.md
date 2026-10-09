@@ -28,8 +28,13 @@ Command:
 $env:TEMP='C:\Users\Grey_\AppData\Local\Temp'; $env:TMP='C:\Users\Grey_\AppData\Local\Temp'; node --test tests/arch/openapi-drift.test.ts tests/arch/route-drift.test.ts
 ```
 
-Result: **7 passed / 0 failed / 0 skipped / 0 cancelled**. This includes both previously failing tests, C1-02 reproducibility, and representative facade probes. `git diff --check` passed. This focused pass does not erase the failed exact-SHA CI run and does not establish CI status for the forthcoming repair commit.
+Result: **7 passed / 0 failed / 0 skipped / 0 cancelled**. This includes both previously failing tests, C1-02 reproducibility, and representative facade probes. `git diff --check` passed. At the time of this focused pass, it did not erase the failed exact-SHA CI run or establish CI status for the forthcoming repair commit.
 
-## Next verification
+## Repair checkpoint result
 
-The regenerated contract and this evidence are to be committed as a separate bounded repair on the same feature branch. The new exact commit requires its own pre-push gates and exact-SHA AIDE CI. No local-model Admission or runtime start was performed; the artifact-copy capacity gate remains closed.
+- Generated-contract repair commit: `749423ed792cb4132d54282cc4fa189849ae5c63`.
+- Local pre-push hook: **passed**.
+- Exact-SHA AIDE CI: [run 37968933987](https://github.com/AnonymousNomad/covert-coder/actions/runs/37968933987), **SUCCESS** on the repair commit. Architecture and Veritas gates passed.
+- The earlier failed run `37967329298` remains visible and is not deleted or reclassified.
+
+No local-model Admission or runtime start was performed; the artifact-copy capacity gate remains closed.

@@ -42,7 +42,10 @@
     "diff_check": "PASS"
   },
   "first_red_preserved": true,
-  "repair_commit_exact_sha_ci": "PENDING",
+  "repair_commit_exact_sha_ci": "SUCCESS",
+  "repair_commit_exact_sha": "749423ed792cb4132d54282cc4fa189849ae5c63",
+  "repair_commit_aide_ci_run_id": "37968933987",
+  "repair_commit_aide_ci_url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/37968933987",
   "local_model_admission": "NOT_RUN",
   "local_model_runtime": "NOT_RUN"
 }

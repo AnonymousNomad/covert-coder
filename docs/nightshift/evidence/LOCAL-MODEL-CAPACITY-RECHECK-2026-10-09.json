@@ -1,0 +1,35 @@
+{
+  "schema": "covert.local-model-capacity-recheck.v1",
+  "captured_at": "2026-10-09T18:00:06Z",
+  "branch": "feat/model-intelligence-mi1b-reliability-20261005",
+  "implementation_head_at_measurement": "749423ed792cb4132d54282cc4fa189849ae5c63",
+  "capacity": {
+    "volume": "C:",
+    "filesystem": "NTFS",
+    "health": "Healthy",
+    "volume_bytes": 126812377088,
+    "free_bytes": 94420992,
+    "pre_copy_required_free_bytes": 3348910080,
+    "shortfall_bytes": 3254489088,
+    "physical_disk": "PHYSICALDRIVE1",
+    "physical_mapping_basis": "previously verified; capacity-only probe did not re-enumerate disks"
+  },
+  "artifact": {
+    "identity": "LFM2.5-2.6B-Q4_K_M.gguf",
+    "current_source_bytes_rehashed": false,
+    "safe_copy": false,
+    "gguf_validated": false,
+    "download_repeated": false
+  },
+  "disposition": "ACQUISITION_BLOCKED_CAPACITY",
+  "scope": "existing Liquid artifact safe-copy operation only; not a project-wide blocker",
+  "unrelated_storage_mutation": false,
+  "admission": "NOT_RUN",
+  "runtime_start": "NOT_RUN",
+  "resident_role_qualification": "UNKNOWN",
+  "code_checkpoint_ci": {
+    "sha": "749423ed792cb4132d54282cc4fa189849ae5c63",
+    "run_id": "37968933987",
+    "result": "SUCCESS"
+  }
+}
