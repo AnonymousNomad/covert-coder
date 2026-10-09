@@ -134,6 +134,25 @@ test('OpenCode operation timeout covers server startup and confirms child cleanu
   }
 });
 
+test('OpenCode server child exiting before port announcement fails closed', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-early-exit-'));
+  const { bridge, log } = await fixtureBridge(dir, 'exit-early');
+  try {
+    await assert.rejects(
+      () => bridge.discoverGoModels(dir),
+      (error: unknown) => (error as { code?: string })?.code === 'CHILD_FAILED' &&
+        (error as Error).message === 'opencode serve exited early with code 17'
+    );
+    const events = await readLog(log);
+    const childClose = events.find(event => event.event === 'server-child-close') as { code?: number } | undefined;
+    assert.equal(childClose?.code, 17);
+    assert.equal(events.some(event => event.event === 'catalog' || event.event === 'create' || event.event === 'prompt'), false);
+  } finally {
+    await bridge.stop();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('OpenCode task timeout aborts and deletes its session', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-timeout-'));
   const { bridge, log } = await fixtureBridge(dir, 'timeout');

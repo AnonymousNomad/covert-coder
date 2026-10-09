@@ -148,5 +148,6 @@ const listen = () => server.listen(0, '127.0.0.1', () => {
   console.log('opencode server listening on http://127.0.0.1:' + address.port);
 });
 const startupDelayMs = Number(process.env.FIXTURE_START_DELAY_MS ?? 0);
-if (startupDelayMs > 0) setTimeout(listen, startupDelayMs);
+if (mode === 'exit-early') process.exitCode = 17;
+else if (startupDelayMs > 0) setTimeout(listen, startupDelayMs);
 else listen();

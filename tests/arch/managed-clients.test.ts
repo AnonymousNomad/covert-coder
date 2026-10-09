@@ -124,6 +124,11 @@ test('requested provider/model identity must exactly match observation; no defau
     provider_identity: 'anthropic',
     model_identity: 'other-model'
   }), 'PROVIDER_MODEL_MISMATCH');
+  expectAdapterError(() => adapter.buildLaunch(record, {
+    provider_identity: 'anthropic',
+    model_identity: 'claude-3',
+    extra_configuration: 'must-not-be-ignored'
+  }), 'INVALID_TARGET');
 
   const unobserved = await discover('claude-code', { ...DETECTED, provider_identity: null, model_identity: null });
   expectAdapterError(() => adapter.buildLaunch(unobserved, {
@@ -162,6 +167,9 @@ test('OpenCode adapter reuses the exact bridge methods and refuses a parallel PT
   assert.equal(adapter.discovery.provider_qualification_state, 'NOT_EVALUATED');
   assert.equal(adapter.discovery.evidence_state, 'FIXTURE');
   assert.equal(adapter.assertSupportedOperation('BRIDGE_RUN_TASK'), undefined);
+  const disconnectedCatalog = await adapter.discoverGoModels('C:\\workspace');
+  assert.deepEqual(disconnectedCatalog, { connected: false, model_ids: [] });
+  assert.deepEqual(calls[0], ['discoverGoModels', 'C:\\workspace']);
   assert.throws(() => {
     (adapter.discovery.supported_capabilities as unknown as string[]).push('INTERACTIVE_PTY_DESCRIPTOR');
   }, TypeError);
@@ -178,11 +186,11 @@ test('OpenCode adapter reuses the exact bridge methods and refuses a parallel PT
     signal: controller.signal
   };
   await adapter.runTask(request);
-  assert.deepEqual(calls[0], ['runTask', request]);
-  assert.equal((calls[0] as [string, typeof request])[1].providerID, 'provider-a');
-  assert.equal((calls[0] as [string, typeof request])[1].modelID, 'model-b');
-  assert.equal((calls[0] as [string, typeof request])[1].timeoutMs, 17000);
-  assert.strictEqual((calls[0] as [string, typeof request])[1].signal, controller.signal);
+  assert.deepEqual(calls[1], ['runTask', request]);
+  assert.equal((calls[1] as [string, typeof request])[1].providerID, 'provider-a');
+  assert.equal((calls[1] as [string, typeof request])[1].modelID, 'model-b');
+  assert.equal((calls[1] as [string, typeof request])[1].timeoutMs, 17000);
+  assert.strictEqual((calls[1] as [string, typeof request])[1].signal, controller.signal);
 });
 
 test('OpenCode cancellation and timeout outcomes remain owned by the bridge', async () => {
