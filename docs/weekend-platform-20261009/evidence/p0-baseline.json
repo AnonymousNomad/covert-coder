@@ -1,0 +1,44 @@
+{
+  "checkpoint": "P0-baseline",
+  "lane": "deepseek/weekend-native-platform-20261009",
+  "worktree": "E:/covert-deepseek-weekend-20261009",
+  "base_sha": "28964944c6f67ffec9de6c22cb512d69993d4625",
+  "observed_at": "2026-10-09T18:12:25.711Z",
+  "machine": {
+    "platform": "win32",
+    "release": "10.0.26220",
+    "total_ram_mb": 16307,
+    "free_ram_mb": 3681,
+    "cpus": 12
+  },
+  "repo": {
+    "release_spine": "clean@2896494 (base)",
+    "cipher_lane": "L:/CovertScratch/cipher-mission-composer-20261009 ACTIVE-PRIVATE dirty @e01915627af2b5e43023efa8ac285b1e70907960 (untouched)"
+  },
+  "package": {
+    "present": [
+      "00_START_HERE.md",
+      "12_IMPLEMENTATION_BLUEPRINT.md",
+      "13_PACKAGE_VALIDATION.md",
+      "DEEPSEEK_COPY_PASTE_DIRECTIVE.md"
+    ],
+    "missing": [
+      "COVERT_DEEPSEEK_WEEKEND_2026-10-09.zip",
+      "01-11 documents",
+      "SOPs",
+      "7 matrices",
+      "20 skills"
+    ],
+    "classification": "EXTERNAL_DEPENDENCY_MISSING"
+  },
+  "p0_outputs": [
+    "docs/weekend-platform-20261009/BASELINE.md",
+    "docs/weekend-platform-20261009/OWNER_MAP.md",
+    "docs/weekend-platform-20261009/evidence/p0-baseline.json"
+  ],
+  "product_code_modified": false,
+  "next": [
+    "P1 seams per blueprint (capability projection/tool navigator) — independent of missing docs",
+    "WAITING_ON_ACCEPTED_OWNER_CHECKPOINT: P1 catalog adapter, P6 rebind, P3 Laptop UI, P8"
+  ]
+}
