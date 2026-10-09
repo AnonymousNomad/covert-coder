@@ -1049,11 +1049,18 @@ export function createAgentLoop({ workspace, authority, chatFn, rg, checkpoints,
       // registered or the runner starts. Resource refusal or admission
       // failure aborts the start (fail closed): no session, no execution.
       if (attemptJournal !== null) {
-        const resourceDecision = resourceAdmission === null
-          ? null
-          : await resourceAdmission.admit({ kind: 'model_start', requirement: {}, disposable: false }).catch(() => null);
-        if (resourceDecision !== null && resourceDecision.decision === 'REFUSE_RESOURCE') {
-          throw new AuthorityError('FORBIDDEN', `resource admission refused: ${resourceDecision.reason}`);
+        if (resourceAdmission === null || typeof resourceAdmission.admit !== 'function') {
+          throw new AuthorityError('FORBIDDEN', 'resource admission unavailable; mission startup refused');
+        }
+        let resourceDecision;
+        try {
+          resourceDecision = await resourceAdmission.admit({ kind: 'model_start', requirement: {}, disposable: false });
+        } catch (error) {
+          throw new AuthorityError('FORBIDDEN', `resource admission failed: ${String(error?.message ?? error).slice(0, 500)}`);
+        }
+        if (resourceDecision?.decision !== 'START') {
+          const reason = typeof resourceDecision?.reason === 'string' ? resourceDecision.reason : 'no START decision was returned';
+          throw new AuthorityError('FORBIDDEN', `resource admission refused: ${reason}`);
         }
         try {
           const workerDescriptor = typeof request.worker === 'object' && request.worker !== null ? request.worker : null;

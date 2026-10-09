@@ -264,7 +264,8 @@ async function governedFixture(t: TestContext, boundary: 'pass' | 'write-failure
     dispatchSignal = args[3];
     return dispatch(...args);
   };
-  const loop = createAgentLoop({ workspace: f.root, authority: server.authority, attemptJournal: journal,
+  const loop = createAgentLoop({ workspace: f.root, authority: server.authority,
+    resourceAdmission: { admit: async () => ({ decision: 'START', reason: 'controlled fixture admission' }) }, attemptJournal: journal,
     chatFn: async () => { throw new Error('legacy fallback forbidden'); } });
   journal.recordEvent = async (attemptId, event, data, source) => {
     const selectedEvent = stage === 'router' ? 'MODEL_INPUT_PREPARED' : 'MODEL_ADAPTER_INPUT_PREPARED';

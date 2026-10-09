@@ -104,7 +104,8 @@ test('start snapshots the approved request before queued admission', async () =>
   const fixture = await pairServiceFixture(workspace);
   const unexpected = () => { throw new Error('refused snapshot fixture cannot proceed'); };
   let observedModel: unknown;
-  const loop = createAgentLoop({ workspace, authority: fixture.authority, chatFn: async () => completed, attemptJournal: {
+  const loop = createAgentLoop({ workspace, authority: fixture.authority, chatFn: async () => completed,
+    resourceAdmission: { admit: async () => ({ decision: 'START', reason: 'controlled admission pass' }) }, attemptJournal: {
     prepare: async input => { observedModel = (input as { worker_model: unknown }).worker_model; throw new Error('controlled snapshot refusal'); },
     seal: unexpected, admit: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
     executionStarted: unexpected, bindContext: unexpected, effectObserved: unexpected, effectUncertain: unexpected,
@@ -122,6 +123,61 @@ test('start snapshots the approved request before queued admission', async () =>
   } finally { fixture.authority.control.close(); }
 });
 
+test('resource admission failure aborts before the durable attempt is prepared', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-agent-resource-admission-failure-'));
+  const fixture = await pairServiceFixture(workspace);
+  let prepares = 0;
+  const unexpected = () => { throw new Error('resource admission failure must stop startup'); };
+  const loop = createAgentLoop({ workspace, authority: fixture.authority,
+    chatFn: async () => { throw new Error('resource admission failure must prevent model execution'); },
+    resourceAdmission: { admit: async () => { throw new Error('controlled resource probe failure'); } },
+    attemptJournal: {
+      prepare: async () => { prepares++; throw new Error('durable preparation must not follow failed resource admission'); },
+      seal: unexpected, admit: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
+      executionStarted: unexpected, bindContext: unexpected, effectObserved: unexpected, effectUncertain: unexpected,
+      verificationStarted: unexpected, finalize: unexpected, noteMutationDispatch: unexpected, clearMutationDispatch: unexpected,
+      uncertainAttempts: new Set<string>(),
+    }
+  });
+  const body = { task: 'fail closed on resource probe failure', mode: 'act' as const, client_request_id: randomUUID() };
+  try {
+    await assert.rejects(
+      fixture.approveAndExecute('agent.start', body, 'resource-admission-failure', execution =>
+        loop.start(body.task, body.mode, null, { execution, request: body })),
+      /resource admission failed.*controlled resource probe failure/
+    );
+    assert.equal(prepares, 0, 'attempt preparation must not run without a successful resource decision');
+    assert.equal(loop.list().length, 0, 'no session may be registered after an admission probe failure');
+  } finally { fixture.authority.control.close(); }
+});
+
+test('missing resource admission refuses attempt-journaled execution', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-agent-resource-admission-missing-'));
+  const fixture = await pairServiceFixture(workspace);
+  let prepares = 0;
+  const unexpected = () => { throw new Error('resource admission absence must stop startup'); };
+  const loop = createAgentLoop({ workspace, authority: fixture.authority,
+    chatFn: async () => { throw new Error('missing resource admission must prevent model execution'); },
+    attemptJournal: {
+      prepare: async () => { prepares++; throw new Error('durable preparation must not follow missing resource admission'); },
+      seal: unexpected, admit: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
+      executionStarted: unexpected, bindContext: unexpected, effectObserved: unexpected, effectUncertain: unexpected,
+      verificationStarted: unexpected, finalize: unexpected, noteMutationDispatch: unexpected, clearMutationDispatch: unexpected,
+      uncertainAttempts: new Set<string>(),
+    }
+  });
+  const body = { task: 'refuse missing resource admission', mode: 'act' as const, client_request_id: randomUUID() };
+  try {
+    await assert.rejects(
+      fixture.approveAndExecute('agent.start', body, 'resource-admission-missing', execution =>
+        loop.start(body.task, body.mode, null, { execution, request: body })),
+      /resource admission unavailable/
+    );
+    assert.equal(prepares, 0, 'attempt preparation must not run when the resource gate is absent');
+    assert.equal(loop.list().length, 0, 'no session may be registered without resource admission');
+  } finally { fixture.authority.control.close(); }
+});
+
 test('reservation covers asynchronous admission, and failed startup revokes its actor', async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-agent-admission-'));
   const fixture = await pairServiceFixture(workspace);
@@ -133,7 +189,8 @@ test('reservation covers asynchronous admission, and failed startup revokes its 
     const actor = fixture.authority.control.delegate(...args); actors.push(actor); return actor;
   } } };
   const unexpected = () => { throw new Error('refused admission must not reach another journal method'); };
-  const loop = createAgentLoop({ workspace, authority, chatFn: async () => completed, attemptJournal: {
+  const loop = createAgentLoop({ workspace, authority, chatFn: async () => completed,
+    resourceAdmission: { admit: async () => ({ decision: 'START', reason: 'controlled admission pass' }) }, attemptJournal: {
     prepare: async () => { prepares++; entered.resolve(); await held.promise; throw new Error('controlled durable admission failure'); },
     seal: unexpected, admit: unexpected, recordEvent: unexpected, assertAdmitted: unexpected,
     executionStarted: unexpected, bindContext: unexpected, effectObserved: unexpected, effectUncertain: unexpected,
