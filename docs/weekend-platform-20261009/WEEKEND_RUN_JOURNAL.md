@@ -6,7 +6,14 @@
 | P0 | `19072f7` | baseline + owner map + evidence (accepted) |
 | Ingestion | `b9f4d0c` | zip sha256 match `1550a0cf…`, manifest 70/70, extracted outside repos |
 | P1 reading | `cca9900` | reading record + extracted plan (accepted history) |
-| P1 leaf-1 | (this commit) | **contracts**: `common/contracts/capability-projection.ts`, `common/contracts/tool-navigation.ts`; tsc node 0 |
+| P1 leaf-1 | `34175ee` | **contracts**: `common/contracts/capability-projection.ts`, `common/contracts/tool-navigation.ts`; tsc node 0 |
+| P1 leaf-2 | `d1a6d31` | **services + tests**: projection + navigator services; suites 25/25; tsc 0; eslint 0 errors; diff-check clean; **P1_CAPABILITY_PROJECTION_FOUNDATION_CANDIDATE** reached |
+
+## P1 leaf-2 notes
+- Discovered + fixed during the gate: strict snapshot parsing collapsed credential-shaped metadata into `MALFORMED_RECORD`; service now uses a lenient top-level schema with a per-record credential screen BEFORE strict parsing (hostile-credential test green; fail-closed `CREDENTIAL_REJECTED`).
+- Test files adapted to `noUncheckedIndexedAccess`/`noImplicitAny`; one unused eslint-disable removed.
+- `FULL_ARCH_GATE_NOT_RUN` (recorded; broad gate optionally deferred to P8).
+- `REAL_APP_CATALOG_ADAPTER = WAITING_ON_ACCEPTED_OWNER_CHECKPOINT` (unchanged).
 
 ## P1 required reading — COMPLETE
 Package items used: `04_PHASE_PLAN` (P1 scope), `03_PRODUCT_LOCKS`, `06_OWNERSHIP_MAP`, `12_BLUEPRINT` (hash-identical E: copy), `05_SKILL_PLAN`; skills `covert-capability-projection-gateway`, `covert-tool-navigator`, `covert-skill-capability-routing`; SOPs `SOP_DEVELOPERS_WAY`, `SOP_THREAT_MODEL`, `SOP_VERIFICATION_EVIDENCE`, `SOP_CHECKPOINT_RECOVERY`; matrices `PHASE_DEPENDENCY` (P1), `VERIFICATION` (P1), `SKILL_REUSE` (full), `THREAT_MATRIX` (full).
