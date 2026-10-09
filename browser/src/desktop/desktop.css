@@ -737,6 +737,17 @@ body,
 .covert-desktop-shell .cipher-laptop-tabs { display: flex; gap: 4px; margin: 6px 0; }
 .covert-desktop-shell .cipher-laptop-status, .covert-desktop-shell .cipher-laptop-note { color: var(--desktop-text-muted); margin: 6px 0; overflow-wrap: anywhere; }
 .covert-desktop-shell .cipher-laptop-content { overflow-wrap: anywhere; }
+.covert-desktop-shell .cipher-laptop-section-title { margin: 0 0 6px; color: var(--desktop-accent); font: 12px var(--desktop-font-mono); letter-spacing: 0.04em; }
+.covert-desktop-shell .cipher-laptop-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; align-content: start; }
+.covert-desktop-shell .cipher-laptop-overview-section { min-width: 0; padding: 8px 0; border-bottom: 1px solid var(--desktop-border); }
+.covert-desktop-shell .cipher-laptop-overview-section h4 { margin: 0 0 5px; color: var(--desktop-text-muted); font: 10px var(--desktop-font-mono); letter-spacing: 0.08em; }
+.covert-desktop-shell .cipher-laptop-overview-section strong, .covert-desktop-shell .cipher-laptop-overview-section span { display: block; overflow-wrap: anywhere; }
+.covert-desktop-shell .cipher-laptop-overview-section strong { color: var(--desktop-accent); font-weight: normal; }
+.covert-desktop-shell .cipher-laptop-overview-section span { margin-top: 3px; color: var(--desktop-text-secondary); }
+.covert-desktop-shell .cipher-laptop-overview-modules { grid-column: 1 / -1; }
+.covert-desktop-shell .cipher-laptop-module-list { display: grid; grid-template-columns: minmax(120px, 0.6fr) minmax(0, 1fr); gap: 3px 10px; margin: 0; }
+.covert-desktop-shell .cipher-laptop-module-list dt { color: var(--desktop-text-secondary); }
+.covert-desktop-shell .cipher-laptop-module-list dd { margin: 0; color: var(--desktop-text-muted); }
 .covert-desktop-shell .cipher-laptop-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .covert-desktop-shell .cipher-laptop-table td, .covert-desktop-shell .cipher-laptop-table th { padding: 4px; border-bottom: 1px solid var(--desktop-border); text-align: left; vertical-align: top; font-weight: normal; overflow-wrap: anywhere; }
 .covert-desktop-shell .cipher-laptop-table th { color: var(--desktop-accent); }
@@ -791,6 +802,8 @@ body,
 @media (max-width: 720px) {
   .covert-desktop-shell .desktop-work-area { grid-template-columns: 64px minmax(0, 1fr); }
   .covert-desktop-shell .cipher-laptop-desk { grid-template-columns: 118px minmax(0, 1fr); }
+  .covert-desktop-shell .cipher-laptop-overview { grid-template-columns: minmax(0, 1fr); }
+  .covert-desktop-shell .cipher-laptop-overview-modules { grid-column: auto; }
 }
 
 /* Rehosted capabilities read as compact utilities, not dashboard cards. */

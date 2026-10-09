@@ -12,7 +12,7 @@ const GATED_SECTIONS = [
  ['EVIDENCE','GATED','Dedicated verifier/evidence projection is not integrated. Activity may show actual evidence references.'],
  ['PERMISSIONS','GATED','Live Resident enrollment, context leases and a current grant projection are not integrated.']
 ] as const;
-type Section = 'ACTIVITY'|'INTEGRITY'|'NOTEBOOK'|typeof GATED_SECTIONS[number][0];
+type Section = 'OVERVIEW'|'ACTIVITY'|'INTEGRITY'|'NOTEBOOK'|typeof GATED_SECTIONS[number][0];
 function sameAddress(left:CurrentProjectResponseT,right:CurrentProjectResponseT):boolean {
  return left.project.project_id===right.project.project_id&&left.checkout.checkout_id===right.checkout.checkout_id;
 }
@@ -33,11 +33,12 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  const status=el('div','cipher-laptop-status','UNAVAILABLE · awaiting canonical record owner');
  status.setAttribute('role','status');
  const tabs=el('nav','cipher-laptop-tabs');tabs.setAttribute('aria-label','Laptop records');
+ const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.textContent='OVERVIEW';
  const activityButton=document.createElement('button');activityButton.type='button';activityButton.textContent='ACTIVITY';
  const securityButton=document.createElement('button');securityButton.type='button';securityButton.textContent='INTEGRITY';
  const notebookButton=document.createElement('button');notebookButton.type='button';notebookButton.textContent='NOTEBOOK';
- const sectionButtons=new Map<Section,HTMLButtonElement>([['ACTIVITY',activityButton],['INTEGRITY',securityButton],['NOTEBOOK',notebookButton]]);
- tabs.append(notebookButton,activityButton,securityButton);
+ const sectionButtons=new Map<Section,HTMLButtonElement>([['OVERVIEW',overviewButton],['NOTEBOOK',notebookButton],['ACTIVITY',activityButton],['INTEGRITY',securityButton]]);
+ tabs.append(overviewButton,notebookButton,activityButton,securityButton);
  for(const [name,state] of GATED_SECTIONS){
   const button=document.createElement('button');button.type='button';button.textContent=`${name} · ${state}`;
   button.setAttribute('aria-label',`${name}, ${state}`);sectionButtons.set(name,button);tabs.append(button);
@@ -48,7 +49,7 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  root.append(toolbar,projectStatus,status,desk,note);parent.appendChild(root);
  let alive=true,inFlight=false,failed=false,receivedAt=0,refreshAfterPair=false;
  let projection:CipherLedgerListResponseT|null=null;
- let selected:Section='ACTIVITY';
+ let selected:Section='OVERVIEW';
  let project:CurrentProjectResponseT|null=null,scopeError='',projectReceivedAt=0;
  let memories:CipherNotebookRecordT[]|null=null,notebookFailed=false,editing:CipherNotebookRecordT|null=null,writing=false;
  let writeMessage='';
@@ -80,11 +81,49 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
   const age=Math.max(0,Math.floor((Date.now()-receivedAt)/1000));
   status.textContent=`${failed||age>30?'STALE':'SNAPSHOT'} · ${projection.status.state} · ${projection.status.integrity} · receipt ${age}s ago${inFlight?' · refresh pending':''}`;
  }
+ function currentRecords(){
+  if(!projection||!project)return [];
+  return projection.records.filter(record=>record.project_id===project!.project.project_id&&record.checkout_id===project!.checkout.checkout_id);
+ }
+ function paintOverview(){
+  content.append(el('h3','cipher-laptop-section-title','OPERATIONAL DESK'));
+  content.append(el('p','cipher-laptop-note','One Resident, one durable working seat. This overview projects owner truth only; it does not create grants, missions or execution authority.'));
+  const grid=el('div','cipher-laptop-overview');
+  const workspace=el('section','cipher-laptop-overview-section');
+  workspace.append(el('h4','','WORKSPACE'));
+  if(project){
+   workspace.append(el('strong','',project.foreground_state),el('span','',`PROJECT ${project.project.project_id}`),el('span','',`CHECKOUT ${project.checkout.checkout_id}`),el('span','',project.switching));
+  }else workspace.append(el('strong','','UNAVAILABLE'),el('span','',scopeError||'Canonical Project owner has not supplied a binding.'));
+  const continuity=el('section','cipher-laptop-overview-section');
+  continuity.append(el('h4','','CONTINUITY'));
+  if(!project)continuity.append(el('strong','','WITHHELD'),el('span','','Notebook requires canonical project binding.'));
+  else if(notebookFailed)continuity.append(el('strong','','STALE / UNAVAILABLE'),el('span','','Notebook owner read failed.'));
+  else if(memories===null)continuity.append(el('strong','','UNAVAILABLE'),el('span','','Notebook owner has not supplied records.'));
+  else continuity.append(el('strong','','NOTEBOOK · SNAPSHOT'),el('span','',`${memories.length} approved record${memories.length===1?'':'s'} in current continuity scope.`));
+  const activity=el('section','cipher-laptop-overview-section');
+  activity.append(el('h4','','ACTIVITY'));
+  if(!projection)activity.append(el('strong','','UNAVAILABLE'),el('span','','No durable ledger projection is available.'));
+  else if(!project)activity.append(el('strong','','WITHHELD'),el('span','','Project-addressed activity requires canonical binding.'));
+  else activity.append(el('strong','',`${failed?'STALE':'SNAPSHOT'} · ${currentRecords().length} CURRENT-CHECKOUT RECORDS`),el('span','',`Ledger total ${projection.status.record_count}. OBSERVED is not VERIFIED.`));
+  const integrity=el('section','cipher-laptop-overview-section');
+  integrity.append(el('h4','','INTEGRITY'));
+  if(!projection)integrity.append(el('strong','','UNAVAILABLE'),el('span','','No integrity projection is available.'));
+  else integrity.append(el('strong','',`${projection.status.state} · ${projection.status.integrity}`),el('span','',projection.status.signature_state),el('span','',`${projection.status.unresolved_actions.length} unresolved action reference${projection.status.unresolved_actions.length===1?'':'s'}.`));
+  const modules=el('section','cipher-laptop-overview-section cipher-laptop-overview-modules');
+  modules.append(el('h4','','MODULES'));
+  const list=el('dl','cipher-laptop-module-list');
+  for(const [name,state] of [['NOTEBOOK',project&&!notebookFailed&&memories!==null?'SNAPSHOT':'UNAVAILABLE'],['ACTIVITY',projection?'SNAPSHOT':'UNAVAILABLE'],['INTEGRITY',projection?'SNAPSHOT':'UNAVAILABLE'],...GATED_SECTIONS] as const){
+   list.append(el('dt','',name),el('dd','',state));
+  }
+  modules.append(list);
+  grid.append(workspace,continuity,activity,integrity,modules);content.append(grid);
+ }
  function paint(){
   if(!alive)return;captureNotebookDraft();notebookForm=null;paintStatus();content.innerHTML='';notebookControls=[];
   for(const [name,button] of sectionButtons)button.setAttribute('aria-pressed',String(selected===name));
   const gated=GATED_SECTIONS.find(([name])=>name===selected);
   if(gated){content.append(el('h3','cipher-laptop-section-title',`${gated[0]} · ${gated[1]}`),el('p','',gated[2]));return;}
+  if(selected==='OVERVIEW'){paintOverview();return;}
   if(selected==='NOTEBOOK'){paintNotebook();return;}
   if(!projection){content.append(el('p','','No owner records available. No action history has been manufactured.'));return;}
   const state=projection.status;

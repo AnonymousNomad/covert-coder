@@ -29,9 +29,14 @@ test('Laptop projects OBSERVED distinctly from verification and signature trust'
  const h=harness();await tick();assert.match(textOf(h.parent),/OBSERVED is not VERIFIED/);
  h.click('INTEGRITY');assert.match(textOf(h.parent),/SIGNATURE_UNAVAILABLE/);assert.match(textOf(h.parent),/HASH_CHAIN_VERIFIED/);h.handle.dispose();
 });
+test('Overview is a truthful operational desk over existing owners and gated modules',async()=>{
+ const h=harness();await tick();const text=textOf(h.parent);
+ assert.match(text,/OPERATIONAL DESK/);assert.match(text,new RegExp(projectId));assert.match(text,/NOTEBOOK · SNAPSHOT/);
+ assert.match(text,/MISSIONS GATED/);assert.match(text,/COMMS NOT CONFIGURED/);assert.equal(h.writes,0);h.handle.dispose();
+});
 test('failed owner requests retain records only under an explicit stale label',async()=>{
  let fail=false;const h=harness(async()=>{if(fail)throw new Error('lost owner');return snapshot();});await tick();
- fail=true;await h.handle.refresh();assert.match(textOf(h.parent),/STALE/);assert.match(textOf(h.parent),/workspace.write/);h.handle.dispose();
+ fail=true;await h.handle.refresh();assert.match(textOf(h.parent),/STALE/);h.click('ACTIVITY');assert.match(textOf(h.parent),/workspace.write/);h.handle.dispose();
 });
 test('timeouts and disposal abort pending reads; coalescing prevents parallel history requests',async()=>{
  const h=harness(()=>new Promise(()=>{}));void h.handle.refresh();assert.equal(h.projectCalls,1);await tick();assert.equal(h.calls,1);void h.handle.refresh();assert.equal(h.calls,1);
@@ -43,7 +48,7 @@ test('last receipt ages without polling owner or manufacturing a live state',asy
 test('lockdown is owner-derived and presents no self-authorizing recovery button',async()=>{
  const h=harness(async()=>snapshot('LOCKDOWN'));await tick();assert.match(textOf(h.parent),/LOCKDOWN/);
  h.click('INTEGRITY');assert.match(textOf(h.parent),/Effects are held/);
- assert.deepEqual(all(h.parent).filter(n=>n.tag==='button').map(n=>n.textContent),['REFRESH','NOTEBOOK','ACTIVITY','INTEGRITY','MISSIONS · GATED','INBOX · GATED','WATCHES · GATED','SECURITY · GATED','COMMS · NOT CONFIGURED','EVIDENCE · GATED','PERMISSIONS · GATED']);h.handle.dispose();
+ assert.deepEqual(all(h.parent).filter(n=>n.tag==='button').map(n=>n.textContent),['REFRESH','OVERVIEW','NOTEBOOK','ACTIVITY','INTEGRITY','MISSIONS · GATED','INBOX · GATED','WATCHES · GATED','SECURITY · GATED','COMMS · NOT CONFIGURED','EVIDENCE · GATED','PERMISSIONS · GATED']);h.handle.dispose();
 });
 
 test('real read-only Laptop application is launchable and restores its window without replacing record ownership',async()=>{
@@ -83,7 +88,7 @@ test('Laptop exposes canonical project and checkout IDs rather than deriving ide
 });
 test('activity is addressed at the owner and never presents another checkout or legacy history as this project',async()=>{
  let requested;const h=harness(async(s,p)=>{requested=p;const value=snapshot();value.records.push({...value.records[0],action_id:'foreign-project',project_id:'33333333-3333-4333-8333-333333333333'},{...value.records[0],action_id:'foreign-checkout',checkout_id:'44444444-4444-4444-8444-444444444444'},{...value.records[0],action_id:'legacy-no-address',project_id:null,checkout_id:null});return value;});
- await tick();assert.equal(requested,projectId);assert.doesNotMatch(textOf(h.parent),/foreign-project|foreign-checkout|legacy-no-address/);assert.match(textOf(h.parent),/outside this checkout/);h.handle.dispose();
+ await tick();assert.equal(requested,projectId);h.click('ACTIVITY');assert.doesNotMatch(textOf(h.parent),/foreign-project|foreign-checkout|legacy-no-address/);assert.match(textOf(h.parent),/outside this checkout/);h.handle.dispose();
 });
 test('unknown project hides project records and disables Notebook while owner Integrity remains inspectable',async()=>{
  const h=harness(undefined,{project:async()=>{throw new Error('owner unavailable');},notebook:async()=>({records:[{record_id:'secret-notebook',content:'private-payload'}]})});
