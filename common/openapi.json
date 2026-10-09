@@ -15507,6 +15507,1553 @@
         ]
       }
     },
+    "/api/models/atlas": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "generated_at": {
+                      "type": "string"
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "model_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "display_name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "artifact_sha256": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "evaluation_state": {
+                            "type": "string",
+                            "enum": [
+                              "NEVER_EVALUATED",
+                              "CURRENT",
+                              "STALE",
+                              "INCOMPLETE"
+                            ]
+                          },
+                          "qualification_state": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "UNTESTED",
+                                  "TESTED",
+                                  "QUALIFIED",
+                                  "NOT_QUALIFIED",
+                                  "INVALID_EVIDENCE",
+                                  "STALE",
+                                  "REQUIRES_PREFLIGHT"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "latest_evaluation_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "latest_evaluated_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "stale_reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 80
+                            }
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "NONE",
+                              "RESOURCE",
+                              "FULL"
+                            ]
+                          },
+                          "recommended_roles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 64
+                            }
+                          },
+                          "candidate_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "model_id",
+                          "display_name",
+                          "artifact_sha256",
+                          "evaluation_state",
+                          "qualification_state",
+                          "latest_evaluation_id",
+                          "latest_evaluated_at",
+                          "stale_reasons",
+                          "scope",
+                          "recommended_roles",
+                          "candidate_id"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "generated_at",
+                    "models"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/atlas/candidate": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "generated_at": {
+                      "type": "string"
+                    },
+                    "candidate": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "schema": {
+                              "type": "string",
+                              "const": "covert.model-atlas.candidate.v1"
+                            },
+                            "candidate_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "model_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "display_name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "fingerprint": {
+                              "type": "object",
+                              "properties": {
+                                "model_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                },
+                                "source_revision": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 240
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "artifact_sha256": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "quantization": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 40
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "runtime_id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 240
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "runtime_version": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 120
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "harness_version": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 40
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "benchmark_id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 240
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "benchmark_version": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 40
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "grader_version": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 40
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "inference_config_digest": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "machine_profile_digest": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "execution_node": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 80
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "chat_template": {
+                                  "type": "string",
+                                  "enum": [
+                                    "present",
+                                    "absent",
+                                    "unknown"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "model_id",
+                                "source_revision",
+                                "artifact_sha256",
+                                "quantization",
+                                "runtime_id",
+                                "runtime_version",
+                                "harness_version",
+                                "benchmark_id",
+                                "benchmark_version",
+                                "grader_version",
+                                "inference_config_digest",
+                                "machine_profile_digest",
+                                "execution_node",
+                                "chat_template"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "reason": {
+                              "type": "string",
+                              "enum": [
+                                "NO_EVIDENCE",
+                                "STALE_EVIDENCE",
+                                "INCOMPLETE_EVIDENCE"
+                              ]
+                            },
+                            "stale_reasons": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            },
+                            "created_at": {
+                              "type": "string"
+                            },
+                            "execution": {
+                              "type": "object",
+                              "properties": {
+                                "mode": {
+                                  "type": "string",
+                                  "const": "AUTHORITY_REQUIRED"
+                                },
+                                "executed": {
+                                  "type": "boolean",
+                                  "const": false
+                                }
+                              },
+                              "required": [
+                                "mode",
+                                "executed"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "schema",
+                            "candidate_id",
+                            "model_id",
+                            "display_name",
+                            "fingerprint",
+                            "reason",
+                            "stale_reasons",
+                            "created_at",
+                            "execution"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "generated_at",
+                    "candidate"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          }
+        ]
+      }
+    },
+    "/api/models/atlas/record": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "generated_at": {
+                      "type": "string"
+                    },
+                    "record": {
+                      "type": "object",
+                      "properties": {
+                        "schema": {
+                          "type": "string",
+                          "const": "covert.model-atlas.evaluation.v1"
+                        },
+                        "evaluation_id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "model_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "display_name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "fingerprint": {
+                          "type": "object",
+                          "properties": {
+                            "model_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "source_revision": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "artifact_sha256": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "quantization": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 40
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "runtime_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "runtime_version": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 120
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "harness_version": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 40
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "benchmark_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "benchmark_version": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 40
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "grader_version": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 40
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "inference_config_digest": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "machine_profile_digest": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "execution_node": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 80
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "chat_template": {
+                              "type": "string",
+                              "enum": [
+                                "present",
+                                "absent",
+                                "unknown"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "model_id",
+                            "source_revision",
+                            "artifact_sha256",
+                            "quantization",
+                            "runtime_id",
+                            "runtime_version",
+                            "harness_version",
+                            "benchmark_id",
+                            "benchmark_version",
+                            "grader_version",
+                            "inference_config_digest",
+                            "machine_profile_digest",
+                            "execution_node",
+                            "chat_template"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "hardware_profile": {
+                          "type": "object",
+                          "properties": {
+                            "cpu": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 120
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "ram_bytes": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "gpu": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 120
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "vram_bytes": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "backend": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 40
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "digest": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "execution_node": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 80
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "execution_domain": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "INTERNAL",
+                                    "WORKSPACE",
+                                    "WSL",
+                                    "ISOLATED",
+                                    "EXTERNAL_HOST",
+                                    "REMOTE"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "cpu",
+                            "ram_bytes",
+                            "gpu",
+                            "vram_bytes",
+                            "backend",
+                            "digest",
+                            "execution_node",
+                            "execution_domain"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "native": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "condition": {
+                                  "type": "string",
+                                  "enum": [
+                                    "NATIVE",
+                                    "HARNESSED"
+                                  ]
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "COMPLETED",
+                                    "PARTIAL",
+                                    "FAILED",
+                                    "CANCELLED"
+                                  ]
+                                },
+                                "score": {
+                                  "type": "object",
+                                  "properties": {
+                                    "passed": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "total": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "ratio": {
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 1
+                                    }
+                                  },
+                                  "required": [
+                                    "passed",
+                                    "total",
+                                    "ratio"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "latency": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "total_ms": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        },
+                                        "mean_ms": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "total_ms",
+                                        "mean_ms"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "tokens": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "total": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "mean": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "total",
+                                        "mean"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "failures": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "code": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 240
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "code",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "categories": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 240
+                                      },
+                                      "passed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "total": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "passed",
+                                      "total"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "evidence_refs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 240
+                                  }
+                                }
+                              },
+                              "required": [
+                                "condition",
+                                "outcome",
+                                "score",
+                                "latency",
+                                "tokens",
+                                "failures",
+                                "categories",
+                                "evidence_refs"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "harnessed": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "condition": {
+                                  "type": "string",
+                                  "enum": [
+                                    "NATIVE",
+                                    "HARNESSED"
+                                  ]
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "COMPLETED",
+                                    "PARTIAL",
+                                    "FAILED",
+                                    "CANCELLED"
+                                  ]
+                                },
+                                "score": {
+                                  "type": "object",
+                                  "properties": {
+                                    "passed": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "total": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "ratio": {
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 1
+                                    }
+                                  },
+                                  "required": [
+                                    "passed",
+                                    "total",
+                                    "ratio"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "latency": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "total_ms": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        },
+                                        "mean_ms": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "total_ms",
+                                        "mean_ms"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "tokens": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "total": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "mean": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "total",
+                                        "mean"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "failures": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "code": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 240
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "code",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "categories": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 240
+                                      },
+                                      "passed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "total": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "passed",
+                                      "total"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "evidence_refs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 240
+                                  }
+                                }
+                              },
+                              "required": [
+                                "condition",
+                                "outcome",
+                                "score",
+                                "latency",
+                                "tokens",
+                                "failures",
+                                "categories",
+                                "evidence_refs"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "comparison": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "type": "string",
+                                  "const": "scaffold-ablation"
+                                },
+                                "delta_score": {
+                                  "type": "number"
+                                },
+                                "delta_latency_ms": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "delta_tokens": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "categories": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 240
+                                      },
+                                      "native_passed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "harnessed_passed": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "total": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "native_passed",
+                                      "harnessed_passed",
+                                      "total"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "delta_score",
+                                "delta_latency_ms",
+                                "delta_tokens",
+                                "categories"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "qualification": {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "UNTESTED",
+                                "TESTED",
+                                "QUALIFIED",
+                                "NOT_QUALIFIED",
+                                "INVALID_EVIDENCE",
+                                "STALE",
+                                "REQUIRES_PREFLIGHT"
+                              ]
+                            },
+                            "basis": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "source_revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "maxLength": 240
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "artifact_sha256": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "pattern": "^[a-f0-9]{64}$"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "runtime_id": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 240
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "runtime_version": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "maxLength": 120
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "source_revision",
+                                    "artifact_sha256",
+                                    "runtime_id",
+                                    "runtime_version"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "stale_reasons": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "basis",
+                            "stale_reasons"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "recommended_roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "CODER",
+                                  "PLANNER",
+                                  "REVIEWER",
+                                  "RESIDENT",
+                                  "VERIFIER",
+                                  "TOOL_USE",
+                                  "LOW_MEMORY",
+                                  "FAST_LOCAL",
+                                  "CLAIM_ADHERENCE",
+                                  "LONG_CONTEXT",
+                                  "COMPOUND_TASKS"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                }
+                              }
+                            },
+                            "required": [
+                              "role",
+                              "reason",
+                              "evidence_refs"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "known_failures": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "detail": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "detail"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "known_limitations": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          }
+                        },
+                        "evidence_refs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          }
+                        },
+                        "evaluated_at": {
+                          "type": "string"
+                        },
+                        "completed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receipt": {
+                          "type": "object",
+                          "properties": {
+                            "native_attempted": {
+                              "type": "boolean"
+                            },
+                            "harnessed_attempted": {
+                              "type": "boolean"
+                            },
+                            "executed": {
+                              "type": "boolean"
+                            },
+                            "notes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              }
+                            }
+                          },
+                          "required": [
+                            "native_attempted",
+                            "harnessed_attempted",
+                            "executed",
+                            "notes"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "freshness": {
+                          "type": "object",
+                          "properties": {
+                            "checked_at": {
+                              "type": "string"
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "FRESH",
+                                "STALE"
+                              ]
+                            },
+                            "scope": {
+                              "type": "string",
+                              "enum": [
+                                "NONE",
+                                "RESOURCE",
+                                "FULL"
+                              ]
+                            },
+                            "stale_reasons": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 80
+                              }
+                            }
+                          },
+                          "required": [
+                            "checked_at",
+                            "state",
+                            "scope",
+                            "stale_reasons"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "schema",
+                        "evaluation_id",
+                        "model_id",
+                        "display_name",
+                        "fingerprint",
+                        "hardware_profile",
+                        "native",
+                        "harnessed",
+                        "comparison",
+                        "qualification",
+                        "recommended_roles",
+                        "known_failures",
+                        "known_limitations",
+                        "evidence_refs",
+                        "evaluated_at",
+                        "completed_at",
+                        "receipt",
+                        "freshness"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "evaluation_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "evaluated_at": {
+                            "type": "string"
+                          },
+                          "native_ratio": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "harnessed_ratio": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "delta_score": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "qualification_state": {
+                            "type": "string",
+                            "enum": [
+                              "UNTESTED",
+                              "TESTED",
+                              "QUALIFIED",
+                              "NOT_QUALIFIED",
+                              "INVALID_EVIDENCE",
+                              "STALE",
+                              "REQUIRES_PREFLIGHT"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "evaluation_id",
+                          "evaluated_at",
+                          "native_ratio",
+                          "harnessed_ratio",
+                          "delta_score",
+                          "qualification_state"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "generated_at",
+                    "record",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          }
+        ]
+      }
+    },
     "/api/models/fit": {
       "post": {
         "responses": {
@@ -21094,6 +22641,117 @@
         }
       }
     },
+    "/api/resident/binding": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schema": {
+                      "type": "string",
+                      "const": "covert.resident-binding.v1"
+                    },
+                    "resident_id": {
+                      "type": "string",
+                      "const": "cipher"
+                    },
+                    "resident_model_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "resident_model_family": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "binding_state": {
+                      "type": "string",
+                      "enum": [
+                        "BOUND",
+                        "UNBOUND",
+                        "DEGRADED"
+                      ]
+                    },
+                    "availability_state": {
+                      "type": "string",
+                      "enum": [
+                        "AVAILABLE",
+                        "UNAVAILABLE",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "runtime_state": {
+                      "type": "string",
+                      "enum": [
+                        "RUNNING",
+                        "LOADABLE",
+                        "NOT_LOADABLE",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "execution_node": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "degraded_reason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "last_verified_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "resident_id",
+                    "resident_model_id",
+                    "resident_model_family",
+                    "binding_state",
+                    "availability_state",
+                    "runtime_state",
+                    "execution_node",
+                    "degraded_reason",
+                    "last_verified_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/resident/capabilities": {
       "get": {
         "responses": {
@@ -21497,8 +23155,7 @@
                                     "PLANNING",
                                     "IMPLEMENTATION",
                                     "REVIEW",
-                                    "UTILITY",
-                                    "BACKGROUND"
+                                    "UTILITY"
                                   ]
                                 }
                               },

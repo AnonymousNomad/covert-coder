@@ -606,6 +606,33 @@
     },
     {
       "method": "GET",
+      "path": "/api/models/atlas",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/models/atlas/candidate",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/models/atlas/record",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/models/manager",
       "match": "exact",
       "target": "ts",
@@ -742,6 +769,15 @@
     {
       "method": "GET",
       "path": "/api/replays",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/resident/binding",
       "match": "exact",
       "target": "ts",
       "classification": "PUBLIC_TYPED",

@@ -18,11 +18,11 @@
   },
   "counts": {
     "openApiOperationsBefore": 235,
-    "openApiOperationsAfter": 239,
+    "openApiOperationsAfter": 251,
     "openApiPathsBefore": 223,
-    "openApiPathsAfter": 227,
+    "openApiPathsAfter": 238,
     "typedRegistrationsBefore": 236,
-    "typedRegistrationsAfter": 239,
+    "typedRegistrationsAfter": 251,
     "typedPrefixRegistrationsAfter": 0,
     "facadeTypedToLegacyBefore": 35,
     "facadeTypedToLegacyAfter": 0,
@@ -5384,12 +5384,32 @@
         "classification": "PUBLIC_TYPED",
         "match": "exact"
       },
-      "currentFrontendCallers": [],
+      "currentFrontendCallers": [
+        {
+          "file": "browser/src/cockpit/CipherLaptop.ts",
+          "line": 454,
+          "methodEvidence": "GET",
+          "source": "try { response = await call('/api/provenance/runs', { schema: ProvenanceListResponse }); }"
+        }
+      ],
       "otherFrontendMethodReferences": [],
       "unresolvedFrontendPathReferences": [],
       "currentBackendInternalCallers": [],
       "otherBackendMethodReferences": [],
-      "unresolvedBackendPathReferences": [],
+      "unresolvedBackendPathReferences": [
+        {
+          "file": "node/src/services/app-catalog.ts",
+          "line": 72,
+          "methodEvidence": "UNKNOWN",
+          "source": "capability('cipher.provenance.read', 'ProvenanceLedger', '/api/provenance/runs', 'capability.read', ['OPERATOR'])"
+        },
+        {
+          "file": "node/src/services/app-catalog.ts",
+          "line": 77,
+          "methodEvidence": "UNKNOWN",
+          "source": "['evidence', 'verification', 'Evidence', 'ProvenanceLedger', [capability('evidence.provenance.read', 'ProvenanceLedger', '/api/provenance/runs', 'capability.read', ['OPERATOR', 'RESIDENT'])]],"
+        }
+      ],
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/harness-attempt.test.ts",
@@ -5867,12 +5887,32 @@
         "classification": "PUBLIC_TYPED",
         "match": "exact"
       },
-      "currentFrontendCallers": [],
+      "currentFrontendCallers": [
+        {
+          "file": "browser/src/cockpit/CipherLaptop.ts",
+          "line": 439,
+          "methodEvidence": "GET",
+          "source": "receipt = await call('/api/mission/receipt', { query: { id }, schema: MissionReceiptResponse });"
+        },
+        {
+          "file": "browser/src/cockpit/CipherLaptop.ts",
+          "line": 472,
+          "methodEvidence": "GET",
+          "source": "const loaded = await call('/api/mission/receipt', { query: { id }, schema: MissionReceiptResponse });"
+        }
+      ],
       "otherFrontendMethodReferences": [],
       "unresolvedFrontendPathReferences": [],
       "currentBackendInternalCallers": [],
       "otherBackendMethodReferences": [],
-      "unresolvedBackendPathReferences": [],
+      "unresolvedBackendPathReferences": [
+        {
+          "file": "node/src/services/app-catalog.ts",
+          "line": 71,
+          "methodEvidence": "UNKNOWN",
+          "source": "capability('cipher.mission-receipt.read', 'ProvenanceLedger', '/api/mission/receipt', 'capability.read', ['OPERATOR']),"
+        }
+      ],
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/provenance.test.ts",

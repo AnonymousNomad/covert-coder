@@ -131,7 +131,7 @@ export function routesForAgent(service: AgentLoopService, options: {
       args: { route: 'POST /api/agent/start', body: request, agent_target: binding } };
   };
   return [
-    { method: 'POST', path: '/api/agent/start', body: AgentStartRequest, response: AgentStartResponse, describeOperation, handler: wrap(async context => {
+    { method: 'POST', path: '/api/agent/start', capabilityPolicy: { owner: 'AgentLoopService', operation: 'agent.start' }, body: AgentStartRequest, response: AgentStartResponse, describeOperation, handler: wrap(async context => {
       const { body, execution } = context;
       const request = body as AgentStartRequestT;
       const target = targets.get(context);
@@ -302,18 +302,18 @@ export function routesForAgent(service: AgentLoopService, options: {
           : options.resolveEffectiveContext ? { effectiveContextTokens: (await options.resolveEffectiveContext()) ?? null } : {})
       });
     }) },
-    { method: 'POST', path: '/api/agent/decision', body: AgentDecisionRequest, response: AgentDecisionResponse, handler: wrap(async ({ body, execution }) => {
+    { method: 'POST', path: '/api/agent/decision', capabilityPolicy: { owner: 'AgentLoopService', operation: 'agent.decision' }, body: AgentDecisionRequest, response: AgentDecisionResponse, handler: wrap(async ({ body, execution }) => {
       const request = body as { session_id: string; approval_id: string; decision: 'approve' | 'reject' | 'abort' };
       return service.decide(request.session_id, request.approval_id, request.decision, execution);
     }) },
-    { method: 'POST', path: '/api/agent/cancel', body: AgentCancelRequest, response: AgentCancelResponse, handler: wrap(async ({ body, execution }) => {
+    { method: 'POST', path: '/api/agent/cancel', capabilityPolicy: { owner: 'AgentLoopService', operation: 'agent.cancel' }, body: AgentCancelRequest, response: AgentCancelResponse, handler: wrap(async ({ body, execution }) => {
       const request = body as { session_id: string };
       return service.cancel(request.session_id, execution);
     }) },
     { method: 'GET', path: '/api/agent/sessions', response: AgentSessionsListResponse, handler: wrap(async () => {
       return { sessions: service.list() };
     }) },
-    { method: 'GET', path: '/api/agent/status', query: AgentStatusQuery, response: AgentStatusResponse, handler: wrap(async ({ query }: RouteContext) => {
+    { method: 'GET', path: '/api/agent/status', capabilityPolicy: { owner: 'AgentLoopService', operation: 'agent.read' }, query: AgentStatusQuery, response: AgentStatusResponse, handler: wrap(async ({ query }: RouteContext) => {
       return service.status((query as { id: string }).id);
     }) },
     { method: 'POST', path: '/api/agent/tool', body: AgentToolInvokeRequest, response: AgentToolObservation, handler: wrap(async ({ body }) => {

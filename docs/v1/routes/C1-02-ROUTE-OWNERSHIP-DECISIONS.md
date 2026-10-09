@@ -15,9 +15,9 @@
 
 | Measure | Before | Current |
 | --- | ---: | ---: |
-| OpenAPI operations | 235 | 239 |
-| OpenAPI paths | 223 | 227 |
-| Typed registrations | 236 | 239 |
+| OpenAPI operations | 235 | 251 |
+| OpenAPI paths | 223 | 238 |
+| Typed registrations | 236 | 251 |
 | Typed prefix registrations | — | 0 |
 | Typed registrations selected to legacy | 35 | 0 |
 | Documented operations without selected-backend handler | 31 | 0 |
@@ -464,7 +464,7 @@ Frozen reproduction SHA: 61f3201d65987531618c671977fe8c5174377a8c. Implementatio
 - **Request shape:** [].
 - **Typed response shape:** {"type":"object","required":["runs","total","corrupt_lines"],"properties":{"runs":{"type":"array","maxItems":500,"items":{"type":"object","required":["run_id","task_id","task","mode","worker","handoff_id","chat_source","result","error","verification_state","evidence_file","trajectory_file","iterations","started_at","finished_at"],"properties":{"run_id":{"type":"string","minLength":1,"maxLength":200},"task_id":{"type":"string","minLength":1,"maxLength":200},"task":{"type":"string","maxLength":500},"mode":{"type":"string","maxLength":20},"worker":{"anyOf":[{"type":"string","maxLength":200},{"type":"null"}]},"handoff_id":{"anyOf":[{"type":"string","maxLength":200},{"type":"null"}]},"chat_source":{"anyOf":[{"type":"string","maxLength":40},{"type":"null"}]},"result":{"type":"string","enum":["done","error","aborted"]},"error":{"anyOf":[{"type":"string","maxLength":300},{"type":"null"}]},"verification_state":{"type":"string","maxLength":40},"evidence_file":{"anyOf":[{"type":"string","maxLength":500},{"type":"null"}]},"trajectory_file":{"anyOf":[{"type":"string","maxLength":500},{"type":"null"}]},"iterations":{"type":"integer","minimum":0,"maximum":9007199254740991},"attempt_id":{"anyOf":[{"type":"string","maxLength":200},{"type":"null"}]},"attempt_event_stream_ref":{"anyOf":[{"type":"string","maxLength":500},{"type":"null"}]},"started_at":{"type":"string"},"finished_at":{"type":"string"}},"additionalProperties":false}},"total":{"type":"integer","minimum":0,"maximum":9007199254740991},"corrupt_lines":{"type":"integer","minimum":0,"maximum":9007199254740991}},"additionalProperties":false}.
 - **Legacy response shape:** "NO_MATCHING_LEGACY_HANDLER".
-- **Frontend path references:** none found by bounded literal scan.
+- **Frontend path references:** browser/src/cockpit/CipherLaptop.ts:454.
 - **Backend/internal path references:** none found outside route/handler source by bounded literal scan.
 - **Legacy request shape:** "not applicable".
 
@@ -494,7 +494,7 @@ Frozen reproduction SHA: 61f3201d65987531618c671977fe8c5174377a8c. Implementatio
 - **Request shape:** [{"name":"id","in":"query","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}].
 - **Typed response shape:** {"type":"object","required":["mission_id","workspace","recorded_at","runs","handoffs","verification","supported_conclusion","limitations","evidence_refs"],"properties":{"mission_id":{"type":"string","maxLength":200},"workspace":{"type":"string","maxLength":1000},"recorded_at":{"type":"string"},"runs":{"type":"array","maxItems":200,"items":{"type":"object","required":["run_id","task_id","task","mode","worker","handoff_id","chat_source","result","error","verification_state","evidence_file","trajectory_file","iterations","started_at","finished_at"],"properties":{"run_id":{"type":"string","minLength":1,"maxLength":200},"task_id":{"type":"string","minLength":1,"maxLength":200},"task":{"type":"string","maxLength":500},"mode":{"type":"string","maxLength":20},"worker":{"anyOf":[{"type":"string","maxLength":200},{"type":"null"}]},"handoff_id":{"anyOf":[{"type":"string","maxLength":200},{"type":"null"}]},"chat_source":{"anyOf":[{"type":"string","maxLength":40},{"type":"null"}]},"result":{"type":"string","enum":["done","error","aborted"]},"error":{"anyOf":[{"type":"string","maxLength":300},{"type":"null"}]},"verification_state":{"type":"string","maxLength":40},"evidence_file":{"anyOf":[{"type":"string","maxLength":500},{"type":"null"}]},"trajectory_file":{"anyOf":[{"type":"string","maxLength":500},{"type":"null"}]},"iterations":{"type":"integer","minimum":0,"maximum":9007199254740991},"attempt_id":{"anyOf":[{"type":"string","maxLength":200},{"type":"null"}]},"attempt_event_stream_ref":{"anyOf":[{"type":"string","maxLength":500},{"type":"null"}]},"started_at":{"type":"string"},"finished_at":{"type":"string"}},"additionalProperties":false}},"handoffs":{"type":"array","maxItems":50,"items":{"type":"object","required":["handoff_id","from","to","state","objective"],"properties":{"handoff_id":{"type":"string","maxLength":200},"from":{"type":"string","maxLength":200},"to":{"type":"string","maxLength":200},"state":{"type":"string","maxLength":40},"objective":{"type":"string","maxLength":2000}},"additionalProperties":false}},"verification":{"type":"string","maxLength":40},"supported_conclusion":{"anyOf":[{"type":"string","maxLength":600},{"type":"null"}]},"limitations":{"type":"array","maxItems":20,"items":{"type":"string","maxLength":300}},"evidence_refs":{"type":"array","maxItems":50,"items":{"type":"string","maxLength":500}}},"additionalProperties":false}.
 - **Legacy response shape:** "NO_MATCHING_LEGACY_HANDLER".
-- **Frontend path references:** none found by bounded literal scan.
+- **Frontend path references:** browser/src/cockpit/CipherLaptop.ts:439, browser/src/cockpit/CipherLaptop.ts:472.
 - **Backend/internal path references:** none found outside route/handler source by bounded literal scan.
 - **Legacy request shape:** "not applicable".
 

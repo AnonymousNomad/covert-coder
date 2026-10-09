@@ -28,6 +28,7 @@ import { createSettingsSurface } from './SettingsSurface.ts';
 import { createWalkthrough, type WalkthroughHandles } from './Walkthrough.ts';
 import { createSetupSession, type SetupSessionHandles } from './SetupSession.ts';
 import { showToast } from '../ui/toast.ts';
+import { createCipherLaptop } from './CipherLaptop.ts';
 
 interface DisposablePanel {
   dispose(): void;
@@ -62,6 +63,7 @@ export interface CockpitHandles {
 const PANEL_IDS: Panel[] = [
   'command-center',
   'resident',
+  'cipher-laptop',
   'projects',
   'editor',
   'terminal',
@@ -129,6 +131,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
               </div>
               <div class="cockpit-workflow-mount" id="cockpit-workflow-mount"></div>
             </section>
+            <section class="cockpit-panel-stage" id="cockpit-cipher-laptop-stage" data-panel="cipher-laptop"></section>
             <section class="cockpit-panel-stage" id="cockpit-projects-stage" data-panel="projects"></section>
             <section class="cockpit-panel-stage" id="cockpit-terminal-stage" data-panel="terminal"></section>
             <section class="cockpit-panel-stage" id="cockpit-models-stage" data-panel="models"></section>
@@ -162,6 +165,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const topbarHost = app.querySelector<HTMLElement>('#cockpit-topbar');
   const navHost = app.querySelector<HTMLElement>('#cockpit-nav');
   const commandStage = app.querySelector<HTMLElement>('#cockpit-command-stage');
+  const cipherLaptopStage = app.querySelector<HTMLElement>('#cockpit-cipher-laptop-stage');
   const residentMount = app.querySelector<HTMLElement>('#cockpit-resident-mount');
   const commandCenterMount = app.querySelector<HTMLElement>('#cockpit-command-center-mount');
   const workflowMount = app.querySelector<HTMLElement>('#cockpit-workflow-mount');
@@ -185,7 +189,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
   const lspStatus = app.querySelector<HTMLElement>('#cockpit-lsp-status');
   const ambientHost = app.querySelector<HTMLElement>('.cockpit-ambient');
 
-  if (!topbarHost || !navHost || !commandStage || !residentMount || !commandCenterMount || !workflowMount || !projectsStage || !terminalStage || !modelsStage || !skillsStage || !memoryStage || !verificationStage || !securityStage || !extensionsStage || !settingsStage || !editorMount || !editorWorkspace || !searchMount || !modelSlot || !telemetrySlot || !activitySlot || !bottomHost || !statusRoot || !lspStatus || !ambientHost) {
+  if (!topbarHost || !navHost || !commandStage || !cipherLaptopStage || !residentMount || !commandCenterMount || !workflowMount || !projectsStage || !terminalStage || !modelsStage || !skillsStage || !memoryStage || !verificationStage || !securityStage || !extensionsStage || !settingsStage || !editorMount || !editorWorkspace || !searchMount || !modelSlot || !telemetrySlot || !activitySlot || !bottomHost || !statusRoot || !lspStatus || !ambientHost) {
     throw new Error('cockpit shell mounts failed');
   }
 
@@ -206,6 +210,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
 
   const commandCenter = lazyPanel(commandCenterMount, () => createCommandCenterPanel(commandCenterMount, store));
   const workflow = lazyPanel(workflowMount, () => renderWorkflowStrip(workflowMount, store));
+  const cipherLaptop = lazyPanel(cipherLaptopStage, () => createCipherLaptop(cipherLaptopStage, { onToast: notify }));
   const projectsRegistration = lazyPanel(projectsStage, () => {
     projects = createProjectsSurface(projectsStage, store, { onToast: notify });
     if (editorHost !== null) projects.setEditorHost(editorHost);
@@ -241,6 +246,7 @@ export function mountCockpit(app: HTMLElement, store: Store<AppState>): CockpitH
       },
       dispose(): void {}
     },
+    'cipher-laptop': cipherLaptop,
     projects: projectsRegistration,
     editor: {
       root: editorMount,

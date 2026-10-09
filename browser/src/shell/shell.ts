@@ -97,6 +97,7 @@ export function createShell(app: HTMLElement, store: Store<AppState>): Shell {
   const stages: Record<Panel, HTMLElement | null> = {
     'command-center': document.getElementById('stage-command-center'),
     'resident': document.getElementById('stage-resident'),
+    'cipher-laptop': null,
     'projects': document.getElementById('stage-projects'),
     'editor': null,
     'terminal': document.getElementById('stage-terminal'),

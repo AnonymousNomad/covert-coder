@@ -5,6 +5,7 @@ import { isPrivatePlatformStatePath } from '../../common/security/private-platfo
 test('Windows platform record aliases including default alternate streams stay private', () => {
   for (const target of [
     '.aide/platform-projects/catalog.json', '.AIDE/PLATFORM-PROJECTS /catalog.json',
+    '.aide/atlas/evaluations/model.json', '.AIDE/ATLAS/candidates/model.json',
     '.aide/platform-projects-enrollment.json', '.AIDE/PLATFORM-PROJECTS-ENROLLMENT.JSON.',
     '.aide/platform-projects-enrollment.json::$DATA', '.aide/platform-projects-enrollment.json:notes',
     '.aide/cipher-laptop::$DATA/ledger.json'

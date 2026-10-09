@@ -12,7 +12,10 @@ import { pairFixture, pairServiceFixture } from './authority-fixture.ts';
 import type { AgentLoopService } from '../../node/src/services/agent-loop.mjs';
 import type { ModelRouter, ResolvedChatAuthorityTarget } from '../../node/src/services/model-router.ts';
 import { httpOperationKind } from '../../common/security/operation-policy.mjs';
-import { residentWorkerForSelection } from '../../browser/src/cockpit/resident-worker-selection.ts';
+import { residentWorkerForBinding } from '../../browser/src/cockpit/resident-worker-selection.ts';
+import type { ResidentBindingT } from '../../common/contracts/resident-binding.ts';
+import type { ModelManagerResponseT } from '../../common/contracts/model-access.ts';
+import type { RoutesResponseT } from '../../common/contracts/routing.ts';
 import { WorkerHandoffEnvelope } from '../../common/contracts/worker-handoff.ts';
 
 const workspace = 'C:\\covert-exact-worker-fixture';
@@ -83,10 +86,10 @@ test('local target uses execute risk, while missing or unresolved exact workers 
     (error: unknown) => error instanceof RouteError && error.code === 'NOT_READY');
 });
 
-async function eventually(probe: () => boolean) {
+async function eventually(probe: () => boolean, failureDetail: () => string = () => '') {
   const deadline = Date.now() + 5000;
   while (!probe() && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
-  assert.ok(probe(), 'controlled worker lifecycle did not settle');
+  assert.ok(probe(), `controlled worker lifecycle did not settle${failureDetail() ? ` · ${failureDetail()}` : ''}`);
 }
 
 async function withRouteFixture(run: (fixture: {
@@ -131,16 +134,23 @@ async function withRouteFixture(run: (fixture: {
   const owner = await pairFixture(server, `http://127.0.0.1:${address.port}`);
   try { await run({ owner, loop, state, workspace: root }); }
   finally {
-    for (const session of loop.list().filter(item => item.state === 'running' || item.state === 'awaiting_approval')) {
-      const input = { session_id: session.session_id };
-      const headers = await owner.approve('POST', '/api/agent/cancel', input, 'fixture-cleanup');
-      await owner.request('/api/agent/cancel', { method: 'POST', headers, body: JSON.stringify(input) });
+    try {
+      for (const session of loop.list().filter(item => item.state === 'running' || item.state === 'awaiting_approval')) {
+        const input = { session_id: session.session_id };
+        const headers = await owner.approve('POST', '/api/agent/cancel', input, 'fixture-cleanup');
+        await owner.request('/api/agent/cancel', { method: 'POST', headers, body: JSON.stringify(input) });
+      }
+      await eventually(() => loop.list().every(item => ['done', 'error', 'aborted'].includes(item.state)), () => JSON.stringify(loop.list().map(item => ({ session_id: item.session_id, state: item.state, error: item.error }))));
+    } finally {
+      server.events.close();
+      try { await server.logger.flush(); }
+      finally {
+        http.closeAllConnections();
+        await new Promise<void>(resolve => http.close(() => resolve()));
+        server.authority.control.close();
+        await fs.rm(root, { recursive: true, force: true });
+      }
     }
-    await eventually(() => loop.list().every(item => ['done', 'error', 'aborted'].includes(item.state)));
-    server.events.close(); await server.logger.flush(); http.closeAllConnections();
-    await new Promise<void>(resolve => http.close(() => resolve()));
-    server.authority.control.close();
-    await fs.rm(root, { recursive: true, force: true });
   }
 }
 type StartEnvelope = { ok: boolean; data?: { session_id: string }; error?: { code: string } };
@@ -220,22 +230,58 @@ test('service rejects stripped or changed approved target and forged worker meta
   } finally { fixture.authority.control.close(); await fs.rm(root, { recursive: true, force: true }); }
 });
 
-test('Resident projects the project role default exactly, without a local/cloud fallback', () => {
-  const localView = { connections: { routed_roles: { planner: 'local' as const, coder: 'local' as const, reviewer: 'local' as const, utility: 'local' as const }, preference: 'local-first' as const },
-    runtime: { selected_model_id: 'observed-loaded-model', health: 'HEALTHY' as const } };
-  assert.throws(() => residentWorkerForSelection(localView), /No exact coder model is selected.*not an implicit role selection/);
-  const cloudView = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, coder: { provider_id: 'opencode', model_id: 'opencode-go/exact-model' } } } };
-  assert.deepEqual(residentWorkerForSelection(cloudView), { worker: 'cloud:opencode:opencode-go/exact-model', provider: 'opencode', model: 'opencode-go/exact-model', role: 'coder' });
-  const reviewView = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, reviewer: { provider_id: 'opencode', model_id: 'opencode-go/review-model' } } } };
-  assert.deepEqual(residentWorkerForSelection(reviewView, 'reviewer'), { worker: 'cloud:opencode:opencode-go/review-model', provider: 'opencode', model: 'opencode-go/review-model', role: 'reviewer' });
-  const exactLocalCoder = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, coder: { provider_id: 'local', model_id: 'observed-loaded-model' } } } };
-  assert.deepEqual(residentWorkerForSelection(exactLocalCoder), { worker: 'local:observed-loaded-model', provider: 'local', model: 'observed-loaded-model', role: 'coder' });
-  const exactLocalReviewer = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, reviewer: { provider_id: 'local', model_id: 'other-local-model' } } } };
-  assert.throws(() => residentWorkerForSelection(exactLocalReviewer, 'reviewer'), /exact local reviewer model is not the healthy loaded model/);
-  assert.throws(() => residentWorkerForSelection({ ...cloudView, connections: { ...cloudView.connections, preference: 'local-only' } }), /Local-Only/);
-  const clearedWhileLoaded = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, coder: 'local' as const } } };
-  assert.throws(() => residentWorkerForSelection(clearedWhileLoaded), /No exact coder model is selected/);
-  assert.throws(() => residentWorkerForSelection({ ...localView, runtime: { ...localView.runtime, selected_model_id: null } }), /No exact coder model is selected/);
+test('Cipher dispatch stays bound to the qualified Liquid Resident and never falls back to a ready worker', () => {
+  const hash = 'a'.repeat(64);
+  const binding: ResidentBindingT = {
+    schema: 'covert.resident-binding.v1', resident_id: 'cipher', resident_model_id: 'liquid-2.6b',
+    resident_model_family: 'liquid', binding_state: 'BOUND', availability_state: 'AVAILABLE',
+    runtime_state: 'RUNNING', execution_node: 'local-windows', degraded_reason: null,
+    last_verified_at: '2026-10-09T12:00:00.000Z'
+  };
+  const liquidModel = {
+    identity: {
+      canonical_id: 'liquid-2.6b', display_name: 'Liquid 2.6B', family: 'liquid', capabilities: [],
+      context_window_tokens: 4096,
+      qualification: { state: 'QUALIFIED', basis: { source_revision: 'revision-1', artifact_sha256: hash, runtime_id: 'unsloth', runtime_version: '2026.9.11' }, stale_reasons: [] }
+    },
+    artifact_ids: ['artifact:liquid'], availability: 'INSTALLED', compatibility: 'COMPATIBLE',
+    readiness: 'READY', recommended_roles: ['RESIDENT'], execution_selected_roles: []
+  };
+  const otherReadyModel = {
+    ...liquidModel,
+    identity: { ...liquidModel.identity, canonical_id: 'other-ready-model', display_name: 'Other Ready Model', family: 'coder' },
+    artifact_ids: ['artifact:other']
+  };
+  const manager = {
+    models: [liquidModel, otherReadyModel],
+    artifacts: [
+      { id: 'artifact:liquid', model_id: 'liquid-2.6b', hash_status: 'VERIFIED', observed_sha256: hash },
+      { id: 'artifact:other', model_id: 'other-ready-model', hash_status: 'VERIFIED', observed_sha256: 'b'.repeat(64) }
+    ],
+    runtime: { selected_model_id: 'liquid-2.6b', health: 'HEALTHY' }
+  } as unknown as ModelManagerResponseT;
+  const routes = {
+    routes: [
+      { id: 'local:liquid-2.6b', displayName: 'Liquid 2.6B', providerType: 'local', baseUrl: 'http://127.0.0.1:1', modelString: 'liquid-2.6b', contextLength: 4096, chatTemplate: 'gguf', status: 'ready', probeMs: 1, roles: ['chat'], capabilities: [] },
+      { id: 'local:other-ready-model', displayName: 'Other Ready Model', providerType: 'local', baseUrl: 'http://127.0.0.1:2', modelString: 'other-ready-model', contextLength: 4096, chatTemplate: 'gguf', status: 'ready', probeMs: 1, roles: ['chat'], capabilities: [] },
+      { id: 'cloud:fixture:remote', displayName: 'Remote', providerType: 'cloud', baseUrl: 'https://example.invalid', modelString: 'remote', contextLength: 4096, chatTemplate: 'provider', status: 'ready', probeMs: 1, roles: ['chat'], capabilities: [] }
+    ]
+  } as unknown as RoutesResponseT;
+
+  assert.deepEqual(residentWorkerForBinding(binding, manager, routes), {
+    worker: 'local:liquid-2.6b', provider: 'local', model: 'liquid-2.6b', role: 'coder'
+  });
+  assert.deepEqual(residentWorkerForBinding(binding, manager, routes, 'planner'), {
+    worker: 'local:liquid-2.6b', provider: 'local', model: 'liquid-2.6b', role: 'planner'
+  });
+
+  const withoutLiquidRoute = { routes: routes.routes.filter(route => route.id !== 'local:liquid-2.6b') } as RoutesResponseT;
+  assert.throws(() => residentWorkerForBinding(binding, manager, withoutLiquidRoute), /exact Cipher model route is not ready/);
+  assert.throws(() => residentWorkerForBinding(binding, { ...manager, runtime: { ...manager.runtime, selected_model_id: 'other-ready-model' } }, routes), /exact Cipher model is not the healthy loaded runtime model/);
+  assert.throws(() => residentWorkerForBinding(binding, { ...manager, models: [{ ...liquidModel, identity: { ...liquidModel.identity, qualification: { ...liquidModel.identity.qualification, state: 'STALE' } } }, otherReadyModel] } as unknown as ModelManagerResponseT, routes), /not currently qualified and ready/);
+  assert.throws(() => residentWorkerForBinding(binding, { ...manager, models: [{ ...liquidModel, identity: { ...liquidModel.identity, qualification: { ...liquidModel.identity.qualification, stale_reasons: ['artifact_changed'] } } }, otherReadyModel] } as unknown as ModelManagerResponseT, routes), /not currently qualified and ready/);
+  assert.throws(() => residentWorkerForBinding({ ...binding, runtime_state: 'LOADABLE' }, manager, routes), /not currently bound and running/);
+  assert.throws(() => residentWorkerForBinding({ ...binding, resident_model_family: 'other' }, manager, routes), /canonical Liquid model family/);
 });
 
 test('a changed target between turns and a different returned model fail without any legacy fallback', async () => {
@@ -275,11 +321,15 @@ test('handoff wrapper preserves the exact worker cancellation signal', async () 
     const headers = await owner.approve('POST', '/api/agent/start', request, 'handoff-cancellation');
     const response = await owner.request('/api/agent/start', { method: 'POST', headers, body: JSON.stringify(request) });
     const started = await response.json() as StartEnvelope;
-    assert.equal(response.status, 200); assert.ok(started.data); await eventually(() => state.calls.length === 1);
+    assert.equal(response.status, 200); assert.ok(started.data);
+    await eventually(() => state.calls.length === 1, () => `model_calls=${state.calls.length}; state=${JSON.stringify(loop.status(started.data!.session_id))}`);
     const input = { session_id: started.data.session_id };
     const cancelHeaders = await owner.approve('POST', '/api/agent/cancel', input, 'cancel-handoff');
-    assert.equal((await owner.request('/api/agent/cancel', { method: 'POST', headers: cancelHeaders, body: JSON.stringify(input) })).status, 200);
-    await eventually(() => loop.status(started.data!.session_id).state === 'aborted');
-    assert.equal(state.consumes, 1); assert.equal(state.signals[0]!.aborted, true); assert.equal(state.legacyCalls, 0);
+    const cancelResponse = await owner.request('/api/agent/cancel', { method: 'POST', headers: cancelHeaders, body: JSON.stringify(input) });
+    assert.equal(cancelResponse.status, 200);
+    await eventually(() => loop.status(started.data!.session_id).state === 'aborted', () => `status=${JSON.stringify(loop.status(started.data!.session_id))}; consumes=${state.consumes}; signals=${state.signals.map(signal => signal.aborted).join(',')}`);
+    assert.equal(state.consumes, 1);
+    assert.equal(state.signals[0]?.aborted, true, `handoff worker signals=${state.signals.map(signal => signal.aborted).join(',')}`);
+    assert.equal(state.legacyCalls, 0);
   });
 });

@@ -37,6 +37,7 @@ export function routesForProvenance(service: Service): Route[] {
     {
       method: 'GET',
       path: '/api/mission/receipt',
+      capabilityPolicy: { owner: 'ProvenanceLedger', operation: 'capability.read' },
       query: MissionReceiptQuery,
       response: MissionReceiptResponse,
       handler: async ({ query }) => await service.receipt(String(query.id))

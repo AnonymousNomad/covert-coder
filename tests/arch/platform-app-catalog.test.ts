@@ -64,9 +64,11 @@ test('unknown app/capability and cross-app capability are refused rather than fa
 
 test('all capability routes present still leaves every application execution gated', () => fixture(async ({ catalog, seat, address }) => {
   const inventory = (await catalog.read(address)).apps;
-  const registered = inventory.flatMap(app => app.manifest.capabilities.map(c => ({ method: c.method, path: c.route, capabilityPolicy: { owner: c.owner, operation: c.operation_kind }, ...(c.id === 'project.identity.read' ? { describeOperation: async () => ({ kind: 'capability.read' }) } : {}) })));
+  const routeRows = inventory.flatMap(app => app.manifest.capabilities.map(c => ({ method: c.method, path: c.route, capabilityPolicy: { owner: c.owner, operation: c.operation_kind }, ...(httpOperationKind(c.method, c.route) === null ? { describeOperation: async () => ({ kind: c.operation_kind }) } : {}) })));
+  const registered = [...new Map(routeRows.map(route => [`${route.method} ${route.path}`, route] as const)).values()];
   const view = await createAppCatalog(seat, registered).read(address);
-  assert.ok(view.apps.every(app => app.capability_bindings.every(c => c.state === 'ADDRESSABLE')));
+  assert.ok(view.apps.every(app => app.capability_bindings.every(c => c.state === 'ADDRESSABLE')),
+    JSON.stringify(view.apps.flatMap(app => app.capability_bindings.filter(capability => capability.state !== 'ADDRESSABLE').map(capability => ({ app: app.manifest.app_id, ...capability })))));
   assert.ok(view.apps.every(app => app.execution_state === 'GATED' && app.grant_state === 'NOT_EVALUATED' && app.admission_state === 'NOT_EVALUATED'));
 }));
 
@@ -76,6 +78,8 @@ test('effect and audience describe exact domain policy rather than method or bla
   assert.equal(open.method, 'POST'); assert.equal(open.operation_kind, 'terminal.session.start'); assert.equal(open.effect, 'EXECUTE');
   assert.equal(OPERATION_POLICY[httpOperationKind('POST', '/api/git/diff')!], 'read');
   assert.deepEqual(caps.find(c => c.id === 'cipher.activity.read')!.audiences, ['OPERATOR']);
+  assert.equal(caps.find(c => c.id === 'cipher.agent.start')!.operation_kind, 'agent.start');
+  assert.deepEqual(caps.find(c => c.id === 'cipher.agent.start')!.audiences, ['OPERATOR']);
   assert.deepEqual(caps.find(c => c.id === 'settings.read')!.audiences, ['OPERATOR']);
   assert.deepEqual(caps.find(c => c.id === 'workspace.file.write')!.audiences, ['OPERATOR', 'WORKER']);
 }));
@@ -234,7 +238,7 @@ test('production HTTP mount validates scope/identity and never installs or permi
     for (const app of data.apps) for (const capability of app.manifest.capabilities) {
       const registered = routes.some(route => route.method === capability.method && route.path === capability.route);
       const binding = app.capability_bindings.find((entry: { id: string }) => entry.id === capability.id);
-      assert.equal(binding.state, registered ? 'ADDRESSABLE' : 'UNAVAILABLE');
+      assert.equal(binding.state, registered ? 'ADDRESSABLE' : 'UNAVAILABLE', `${app.manifest.app_id}:${capability.id}:${binding.reason}`);
       assert.equal(binding.reason, registered ? 'ROUTE_REGISTERED' : 'OWNER_ROUTE_UNAVAILABLE');
     }
     assert.equal((await owner.request('/api/apps/catalog')).status, 400);

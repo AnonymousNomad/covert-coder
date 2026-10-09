@@ -19,6 +19,7 @@ export type Activity = 'editor' | 'learn' | 'map' | 'exp' | 'run';
 export type Panel =
   | 'command-center'
   | 'resident'
+  | 'cipher-laptop'
   | 'projects'
   | 'editor'
   | 'terminal'

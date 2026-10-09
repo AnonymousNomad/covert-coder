@@ -8,7 +8,7 @@ import type { Store } from '../store/store.ts';
 import type { AppState, ResidentTaskProjection } from '../store/state.ts';
 import { api, call, ApiError } from '../services/api.ts';
 import { createChatPanel } from '../chat/chat.ts';
-import { residentWorkerForSelection } from './resident-worker-selection.ts';
+import { residentWorkerForBinding } from './resident-worker-selection.ts';
 import { createOperatorIdentity, type OperatorIdentityHandles, type OperatorPresenceState } from './OperatorIdentity.ts';
 import {
   AgentDecisionRequest,
@@ -27,6 +27,7 @@ import type {
   ResidentPushSummaryT,
   ResidentDecisionT
 } from '../../../common/contracts/resident.ts';
+import { ResidentBinding } from '../../../common/contracts/resident-binding.ts';
 
 export interface ResidentCoreHandles {
   root: HTMLElement;
@@ -102,7 +103,7 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
 
   const quickActions = el('div', 'cockpit-resident-quick');
   quickActions.appendChild(el('h2', 'cockpit-resident-section-title', 'QUICK ACTIONS'));
-  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'GOVERNED TASKS · one owned task at a time. Project ACT worker comes from Model Access; dispatch requires exact target approval.'));
+  quickActions.appendChild(el('p', 'cockpit-resident-maturity-note', 'GOVERNED TASKS · Cipher always uses his exact Liquid Resident binding; dispatch and each effect remain subject to Authority.'));
   const actionsRow = el('div', 'cockpit-resident-actions');
   for (const action of QUICK_ACTIONS) {
     const btn = document.createElement('button');
@@ -314,12 +315,16 @@ export function createResidentCore(parent: HTMLElement, store: Store<AppState>, 
     selectionController = controller;
     const deadline = window.setTimeout(() => controller.abort(), 10000);
     busy = true;
-    save({ presentationOwner, request: parsed.data, phase: 'selecting', sessionId: null, status: null, message: 'Reading the exact project worker from Model Access…' });
+    save({ presentationOwner, request: parsed.data, phase: 'selecting', sessionId: null, status: null, message: 'Checking Cipher’s canonical Resident binding and exact Liquid readiness…' });
     paintAgentStatus();
     try {
-      const view = await api.modelManager(controller.signal);
+      const [binding, view, routes] = await Promise.all([
+        call('/api/resident/binding', { schema: ResidentBinding, signal: controller.signal }),
+        api.modelManager(controller.signal),
+        api.routes()
+      ]);
       if (!ownsPresentation(ticket)) return;
-      const worker = residentWorkerForSelection(view);
+      const worker = residentWorkerForBinding(binding, view, routes);
       const request = AgentStartRequest.parse({ ...parsed.data, worker, chat_source: worker.provider === 'local' ? 'local' : 'provider' });
       busy = false;
       save({ ...projection!, request, phase: 'unknown', message: null });

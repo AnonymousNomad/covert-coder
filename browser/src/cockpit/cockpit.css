@@ -2029,6 +2029,71 @@ html, body {
 .cockpit-walkthrough-finish { border-color: rgba(34, 255, 136, 0.5); color: #b8ffd9; background: rgba(34, 255, 136, 0.1); }
 .cockpit-rail-item.cockpit-walkthrough-target { outline: 1px solid rgba(0, 229, 255, 0.8); outline-offset: 2px; }
 
+/* Cipher's Laptop is a compact operator surface over canonical state owners. */
+.cipher-laptop {
+  --cipher-green: #9bffb8;
+  --cipher-green-dim: #5dbe79;
+  --cipher-line: rgba(128, 242, 158, 0.24);
+  --cipher-panel: rgba(5, 18, 12, 0.82);
+  min-height: 100%;
+  padding: clamp(16px, 2vw, 28px);
+  color: #d8f1dc;
+  background: radial-gradient(ellipse at 80% 0%, rgba(31, 105, 57, 0.16), transparent 48%), #07100b;
+  font-family: "Consolas", "Cascadia Mono", monospace;
+}
+.cipher-laptop-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--cipher-line); }
+.cipher-laptop-title-block { min-width: 0; }
+.cipher-laptop-kicker, .cipher-laptop-label { margin: 0; color: var(--cipher-green-dim); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+.cipher-laptop-title { margin: 5px 0 0; color: var(--cipher-green); font-size: clamp(18px, 2.2vw, 27px); letter-spacing: 0.12em; }
+.cipher-laptop-boundary, .cipher-laptop-note { color: #a8c8ae; font-size: 11px; line-height: 1.55; }
+.cipher-laptop-boundary { max-width: 1000px; margin: 14px 0; }
+.cipher-laptop-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr); gap: 14px; }
+.cipher-laptop-panel { min-width: 0; padding: 16px; border: 1px solid var(--cipher-line); background: var(--cipher-panel); box-shadow: inset 0 0 28px rgba(34, 123, 62, 0.06); }
+.cipher-laptop-heading { margin: 5px 0 14px; color: #e2ffe8; font-size: 16px; font-weight: 500; }
+.cipher-laptop-status-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.cipher-laptop-status-card { min-width: 0; padding: 12px; border: 1px solid var(--cipher-line); background: rgba(7, 23, 13, 0.76); }
+.cipher-laptop-value { display: block; overflow-wrap: anywhere; margin: 8px 0 5px; color: var(--cipher-green); font-size: 13px; }
+.cipher-laptop-detail { display: block; overflow-wrap: anywhere; color: #9db8a2; font-size: 10px; line-height: 1.45; }
+.cipher-laptop-objective { display: block; width: 100%; min-height: 120px; margin: 7px 0 12px; padding: 10px; resize: vertical; color: #d9f1dd; background: #08150c; border: 1px solid var(--cipher-line); font: inherit; font-size: 12px; line-height: 1.5; }
+.cipher-laptop-plan-editor { display: block; width: 100%; min-height: 180px; margin: 7px 0 12px; padding: 10px; resize: vertical; color: #d9f1dd; background: #08150c; border: 1px solid var(--cipher-line); font: 11px/1.5 "Consolas", "Cascadia Mono", monospace; }
+.cipher-laptop-objective:focus { outline: 1px solid var(--cipher-green-dim); }
+.cipher-laptop-plan-editor:focus { outline: 1px solid var(--cipher-green-dim); }
+.cipher-laptop-context { margin: 12px 0; border: 1px solid rgba(128, 242, 158, 0.14); }
+.cipher-laptop-summary { padding: 8px; color: var(--cipher-green-dim); cursor: pointer; font-size: 10px; letter-spacing: 0.1em; }
+.cipher-laptop-context-text, .cipher-laptop-plan-output, .cipher-laptop-result-output { max-height: 380px; overflow: auto; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere; color: #c5e7cc; background: rgba(0, 0, 0, 0.24); font: 11px/1.5 "Consolas", "Cascadia Mono", monospace; }
+.cipher-laptop-button { min-height: 34px; padding: 8px 11px; color: #d8f1dc; background: rgba(41, 103, 57, 0.16); border: 1px solid var(--cipher-line); cursor: pointer; font: inherit; font-size: 10px; letter-spacing: 0.07em; }
+.cipher-laptop-button:hover:not(:disabled) { border-color: var(--cipher-green-dim); }
+.cipher-laptop-button:disabled { opacity: 0.42; cursor: not-allowed; }
+.cipher-laptop-button-primary { color: #caffd5; border-color: rgba(155, 255, 184, 0.58); background: rgba(49, 137, 73, 0.23); }
+.cipher-laptop-button-danger { border-color: rgba(243, 137, 116, 0.44); color: #ffc3b4; }
+.cipher-laptop-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.cipher-laptop-dossiers, .cipher-laptop-recent-list { display: grid; gap: 8px; }
+.cipher-laptop-dossier-row, .cipher-laptop-recent-row { padding: 10px; border: 1px solid rgba(128, 242, 158, 0.14); background: rgba(3, 13, 7, 0.55); }
+.cipher-laptop-dossier-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px; color: #d8f1dc; font-size: 11px; }
+.cipher-laptop-badge { color: var(--cipher-green-dim); font-size: 9px; letter-spacing: 0.08em; }
+.cipher-laptop-dossier-id, .cipher-laptop-recent-id { color: #9ec8a7; font-size: 10px; overflow-wrap: anywhere; }
+.cipher-laptop-dossier-detail, .cipher-laptop-team-row, .cipher-laptop-empty { color: #b3ccb8; font-size: 10px; line-height: 1.5; }
+.cipher-laptop-team { margin-top: 12px; padding: 10px; border: 1px solid rgba(128, 242, 158, 0.2); }
+.cipher-laptop-subheading { margin: 8px 0; color: var(--cipher-green); font-size: 11px; letter-spacing: 0.08em; }
+.cipher-laptop-mission, .cipher-laptop-recent { margin-top: 14px; }
+.cipher-laptop-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cipher-laptop-stage { padding: 8px; border: 1px solid rgba(128, 242, 158, 0.15); }
+.cipher-laptop-stage-name { display: block; color: var(--cipher-green-dim); font-size: 9px; letter-spacing: 0.1em; }
+.cipher-laptop-stage-state { display: block; margin-top: 6px; color: #cde8d1; font-size: 10px; }
+.cipher-laptop-stage[data-state="done"], .cipher-laptop-stage[data-state="completed"] { border-color: rgba(155, 255, 184, 0.6); }
+.cipher-laptop-stage[data-state="error"], .cipher-laptop-stage[data-state="aborted"] { border-color: rgba(243, 137, 116, 0.6); }
+.cipher-laptop-pending { margin: 12px 0; padding: 10px; border: 1px solid rgba(255, 192, 98, 0.38); }
+.cipher-laptop-risk { color: #ffcc83; font-size: 10px; }
+.cipher-laptop-receipt { padding: 10px; border: 1px solid var(--cipher-line); white-space: pre-wrap; overflow-wrap: anywhere; color: #bbd9c1; font-size: 10px; line-height: 1.5; }
+@media (max-width: 900px) {
+  .cipher-laptop-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .cipher-laptop-status-grid { grid-template-columns: 1fr; }
+  .cipher-laptop-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cipher-laptop-header { align-items: flex-start; flex-direction: column; }
+}
+
 /* Resident adaptive setup session ? provisioning overlay. */
 .cockpit-setup {
   position: fixed;

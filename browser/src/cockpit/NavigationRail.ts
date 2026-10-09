@@ -18,6 +18,7 @@ interface NavItem {
 const ITEMS: NavItem[] = [
   { id: 'command-center', icon: '\u25ce', label: 'COMMAND CENTER', description: 'Operator overview' },
   { id: 'resident', icon: '\u29bf', label: 'RESIDENT', description: 'Local / Remote' },
+  { id: 'cipher-laptop', icon: '\u25a3', label: 'CIPHER LAPTOP', description: 'Missions and continuity' },
   { id: 'projects', icon: '\u25a4', label: 'PROJECTS', description: 'Workbenches' },
   { id: 'editor', icon: '\u2261', label: 'EDITOR', description: 'Source surface' },
   { id: 'terminal', icon: '\u2766', label: 'TERMINAL', description: 'Process IO' },

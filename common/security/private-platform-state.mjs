@@ -3,5 +3,5 @@
 export function isPrivatePlatformStatePath(relativePath, platform = process.platform) {
   const parts = String(relativePath).replaceAll('\\', '/').split('/');
   const normalized = parts.map(part => platform === 'win32' ? part.split(':')[0].replace(/[ .]+$/g, '').toLowerCase() : part).join('/');
-  return ['.aide/cipher-laptop', '.aide/platform-projects', '.aide/platform-projects-enrollment.json'].some(root => normalized === root || normalized.startsWith(root + '/'));
+  return ['.aide/atlas', '.aide/cipher-laptop', '.aide/platform-projects', '.aide/platform-projects-enrollment.json'].some(root => normalized === root || normalized.startsWith(root + '/'));
 }

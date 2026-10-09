@@ -116,6 +116,9 @@ import { createByokService } from '../../node/src/services/byok-service.mjs';
 import { routesForByok } from './routes/byok.ts';
 import { createProviderConnectionsService, type ProviderConnectionsService } from '../../node/src/services/provider-connections.mjs';
 import { createModelManagerView } from './services/model-manager-view.ts';
+import { createModelAtlas } from './services/model-atlas.ts';
+import { createModelAtlasRead } from './services/model-atlas-read.ts';
+import { routesForModelAtlas } from './routes/model-atlas.ts';
 import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 import { routesForConnections } from './routes/connections.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
@@ -739,6 +742,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     connectionsService,
     ...(modelRuntime instanceof BrokerModelRuntime ? { runtimeStatus: () => modelRuntime.runtimeStatusSnapshot() } : {})
   });
+  const modelAtlas = createModelAtlas({ workspace });
+  const modelAtlasRead = createModelAtlasRead({ atlas: modelAtlas });
   modelProviderRouteSnapshot = () => modelManagerView.externalRoutes();
   const residentBindingService = createResidentBinding({
     listCandidates: async () => {
@@ -839,6 +844,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForSessionPut(sessionStore),
     routeForModelStatus(modelRuntime),
     routeForModelManager(modelManagerView),
+    ...routesForModelAtlas({ atlas: modelAtlasRead, manager: modelManagerView }),
     routeForModelStart(modelRuntime, resourceAdmission),
     routeForModelStop(modelRuntime),
     routeForModelIngest(modelRuntime),

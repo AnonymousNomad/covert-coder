@@ -1,0 +1,91 @@
+{
+  "verification": {
+    "browserTypeScript": {
+      "command": "node --max-old-space-size=1536 node_modules/typescript/bin/tsc -p browser/tsconfig.browser.json --noEmit",
+      "result": "PASS"
+    },
+    "scopedEslint": {
+      "command": "node node_modules/eslint/bin/eslint.js browser/src/cockpit/CipherLaptop.ts tests/arch/agent-worker-binding.test.ts",
+      "result": "PASS"
+    },
+    "diffCheck": {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    "contractGeneration": {
+      "result": "PASS",
+      "documentedOperations": 251,
+      "command": "npm run contracts"
+    },
+    "focusedArchitectureRoutes": {
+      "result": "PASS",
+      "skipped": 0,
+      "failed": 0,
+      "passed": 47,
+      "command": "node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/model-atlas-routes.test.ts tests/arch/mission-composer-policy.test.ts tests/arch/agent-worker-binding.test.ts tests/arch/platform-app-catalog.test.ts tests/arch/project-private-state.test.ts tests/arch/route-drift.test.ts tests/arch/route-authority-coverage.test.ts tests/arch/openapi-drift.test.ts",
+      "durationMs": 110793
+    },
+    "nodeTypeScript": {
+      "command": "node --max-old-space-size=1536 node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit",
+      "result": "PASS"
+    },
+    "routeOwnership": {
+      "commands": [
+        "node scripts/build-facade-map.mjs",
+        "node scripts/build-c1-02-route-ownership-decisions.mjs",
+        "node scripts/build-c1-02-route-ownership-decisions.mjs --check"
+      ],
+      "result": "PASS"
+    },
+    "frontendBuild": {
+      "result": "PASS",
+      "note": "Vite large main-bundle warning retained.",
+      "command": "npm run build:frontend"
+    }
+  },
+  "schema": "covert.cipher-mission-composer-verification.v1",
+  "source": {
+    "remoteParity": "PENDING_PUSH",
+    "branch": "codex/cipher-mission-composer-20261009",
+    "commit": "PENDING_CHECKPOINT",
+    "testedTreeContainsUncommittedFoundation": true,
+    "worktree": "L:\\CovertScratch\\cipher-mission-composer-20261009",
+    "testedBase": "e01915627af2b5e43023efa8ac285b1e70907960"
+  },
+  "objective": "Cipher Mission Composer foundation focused verification",
+  "classification": "FOUNDATION_IMPLEMENTED_FOCUSED_VERIFIED_RUNTIME_UNPROVEN",
+  "evidencePreservation": {
+    "historicalMixedRecord": "L:\\CovertScratch\\storage-rebalance-evidence-20261009\\mixed-checkpoint-evidence-before-storage-gate-correction.json",
+    "sha256": "C2173168686209ADEDCBECFDDEBECF32418253CC4B0C98752FD80641B964BAEA"
+  },
+  "implementation": {
+    "scope": "Cipher Laptop composer uses canonical Resident binding, ProjectSeat, Model Manager, Model Atlas, AgentLoop, Notebook and ProvenanceLedger owners. Plan is reviewed before a separate governed single-worker act session.",
+    "limitations": [
+      "No multi-worker orchestration or staged worker graph.",
+      "No reusable versioned Workflow Library.",
+      "No receipt-to-HarnessSync dossier feedback loop.",
+      "No live Covert UI interaction proof.",
+      "No current Liquid inference, real governed mission, verified receipt runtime, cancellation-after-mission, or restart/no-replay proof.",
+      "DOGFOOD-1 remains unproven."
+    ]
+  },
+  "preservedFailures": [
+    {
+      "observation": "Contracts generation initially failed because AIDE_MODEL_DIR was unset",
+      "disposition": "Reran with explicit existing L: model directory; passed without adding a hidden fallback."
+    },
+    {
+      "observation": "Route checks exposed missing facade entries and stale generated C1-02 ownership documentation",
+      "disposition": "Regenerated from canonical route sources; focused route checks passed."
+    },
+    {
+      "observation": "One suite attempt was 46/47 because generated line references became stale after UI changes",
+      "disposition": "Regenerated ownership docs; final focused suite passed 47/47."
+    },
+    {
+      "observation": "Default AgentLoop cancellation fixture timed out and skipped cleanup after an assertion failure",
+      "disposition": "Added unconditional owned-resource cleanup and failure details; reran worker-binding and final suite successfully. Existing 5-second lifecycle assertion unchanged."
+    }
+  ],
+  "generatedAtUtc": "2026-10-09T19:12:56.7645003Z"
+}
