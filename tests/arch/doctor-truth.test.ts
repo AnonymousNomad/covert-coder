@@ -39,7 +39,7 @@ test('doctor: corrupt model bookkeeping file is ignored without crashing', async
 test('doctor: provider unavailable surfaces as UNKNOWN/OPTIONAL, never blocking', async () => {
   const snapshot = await createReadinessService({
     healthSnapshot: async () => ({ state: 'HEALTHY', components: [] }),
-    modelsStatus: async () => ({ models: [] }),
+    modelAccess: async () => { throw new Error('Model Access unavailable'); },
     rgAvailable: () => false,
     workspaceWritable: async () => true,
     gitRepo: async () => ({ git_repo: false }),
@@ -53,7 +53,7 @@ test('doctor: provider unavailable surfaces as UNKNOWN/OPTIONAL, never blocking'
 test('doctor: invalid workspace is BLOCKED and repairable', async () => {
   const snapshot = await createReadinessService({
     healthSnapshot: async () => ({ state: 'HEALTHY', components: [] }),
-    modelsStatus: async () => ({ models: [{ id: 'm', status: 'running' }] }),
+    modelAccess: async () => { throw new Error('Model Access unavailable'); },
     rgAvailable: () => true,
     workspaceWritable: async () => false,
     gitRepo: async () => ({ git_repo: false }),

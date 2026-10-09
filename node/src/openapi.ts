@@ -755,11 +755,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
       const snapshot = await readinessSupervisor.snapshot();
       return { state: snapshot.state, components: snapshot.components.map(component => ({ component: component.component, state: component.state })) };
     },
-    modelsStatus: async () => {
-      if (options.modelRuntime === undefined) return { models: [] };
-      const status = await options.modelRuntime.status();
-      return { models: status.models.map(model => ({ id: String(model.id ?? 'unknown'), status: String(model.status ?? 'unknown') })) };
-    },
+    modelAccess: async () => await modelManagerView.snapshot(),
     rgAvailable: () => rgService.available(),
     workspaceWritable: async () => {
       try {

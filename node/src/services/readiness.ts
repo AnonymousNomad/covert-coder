@@ -5,13 +5,15 @@
 //
 // Aggregate rules:
 // - ready: true when no item is BLOCKED with blocking=true.
-// - ready_for_golden_mission: ready AND a model is RUNNING AND admission of a
-//   model-sized request (1024MB) STARTs or QUEUEs.
+// - ready_for_golden_mission: ready AND Model Access resolves the exact
+//   selected local implementation model through a verified artifact/runtime
+//   route AND admission of a model-sized request (1024MB) STARTs or QUEUEs.
 import type { ReadinessItemT, ReadinessResponseT } from '../../../common/contracts/readiness.ts';
+import type { ModelManagerResponseT } from '../../../common/contracts/model-access.ts';
 
 export interface ReadinessSources {
   healthSnapshot: () => Promise<{ state: string; components: Array<{ component: string; state: string }> }>;
-  modelsStatus: () => Promise<{ models: Array<{ id: string; status: string }> }>;
+  modelAccess: () => Promise<ModelManagerResponseT>;
   rgAvailable: () => boolean;
   workspaceWritable: () => Promise<boolean>;
   gitRepo: () => Promise<{ git_repo: boolean }>;
@@ -19,7 +21,42 @@ export interface ReadinessSources {
   now?: () => Date;
 }
 
-const RUNNING = new Set(['running', 'ready', 'loaded']);
+function exactLocalImplementation(view: ModelManagerResponseT): { id: string; name: string } | null {
+  if (view.connections.routed_roles.coder !== 'local') return null;
+  const id = view.runtime.selected_model_id;
+  if (id === null || view.runtime.health !== 'HEALTHY' || !view.runtime.available || !view.runtime.configured) return null;
+
+  const model = view.models.find(candidate => candidate.identity.canonical_id === id);
+  const basis = model?.identity.qualification.basis;
+  if (!model || model.readiness !== 'READY' || model.identity.qualification.state !== 'QUALIFIED' || !basis?.artifact_sha256 || basis.runtime_id !== view.runtime.configured_runtime_id) return null;
+
+  const artifactVerified = view.artifacts.some(artifact =>
+    model.artifact_ids.includes(artifact.id) &&
+    artifact.model_id === id &&
+    artifact.hash_status === 'VERIFIED' &&
+    artifact.observed_sha256 === basis.artifact_sha256 &&
+    (artifact.expected_sha256 === null || artifact.expected_sha256 === artifact.observed_sha256) &&
+    artifact.compatibility === 'COMPATIBLE'
+  );
+  const localRouteReady = view.routes.some(route =>
+    route.model_id === id &&
+    route.execution_adapter_id === 'local-runtime' &&
+    route.model_support_state === 'VERIFIED' &&
+    route.configured &&
+    route.health === 'HEALTHY' &&
+    route.available &&
+    route.setup_state === 'READY' &&
+    !route.external_egress_required
+  );
+  const localAdapterReady = view.execution_adapters.some(adapter =>
+    adapter.id === 'local-runtime' &&
+    adapter.implementation === 'IMPLEMENTED' &&
+    adapter.configured &&
+    adapter.available
+  );
+  if (!artifactVerified || !localRouteReady || !localAdapterReady) return null;
+  return { id, name: model.identity.display_name };
+}
 
 export function createReadinessService(sources: ReadinessSources) {
   const now = sources.now ?? (() => new Date());
@@ -48,14 +85,24 @@ export function createReadinessService(sources: ReadinessSources) {
     } else {
       result.push({ id: 'git', state: 'READY', code: 'NON_GIT_WORKSPACE', explanation: 'workspace is not a git repository; git features are hidden, everything else works', repair: 'git init to enable version control features', blocking: false });
     }
-    const models = await sources.modelsStatus().catch(() => null);
-    const runningModels = models === null ? [] : models.models.filter(model => RUNNING.has(model.status));
-    if (models === null) {
-      result.push({ id: 'models', state: 'UNKNOWN', code: 'MODEL_PROBE_FAILED', explanation: 'model runtime status did not answer', repair: null, blocking: false });
-    } else if (runningModels.length > 0) {
-      result.push({ id: 'models', state: 'READY', code: 'MODEL_RUNNING', explanation: `${runningModels.length} model engine(s) running`, repair: null, blocking: false });
+    const modelAccess = await sources.modelAccess().catch(() => null);
+    const exactModel = modelAccess === null ? null : exactLocalImplementation(modelAccess);
+    if (modelAccess === null) {
+      result.push({ id: 'models', state: 'UNKNOWN', code: 'MODEL_ACCESS_PROBE_FAILED', explanation: 'Model Access identity and route status did not answer', repair: null, blocking: false });
+    } else if (exactModel !== null) {
+      result.push({ id: 'models', state: 'READY', code: 'EXACT_LOCAL_MODEL_READY', explanation: `exact selected local implementation model ${exactModel.id} (${exactModel.name}) is hash-verified, qualified, loaded, and route-ready`, repair: null, blocking: false });
     } else {
-      result.push({ id: 'models', state: 'DEGRADED', code: 'NO_MODEL_RUNNING', explanation: 'no local model is running; the golden mission needs one', repair: 'import/register a model in the Model Hub and start it', blocking: false });
+      const externalSelected = modelAccess.connections.routed_roles.coder !== 'local';
+      result.push({
+        id: 'models',
+        state: 'DEGRADED',
+        code: externalSelected ? 'EXTERNAL_IMPLEMENTATION_SELECTED' : 'NO_EXACT_LOCAL_MODEL',
+        explanation: externalSelected
+          ? 'an external implementation route is selected; this local-model readiness gate does not substitute a local model'
+          : 'no exact selected local implementation model is currently qualified, hash-verified, loaded, and route-ready',
+        repair: 'review the exact implementation route and qualification in Model Access; then pass Resource Admission',
+        blocking: false
+      });
     }
     const admission = await sources.memoryAdmit().catch(() => null);
     if (admission === null) {
