@@ -1,6 +1,6 @@
 {
   "schema": "covert.weekend-platform.p2-managed-client-provider-evidence.v1",
-  "recorded_at_utc": "2026-10-09T23:19:15Z",
+  "recorded_at_utc": "2026-10-09T23:30:42Z",
   "lane": "DeepSeek weekend P2 managed-client/provider integration",
   "worktree": "E:/covert-deepseek-weekend-20261009",
   "branch": "deepseek/weekend-native-platform-20261009",
@@ -12,12 +12,13 @@
     "resolution": "Preserved the two legitimate later commits; no reset or reconstruction was performed."
   },
   "source_checkpoint": {
-    "sha": "b087378fe4ac23ad13646d2d26bad723d8f0dba3",
-    "parent_checkpoint": "c703d8b672075e307ffce187fca7d16fe79d0f8a",
-    "commit_subject": "feat(clients): add managed terminal client adapters (P2)",
+    "sha": "2b7feb87e6f17adddc0250eb3fef3b872e8cbeb7",
+    "parent_checkpoint": "d367810be51852a21fd96d04e98f8616c7b3240f",
+    "implementation_checkpoint": "b087378fe4ac23ad13646d2d26bad723d8f0dba3",
+    "commit_subject": "test(clients): cover early OpenCode exit and provider absence",
     "pushed": true,
-    "post_fetch_head": "b087378fe4ac23ad13646d2d26bad723d8f0dba3",
-    "post_fetch_origin": "b087378fe4ac23ad13646d2d26bad723d8f0dba3",
+    "post_fetch_head": "2b7feb87e6f17adddc0250eb3fef3b872e8cbeb7",
+    "post_fetch_origin": "2b7feb87e6f17adddc0250eb3fef3b872e8cbeb7",
     "post_fetch_ahead_behind": "0/0",
     "post_push_worktree": "CLEAN",
     "pre_push_checks": "PASS"
@@ -45,8 +46,17 @@
     {
       "command": "node --experimental-strip-types --no-warnings --test tests/arch/opencode-bridge.test.ts",
       "result": "PASS",
-      "tests": 12,
-      "passed": 12,
+      "tests": 13,
+      "passed": 13,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "command": "node --experimental-strip-types --no-warnings --test --test-name-pattern=\"server child exiting before port announcement\" tests/arch/opencode-bridge.test.ts",
+      "result": "PASS",
+      "tests": 1,
+      "passed": 1,
       "failed": 0,
       "cancelled": 0,
       "skipped": 0
@@ -66,9 +76,10 @@
     "All six matrix clients receive a canonical record; missing probes are UNKNOWN/PROBE_NOT_REGISTERED with NOT_RUN evidence.",
     "Missing client, unavailable executable, failed probe, malformed probe result, duplicate registration, unknown id, and stale discovery are covered.",
     "TARGET_1 identity mismatch, provider/model mismatch, unobserved identity, unsupported operation, unavailable client, and no-fallback behavior are covered.",
+    "Strict target configuration rejects extra fields instead of silently ignoring them; disconnected OpenCode provider discovery is passed through unchanged without selecting another provider.",
     "Credential-shaped probe identity/version, discovery/evidence references, and receipt fields are rejected without serializing the canary values.",
     "Self-asserted LIVE evidence cannot promote governance without a trusted evidence verifier; the verdict is MANAGED_OBSERVED/NOT_RUN with LIVE_EVIDENCE_NOT_VERIFIED.",
-    "OpenCode uses the existing bridge method identities, preserves cancellation/timeout errors, refuses PTY launch, and fails malformed authoritative output closed with session cleanup."
+    "OpenCode uses the existing bridge method identities, preserves cancellation/timeout errors, refuses PTY launch, fails malformed authoritative output closed with session cleanup, and reports an early child exit before port announcement as CHILD_FAILED with exit code 17."
   ],
   "governance": {
     "claude-code": {

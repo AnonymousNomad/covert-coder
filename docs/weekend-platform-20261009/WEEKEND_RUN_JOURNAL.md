@@ -10,6 +10,7 @@
 | P1 leaf-2 | `d1a6d31` | **services + tests**: projection + navigator services; suites 25/25; tsc 0; eslint 0 errors; diff-check clean; **P1_CAPABILITY_PROJECTION_FOUNDATION_CANDIDATE** reached |
 | P2 core | `c703d8b` | managed-client discovery/conformance truth boundary repair; focused suite 13/13; TypeScript 0; scoped ESLint environmental spin |
 | P2 leaf-2 | `b087378` | canonical all-client registry, TARGET_1 descriptors, existing-bridge OpenCode wrapper, conformance and credential guards; focused 24/24 + OpenCode bridge 12/12; pushed; acceptance remains open on preserved route RED / lint spin |
+| P2 negative-test follow-up | `2b7feb8` | strict target config, disconnected provider pass-through, and OpenCode early child exit; focused 24/24 + OpenCode bridge 13/13 + TypeScript 0; pushed |
 
 ## P1 leaf-2 notes
 - Discovered + fixed during the gate: strict snapshot parsing collapsed credential-shaped metadata into `MALFORMED_RECORD`; service now uses a lenient top-level schema with a per-record credential screen BEFORE strict parsing (hostile-credential test green; fail-closed `CREDENTIAL_REJECTED`).
@@ -27,7 +28,7 @@ Next files (blueprint P2): `common/contracts/managed-client.ts` (session identit
 Gate: focused suites + tsc + scoped eslint + `git diff --check`; core commit `feat(clients): add managed terminal client framework (P2)` is a candidate checkpoint. P3 remains gated until P2 acceptance is proven.
 
 ## P2 — managed-client/provider integration — source checkpoint pushed; acceptance NOT CLOSED
-Status: `P2_MANAGED_CLIENT_PROVIDER_FOUNDATION_IMPLEMENTED / NOT_ACCEPTED`. Source checkpoint `b087378fe4ac23ad13646d2d26bad723d8f0dba3` is pushed on `deepseek/weekend-native-platform-20261009`; final source-state worktree was clean with `HEAD...origin = 0/0` immediately after push.
+Status: `P2_MANAGED_CLIENT_PROVIDER_FOUNDATION_IMPLEMENTED / NOT_ACCEPTED`. Implementation checkpoint `b087378fe4ac23ad13646d2d26bad723d8f0dba3` and negative-test follow-up `2b7feb87e6f17adddc0250eb3fef3b872e8cbeb7` are pushed on `deepseek/weekend-native-platform-20261009`; the follow-up was fetched and verified with clean worktree and `HEAD...origin = 0/0`.
 Composition adjustment (recorded per blueprint allowance): adapters deferred to leaf-2 as a single cohesive module instead of per-client files — the three TARGET_1 adapters share one descriptor shape today; they will split per client when one diverges (reason recorded; no scope invention).
 Leaf-2 implementation: `node/src/services/managed-clients.ts` provides three declaration-only TARGET_1 descriptors owned by `TerminalSessionService` (no process spawn or bypass args) and an OpenCode wrapper that consumes the canonical registry record and exact method references from the existing `opencode-bridge.ts`; the wrapper has no PTY path. Tests `tests/arch/managed-clients.test.ts` cover bounded descriptors, explicit unsupported operations, no fallback, exact provider/model matching, credential availability without values, OpenCode identity/cancellation/timeout passthrough, and PTY refusal. Existing bridge coverage now also verifies malformed authoritative output fails closed and cleans the session. Gate: focused tests + TypeScript + diff-check; the scoped ESLint attempt remains `ENVIRONMENTAL_SPIN`.
 
@@ -36,6 +37,8 @@ P2 source evidence at `docs/weekend-platform-20261009/evidence/p2-managed-client
 Governance: Claude Code, Codex CLI, Kimi Code, and OpenCode remain `MANAGED_OBSERVED`; TARGET_1 provider qualification and OpenCode provider qualification remain `NOT_EVALUATED`; Gemini CLI and Qwen Code remain `UNQUALIFIED`. Live OpenCode proof is `LIVE_OPENCODE_PROOF_PENDING`; current bridge tests use deterministic local fixtures.
 
 Preserved RED / UNKNOWN: the first uninstrumented `terminal-session-routes.test.ts` run was 11 total, 6 pass, 5 fail, 0 skip; five request operations hit the unchanged 5-second fixture deadline. Root cause is UNKNOWN; no storage I/O failure was established and no timeout was raised. Instrumented, unchanged-deadline diagnostic runs later passed 5/5 targeted cases and 11/11 full-suite cases, with safe method/path timing and event-loop metrics. Those later passes do not erase or explain the first red. `FULL_ARCH_GATE_NOT_RUN` and CI exact-SHA evidence was not collected.
+
+P2 follow-up verification at `2b7feb8` supersedes the earlier OpenCode 12/12 count above: managed-client suites 24/24; OpenCode bridge suite 13/13; targeted early-exit case 1/1; TypeScript exit 0; `git diff --check` exit 0; post-fetch parity 0/0.
 
 ## P3 — next only after P2 acceptance
 Read skills `covert-cipher-mailbox-envelope`, `covert-cipher-wake-supervisor`, `covert-durable-scheduler-watch`, `covert-visible-work-operations` + `PHASE_DEPENDENCY` P3 row + `THREAT_MATRIX` Mailbox/Scheduler/Wake/Operations rows (captured); then contracts `cipher-mailbox.ts`/`scheduler.ts`/`operations-activity.ts`, `node:sqlite` storage spike under private state, wake supervisor state machine, operations projection — per blueprint P3. DING ≠ Authority; fresh policy/Admission at dispatch.
