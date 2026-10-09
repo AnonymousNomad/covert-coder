@@ -14,6 +14,11 @@ export const ModelStatusEntry = z
     artifact_available: z.boolean(),
     setup_required: z.boolean(),
     setup_message: z.string().optional(),
+    artifact_integrity: z.enum(['VERIFIED', 'UNBOUND', 'MISMATCH', 'UNAVAILABLE']).optional(),
+    observed_sha256: z.string().regex(/^[a-f0-9]{64}$/i).nullable().optional(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/i).nullable().optional(),
+    file_size: z.number().int().gte(0).nullable().optional(),
+    source_revision: z.string().nullable().optional(),
     qualification: ModelQualification.optional(),
     ingested: z.boolean().optional()
   })
@@ -115,8 +120,12 @@ export const ModelRegisterRequest = z
 export const ModelRegisterResponse = z
   .object({
     id: z.string().min(1),
-    status: z.literal('ready'),
-    endpoint: z.string()
+    status: z.literal('registered'),
+    endpoint: z.string(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/i),
+    file_size: z.number().int().gte(0),
+    architecture: z.string().min(1),
+    source_revision: z.string().nullable()
   })
   .strict();
 

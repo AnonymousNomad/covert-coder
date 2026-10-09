@@ -31,6 +31,7 @@ type Handoff = { handoff_id: string; state: string; task_id: string; to: Record<
 
 function stubRuntime(): never {
   return {
+    modelDir: process.env.AIDE_MODEL_DIR,
     list: () => [{ id: 'scripted-local', name: 'Scripted Local', endpoint: 'http://127.0.0.1:9/v1', model: 'scripted', context_tokens: 8192, roles: ['chat', 'act'] }],
     status: async () => ({ models: [{ id: 'scripted-local', status: 'running' }] }),
     verifyEndpointModel: async () => ({ ready: true }),
@@ -50,6 +51,11 @@ before(async () => {
     created_at: new Date().toISOString(), updated_at: new Date().toISOString()
   }, null, 2), 'utf8');
   await fs.writeFile(path.join(workspace, 'README.md'), '# live switch fixture\n', 'utf8');
+  const routingPath = path.join(workspace, '.aide', 'byok', 'routing.json');
+  await fs.mkdir(path.dirname(routingPath), { recursive: true });
+  await fs.writeFile(routingPath, JSON.stringify({
+    planner: 'local', coder: { provider_id: 'local', model_id: 'scripted-local' }, reviewer: 'local', utility: 'local'
+  }), 'utf8');
 
   stub = http.createServer((request, response) => {
     let raw = '';
@@ -165,6 +171,13 @@ async function setupStubProvider(providerId: string, modelId: string, role: 'cod
   const routing = { ...current.body.data!.routing, [role]: { provider_id: providerId, model_id: modelId } };
   assert.equal((await approved('PUT', '/api/byok/routing', { routing }, `task:live-routing-${providerId}`)).status, 200);
 }
+async function selectCoderTarget(providerId: string, modelId: string, taskId: string): Promise<void> {
+  const current = await getJson<{ routing: Record<string, unknown> }>('/api/byok/status');
+  assert.equal(current.status, 200);
+  const routing = { ...current.body.data!.routing, coder: { provider_id: providerId, model_id: modelId } };
+  const selected = await approved('PUT', '/api/byok/routing', { routing }, taskId);
+  assert.equal(selected.status, 200, JSON.stringify(selected.body).slice(0, 200));
+}
 const desc = (worker: string, provider: string, model: string, role: string) => ({ worker, provider, model, role });
 
 let sessionA = '';
@@ -173,7 +186,7 @@ const remoteTo = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1',
 test('local -> remote live switch: automatic accept, injected context, consume at first invocation', async () => {
   await setupStubProvider('stub-live', 'stub-live-1');
   sessionA = await runScriptedLocalSession('live switch stage one', 'a');
-  const handoff = await createHandoff(sessionA, desc('local:auto', 'local', 'auto', 'act'), remoteTo, 'a');
+  const handoff = await createHandoff(sessionA, desc('local:scripted-local', 'local', 'scripted-local', 'act'), remoteTo, 'a');
   assert.equal(handoff.state, 'CREATED');
 
   stubReply = '<attempt_completion><result>REMOTE-STAGE-DONE</result></attempt_completion>';
@@ -198,10 +211,11 @@ test('local -> remote live switch: automatic accept, injected context, consume a
 
 test('remote -> local live switch: local destination receives bounded context through the real path', async () => {
   // Source stage: remote (stub) session completed above; create the reverse handoff.
-  const localTo = desc('local:auto', 'local', 'auto', 'act');
+  const localTo = desc('local:scripted-local', 'local', 'scripted-local', 'act');
   const remoteSource = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1', 'act');
   const remoteSession = stubCalls.length > 0 ? sessionA : sessionA; // provenance: the remote stage ran against sessionA task
   const handoff = await createHandoff(remoteSession, remoteSource, localTo, 'b');
+  await selectCoderTarget('local', 'scripted-local', 'task:live-select-local-coder');
 
   localReply = '<attempt_completion><result>LOCAL-CONTINUATION-DONE</result></attempt_completion>';
   const local0 = localCalls;
@@ -236,7 +250,7 @@ test('remote A -> remote B live switch and role change (coder -> reviewer)', asy
 
 test('destination mismatch fails closed and leaves the handoff un-consumed', async () => {
   const wrongTo = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1', 'act');
-  const handoff = await createHandoff(sessionA, desc('local:auto', 'local', 'auto', 'act'), wrongTo, 'f');
+  const handoff = await createHandoff(sessionA, desc('local:scripted-local', 'local', 'scripted-local', 'act'), wrongTo, 'f');
   const calls0 = stubCalls.length;
   // Destination claims to be stub-live-b while routing still points at stub-live.
   const denied = await approved<{ session_id: string }>('POST', '/api/agent/start', {
@@ -252,7 +266,7 @@ test('destination mismatch fails closed and leaves the handoff un-consumed', asy
 test('consumed handoffs cannot be replayed through a second start (no duplicate execution)', async () => {
   await setupStubProvider('stub-live', 'stub-live-1');
   const to = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1', 'act');
-  const handoff = await createHandoff(sessionA, desc('local:auto', 'local', 'auto', 'act'), to, 'n');
+  const handoff = await createHandoff(sessionA, desc('local:scripted-local', 'local', 'scripted-local', 'act'), to, 'n');
   stubReply = '<attempt_completion><result>ONE-SHOT-DONE</result></attempt_completion>';
   const first = await approved<{ session_id: string }>('POST', '/api/agent/start', {
     task: 'one shot 1', mode: 'act', chat_source: 'provider', handoff_id: handoff.handoff_id, worker: to
@@ -269,7 +283,7 @@ test('consumed handoffs cannot be replayed through a second start (no duplicate 
 
 test('cancelled handoffs cannot start a destination session', async () => {
   const to = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1', 'act');
-  const handoff = await createHandoff(sessionA, desc('local:auto', 'local', 'auto', 'act'), to, 'm');
+  const handoff = await createHandoff(sessionA, desc('local:scripted-local', 'local', 'scripted-local', 'act'), to, 'm');
   const cancel = await approved<{ handoff: Handoff }>('POST', '/api/worker-handoff/cancel', { handoff_id: handoff.handoff_id }, 'task:live-cancel');
   assert.equal(cancel.status, 200);
   assert.equal(cancel.body.data!.handoff.state, 'CANCELLED');
@@ -281,7 +295,7 @@ test('cancelled handoffs cannot start a destination session', async () => {
 
 test('an accepted-but-not-consumed handoff survives a stack restart and remains startable', async () => {
   const to = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1', 'act');
-  const handoff = await createHandoff(sessionA, desc('local:auto', 'local', 'auto', 'act'), to, 'i');
+  const handoff = await createHandoff(sessionA, desc('local:scripted-local', 'local', 'scripted-local', 'act'), to, 'i');
   const accept = await approved<{ handoff: Handoff }>('POST', '/api/worker-handoff/accept', { handoff_id: handoff.handoff_id, to }, 'task:live-accept-i');
   assert.equal(accept.status, 200);
   assert.equal(accept.body.data!.handoff.state, 'ACCEPTED');
@@ -315,7 +329,7 @@ test('live switch carries no authority and no secrets', async () => {
   assert.equal(consumed.status, 200);
 
   const to = desc('cloud:stub-live:stub-live-1', 'stub-live', 'stub-live-1', 'act');
-  const handoff = await createHandoff(sessionA, desc('local:auto', 'local', 'auto', 'act'), to, 'l');
+  const handoff = await createHandoff(sessionA, desc('local:scripted-local', 'local', 'scripted-local', 'act'), to, 'l');
   stubReply = `<attempt_completion><result>leak attempt ${SECRET}</result></attempt_completion>`;
   const started = await approved<{ session_id: string }>('POST', '/api/agent/start', {
     task: 'secret boundary live', mode: 'act', chat_source: 'provider', handoff_id: handoff.handoff_id, worker: to

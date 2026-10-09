@@ -131,9 +131,10 @@ function makeRouter(
   providers: FakeProviders,
   catalog?: readonly ProviderDefinition[],
   providerRoutes: readonly ModelProviderRouteT[] = [],
-  openCode: OpenCodeModelRouterAdapter | null = null
+  openCode: OpenCodeModelRouterAdapter | null = null,
+  selectedTarget: 'local' | { provider_id: string; model_id: string } = 'local'
 ): ModelRouter {
-  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, catalog, async () => providerRoutes, openCode);
+  return new ModelRouter(runtime as unknown as ModelRuntime, providers as unknown as ProviderService, catalog, async () => providerRoutes, openCode, () => selectedTarget);
 }
 
 function openCodeModelRoute(overrides: Partial<ModelProviderRouteT> = {}): ModelProviderRouteT {
@@ -190,37 +191,64 @@ test('runtime-pending local models are down and are not probed for role selectio
   assert.equal(runtime.verifyCalls, 0, 'known-pending artifacts must not trigger endpoint probes');
 });
 
-test('routeForRole returns the first ready model and reports a fallback when the first is down', async () => {
+test('a ready model cannot replace the exact persisted role selection', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat']), entry('b', 'ready', ['chat'])];
   runtime.ready.add('b');
-  const router = makeRouter(runtime, new FakeProviders());
-  const selection = await router.routeForRole('chat');
-  assert.equal(selection.modelId, 'local:b', 'a is down so b answers');
-  assert.equal(selection.fellBack?.from, 'local:a');
-  assert.equal(selection.fellBack?.to, 'local:b');
-  assert.equal(selection.fellBack?.reason, 'down');
+  const router = makeRouter(runtime, new FakeProviders(), undefined, [], null, { provider_id: 'local', model_id: 'a' });
+  await assert.rejects(
+    () => router.routeForRole('chat'),
+    (error: unknown) => error instanceof RouterError && error.reason === 'down' && error.message.includes('exact selected model a')
+  );
+  assert.equal(runtime.chatCalls, 0, 'the other ready model is never executed as a substitute');
 });
 
-test('routeForRole throws with guidance when nothing is ready', async () => {
+test('role routing fails closed until one exact model is selected', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat'])];
+  runtime.ready.add('a');
   const router = makeRouter(runtime, new FakeProviders());
   await assert.rejects(
     () => router.routeForRole('chat'),
-    (error: unknown) => error instanceof RouterError && error.reason === 'down' && error.message.includes('start this model')
+    (error: unknown) => error instanceof RouterError && error.reason === 'down' && error.message.includes('no exact model is selected')
   );
 });
 
-test('routeForId falls back to the role chain with an explicit from/to', async () => {
+test('changing or clearing a role selection never reuses stale readiness for another model', async () => {
+  const runtime = new FakeRuntime();
+  runtime.entries = [entry('a', 'ready', ['chat']), entry('b', 'ready', ['chat'])];
+  runtime.ready.add('a');
+  const providers = new FakeProviders();
+  let selectedTarget: 'local' | { provider_id: string; model_id: string } = { provider_id: 'local', model_id: 'a' };
+  const router = new ModelRouter(
+    runtime as unknown as ModelRuntime,
+    providers as unknown as ProviderService,
+    undefined,
+    async () => [],
+    null,
+    () => selectedTarget
+  );
+
+  assert.equal((await router.routeForRole('chat')).modelId, 'local:a');
+  selectedTarget = { provider_id: 'local', model_id: 'b' };
+  await assert.rejects(
+    () => router.routeForRole('chat'),
+    (error: unknown) => error instanceof RouterError && error.reason === 'down' && error.message.includes('exact selected model b')
+  );
+  selectedTarget = 'local';
+  await assert.rejects(
+    () => router.routeForRole('chat'),
+    (error: unknown) => error instanceof RouterError && error.reason === 'down' && error.message.includes('no exact model is selected')
+  );
+  assert.equal(runtime.chatCalls, 0);
+});
+
+test('routeForId never falls back to a different ready model', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat']), entry('b', 'ready', ['chat'])];
   runtime.ready.add('b');
   const router = makeRouter(runtime, new FakeProviders());
-  const selection = await router.routeForId('local:a');
-  assert.equal(selection.modelId, 'local:b');
-  assert.equal(selection.fellBack?.from, 'local:a');
-  assert.equal(selection.fellBack?.reason, 'down');
+  await assert.rejects(() => router.routeForId('local:a'), error => error instanceof RouterError && error.reason === 'down');
 });
 
 test('routeForId resolves a ready explicit binding without fallback', async () => {
@@ -262,15 +290,20 @@ test('unbound cloud chat cannot bypass the Authority-resolved provider route', a
   assert.deepEqual(providers.calls, [], 'generic chat cannot dispatch an external route outside the Authority-bound surface');
 });
 
-test('chatStream emits deltas and reports the answering model on fallback', async () => {
+test('chatStream refuses an unavailable explicit route without fallback', async () => {
   const runtime = new FakeRuntime();
   runtime.entries = [entry('a', 'ready', ['chat']), entry('b', 'ready', ['chat'])];
   runtime.ready.add('b');
   const router = makeRouter(runtime, new FakeProviders());
   const deltas: string[] = [];
-  const result = await router.chatStream('local:a', [{ role: 'user', content: 'hi' }], delta => deltas.push(delta), new AbortController().signal);
-  assert.deepEqual(deltas, ['stream:b:1'], 'streamed from the fallback model');
-  assert.equal(result.modelId, 'local:b');
+  await assert.rejects(
+    () => router.chatStream('local:a', [{ role: 'user', content: 'hi' }], delta => deltas.push(delta), new AbortController().signal),
+    (error: unknown) => error instanceof RouterError && error.reason === 'down' && error.message.includes('exact selected route local:a')
+  );
+  assert.deepEqual(deltas, [], 'the healthy different model never receives the stream');
+  assert.equal(runtime.chatStreamCalls, 0);
+});
+
 test('chat fits history against the effective served window, not the declared context', async () => {
   // Declared 8192, engine serves 1024 (clamped n_ctx). Without effective
   // fitting the router would send the full history and the engine would
@@ -310,7 +343,6 @@ test('declared context is used when no served window has been probed', async () 
   const result = await router.chat('local:a', [{ role: 'user', content: 'hi' }]);
   assert.equal(result.overflowTrimmed, undefined);
   assert.ok(result.text.startsWith('local:a:'));
-});
 });
 
 test('unbound cloud streaming cannot bypass the Authority-resolved provider route', async () => {

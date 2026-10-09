@@ -3,8 +3,8 @@ import type { RouteEntryT } from '../../../common/contracts/routing.ts';
 
 type RouteIdentity = Pick<RouteEntryT, 'id' | 'providerType' | 'status'>;
 
-export function initialConversationRouteId(routes: readonly RouteIdentity[], actTarget: RoleTargetT): string {
-  if (actTarget === 'local') return routes.find(route => route.providerType === 'local' && route.status !== 'down')?.id ?? '';
+export function initialConversationRouteId(actTarget: RoleTargetT): string {
+  if (actTarget === 'local') return '';
   if (actTarget.provider_id === 'local') return `local:${actTarget.model_id}`;
   return `cloud:${actTarget.provider_id}:${actTarget.model_id}`;
 }

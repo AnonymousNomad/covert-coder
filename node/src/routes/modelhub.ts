@@ -18,8 +18,8 @@ type HubService = {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<unknown>;
   listRepoFiles(repoId: string): Promise<unknown>;
-  startDownload(args: { repo_id: string; filename: string; quant_label?: string | null; urlTemplate?: string }): Promise<unknown>;
-  beginDownload(args: { repo_id: string; filename: string; quant_label?: string | null }): { job_id: string };
+  startDownload(args: { repo_id: string; filename: string; revision?: string; expected_size?: number; expected_sha256?: string; quant_label?: string | null; urlTemplate?: string }): Promise<unknown>;
+  beginDownload(args: { repo_id: string; filename: string; revision: string; expected_size: number; expected_sha256: string; quant_label?: string | null }): { job_id: string };
   cancel(jobId: string): Promise<{ cancelled: boolean }>;
   listDownloads(): unknown;
   importFromPath(sourcePath: string): Promise<{ manifest: unknown }>;
@@ -88,17 +88,17 @@ export function routesForModelHub(service: HubService): Route[] {
         return service.listRepoFiles(parsed.repo_id);
       }) },
     { method: 'POST', path: '/api/modelhub/download', body: HubDownloadRequest, response: HubDownloadStartedResponse,
-      // The approved operation binds the exact repository identity, artifact
-      // filename, and quant label. Hostname, scheme, destination root, .part
+      // The approved operation binds the exact repository revision, artifact
+      // filename, inspected size, LFS SHA-256, and quant label. Hostname, scheme, destination root, .part
       // suffix, manifest path, event channel, and the server-generated job UUID
       // are deterministic server-derived effects; the service containment layer
       // independently proves every mutation target stays inside the models root.
       describeOperation: async ({ body }, taskId): Promise<OperationInput> => {
-        const { repo_id, filename, quant_label } = body as { repo_id: string; filename: string; quant_label?: string | null };
-        return { workspace: service.workspace, taskId, kind: 'capability.external', args: { body: { repo_id, filename, quant_label: quant_label ?? null } } };
+        const { repo_id, revision, filename, expected_size, expected_sha256, quant_label } = body as { repo_id: string; revision: string; filename: string; expected_size: number; expected_sha256: string; quant_label?: string | null };
+        return { workspace: service.workspace, taskId, kind: 'capability.external', args: { body: { repo_id, revision, filename, expected_size, expected_sha256, quant_label: quant_label ?? null } } };
       },
       handler: wrap(async ({ body }) => {
-        const request = body as { repo_id: string; filename: string; quant_label?: string | null };
+        const request = body as { repo_id: string; revision: string; filename: string; expected_size: number; expected_sha256: string; quant_label?: string | null };
         return service.beginDownload(request);
       })
     },

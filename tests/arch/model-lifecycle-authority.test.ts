@@ -7,6 +7,7 @@
 // PID) and stop fails closed when no handle is owned.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
@@ -39,6 +40,30 @@ async function waitForPidGone(pid: number, timeoutMs = 8000): Promise<boolean> {
   return false;
 }
 
+function syntheticGgufWithChatTemplate(): Buffer {
+  const values = [['general.architecture', 'llama'], ['tokenizer.chat_template', 'messages']];
+  const parts: Buffer[] = [];
+  const header = Buffer.alloc(24);
+  header.write('GGUF', 0, 'utf8');
+  header.writeUInt32LE(3, 4);
+  header.writeBigUInt64LE(0n, 8);
+  header.writeBigUInt64LE(BigInt(values.length), 16);
+  parts.push(header);
+  for (const [key, value] of values) {
+    const keyBytes = Buffer.from(key!, 'utf8');
+    const valueBytes = Buffer.from(value!, 'utf8');
+    const item = Buffer.alloc(8 + keyBytes.length + 4 + 8 + valueBytes.length);
+    let offset = 0;
+    item.writeBigUInt64LE(BigInt(keyBytes.length), offset); offset += 8;
+    keyBytes.copy(item, offset); offset += keyBytes.length;
+    item.writeUInt32LE(8, offset); offset += 4;
+    item.writeBigUInt64LE(BigInt(valueBytes.length), offset); offset += 8;
+    valueBytes.copy(item, offset);
+    parts.push(item);
+  }
+  return Buffer.concat(parts);
+}
+
 test('model start/stop require approved exact operations over retained child handles', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-model-lifecycle-'));
   await fs.mkdir(path.join(dir, 'models'), { recursive: true });
@@ -47,13 +72,15 @@ test('model start/stop require approved exact operations over retained child han
   await fs.writeFile(path.join(dir, 'runtime', process.platform === 'win32' ? 'llama-server.exe' : 'llama-server'), 'fixture binary placeholder\n');
   const goodFile = path.join(dir, 'models', 'fixture-1b.gguf');
   const failFile = path.join(dir, 'models', 'fixture-fail.gguf');
-  await fs.writeFile(goodFile, 'GGUF fixture\n');
-  await fs.writeFile(failFile, 'GGUF fixture\n');
+  const artifact = syntheticGgufWithChatTemplate();
+  const artifactSha256 = createHash('sha256').update(artifact).digest('hex');
+  await fs.writeFile(goodFile, artifact);
+  await fs.writeFile(failFile, artifact);
   const manifestPath = path.join(dir, 'models', 'manifest.json');
   await fs.writeFile(manifestPath, JSON.stringify({
     models: [
-      { id: 'fixture-1b', name: 'Fixture 1B', file: goodFile, endpoint: `http://127.0.0.1:${await freePort()}/v1`, context_tokens: 512, status: 'ready' },
-      { id: 'fixture-fail', name: 'Fixture Fail', file: failFile, endpoint: `http://127.0.0.1:${await freePort()}/v1`, context_tokens: 512, status: 'ready' }
+      { id: 'fixture-1b', name: 'Fixture 1B', file: goodFile, sha256: artifactSha256, file_size: artifact.length, endpoint: `http://127.0.0.1:${await freePort()}/v1`, context_tokens: 512, status: 'ready' },
+      { id: 'fixture-fail', name: 'Fixture Fail', file: failFile, sha256: artifactSha256, file_size: artifact.length, endpoint: `http://127.0.0.1:${await freePort()}/v1`, context_tokens: 512, status: 'ready' }
     ]
   }));
 

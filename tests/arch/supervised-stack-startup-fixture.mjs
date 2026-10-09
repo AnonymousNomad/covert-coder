@@ -1,9 +1,11 @@
 import childProcess from 'node:child_process';
 import http from 'node:http';
 import { syncBuiltinESMExports } from 'node:module';
+import path from 'node:path';
 
-export async function runStartupFixture(mode, workspace) {
+export async function runStartupFixture(mode, workspace, modelDir) {
   if (!['pairing-error', 'success'].includes(mode)) throw new Error('invalid startup fixture mode');
+  if (!path.isAbsolute(modelDir)) throw new Error('an external absolute model directory is required by the startup fixture');
   const originalSpawn = childProcess.spawn;
   const originalCreateServer = http.createServer;
   const originalFetch = globalThis.fetch;
@@ -54,7 +56,7 @@ export async function runStartupFixture(mode, workspace) {
   try {
     const { launchSupervisedStack } = await import('../helpers/supervised-stack.mjs');
     try {
-      stack = await launchSupervisedStack({ workspace, env: { AIDE_MODEL_DIR: workspace + '/models', AIDE_EMBEDDINGS_URL: '' } });
+      stack = await launchSupervisedStack({ workspace, env: { AIDE_MODEL_DIR: modelDir, AIDE_EMBEDDINGS_URL: '' } });
     } catch (error) {
       startupError = error;
     }

@@ -19,14 +19,38 @@ let httpServer: http.Server;
 let base: string;
 let owner: Awaited<ReturnType<typeof pairFixture>>;
 
+function syntheticGgufWithChatTemplate(): Buffer {
+  const values = [['general.architecture', 'llama'], ['tokenizer.chat_template', 'messages']];
+  const parts: Buffer[] = [];
+  const header = Buffer.alloc(24);
+  header.write('GGUF', 0, 'utf8');
+  header.writeUInt32LE(3, 4);
+  header.writeBigUInt64LE(0n, 8);
+  header.writeBigUInt64LE(BigInt(values.length), 16);
+  parts.push(header);
+  for (const [key, value] of values) {
+    const keyBytes = Buffer.from(key!, 'utf8');
+    const valueBytes = Buffer.from(value!, 'utf8');
+    const item = Buffer.alloc(8 + keyBytes.length + 4 + 8 + valueBytes.length);
+    let offset = 0;
+    item.writeBigUInt64LE(BigInt(keyBytes.length), offset); offset += 8;
+    keyBytes.copy(item, offset); offset += keyBytes.length;
+    item.writeUInt32LE(8, offset); offset += 4;
+    item.writeBigUInt64LE(BigInt(valueBytes.length), offset); offset += 8;
+    valueBytes.copy(item, offset);
+    parts.push(item);
+  }
+  return Buffer.concat(parts);
+}
+
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-model-register-'));
   modelDir = path.join(dir, 'models');
   await fs.mkdir(modelDir, { recursive: true });
   await fs.mkdir(path.join(dir, '.aide'), { recursive: true });
   await fs.writeFile(path.join(modelDir, 'manifest.json'), JSON.stringify({ models: [] }), 'utf8');
-  await fs.writeFile(path.join(modelDir, 'fantom-4b.gguf'), Buffer.from('4447475546010001f6766f00000000', 'hex'), 'utf8');
-  await fs.writeFile(path.join(modelDir, 'second.gguf'), Buffer.from('4447475546010001f6766f00000000', 'hex'), 'utf8');
+  await fs.writeFile(path.join(modelDir, 'fantom-4b.gguf'), syntheticGgufWithChatTemplate());
+  await fs.writeFile(path.join(modelDir, 'second.gguf'), syntheticGgufWithChatTemplate());
 
   runtime = new ModelRuntime({
     workspace: dir,
@@ -81,9 +105,11 @@ const ingestedRaw = () => fs.readFile(path.join(dir, '.aide', 'ingested-models.j
 test('POST /api/models/register adds a gguf engine and is idempotent', async () => {
   const first = await mutate('/api/models/register', { filename: 'fantom-4b.gguf', repo_id: 'fantom/org', quant_label: 'Q4_K_M', context_tokens: 4096 }, 'task:mr-first');
   assert.equal(first.status, 200);
-  const firstData = okData(await first.json()) as { id: string; status: string; endpoint: string };
+  const firstData = okData(await first.json()) as { id: string; status: string; endpoint: string; sha256: string; architecture: string };
   assert.equal(firstData.id, 'fantom-4b');
-  assert.equal(firstData.status, 'ready');
+  assert.equal(firstData.status, 'registered');
+  assert.match(firstData.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(firstData.architecture, 'llama');
   assert.ok(firstData.endpoint.startsWith('http://127.0.0.1:809'));
 
   const second = await mutate('/api/models/register', { filename: 'fantom-4b.gguf' }, 'task:mr-second');
@@ -91,6 +117,37 @@ test('POST /api/models/register adds a gguf engine and is idempotent', async () 
   const secondData = okData(await second.json()) as { id: string; status: string; endpoint: string };
   assert.equal(secondData.id, 'fantom-4b');
   assert.equal(secondData.endpoint, firstData.endpoint);
+
+  const restartedRuntime = new ModelRuntime({
+    workspace: dir,
+    manifestPath: path.join(modelDir, 'manifest.json'),
+    ingestedPath: path.join(dir, '.aide', 'ingested-models.json'),
+    modelDir
+  });
+  await restartedRuntime.load({ sweepLegacyEngines: false });
+  const restored = restartedRuntime.get(firstData.id);
+  assert.ok(restored, 'registered absolute artifact path must survive a runtime restart');
+  assert.equal(restored.file, path.join(modelDir, 'fantom-4b.gguf'));
+  assert.equal(restored.sha256, firstData.sha256);
+});
+
+test('nested external model paths survive runtime restart', async () => {
+  const nestedDir = path.join(modelDir, 'nested');
+  await fs.mkdir(nestedDir, { recursive: true });
+  await fs.writeFile(path.join(nestedDir, 'nested-fantom.gguf'), syntheticGgufWithChatTemplate());
+  const registered = await runtime.register({ filename: 'nested/nested-fantom.gguf', repo_id: 'fantom/org' });
+
+  const restartedRuntime = new ModelRuntime({
+    workspace: dir,
+    manifestPath: path.join(modelDir, 'manifest.json'),
+    ingestedPath: path.join(dir, '.aide', 'ingested-models.json'),
+    modelDir
+  });
+  await restartedRuntime.load({ sweepLegacyEngines: false });
+  const restored = restartedRuntime.get(registered.id);
+  assert.ok(restored, 'nested absolute artifact path must survive a runtime restart');
+  assert.equal(restored.file, path.join(nestedDir, 'nested-fantom.gguf'));
+  assert.equal(restored.sha256, registered.sha256);
 });
 
 test('POST /api/models/register rejects non-gguf and escaping filenames', async () => {

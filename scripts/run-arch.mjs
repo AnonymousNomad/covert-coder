@@ -1,5 +1,6 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import os from 'node:os';
 import path from 'node:path';
 
 const dir = path.resolve('tests/arch');
@@ -35,18 +36,25 @@ const concurrency = 1;
 const forceExit = process.platform === 'win32' ? [] : ['--test-force-exit'];
 
 console.log(`run-arch: ${files.length} test file(s), concurrency=${concurrency}`);
-const result = spawnSync(
-  process.execPath,
-  [
-    '--experimental-strip-types',
-    '--no-warnings',
-    '--import', './scripts/http-close-shim.mjs',
-    '--test',
-    `--test-concurrency=${concurrency}`,
-    '--test-timeout=240000',
-    ...forceExit,
-    ...files
-  ],
-  { stdio: 'inherit' }
-);
-process.exit(result.status ?? 1);
+const modelStorageDir = mkdtempSync(path.join(os.tmpdir(), 'covert-arch-model-storage-'));
+let exitCode = 1;
+try {
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      '--no-warnings',
+      '--import', './scripts/http-close-shim.mjs',
+      '--test',
+      `--test-concurrency=${concurrency}`,
+      '--test-timeout=240000',
+      ...forceExit,
+      ...files
+    ],
+    { stdio: 'inherit', env: { ...process.env, AIDE_MODEL_DIR: modelStorageDir } }
+  );
+  exitCode = result.status ?? 1;
+} finally {
+  rmSync(modelStorageDir, { recursive: true, force: true });
+}
+process.exit(exitCode);

@@ -27,14 +27,15 @@ type HandoffData = { handoff: { handoff_id: string; failure_context: Record<stri
 
 function stubRuntime(): never {
   return {
-    list: () => [{ id: 'scripted-local', name: 'Scripted Local', endpoint: 'http://127.0.0.1:9/v1', model: 'scripted', context_tokens: 8192, roles: ['chat', 'act'] }],
-    status: async () => ({ models: [{ id: 'scripted-local', status: 'running' }] }),
+    modelDir: process.env.AIDE_MODEL_DIR,
+    list: () => ['scripted-local', 'coder-2'].map(id => ({ id, name: id, endpoint: 'http://127.0.0.1:9/v1', model: id, context_tokens: 8192, roles: ['chat', 'act'] })),
+    status: async () => ({ models: ['scripted-local', 'coder-2'].map(id => ({ id, status: 'running' })) }),
     verifyEndpointModel: async () => ({ ready: true }),
     getEffectiveContext: () => 8192,
     getEffectiveBudget: () => 8192 - 512,
     refreshServedContext: async () => undefined,
-    chat: async () => { return { text: lanes.scripted[Math.min(lanes.index++, lanes.scripted.length - 1)] ?? '', modelId: 'local:scripted-local', timingMs: 1 }; },
-    chatStream: async (_id: string, _messages: unknown, onDelta: (d: string) => void) => { onDelta(lanes.scripted[Math.min(lanes.index++, lanes.scripted.length - 1)] ?? ''); return { modelId: 'local:scripted-local', usedApprox: 1, dropped: 0, truncatedSystem: false, timingMs: 1 }; }
+    chat: async (id: string) => { return { text: lanes.scripted[Math.min(lanes.index++, lanes.scripted.length - 1)] ?? '', modelId: `local:${id}`, timingMs: 1 }; },
+    chatStream: async (id: string, _messages: unknown, onDelta: (d: string) => void) => { onDelta(lanes.scripted[Math.min(lanes.index++, lanes.scripted.length - 1)] ?? ''); return { modelId: `local:${id}`, usedApprox: 1, dropped: 0, truncatedSystem: false, timingMs: 1 }; }
   } as unknown as never;
 }
 
@@ -58,6 +59,11 @@ before(async () => {
     previous_stage: null, revision: 0, artifacts: [], last_transition_id: null,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString()
   }, null, 2), 'utf8');
+  const routingPath = path.join(workspace, '.aide', 'byok', 'routing.json');
+  await fs.mkdir(path.dirname(routingPath), { recursive: true });
+  await fs.writeFile(routingPath, JSON.stringify({
+    planner: 'local', coder: { provider_id: 'local', model_id: 'scripted-local' }, reviewer: 'local', utility: 'local'
+  }), 'utf8');
 
   server = new ArchServer(workspace, path.join(workspace, 'arch-continuation.log'));
   const { buildRoutes } = await import('../../node/src/openapi.ts');
@@ -107,6 +113,13 @@ async function getJson<T>(pathName: string): Promise<{ status: number; body: Env
   const response = await owner.request(pathName, { signal: AbortSignal.timeout(60000) });
   return { status: response.status, body: (await response.json()) as Envelope<T> };
 }
+async function selectCoderModel(modelId: string, taskId: string): Promise<void> {
+  const current = await getJson<{ routing: Record<string, unknown> }>('/api/byok/status');
+  assert.equal(current.status, 200);
+  const routing = { ...current.body.data!.routing, coder: { provider_id: 'local', model_id: modelId } };
+  const changed = await approved('PUT', '/api/byok/routing', { routing }, taskId);
+  assert.equal(changed.status, 200, JSON.stringify(changed.body).slice(0, 200));
+}
 async function waitForTerminal(sessionId: string, timeoutMs = 120000): Promise<{ state: string; error?: string | null }> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -124,7 +137,7 @@ async function waitForTerminal(sessionId: string, timeoutMs = 120000): Promise<{
 }
 
 const desc = (worker: string, provider: string, model: string, role: string) => ({ worker, provider, model, role });
-const localAuto = desc('local:auto', 'local', 'auto', 'act');
+const localAuto = desc('local:scripted-local', 'local', 'scripted-local', 'act');
 const localB = desc('local:coder-2', 'local', 'coder-2', 'act');
 
 const matrix: Array<{ id: string; error: string; outcome?: string; expected: string }> = [
@@ -308,6 +321,7 @@ test('Journey 1: live local failure → governed switch → replacement complete
   // B: runs through the accepted Wave-4 live path with the continuation handoff.
   lanes.scripted = ['<attempt_completion><result>JOURNEY1-REPLACEMENT-DONE</result></attempt_completion>'];
   lanes.index = 0;
+  await selectCoderModel('coder-2', 'task:j1-select-coder-2');
   const startedB = await approved<{ session_id: string }>('POST', '/api/agent/start', {
     task: 'journey one continuation', mode: 'act', handoff_id: handoffId, worker: localB
   }, 'task:j1-b');
@@ -346,6 +360,7 @@ test('Journey 2: local-only failure with no eligible local replacement blocks wi
 });
 
 test('Journey 3: partial effect is not replayed; replacement continues from canonical state', async () => {
+  await selectCoderModel('scripted-local', 'task:j3-select-scripted-local');
   const target = path.join(workspace, 'journey3-output.txt');
   lanes.scripted = [`<write_file>\n<path>journey3-output.txt</path>\n<content>written by A\n</content>\n</write_file>`];
   lanes.index = 0;
@@ -371,6 +386,7 @@ test('Journey 3: partial effect is not replayed; replacement continues from cano
 
   lanes.scripted = ['<attempt_completion><result>JOURNEY3-CONTINUED-DONE</result></attempt_completion>'];
   lanes.index = 0;
+  await selectCoderModel('coder-2', 'task:j3-select-coder-2');
   const startedB = await approved<{ session_id: string }>('POST', '/api/agent/start', {
     task: 'journey three continuation', mode: 'act', handoff_id: handoffId, worker: localB
   }, 'task:j3-b');

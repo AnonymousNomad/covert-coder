@@ -58,6 +58,7 @@ import { HookExecutor } from '../../node/src/services/hook-executor.mjs';
 import type { TaskEventMeta } from '../../node/src/services/task-service.mjs';
 import type { TaskEventT } from '../../common/contracts/tasks.ts';
 import { createHubService } from '../../node/src/services/modelhub.mjs';
+import { resolveModelStorageDirectory, sameModelStorageDirectory } from '../../node/src/services/model-storage.mjs';
 import { routesForModelHub } from './routes/modelhub.ts';
 import { routesForOrch } from './routes/orch.ts';
 import { routesForMemory, createMemoryService } from './routes/memory.ts';
@@ -160,6 +161,9 @@ export interface BuildRoutesOptions {
   lspManager?: LspManager;
   dapManager?: DapManager;
   modelRuntime?: ModelRuntime;
+  // Deterministic process bootstrap override for tests. Product launch uses
+  // AIDE_MODEL_DIR and never falls back to an install/workspace directory.
+  modelStorageDir?: string;
   providerService?: ProviderService;
   // Optional interactive terminal session service. When provided, the PTY
   // routes are registered; when absent (tests/CLI), no PTY code path exists.
@@ -254,11 +258,12 @@ export async function createDapManager(repoRoot: string, workspace: string, opti
 
 export async function createModelRuntime(repoRoot: string, workspace: string, options: BuildRoutesOptions): Promise<ModelRuntime> {
   const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
+  const modelDir = await resolveModelStorageDirectory(options.modelStorageDir);
   const runtime = new BrokerModelRuntime({
     workspace,
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
     ingestedPath: path.join(workspace, '.aide', 'ingested-models.json'),
-    modelDir: path.join(repoRoot, 'models'),
+    modelDir,
     logger: options.logger,
     onStatusChange: (id, status) => {
       const eventStatus = status === 'running' ? 'ready' : status === 'starting' ? 'loading' : status === 'stopped' ? 'stopped' : 'error';
@@ -409,6 +414,12 @@ export async function buildRoutes(workspace: string, version: string, options: B
   const dapManager = options.dapManager ?? (await createDapManager(repoRoot, workspace, options));
   const resourceAdmission = options.resourceAdmission ?? createResourceAdmission();
   const modelRuntime = options.modelRuntime ?? (await createModelRuntime(repoRoot, workspace, { ...options, resourceAdmission }));
+  if (options.modelStorageDir !== undefined) {
+    const configuredModelDir = await resolveModelStorageDirectory(options.modelStorageDir);
+    if (!sameModelStorageDirectory(configuredModelDir, modelRuntime.modelDir)) {
+      throw new Error('model storage path disagreement between configured model directory and runtime');
+    }
+  }
   const chatStore = new ChatStore(workspace);
   const sessionStore = new SessionStore(workspace);
   const providerService =
@@ -418,6 +429,10 @@ export async function buildRoutes(workspace: string, version: string, options: B
       assertExternalEgressAllowed,
       logger: options.logger
     });
+  const secretStore = options.byokSecretStore ?? createSecretStore({ secretsPath: path.join(os.homedir(), '.aide', 'secrets.json') });
+  const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch,
+    assertExternalEgressAllowed,
+    onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
   let modelProviderRouteSnapshot: () => Promise<readonly ModelProviderRouteT[]> = async () => [];
   // Create once and share the managed adapter between Authority-bound chat,
   // exact Model Access routes, and the legacy Agent BYOK compatibility path.
@@ -426,6 +441,9 @@ export async function buildRoutes(workspace: string, version: string, options: B
     workspace,
     assertExternalEgressAllowed,
     runTaskStream: options => opencodeBridge.runTaskStream(options)
+  }, role => {
+    const routing = byokService.getRouting() as Record<string, import('../../common/contracts/byok.ts').RoleTargetT>;
+    return routing[role] ?? 'local';
   });
   const learnerState = new LearnerState({ statePath: path.join(workspace, '.aide', 'learner-state.json') });
   await learnerState.load();
@@ -703,10 +721,6 @@ export async function buildRoutes(workspace: string, version: string, options: B
     } catch { /* watcher optional (e.g. unsupported fs) */ }
   }
   const handoffService = createHandoffService({ workspace, agentLoop });
-  const secretStore = options.byokSecretStore ?? createSecretStore({ secretsPath: path.join(os.homedir(), '.aide', 'secrets.json') });
-  const byokService = createByokService({ workspace, secretStore, fetchImpl: globalThis.fetch,
-    assertExternalEgressAllowed,
-    onEgress: entry => logEgress(workspace, { action: entry.kind, url: `https://${entry.host ?? 'unknown'}/`, provider_id: entry.provider_id, role: entry.role }) });
   const connectionsService: ProviderConnectionsService = options.connectionsService as ProviderConnectionsService ?? createProviderConnectionsService({
     workspace,
     providerService,
@@ -719,6 +733,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   });
   const modelManagerView = createModelManagerView({
     workspace,
+    modelDir: modelRuntime.modelDir,
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
     modelRuntime,
     connectionsService,
@@ -876,7 +891,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     routeForRgSearch(rgService),
     routeForEditorOptions(settingsService),
     ...routesForGit(workspace),
-    ...await buildNotificationWiredRoutes(workspace, { ...options, modelHubAuthorization: huggingfaceAuthorization }),
+    ...await buildNotificationWiredRoutes(workspace, { ...options, modelHubAuthorization: huggingfaceAuthorization }, modelRuntime.modelDir),
     ...routesForProblems(workspace),
     ...routesForOrch(createOrchService({ workspace: workspace, runtime: modelRuntime })),
     ...routesForMemory(memoryService),
@@ -1169,7 +1184,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
   return routes;
 }
 
-async function buildNotificationWiredRoutes(workspace: string, options: BuildRoutesOptions): Promise<Route[]> {
+async function buildNotificationWiredRoutes(workspace: string, options: BuildRoutesOptions, modelDir: string): Promise<Route[]> {
   const assertExternalEgressAllowed = externalEgressGuard(options);
   const notifications = new NotificationService({
     workspace,
@@ -1180,7 +1195,8 @@ async function buildNotificationWiredRoutes(workspace: string, options: BuildRou
   const hookExecutor = options.authority ? new HookExecutor({ authority: options.authority, notifications }) : null;
   const hub = createHubService({
     workspace,
-    modelsDir: path.join(workspace, 'models'),
+    modelsDir: modelDir,
+    allowExternalModelsDir: true,
     onEvent: event => options.events?.publish('modelhub', event),
     ...(options.modelHubAuthorization ? { authorization: options.modelHubAuthorization } : {}),
     assertExternalEgressAllowed

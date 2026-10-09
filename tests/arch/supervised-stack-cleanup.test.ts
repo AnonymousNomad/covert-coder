@@ -7,17 +7,21 @@ import { runStartupFixture } from './supervised-stack-startup-fixture.mjs';
 
 async function runFixture(mode: 'pairing-error' | 'success'): Promise<Record<string, unknown>> {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-supervised-startup-'));
+  const modelDir = await fs.mkdtemp(path.join(os.tmpdir(), 'covert-supervised-models-'));
   let report: Record<string, unknown> | undefined;
   try {
     // Node isolates this test file in its own process. Keep native child
     // handles here rather than giving an extra fixture process ownership.
-    report = await runStartupFixture(mode, workspace);
+    report = await runStartupFixture(mode, workspace, modelDir);
     assert.equal(report.fixtureCleanupConfirmed, true, 'fixture must confirm cleanup before its workspace is removed');
     return report;
   } finally {
     assert.equal(path.dirname(path.resolve(workspace)), path.resolve(os.tmpdir()));
     assert.ok(path.basename(workspace).startsWith('covert-supervised-startup-'));
-    if (report?.fixtureCleanupConfirmed === true) await fs.rm(workspace, { recursive: true, force: true });
+    if (report?.fixtureCleanupConfirmed === true) {
+      await fs.rm(workspace, { recursive: true, force: true });
+      await fs.rm(modelDir, { recursive: true, force: true });
+    }
   }
 }
 

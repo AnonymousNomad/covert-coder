@@ -124,7 +124,7 @@ export function createChatPanel(container: HTMLElement, opts: ChatPanelOptions =
         let actTarget: RoleTargetT = 'local';
         try { actTarget = (await api.connections()).routed_roles.coder; }
         catch { /* the safe default remains local */ }
-        boundModelId = initialConversationRouteId(orderedRoutes(), actTarget);
+        boundModelId = initialConversationRouteId(actTarget);
       }
 
       initialized = true;

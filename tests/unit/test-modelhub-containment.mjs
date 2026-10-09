@@ -42,10 +42,19 @@ async function jobById(hub, id) {
 }
 
 async function runDownload(hub, filename) {
-  const { job_id } = hub.beginDownload({ repo_id: 'org/repo', filename, quant_label: null });
+  const pendingDownload = hub.startDownload({
+    repo_id: 'org/repo', filename, quant_label: null,
+    // Unit containment tests supply a local fetch fixture. Product routes do
+    // not expose this hook and require an immutable Hugging Face revision.
+    urlTemplate: 'http://fixture.invalid/resolve/main/{filename}'
+  });
+  const pendingJob = hub.listDownloads().find(job => job.filename === filename);
+  assert.ok(pendingJob, `download job for ${filename} must be recorded`);
+  const { job_id } = pendingJob;
   // The status flips to its terminal value before post-status work (manifest
   // publication / event emission) finishes; wait for the matching terminal
   // event, which is the authoritative completion signal.
+  await pendingDownload;
   await waitFor(async () => {
     const job = await jobById(hub, job_id);
     if (!job || job.status === 'running') return false;
@@ -341,11 +350,18 @@ test('cancellation keeps containment: contained cleanup, sentinel preserved, fai
     }), { status: 200, headers: { 'content-length': String(total) } });
     const hub = makeHub({ ws, models, fetchImpl: slowFetch });
 
-    const { job_id } = hub.beginDownload({ repo_id: 'org/repo', filename: 'slow.gguf', quant_label: null });
+    const pendingDownload = hub.startDownload({
+      repo_id: 'org/repo', filename: 'slow.gguf', quant_label: null,
+      urlTemplate: 'http://fixture.invalid/resolve/main/{filename}'
+    });
+    const pendingJob = hub.listDownloads().find(job => job.filename === 'slow.gguf');
+    assert.ok(pendingJob, 'slow download job is recorded before the first await');
+    const { job_id } = pendingJob;
     await waitFor(async () => { try { await fs.access(path.join(models, 'slow.gguf.part')); return true; } catch { return false; } }, 8000, 'partial file');
     const cancelled = await hub.cancel(job_id);
     assert.equal(cancelled.cancelled, true);
     release();
+    await pendingDownload;
     await waitFor(async () => (await jobById(hub, job_id)).status === 'cancelled', 8000, 'cancelled status');
     await assert.rejects(() => fs.access(path.join(models, 'slow.gguf.part')));
     await assert.rejects(() => fs.access(path.join(models, 'slow.gguf')));

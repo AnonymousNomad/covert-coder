@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { ArchServer } from '../../node/src/server.ts';
+import { createByokService } from '../../node/src/services/byok-service.mjs';
 import { pairFixture } from './authority-fixture.ts';
 
 const sha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
@@ -23,6 +24,7 @@ before(async () => {
   const routes = await buildRoutes(workspace, 'test', {
     authority: server.authority,
     events: server.events,
+    modelStorageDir: workspace,
     byokSecretStore: {
       setKey: (id, key) => { store.set(id, ['enc:', key].join('')); },
       getKey: id => (store.has(id) ? String(store.get(id)).slice(4) : null),
@@ -211,6 +213,10 @@ test('byok: routing and consent are governed writes; test is a governed external
   const routingApplied = await owner.request('/api/byok/routing', { method: 'PUT', headers: routingHeaders, body: JSON.stringify(routingValue) });
   assert.equal(routingApplied.status, 200, 'approved routing executes');
   assert.deepEqual(JSON.parse(await fs.readFile(routingPath, 'utf8')), routingValue.routing, 'approved migration writes one canonical role map');
+  const reloadedByok = createByokService({ workspace, secretStore: {
+    setKey: () => {}, getKey: () => null, deleteKey: () => false, listProviderIds: () => []
+  } });
+  assert.deepEqual(reloadedByok.getRouting(), routingValue.routing, 'a newly constructed service reads the exact persisted role identities');
   const routingReplay = await owner.request('/api/byok/routing', { method: 'PUT', headers: routingHeaders, body: JSON.stringify(routingValue) });
   assert.equal(routingReplay.status, 409, 'consumed routing approval cannot replay');
 

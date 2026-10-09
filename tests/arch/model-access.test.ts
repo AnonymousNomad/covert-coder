@@ -18,7 +18,7 @@ import { projectRoleTargetOptions } from '../../browser/src/byok/role-target-opt
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);
 
-test('role assignment options expose only exact verified local models and preserve an unavailable selection', () => {
+test('role assignment options expose exact local identities and label unverified execution as closed', () => {
   const localConnection = {
     id: 'local-runtime', provider_id: 'local', name: 'Local', kind: 'local-runtime',
     status: 'connected', routing_available: true,
@@ -30,12 +30,15 @@ test('role assignment options expose only exact verified local models and preser
   const options = projectRoleTargetOptions([], [localConnection], 'local');
   assert.deepEqual(options.map(option => option.target), [
     'local',
-    { provider_id: 'local', model_id: 'qualified-local' }
+    { provider_id: 'local', model_id: 'qualified-local' },
+    { provider_id: 'local', model_id: 'unknown-local' }
   ]);
+  assert.match(options[2]?.label ?? '', /UNVERIFIED or unavailable; execution remains closed/);
+  assert.equal(options[2]?.unavailable, false, 'an operator may persist the exact identity while routing remains closed');
   const stale = projectRoleTargetOptions([], [localConnection], { provider_id: 'local', model_id: 'missing-local' });
-  assert.equal(stale.length, 3);
-  assert.equal(stale[2]?.unavailable, true);
-  assert.match(stale[2]?.label ?? '', /not in the current catalog; preserved/);
+  assert.equal(stale.length, 4);
+  assert.equal(stale[3]?.unavailable, true);
+  assert.match(stale[3]?.label ?? '', /not in the current catalog; preserved/);
 });
 
 test('logical model identity is independent of routes, credentials, and adapters', () => {
@@ -266,6 +269,7 @@ test('provider health does not imply exact model route support and local-only ga
   assert.equal(reference.model_support_state, 'unknown');
   const manager = createModelManagerView({
     workspace,
+    modelDir: path.join(workspace, 'models'),
     manifestPath: path.join(workspace, 'manifest.json'),
     modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
     connectionsService: service as any,
@@ -304,6 +308,7 @@ test('only the exact provider model confirmed by its probe becomes an eligible M
   });
   const manager = createModelManagerView({
     workspace,
+    modelDir: path.join(workspace, 'models'),
     manifestPath: path.join(workspace, 'manifest.json'),
     modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
     connectionsService: connections as any,
@@ -370,6 +375,7 @@ test('OpenCode exact target remains UNKNOWN until its Authority-authorized provi
 
   const manager = createModelManagerView({
     workspace,
+    modelDir: path.join(workspace, 'models'),
     manifestPath: path.join(workspace, 'manifest.json'),
     modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
     connectionsService: service as any,
@@ -455,7 +461,7 @@ test('external route projection is passive and fresh without unrelated runtime, 
     findExecutable: async () => { cliReads++; return null; }
   });
   const manager = createModelManagerView({
-    workspace, manifestPath, connectionsService: connections,
+    workspace, modelDir: path.join(workspace, 'models'), manifestPath, connectionsService: connections,
     modelRuntime: {
       list: () => { runtimeReads++; return []; },
       status: async () => { runtimeReads++; return { runtime: false, models: [] }; }
@@ -552,6 +558,7 @@ test('one OpenCode Go catalog exposes multiple models without granting exact rou
   assert.ok(connection.access.model_refs.every(item => item.model_support_state === 'unknown'));
   const manager = createModelManagerView({
     workspace,
+    modelDir: path.join(workspace, 'models'),
     manifestPath: path.join(workspace, 'manifest.json'),
     modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
     connectionsService: service as any,
@@ -569,6 +576,7 @@ test('Model Manager GET is passive and selection policy cannot change execution 
   let preferenceWrites = 0;
   const view = createModelManagerView({
     workspace,
+    modelDir: path.join(workspace, 'models'),
     manifestPath: path.join(workspace, 'models', 'manifest.json'),
     modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
     connectionsService: {
@@ -593,9 +601,10 @@ test('Model Manager GET is passive and selection policy cannot change execution 
   assert.equal(snapshot.runtime.configured, true);
   assert.equal(snapshot.runtime.discovered_state, 'NOT_DISCOVERED');
   assert.equal(snapshot.runtime.available, false);
-  assert.equal(snapshot.selection_policy.persistence_state, 'NOT_PERSISTED');
+  assert.equal(snapshot.selection_policy.persistence_state, 'PERSISTED');
   assert.equal(snapshot.selection_policy.mutation_enabled, false);
-  assert.equal(snapshot.selection_policy.execution_routing_effect, false);
+  assert.equal(snapshot.selection_policy.execution_routing_effect, true);
+  assert.equal(snapshot.selection_policy.mutation_owner, 'SETTINGS_BYOK_ROUTING');
   assert.equal(preferenceWrites, 0);
 });
 
@@ -612,6 +621,7 @@ test('local artifact discovery is bounded and never means model readiness', asyn
   await fs.writeFile(path.join(workspace, 'models', 'unqualified-Q4_K_M.gguf'), 'fixture');
   const view = createModelManagerView({
     workspace,
+    modelDir: path.join(workspace, 'models'),
     manifestPath: path.join(workspace, 'manifest.json'),
     modelRuntime: { list: () => [], status: async () => ({ runtime: false, models: [] }) } as any,
     connectionsService: {
@@ -647,6 +657,7 @@ test('registered local GGUF imports appear in Model Access without implying qual
   ];
   const view = createModelManagerView({
     workspace,
+    modelDir: path.join(workspace, 'models'),
     manifestPath: path.join(workspace, 'manifest.json'),
     modelRuntime: {
       list: () => registered,

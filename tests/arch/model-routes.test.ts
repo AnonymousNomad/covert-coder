@@ -23,8 +23,8 @@ before(async () => {
   server = new ArchServer(dir, path.join(dir, '.aide', 'arch-model-routes.log'));
   const lsp = createLspManager(REPO_ROOT, dir, { events: server.events, logger: server.logger });
   const dap = await createDapManager(REPO_ROOT, dir, { events: server.events, logger: server.logger });
-  const modelRuntime = await createModelRuntime(REPO_ROOT, dir, { events: server.events, logger: server.logger });
-  const routes = await buildRoutes(dir, 'test', { events: server.events, logger: server.logger, lspManager: lsp, dapManager: dap, modelRuntime });
+  const modelRuntime = await createModelRuntime(REPO_ROOT, dir, { events: server.events, logger: server.logger, modelStorageDir: dir });
+  const routes = await buildRoutes(dir, 'test', { events: server.events, logger: server.logger, lspManager: lsp, dapManager: dap, modelRuntime, modelStorageDir: dir });
   for (const route of routes) server.route(route);
   httpServer = await server.listen(0);
   const address = httpServer.address();

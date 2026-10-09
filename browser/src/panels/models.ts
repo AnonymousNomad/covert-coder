@@ -54,7 +54,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
   header.appendChild(el('h2', 'panel-title', 'MODEL ACCESS'));
   header.appendChild(el('span', 'panel-maturity', 'EVIDENCE'));
   root.appendChild(header);
-  root.appendChild(el('p', 'panel-intro', 'Models, local artifacts, provider connections, and exact route eligibility in one view. Conversation selection and persistent project role defaults remain separate.'));
+  root.appendChild(el('p', 'panel-intro', 'Models, local artifacts, provider connections, and exact route eligibility in one view. Workspace role targets persist through Settings; each conversation keeps its own selection.'));
   const body = el('div', 'models-body');
   root.appendChild(body);
   parent.appendChild(root);
@@ -74,7 +74,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     body.appendChild(metadata(
       'conversation: Chat selection is saved with that conversation and does not change project defaults',
       'project role defaults: planner, coder, reviewer, and utility targets below persist for this project',
-      'global model override: none configured; the built-in default lane is the local runtime'
+      'default lane: local runtime; no exact local model is selected until a model identity is chosen'
     ));
 
     body.appendChild(el('div', 'models-section-header', 'PROJECT ROLE DEFAULTS'));
@@ -86,7 +86,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       roles.appendChild(row);
     }
     body.appendChild(roles);
-    body.appendChild(el('p', 'model-card-meta', 'Edit these persistent targets in Settings. OpenCode Go is one connection with its currently discovered models; exact model verification is still required before routing is available.'));
+    body.appendChild(el('p', 'model-card-meta', 'These workspace role targets persist through the Authority-governed Settings routing flow and affect execution. Selection does not grant Authority or bypass Resource Admission. OpenCode Go is one connection with its currently discovered models; exact model verification is still required before routing is available.'));
 
     body.appendChild(el('div', 'models-section-header', 'LOCAL RUNTIME AND DISCOVERY'));
     const runtime = el('div', 'model-card ' + stateClass(view.runtime.health));

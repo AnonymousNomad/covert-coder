@@ -43,7 +43,7 @@ before(async () => {
   server = new ArchServer(dir, path.join(dir, '.aide', 'arch-provider-routes.log'));
   const lsp = createLspManager(REPO_ROOT, dir, { events: server.events, logger: server.logger });
   const dap = await createDapManager(REPO_ROOT, dir, { events: server.events, logger: server.logger });
-  const modelRuntime = await createModelRuntime(REPO_ROOT, dir, { events: server.events, logger: server.logger });
+  const modelRuntime = await createModelRuntime(REPO_ROOT, dir, { events: server.events, logger: server.logger, modelStorageDir: dir });
   const providerService = new ProviderService(dir, {
     credentials: new CredentialStore(dir, new FakeCrypt()),
     assertExternalEgressAllowed: () => server.authority.assertExternalEgressAllowed(),
@@ -65,6 +65,7 @@ before(async () => {
     lspManager: lsp,
     dapManager: dap,
     modelRuntime,
+    modelStorageDir: dir,
     providerService
   });
   for (const route of routes) server.route(route);

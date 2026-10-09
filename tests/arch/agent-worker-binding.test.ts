@@ -223,7 +223,7 @@ test('service rejects stripped or changed approved target and forged worker meta
 test('Resident projects the project role default exactly, without a local/cloud fallback', () => {
   const localView = { connections: { routed_roles: { planner: 'local' as const, coder: 'local' as const, reviewer: 'local' as const, utility: 'local' as const }, preference: 'local-first' as const },
     runtime: { selected_model_id: 'observed-loaded-model', health: 'HEALTHY' as const } };
-  assert.deepEqual(residentWorkerForSelection(localView), { worker: 'local:observed-loaded-model', provider: 'local', model: 'observed-loaded-model', role: 'coder' });
+  assert.throws(() => residentWorkerForSelection(localView), /No exact coder model is selected.*not an implicit role selection/);
   const cloudView = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, coder: { provider_id: 'opencode', model_id: 'opencode-go/exact-model' } } } };
   assert.deepEqual(residentWorkerForSelection(cloudView), { worker: 'cloud:opencode:opencode-go/exact-model', provider: 'opencode', model: 'opencode-go/exact-model', role: 'coder' });
   const reviewView = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, reviewer: { provider_id: 'opencode', model_id: 'opencode-go/review-model' } } } };
@@ -233,8 +233,9 @@ test('Resident projects the project role default exactly, without a local/cloud 
   const exactLocalReviewer = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, reviewer: { provider_id: 'local', model_id: 'other-local-model' } } } };
   assert.throws(() => residentWorkerForSelection(exactLocalReviewer, 'reviewer'), /exact local reviewer model is not the healthy loaded model/);
   assert.throws(() => residentWorkerForSelection({ ...cloudView, connections: { ...cloudView.connections, preference: 'local-only' } }), /Local-Only/);
-  assert.throws(() => residentWorkerForSelection({ ...localView, runtime: { ...localView.runtime, selected_model_id: null } }), /No healthy exact local model/);
-  assert.throws(() => residentWorkerForSelection({ ...localView, runtime: { ...localView.runtime, health: 'UNKNOWN' } }), /No healthy exact local model/);
+  const clearedWhileLoaded = { ...localView, connections: { ...localView.connections, routed_roles: { ...localView.connections.routed_roles, coder: 'local' as const } } };
+  assert.throws(() => residentWorkerForSelection(clearedWhileLoaded), /No exact coder model is selected/);
+  assert.throws(() => residentWorkerForSelection({ ...localView, runtime: { ...localView.runtime, selected_model_id: null } }), /No exact coder model is selected/);
 });
 
 test('a changed target between turns and a different returned model fail without any legacy fallback', async () => {

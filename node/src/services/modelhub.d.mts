@@ -7,6 +7,7 @@ export interface HubSearchResult {
 export interface HubDownloadJobSnapshot {
   job_id: string;
   repo_id: string;
+  revision: string | null;
   filename: string;
   status: 'running' | 'done' | 'error' | 'cancelled';
   bytes_done: number;
@@ -28,13 +29,26 @@ export interface HubEvent {
 export interface StartDownloadArgs {
   repo_id: string;
   filename: string;
+  revision?: string;
+  expected_size?: number;
+  expected_sha256?: string;
   quant_label?: string | null;
   urlTemplate?: string;
+}
+
+export interface BeginDownloadArgs {
+  repo_id: string;
+  filename: string;
+  revision: string;
+  expected_size: number;
+  expected_sha256: string;
+  quant_label?: string | null;
 }
 
 export declare function createHubService(options: {
   workspace: string;
   modelsDir: string;
+  allowExternalModelsDir?: boolean;
   fetchImpl?: typeof fetch;
   onEvent?: (event: HubEvent) => void;
   authorization?: () => Promise<string | null>;
@@ -44,9 +58,9 @@ export declare function createHubService(options: {
 }): {
   workspace: string;
   search(q: string, sort?: string, limit?: number): Promise<HubSearchResult>;
-  listRepoFiles(repoId: string): Promise<{ repo_id: string; files: Array<{ filename: string; size: number | null }> }>;
+  listRepoFiles(repoId: string): Promise<{ repo_id: string; revision: string; files: Array<{ filename: string; size: number | null; lfs_sha256: string | null }> }>;
   startDownload(args: StartDownloadArgs): Promise<void>;
-  beginDownload(args: StartDownloadArgs): { job_id: string };
+  beginDownload(args: BeginDownloadArgs): { job_id: string };
   cancel(jobId: string): Promise<{ cancelled: boolean }>;
   listDownloads(): HubDownloadJobSnapshot[];
   listEvents(): HubEvent[];
