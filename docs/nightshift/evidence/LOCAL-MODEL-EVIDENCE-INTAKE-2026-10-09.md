@@ -4,7 +4,9 @@
 
 `LOCAL_MODEL_EVIDENCE_PRESERVED_AND_ACCEPTED_AS_CANONICAL_INPUT`
 
-This is an evidence intake into the existing Cipher/Liquid implementation lane. It does not replace the existing Model Manager, Broker, Harness Sync, Model Atlas, Resident, Authority, or release evidence owners. It does not qualify Liquid for the Cipher Resident role and does not claim the current host is ready to start a model.
+This is an evidence intake into the existing MI1B Cipher/Liquid candidate lane. It does not replace the Model Manager, Broker, Harness Sync, Model Atlas, Resident, Authority, or release evidence owners. It does not qualify Liquid for the Cipher Resident role and does not claim the current host is ready to start a model.
+
+The candidate lane is not the current canonical convergence branch. The MI1B source baseline `3651b12926a1af36c51ff8864de485ec49869277` shares merge base `cfaad716a01af06dfe61dcfb3d1acd7dea9b4b2c` with `origin/nightshift/production-convergence-20260926` at `7f79be9f09afa43283d3548b3b2fd0c98a6dbca7`. MI1B has 23 lane commits ahead and 2 convergence commits not present. The Model Atlas, Harness Sync and Resident Binding source described below exists in MI1B only; this intake does not merge or declare that work canonical.
 
 ## Source evidence and publication
 
@@ -19,7 +21,7 @@ The prior recovery recheck's fixture-backed ModelHub tests passed (30/30 unit an
 
 ## Canonical artifact reconciliation
 
-The pinned identity matches the existing Liquid artifact already present in Covert's V1 Unsloth Passport, `BrokerModelRuntime` qualification history, Model Access/import history, and model card:
+The pinned identity matches the Liquid artifact already represented in the MI1B candidate's V1 Unsloth Passport, `BrokerModelRuntime` qualification history, Model Access/import history, and model card. These files are not present on the current convergence branch at `7f79be9`; they remain candidate-lane evidence until the normal integration gates close.
 
 | Field | Canonical value |
 |---|---|
@@ -34,7 +36,7 @@ The bounded source check observed the expected filename and size at `E:\models\h
 
 ## Qualification boundary
 
-The existing [Unsloth V1 Passport](../../design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json), [model card](MODEL-CARD-LFM2.5-2.6B-Q4_K_M.md), and [runtime closure record](LOCAL-RUNTIME-CLOSURE-2026-09-30.md) contain historical evidence for the exact artifact under a narrow profile: native Windows Administrator, Unsloth `2026.9.11`, Vulkan, GTX 1060 Mobile, and the recorded request/runtime profile. The runtime closure also records successful exact-model start, generation, stop, restart, and second generation at that earlier time.
+The MI1B candidate's [Unsloth V1 Passport](../../design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json), [model card](MODEL-CARD-LFM2.5-2.6B-Q4_K_M.md), and [runtime closure record](LOCAL-RUNTIME-CLOSURE-2026-09-30.md) contain historical evidence for the exact artifact under a narrow profile: native Windows Administrator, Unsloth `2026.9.11`, Vulkan, GTX 1060 Mobile, and the recorded request/runtime profile. The runtime closure also records successful exact-model start, generation, stop, restart, and second generation at that earlier time.
 
 That history does **not** establish:
 
@@ -46,6 +48,18 @@ That history does **not** establish:
 - general tool-use qualification or release readiness.
 
 The Passport's partial tool-call observations do not satisfy the Resident role gate. No qualification is inherited merely because the runtime or artifact was previously qualified.
+
+## Harness Sync and Resident execution wiring status
+
+The requested execution path is not currently implemented end to end:
+
+- Current convergence documentation describes Harness Sync/Passport as `DESIGN ONLY` and the current convergence source does not include the MI1B Atlas/Harness Sync implementation.
+- In MI1B, `node/src/services/harness-sync.ts` exposes `inspect()` and `sync()`. `sync()` persists only a candidate whose execution marker is `AUTHORITY_REQUIRED` / `executed: false`; it does not execute a benchmark.
+- `node/src/services/model-atlas.ts` can validate and append immutable evaluation records, but repository search found no production route or runner that invokes `recordEvaluation()` from actual model observations. `/api/harness/attempt*` routes are journal reads; the AttemptJournal is written by AgentLoop lifecycle code.
+- `scripts/run-harness-battery.mjs` performs a direct loopback OpenAI-compatible scaffold ablation. Its own scope explicitly excludes agent tool use, Execution Authority, Veritas, workspace retrieval, and other harness products. It cannot qualify Cipher Resident behavior or serve as production execution proof.
+- The MI1B `GET /api/resident/binding` service is a read-only Model Manager/runtime projection. It does not select a Resident model or execute Resident requests. The available `POST /api/chat` path is Authority-targeted, but it is not a role-specific Resident evaluator.
+
+Therefore `ROLE=CIPHER_RESIDENT` qualification and a live Cipher/Liquid execution path remain `NOT_IMPLEMENTED / UNKNOWN`, despite the existing artifact-level runtime evidence. The next bounded engineering unit is to connect a Resident-specific evaluation through the existing canonical Authority, exact Model Router target, Resource Admission, AttemptJournal/Provenance and immutable Model Atlas owners. It must not use the direct scaffold-ablation script as a substitute, accept caller-supplied scores, add a second evidence store, or produce fixture-backed qualification. This source integration remains on the MI1B candidate lane until its own verification and the normal convergence integration gates close.
 
 ## Current bounded gates
 
@@ -85,7 +99,7 @@ Do not start a model until a safe exact-artifact copy has been verified and an i
 
 1. Copy the existing E: artifact once to the independent C: target; hash that copy and validate GGUF structure. Preserve the E: original.
 2. Reconcile the verified copy against the existing canonical Model Manager identity and registration. Do not create a duplicate model or bypass the canonical owner.
-3. Use the existing Harness Sync and Model Atlas flow for a fresh `ROLE=CIPHER_RESIDENT` evaluation. Bind evidence to the exact artifact hash, runtime/profile, host, and evaluation revision. Do not inherit the Unsloth V1 qualification as Resident evidence.
+3. Close the missing Authority-governed Resident evaluator wiring in the MI1B candidate, using the existing Harness Sync/Model Atlas/AttemptJournal owners. Then run a fresh `ROLE=CIPHER_RESIDENT` evaluation bound to exact artifact hash, runtime/profile, host, and evaluation revision. Do not inherit the Unsloth V1 qualification as Resident evidence.
 4. Take fresh canonical Admission immediately before the Authority-governed runtime start. Preserve exact model identity, no substitution, and canonical Runtime Broker/Model Manager ownership.
 5. Prove the Resident-specific inference and required lifecycle/authority behavior through the governed path. Continue the Cipher Laptop/workstation → Harness/Atlas → Mission Composer → Authority/Orchestrator → verification/receipt feedback vertical; a generic chat response is not the endpoint.
 6. Only after those results are recorded may the demo state advance toward `CIPHER_LIVE_DEMO`.
