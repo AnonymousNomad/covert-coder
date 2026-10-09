@@ -69,10 +69,11 @@ function signedConfirmation(challenge: PairingChallengeT, keys: DeviceKeys, devi
   }).toString('base64url') };
 }
 
-function requestTls(port: number, pathname: string, method: 'GET' | 'POST', body?: unknown, headers: Record<string, string> = {}): Promise<JsonReply> {
+function requestTls(port: number, pathname: string, method: 'GET' | 'POST', body?: unknown, headers: Record<string, string> = {},
+  localAddress = '127.0.0.1'): Promise<JsonReply> {
   const bytes = body === undefined ? Buffer.alloc(0) : Buffer.from(JSON.stringify(body));
   return new Promise((resolve, reject) => {
-    const request = https.request({ hostname: '127.0.0.1', port, path: pathname, method,
+    const request = https.request({ hostname: '127.0.0.1', localAddress, port, path: pathname, method,
       rejectUnauthorized: false, headers: {
         ...(body === undefined ? {} : { 'content-type': 'application/json', 'content-length': String(bytes.byteLength) }),
         ...headers
@@ -433,6 +434,182 @@ test('broad workstation API stays loopback-only and Partner pairing administrati
     if (partner) await closeServer(partner);
     if (broad) await closeServer(broad);
     await arch.logger.flush();
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('pairing transactions serialize concurrent confirmations, reject duplicate keys, and keep device scopes out of Authority', async () => {
+  const workspace = await makeWorkspace('covert-partner-concurrency-');
+  const { authority } = await directAuthority(workspace);
+  const fingerprint = 'c'.repeat(64);
+  try {
+    await authority.partner.initialize(fingerprint);
+    const operator = await operatorFor(authority);
+    await assert.rejects(authority.control.createPartnerPairingChallenge(operator.actor, [] as never), { code: 'BAD_REQUEST' },
+      'a challenge must request at least one supported scope');
+    await assert.rejects(authority.control.createPartnerPairingChallenge(operator.actor, ['system.read', 'terminal.exec'] as never),
+      { code: 'BAD_REQUEST' }, 'unknown scopes cannot enter a durable challenge');
+
+    const challenge = await authority.control.createPartnerPairingChallenge(operator.actor, ['system.read']);
+    const keys = makeKeys();
+    const confirmation = signedConfirmation(challenge, keys, 'race-device');
+    const attempts = await Promise.allSettled([
+      authority.partner.submitPairingConfirmation(confirmation),
+      authority.partner.submitPairingConfirmation(confirmation)
+    ]);
+    const successes = attempts.filter((attempt): attempt is PromiseFulfilledResult<Awaited<ReturnType<typeof authority.partner.submitPairingConfirmation>>> =>
+      attempt.status === 'fulfilled');
+    const failures = attempts.filter((attempt): attempt is PromiseRejectedResult => attempt.status === 'rejected');
+    assert.equal(successes.length, 1, 'only one concurrent pairing confirmation may consume a challenge');
+    assert.equal(failures.length, 1);
+    const rejected = failures[0];
+    assert.ok(rejected, 'the rejected concurrent pairing attempt is present');
+    assert.equal((rejected.reason as { code?: string }).code, 'CONFLICT');
+    const completed = successes[0];
+    assert.ok(completed, 'the successful concurrent pairing attempt is present');
+    const pending = completed.value;
+
+    const duplicatePendingChallenge = await authority.control.createPartnerPairingChallenge(operator.actor, ['system.read']);
+    await assert.rejects(authority.partner.submitPairingConfirmation(
+      signedConfirmation(duplicatePendingChallenge, keys, 'duplicate-pending-device')), { code: 'CONFLICT' },
+    'the same public key cannot register a second pending device');
+
+    const principal = await authority.control.confirmPartnerPairing(operator.actor, pending.pending_id, ['system.read']);
+    await assert.rejects(authority.control.createPartnerPairingChallenge(principal as never, ['system.read']),
+      { code: 'FORBIDDEN' }, 'a Partner device principal is not an Authority actor');
+    await assert.rejects(authority.control.confirmPartnerPairing(principal as never, pending.pending_id, ['system.read']),
+      { code: 'FORBIDDEN' }, 'a Partner device principal cannot approve grants');
+
+    const duplicateActiveChallenge = await authority.control.createPartnerPairingChallenge(operator.actor, ['system.read']);
+    await assert.rejects(authority.partner.submitPairingConfirmation(
+      signedConfirmation(duplicateActiveChallenge, keys, 'duplicate-active-device')), { code: 'CONFLICT' },
+    'an active key cannot be registered a second time');
+
+    const revoked = await authority.control.revokePartnerDevice(operator.actor, principal.device_id);
+    assert.equal(revoked.state, 'REVOKED');
+    await assert.rejects(authority.partner.requireScope(principal.device_id, 'system.read'), { code: 'FORBIDDEN' });
+    await assert.rejects(authority.partner.createProofChallenge(principal.device_id), { code: 'FORBIDDEN' },
+      'revoked devices cannot obtain request-proof challenges');
+
+    const rePairChallenge = await authority.control.createPartnerPairingChallenge(operator.actor, ['system.read']);
+    await assert.rejects(authority.partner.submitPairingConfirmation(
+      signedConfirmation(rePairChallenge, keys, 'revoked-key-repair')), { code: 'CONFLICT' },
+    'a revoked public-key identity remains durably unavailable');
+    const replacementKeys = makeKeys();
+    const replacementChallenge = await authority.control.createPartnerPairingChallenge(operator.actor, ['system.read']);
+    const replacement = await authority.partner.submitPairingConfirmation(
+      signedConfirmation(replacementChallenge, replacementKeys, 'replacement-device'));
+    assert.equal(replacement.state, 'AWAITING_OPERATOR', 'a replacement key can begin a separately approved pairing');
+  } finally {
+    authority.control.close();
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('corrupt Partner registry fails closed without overwriting the recoverable bytes', async () => {
+  const workspace = await makeWorkspace('covert-partner-corrupt-state-');
+  const fingerprint = 'd'.repeat(64);
+  const initial = await directAuthority(workspace);
+  const restarted = await directAuthority(workspace);
+  const statePath = path.join(workspace, '.aide', 'platform-authority', 'partner-devices.json');
+  const corruptBytes = Buffer.from('{"schema":"covert.partner-device-state.v1",', 'utf8');
+  try {
+    await initial.authority.partner.initialize(fingerprint);
+    initial.authority.control.close();
+    await fs.writeFile(statePath, corruptBytes);
+    await assert.rejects(restarted.authority.partner.initialize(fingerprint), { code: 'NOT_READY' },
+      'registry corruption is not repaired or replaced implicitly');
+    assert.deepEqual(await fs.readFile(statePath), corruptBytes, 'failed initialization preserves the original corrupt evidence');
+  } finally {
+    initial.authority.control.close();
+    restarted.authority.control.close();
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('Partner listener is opt-in and startup failure leaves the loopback API available', async () => {
+  const workspace = await makeWorkspace('covert-partner-listener-failure-');
+  const { key } = await testTlsMaterial();
+  const arch = new ArchServer(workspace, path.join(workspace, '.aide', 'logs', 'partner-listener-failure.log'));
+  let broad: http.Server | undefined;
+  try {
+    broad = await arch.listen(0);
+    const address = broad.address();
+    assert.ok(address && typeof address === 'object');
+    const base = 'http://127.0.0.1:' + address.port;
+    const partnerRouteOnBroadApi = await fetch(base + '/partner/v1/hello', { method: 'POST' });
+    assert.equal(partnerRouteOnBroadApi.status, 404, 'the broad API does not expose the Partner protocol');
+    await assert.rejects(arch.listenPartner({ bind_host: '127.0.0.1', lan_cidr: '127.0.0.1/32', port: 0,
+      tls_key: key, tls_certificate: '' }), /TLS certificate and private key are required/);
+    const broadRouteAfterFailure = await fetch(base + '/api/partner/pairings/pending');
+    assert.equal(broadRouteAfterFailure.status, 403, 'a failed Partner listener does not stop the workstation API');
+  } finally {
+    if (broad) await closeServer(broad);
+    await arch.logger.flush();
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('TLS pairing rejects malformed payloads and wrong device keys without consuming the valid challenge', async () => {
+  const workspace = await makeWorkspace('covert-partner-invalid-pairing-');
+  const { certificate, key } = await testTlsMaterial();
+  const { authority } = await directAuthority(workspace);
+  const logs: string[] = [];
+  let listener: https.Server | undefined;
+  try {
+    listener = await listenPartnerProtocol({ authority, bind_host: '127.0.0.1', lan_cidr: '127.0.0.1/32', port: 0,
+      tls_key: key, tls_certificate: certificate,
+      logger: { warn: (_message, metadata) => logs.push(JSON.stringify(metadata)), error: (_message, metadata) => logs.push(JSON.stringify(metadata)) } });
+    const address = listener.address();
+    assert.ok(address && typeof address === 'object');
+    const operator = await operatorFor(authority);
+    const challenge = await authority.control.createPartnerPairingChallenge(operator.actor, ['system.read']);
+    const keys = makeKeys();
+    const confirmation = signedConfirmation(challenge, keys, 'valid-device');
+    const wrongSigner = makeKeys();
+    const wrongKey = { ...confirmation, public_key: wrongSigner.publicKey, key_thumbprint: partnerKeyThumbprint(wrongSigner.publicKey) };
+    const wrongKeyResponse = await requestTls(address.port, '/partner/v1/pairing-confirmations', 'POST', wrongKey, { 'x-covert-partner-major': '1' });
+    assert.equal(wrongKeyResponse.status, 403, 'signature/key mismatch is rejected');
+    assert.equal(PartnerProtocolError.parse(wrongKeyResponse.body).code, 'FORBIDDEN');
+
+    const secretMarker = 'partner-payload-secret-marker';
+    const malformed = await requestTls(address.port, '/partner/v1/pairing-confirmations', 'POST',
+      { ...confirmation, unexpected_secret: secretMarker }, { 'x-covert-partner-major': '1' });
+    assert.equal(malformed.status, 400);
+    assert.equal(PartnerProtocolError.parse(malformed.body).code, 'INVALID_REQUEST');
+    assert.equal(malformed.raw.includes(secretMarker), false, 'invalid payloads are not reflected');
+    assert.equal(logs.some(value => value.includes(secretMarker)), false, 'invalid payloads are not logged');
+
+    const paired = await requestTls(address.port, '/partner/v1/pairing-confirmations', 'POST', confirmation, { 'x-covert-partner-major': '1' });
+    assert.equal(paired.status, 202, 'invalid attempts do not consume the valid one-use challenge');
+    const replay = await requestTls(address.port, '/partner/v1/pairing-confirmations', 'POST', confirmation, { 'x-covert-partner-major': '1' });
+    assert.equal(replay.status, 409);
+    assert.equal(paired.raw.includes(operator.token), false, 'Partner responses never return the operator bearer');
+  } finally {
+    if (listener) await closeServer(listener);
+    authority.control.close();
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('TLS Partner listener denies peers outside its configured LAN scope', async () => {
+  const workspace = await makeWorkspace('covert-partner-peer-scope-');
+  const { certificate, key } = await testTlsMaterial();
+  const { authority } = await directAuthority(workspace);
+  let listener: https.Server | undefined;
+  try {
+    listener = await listenPartnerProtocol({ authority, bind_host: '127.0.0.1', lan_cidr: '127.0.0.1/32', port: 0,
+      tls_key: key, tls_certificate: certificate });
+    const address = listener.address();
+    assert.ok(address && typeof address === 'object');
+    const hello = { schema: 'covert.partner-hello-request.v1', protocol: { major: 1, minor: 0 },
+      client_instance_id: '00000000-0000-4000-8000-000000000099' };
+    const denied = await requestTls(address.port, '/partner/v1/hello', 'POST', hello, {}, '127.0.0.2');
+    assert.equal(denied.status, 403, 'a peer outside the configured CIDR is denied before protocol dispatch');
+    assert.equal(PartnerProtocolError.parse(denied.body).code, 'FORBIDDEN');
+  } finally {
+    if (listener) await closeServer(listener);
+    authority.control.close();
     await fs.rm(workspace, { recursive: true, force: true });
   }
 });
