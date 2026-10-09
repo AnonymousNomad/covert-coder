@@ -1,0 +1,48 @@
+{
+  "schema": "covert.resident-binding-ci-repair.v1",
+  "captured_at": "2026-10-09T17:47:53Z",
+  "branch": "feat/model-intelligence-mi1b-reliability-20261005",
+  "failed_commit": "aff22d97d8aa8cfb3c253ec422b548d0f95acc1f",
+  "ci": {
+    "run_id": "37967329298",
+    "url": "https://github.com/AnonymousNomad/covert-coder/actions/runs/37967329298",
+    "conclusion": "FAILURE",
+    "architecture_artifact": {
+      "name": "arch-test-log",
+      "artifact_id": "11634148468",
+      "sha256": "09955eb50b1386e317eb2d9a64fa1718a048d3429e39c5cc67065d85aefa8d65"
+    },
+    "architecture": { "total": 986, "passed": 968, "failed": 2, "skipped": 16, "cancelled": 0 },
+    "failures": [
+      "tests/arch/openapi-drift.test.ts: common/openapi.json stale",
+      "tests/arch/route-drift.test.ts: route map could not be reproduced because common/openapi.json was stale"
+    ],
+    "veritas": {
+      "path_boundary": "PASS",
+      "secret_scan": "PASS",
+      "manifest_validation": "PASS",
+      "compile": "FAIL_SAME_ROUTE_DRIFT_ASSERTION",
+      "tests": "PASS",
+      "git_diff": "PASS"
+    }
+  },
+  "root_cause": "ResidentDegradedReason changed the generated response schema, but common/openapi.json was not regenerated before the first checkpoint push.",
+  "repair": {
+    "command": "npm run contracts",
+    "changed_files": ["common/openapi.json"],
+    "change_summary": "10 insertions, 2 deletions; degraded_reason now reflects the eight canonical stable reason codes",
+    "temp_and_tmp": "C:\\Users\\Grey_\\AppData\\Local\\Temp"
+  },
+  "focused_verification": {
+    "command": "node --test tests/arch/openapi-drift.test.ts tests/arch/route-drift.test.ts",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "diff_check": "PASS"
+  },
+  "first_red_preserved": true,
+  "repair_commit_exact_sha_ci": "PENDING",
+  "local_model_admission": "NOT_RUN",
+  "local_model_runtime": "NOT_RUN"
+}

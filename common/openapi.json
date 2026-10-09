@@ -19267,8 +19267,16 @@
                       "anyOf": [
                         {
                           "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
+                          "enum": [
+                            "resident_model_not_registered",
+                            "resident_model_artifact_unavailable",
+                            "resident_runtime_unavailable",
+                            "resident_runtime_unverified",
+                            "resident_model_not_qualified",
+                            "resident_role_qualification_unverified",
+                            "multiple_resident_candidates",
+                            "binding_unverified"
+                          ]
                         },
                         {
                           "type": "null"
