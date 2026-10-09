@@ -2,7 +2,8 @@
 
 Cipher is the persistent Resident. Liquid is the canonical Resident model. Worker models are delegated
 resources and never silently become the Resident. This is a read-only projection over canonical Model
-Manager inventory + runtime status; it holds no state of its own, so it survives UI reloads by construction.
+Manager inventory, runtime status, and current Resident-role qualification; it holds no state of its own,
+so it survives UI reloads by construction.
 
 ## Import
 
@@ -16,7 +17,8 @@ Backend owner composes the service with canonical providers (Model Manager inven
 ```ts
 const binding = createResidentBinding({
   listCandidates: () => managerModels(),          // canonical inventory entries
-  observeRuntime: id => runtimeObservation(id),   // optional; UNKNOWN when absent
+  observeRuntime: id => runtimeObservation(id),   // UNKNOWN when absent
+  observeRoleQualification: id => currentCipherResidentQualification(id), // UNKNOWN until role evidence exists
   executionNode: 'local-windows'
 });
 const view = await binding.read();                // ResidentBindingT
@@ -38,15 +40,24 @@ const view = await binding.read();                // ResidentBindingT
 | `last_verified_at` | ISO time \| null | when the backend last derived the projection from canonical inputs; null only when no observation time is available |
 
 Degraded reason codes: `resident_model_not_registered`, `resident_model_artifact_unavailable`,
-`resident_runtime_unavailable`, `resident_runtime_unverified`, `multiple_resident_candidates`,
-`binding_unverified`.
+`resident_runtime_unavailable`, `resident_runtime_unverified`, `resident_model_not_qualified`,
+`resident_role_qualification_unverified`, `multiple_resident_candidates`, `binding_unverified`.
 
 ## Failure / degraded semantics
 
 - Liquid absent from canonical inventory → `UNBOUND` + `resident_model_not_registered`.
 - Liquid present but artifact missing → `DEGRADED` + `resident_model_artifact_unavailable`.
-- Runtime probe unavailable/unverified → `DEGRADED` + `resident_runtime_unavailable` / `resident_runtime_unverified`.
+- Runtime probe unavailable/unverified → `DEGRADED` + `resident_runtime_unavailable` /
+  `resident_runtime_unverified`.
+- Artifact and runtime available but no current `CIPHER_RESIDENT` qualification → `DEGRADED` +
+  `resident_role_qualification_unverified`.
+- Current role evidence explicitly rejects the model → `DEGRADED` + `resident_model_not_qualified`.
 - More than one Liquid candidate → `DEGRADED` + `multiple_resident_candidates` (never guess).
+
+`BOUND` requires the canonical role-qualification owner to report current `CIPHER_RESIDENT` evidence
+for the selected model. Generic artifact/runtime qualification, historical Passport evidence, a model
+selection, or a fixture cannot satisfy that requirement. The Model Manager/runtime projection does not
+currently wire this evaluator, so its absence remains `UNKNOWN` and cannot produce `BOUND`.
 
 ## Laws for the UI
 
@@ -60,7 +71,8 @@ Degraded reason codes: `resident_model_not_registered`, `resident_model_artifact
 The Main Luna/Cipher UI must consume the projection from `GET /api/resident/binding`, owned by the backend
 process that composes Model Manager and Runtime Broker. The route returns only `covert.resident-binding.v1`;
 it does not expose raw Model Manager inventory. The backend derives the projection on every read from
-canonical inventory and runtime observations. The UI must not infer Cipher from Model Manager data,
+canonical inventory, runtime observations, and Resident-role qualification evidence. The UI must not infer
+Cipher from Model Manager data,
 the active worker model, or its own persisted model ID. It must display stable `degraded_reason` codes
 as user-facing state without parsing backend prose.
 
@@ -135,7 +147,9 @@ as user-facing state without parsing backend prose.
 ```
 
 An observed `NOT_LOADABLE` runtime uses `resident_runtime_unavailable`. Runtime readiness is not
-inferred from the existence of a model selection or a worker assignment.
+inferred from the existence of a model selection or a worker assignment. When runtime is available but
+role qualification is absent, the payload uses `resident_role_qualification_unverified`; this is the
+current production disposition until the canonical evaluator is wired.
 
 ## Canonical transport
 

@@ -1,0 +1,64 @@
+{
+  "schema": "covert.local-model-recovery-resident-binding.v1",
+  "captured_at": "2026-10-09T17:32:19Z",
+  "branch": "feat/model-intelligence-mi1b-reliability-20261005",
+  "base_head": "7477b3555bd063634c7605e0e1618529469f2cbf",
+  "source_evidence_branch": "feat/local-model-demo-proof-20261007",
+  "source_evidence_head": "8b0220753848088416c67a743be4f299bbab91b7",
+  "disposition": {
+    "local_model_evidence": "LOCAL_MODEL_EVIDENCE_PRESERVED_AND_ACCEPTED_AS_CANONICAL_INPUT",
+    "artifact_copy": "ACQUISITION_BLOCKED_CAPACITY",
+    "resident_binding": "DEGRADED_ROLE_QUALIFICATION_UNVERIFIED",
+    "global_storage": "RECOVERY_PARTIAL"
+  },
+  "storage": {
+    "target_volume": "C:",
+    "filesystem": "NTFS",
+    "health": "Healthy",
+    "volume_bytes": 126812377088,
+    "free_bytes": 173248512,
+    "required_pre_copy_free_bytes": 3348910080,
+    "shortfall_bytes": 3175661568,
+    "physical_mapping_source": "previously verified; not reprobed for this record",
+    "target_physical_disk": "PHYSICALDRIVE1",
+    "artifact_source_physical_disk": "PHYSICALDRIVE0",
+    "safe_cache_candidate_bytes_prior_inventory": 1052551434,
+    "remaining_shortfall_after_all_prior_candidates_bytes": 2123110134,
+    "relocation_performed": false
+  },
+  "artifact": {
+    "identity": "LFM2.5-2.6B-Q4_K_M.gguf",
+    "observed_source_path": "E:\\models\\house-model\\lfm25_gguf\\LFM2.5-2.6B-Q4_K_M.gguf",
+    "observed_size_bytes": 1674455040,
+    "expected_sha256_historical": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+    "upstream": "LiquidAI/LFM2.5-2.6B-GGUF",
+    "revision": "e7caca5d835a3901a8e0d63e94009429bafafdfc",
+    "current_source_hash_state": "NOT_REHASHED",
+    "gguf_validation_state": "NOT_RUN",
+    "copy_state": "NOT_COPIED",
+    "registration_state": "NOT_RECONFIRMED",
+    "source_modified": false
+  },
+  "resident_binding_repair": {
+    "regression_observed": "runtime_loadable_without_role_evidence_returned_BOUND",
+    "production_role_evaluator_wired": false,
+    "missing_role_evidence_state": "UNKNOWN",
+    "binding_result_without_role_evidence": "DEGRADED",
+    "qualified_binding_requires": "current CIPHER_RESIDENT evidence from canonical qualification owner"
+  },
+  "verification": {
+    "focused_unit_route": { "passed": 19, "failed": 0, "skipped": 0 },
+    "resident_architecture": { "passed": 11, "failed": 0, "skipped": 0 },
+    "node_typescript_exit_code": 0,
+    "diff_check": "PASS",
+    "targeted_eslint": "INCOMPLETE_NO_OUTPUT_INTERRUPTED_CAUSE_UNKNOWN",
+    "previous_checkpoint_aide_ci": {
+      "run_id": "37964408605",
+      "head_sha": "7477b3555bd063634c7605e0e1618529469f2cbf",
+      "result": "SUCCESS"
+    },
+    "current_change_exact_sha_ci": "NOT_YET_RUN",
+    "fresh_admission": "NOT_RUN",
+    "runtime_start": "NOT_RUN"
+  }
+}

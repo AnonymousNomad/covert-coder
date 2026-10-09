@@ -729,6 +729,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
         verified_at: new Date().toISOString()
       };
     },
+    // Model Manager's runtime Passport is not CIPHER_RESIDENT qualification.
+    // Leave role qualification unknown until the canonical Harness/Atlas evaluator is wired.
     executionNode: 'local-windows'
   });
   const huggingfaceAuthorization =

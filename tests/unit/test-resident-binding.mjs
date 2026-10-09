@@ -22,27 +22,41 @@ function binding(overrides = {}) {
   return createResidentBinding({
     listCandidates: async () => overrides.candidates ?? [candidate()],
     observeRuntime: overrides.observeRuntime ?? (async () => ({ runtime_state: 'LOADABLE', verified_at: '2026-10-06T08:00:00.000Z' })),
+    ...(overrides.observeRoleQualification ? { observeRoleQualification: overrides.observeRoleQualification } : {}),
     executionNode: 'local-windows'
   });
 }
 
-test('bound: the Liquid resident model resolves with runtime evidence', async () => {
+test('a loadable Liquid Resident stays degraded until role qualification is observed', async () => {
   const view = await binding().read();
   assert.equal(view.schema, RESIDENT_BINDING_SCHEMA);
   assert.equal(view.resident_id, 'cipher');
   assert.equal(view.resident_model_id, 'local:liquid-2.6b');
   assert.equal(view.resident_model_family, 'liquid');
-  assert.equal(view.binding_state, 'BOUND');
+  assert.equal(view.binding_state, 'DEGRADED');
   assert.equal(view.availability_state, 'AVAILABLE');
   assert.equal(view.runtime_state, 'LOADABLE');
-  assert.equal(view.degraded_reason, null);
+  assert.equal(view.degraded_reason, 'resident_role_qualification_unverified');
   assert.equal(view.last_verified_at, '2026-10-06T08:00:00.000Z');
+});
+
+test('only explicit Resident-role qualification allows binding once the model is loadable', async () => {
+  const view = await binding({ observeRoleQualification: async () => 'QUALIFIED' }).read();
+  assert.equal(view.binding_state, 'BOUND');
+  assert.equal(view.degraded_reason, null);
+});
+
+test('negative Resident-role qualification remains degraded', async () => {
+  const view = await binding({ observeRoleQualification: async () => 'NOT_QUALIFIED' }).read();
+  assert.equal(view.binding_state, 'DEGRADED');
+  assert.equal(view.degraded_reason, 'resident_model_not_qualified');
 });
 
 test('running runtime is reported truthfully', async () => {
   const view = await binding({ observeRuntime: async () => ({ runtime_state: 'RUNNING', verified_at: '2026-10-06T08:05:00.000Z' }) }).read();
   assert.equal(view.runtime_state, 'RUNNING');
-  assert.equal(view.binding_state, 'BOUND');
+  assert.equal(view.binding_state, 'DEGRADED');
+  assert.equal(view.degraded_reason, 'resident_role_qualification_unverified');
 });
 
 test('missing Liquid registration degrades with a stable reason', async () => {

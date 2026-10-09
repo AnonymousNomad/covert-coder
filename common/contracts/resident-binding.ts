@@ -14,8 +14,17 @@ export const CANONICAL_RESIDENT_FAMILY = 'liquid';
 export const ResidentBindingState = z.enum(['BOUND', 'UNBOUND', 'DEGRADED']);
 export const ResidentAvailabilityState = z.enum(['AVAILABLE', 'UNAVAILABLE', 'UNKNOWN']);
 export const ResidentRuntimeState = z.enum(['RUNNING', 'LOADABLE', 'NOT_LOADABLE', 'UNKNOWN']);
+export const ResidentDegradedReason = z.enum([
+  'resident_model_not_registered',
+  'resident_model_artifact_unavailable',
+  'resident_runtime_unavailable',
+  'resident_runtime_unverified',
+  'resident_model_not_qualified',
+  'resident_role_qualification_unverified',
+  'multiple_resident_candidates',
+  'binding_unverified'
+]);
 
-const BoundedReason = z.string().min(1).max(200);
 const IsoTime = z.string().refine(value => Number.isFinite(Date.parse(value)), 'timestamp required');
 
 export const ResidentBinding = z.strictObject({
@@ -27,19 +36,9 @@ export const ResidentBinding = z.strictObject({
   availability_state: ResidentAvailabilityState,
   runtime_state: ResidentRuntimeState,
   execution_node: z.string().min(1).max(80),
-  degraded_reason: BoundedReason.nullable(),
+  degraded_reason: ResidentDegradedReason.nullable(),
   last_verified_at: IsoTime.nullable()
 });
 
 export type ResidentBindingT = z.infer<typeof ResidentBinding>;
-
-// Degraded reasons are stable codes so consumers never parse prose.
-export const ResidentDegradedReason = z.enum([
-  'resident_model_not_registered',
-  'resident_model_artifact_unavailable',
-  'resident_runtime_unavailable',
-  'resident_runtime_unverified',
-  'multiple_resident_candidates',
-  'binding_unverified'
-]);
 export type ResidentDegradedReasonT = z.infer<typeof ResidentDegradedReason>;

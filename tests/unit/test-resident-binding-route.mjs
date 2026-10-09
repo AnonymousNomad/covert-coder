@@ -22,7 +22,8 @@ test('route is a canonical GET read over the projection', () => {
 test('bound payload travels contract-exact through the route', async () => {
   const view = await createResidentBinding({
     listCandidates: async () => [{ canonical_id: 'local:liquid-2.6b', display_name: 'Liquid 2.6B', family: 'liquid', availability: 'INSTALLED', artifact_available: true, runtime_ready: true }],
-    observeRuntime: async () => ({ runtime_state: 'RUNNING', verified_at: '2026-10-06T09:00:00.000Z' })
+    observeRuntime: async () => ({ runtime_state: 'RUNNING', verified_at: '2026-10-06T09:00:00.000Z' }),
+    observeRoleQualification: async () => 'QUALIFIED'
   }).read();
   const route = routeForResidentBinding({ read: async () => view });
   const response = await route.handler({});
@@ -30,6 +31,17 @@ test('bound payload travels contract-exact through the route', async () => {
   assert.equal(response.schema, RESIDENT_BINDING_SCHEMA);
   assert.equal(response.binding_state, 'BOUND');
   assert.equal(response.resident_model_id, 'local:liquid-2.6b');
+  assert.equal(ResidentBinding.safeParse({ ...response, degraded_reason: 'unregistered_reason' }).success, false);
+});
+
+test('route preserves role qualification as unverified when only runtime readiness exists', async () => {
+  const service = createResidentBinding({
+    listCandidates: async () => [{ canonical_id: 'local:liquid-2.6b', display_name: 'Liquid 2.6B', family: 'liquid', availability: 'INSTALLED', artifact_available: true, runtime_ready: true }],
+    observeRuntime: async () => ({ runtime_state: 'LOADABLE', verified_at: '2026-10-06T09:00:00.000Z' })
+  });
+  const response = await routeForResidentBinding(service).handler({});
+  assert.equal(response.binding_state, 'DEGRADED');
+  assert.equal(response.degraded_reason, 'resident_role_qualification_unverified');
 });
 
 test('unbound and degraded payloads keep stable codes', async () => {
@@ -94,7 +106,11 @@ test('runtime-unverified and runtime-unavailable reasons remain stable on the ro
 
 test('the route derives on every read: canonical state changes are reflected without caches', async () => {
   let candidates = [{ canonical_id: 'local:liquid-2.6b', display_name: 'Liquid 2.6B', family: 'liquid', availability: 'INSTALLED', artifact_available: true, runtime_ready: true }];
-  const service = createResidentBinding({ listCandidates: async () => candidates, observeRuntime: async () => ({ runtime_state: 'LOADABLE', verified_at: '2026-10-06T09:05:00.000Z' }) });
+  const service = createResidentBinding({
+    listCandidates: async () => candidates,
+    observeRuntime: async () => ({ runtime_state: 'LOADABLE', verified_at: '2026-10-06T09:05:00.000Z' }),
+    observeRoleQualification: async () => 'QUALIFIED'
+  });
   const route = routeForResidentBinding(service);
   const first = await route.handler({});
   assert.equal(first.binding_state, 'BOUND');
@@ -150,7 +166,8 @@ test('a reconstructed route derives the same projection from the canonical persi
     const modelManagerView = createModelManagerView({ workspace, manifestPath, modelRuntime, connectionsService });
     return routeForResidentBinding(createResidentBinding({
       listCandidates: async () => residentCandidatesFromModelManager(await modelManagerView.snapshot()),
-      observeRuntime: async () => ({ runtime_state: 'LOADABLE', verified_at: '2026-10-06T09:15:00.000Z' })
+      observeRuntime: async () => ({ runtime_state: 'LOADABLE', verified_at: '2026-10-06T09:15:00.000Z' }),
+      observeRoleQualification: async () => 'QUALIFIED'
     }));
   };
 

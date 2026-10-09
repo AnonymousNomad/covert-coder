@@ -26,9 +26,14 @@ export interface ResidentRuntimeObservation {
   verified_at: string | null;
 }
 
+export type ResidentRoleQualification = 'QUALIFIED' | 'NOT_QUALIFIED' | 'UNKNOWN';
+
 export interface ResidentBindingOptions {
   listCandidates: () => Promise<ResidentCandidate[]>;
   observeRuntime?: (modelId: string) => Promise<ResidentRuntimeObservation>;
+  // This must project current CIPHER_RESIDENT evidence from the canonical
+  // qualification owner. Generic artifact/runtime qualification is not enough.
+  observeRoleQualification?: (modelId: string) => Promise<ResidentRoleQualification>;
   executionNode?: string;
 }
 
@@ -56,7 +61,8 @@ export function deriveResidentBinding(
   candidates: ResidentCandidate[],
   runtime: ResidentRuntimeObservation | null,
   executionNode: string,
-  now: string
+  now: string,
+  roleQualification: ResidentRoleQualification = 'UNKNOWN'
 ): ResidentBindingT {
   const residents = candidates.filter(isResidentCandidate);
   if (residents.length === 0) {
@@ -101,6 +107,12 @@ export function deriveResidentBinding(
   } else if (runtimeState === 'UNKNOWN') {
     bindingState = 'DEGRADED';
     degradedReason = 'resident_runtime_unverified';
+  } else if (roleQualification === 'NOT_QUALIFIED') {
+    bindingState = 'DEGRADED';
+    degradedReason = 'resident_model_not_qualified';
+  } else if (roleQualification !== 'QUALIFIED') {
+    bindingState = 'DEGRADED';
+    degradedReason = 'resident_role_qualification_unverified';
   }
   return ResidentBinding.parse({
     schema: RESIDENT_BINDING_SCHEMA,
@@ -125,7 +137,14 @@ export function createResidentBinding(options: ResidentBindingOptions) {
     if (residents.length === 1 && options.observeRuntime !== undefined) {
       runtime = await options.observeRuntime(residents[0]!.canonical_id).catch(() => null);
     }
-    return deriveResidentBinding(candidates, runtime, executionNode, new Date().toISOString());
+    let roleQualification: ResidentRoleQualification = 'UNKNOWN';
+    if (residents.length === 1 && residents[0]!.artifact_available &&
+        (runtime?.runtime_state === 'RUNNING' || runtime?.runtime_state === 'LOADABLE') &&
+        options.observeRoleQualification !== undefined) {
+      roleQualification = await options.observeRoleQualification(residents[0]!.canonical_id)
+        .catch(() => 'UNKNOWN' as const);
+    }
+    return deriveResidentBinding(candidates, runtime, executionNode, new Date().toISOString(), roleQualification);
   }
   return { read };
 }
