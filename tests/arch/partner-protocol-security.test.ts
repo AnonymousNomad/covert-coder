@@ -280,6 +280,13 @@ test('TLS Partner adapter rejects version drift, bearer/cookie material, proof r
     }, { 'x-covert-partner-major': '1' });
     assert.equal(challengeResponse.status, 200);
     const requestChallenge = PartnerProofChallenge.parse(challengeResponse.body);
+    const wrongDeviceProof = signedRequestProof('00000000-0000-4000-8000-000000000099', requestChallenge, deviceKeys.privateKey);
+    const wrongDeviceProofHeader = Buffer.from(JSON.stringify(wrongDeviceProof)).toString('base64url');
+    const wrongDeviceResponse = await requestTls(port, '/partner/v1/snapshot', 'GET', undefined, {
+      'x-covert-partner-major': '1', 'x-covert-partner-proof': wrongDeviceProofHeader
+    });
+    assert.equal(wrongDeviceResponse.status, 409, 'proof identity must match the device that received the challenge');
+    assert.equal(PartnerProtocolError.parse(wrongDeviceResponse.body).code, 'CONFLICT');
     const proof = signedRequestProof(principal.device_id, requestChallenge, deviceKeys.privateKey);
     const proofHeader = Buffer.from(JSON.stringify(proof)).toString('base64url');
     const unauthorized = await requestTls(port, '/partner/v1/snapshot', 'GET', undefined, {
@@ -332,7 +339,7 @@ test('TLS Partner adapter rejects version drift, bearer/cookie material, proof r
       tls_key: key, tls_certificate: '' }), /TLS certificate and private key are required/);
     assert.equal(logs.some(value => value.includes('envoy-test-credential-marker') || value.includes(confirmation.signature)), false,
       'Partner logs contain neither supplied credential-like headers nor signatures');
-    const protocolResponses = [mismatch.raw, helloReadOnly.raw, hello.raw, helloOk.raw, paired.raw, replay.raw, beforeApproval.raw,
+    const protocolResponses = [mismatch.raw, helloReadOnly.raw, hello.raw, helloOk.raw, paired.raw, replay.raw, beforeApproval.raw, wrongDeviceResponse.raw,
       challengeResponse.raw, unauthorized.raw, proofReplay.raw, signedBodyRequest.raw, snapshotResponse.raw].join('\n');
     assert.equal(protocolResponses.includes(operator.token), false, 'no Partner response carries the operator bearer');
     assert.equal(protocolResponses.includes('BEGIN PRIVATE KEY'), false);
