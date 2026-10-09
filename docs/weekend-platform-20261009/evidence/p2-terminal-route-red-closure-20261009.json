@@ -1,0 +1,53 @@
+{
+  "schema": "covert.weekend-platform.p2-terminal-route-red-closure.v1",
+  "recorded_at_utc": "2026-10-09T20:55:00Z",
+  "lane": "deepseek/weekend-native-platform-20261009",
+  "worktree": "E:/covert-deepseek-weekend-20261009",
+  "subject": "terminal-session-routes.test.ts initial uninstrumented RED (11 tests / 6 passed / 5 timed out, 5000ms fixture deadline unchanged)",
+  "original_red": {
+    "record": "docs/weekend-platform-20261009/evidence/p2-managed-client-provider-20261009.json remaining_red_or_unknown[0]",
+    "tests": 11, "passed": 6, "timed_out": 5,
+    "failures": [
+      "GET /api/terminal/providers: request timeout ~18.95s including test setup",
+      "GET /api/terminal/sessions: request timeout ~5.005s",
+      "approved PTY open: request timeout ~5.012s",
+      "unknown-provider open: request timeout ~5.012s",
+      "owner stop: request timeout ~13.526s"
+    ],
+    "fixture_timeout_ms": 5000,
+    "timeout_changed": false,
+    "storage_io_failure_observed": false
+  },
+  "method": {
+    "constraints_honored": ["deadlines unchanged", "no sleeps added", "no retries added", "no cases skipped", "no assertion weakened", "bounded repetition", "stage-level timing via runner-reported durations"],
+    "runs": [
+      { "id": "isolated-1", "command": "node --experimental-strip-types --no-warnings --test tests/arch/terminal-session-routes.test.ts", "result": "11/11 pass" },
+      { "id": "isolated-2", "same_command": true, "result": "11/11 pass", "top_test_durations_ms": [1498.288, 330.3736, 297.4563] },
+      { "id": "isolated-3", "same_command": true, "result": "11/11 pass", "top_test_durations_ms": [1493.1293, 855.2441, 576.2663] },
+      { "id": "batched-4-files-parallel", "command": "node --experimental-strip-types --no-warnings --test terminal-session-routes + managed-client + capability-projection + tool-navigator", "result": "51/51 pass, zero timeouts" },
+      { "id": "io-stress", "condition": "two concurrent owned 386MB SHA-256 streams (E:/models smollm2) during isolated run; exact-PID cleanup (both self-exited)", "result": "11/11 pass" }
+    ],
+    "source_parity_across_red_window": {
+      "range": "d367810..HEAD",
+      "paths": ["tests/arch/terminal-session-routes.test.ts", "node/src/services/terminal-sessions.ts", "node/src/routes/terminal-sessions.ts", "node/src/services/runtime-providers.ts"],
+      "changed_count": 0
+    },
+    "post_closure_battery": [
+      { "command": "managed-client + managed-clients suites", "result": "24/24 pass" },
+      { "command": "opencode-bridge suite", "result": "13/13 pass" },
+      { "command": "npx tsc -p tsconfig.node.json", "result": "exit 0" },
+      { "command": "git diff --check", "result": "clean" }
+    ]
+  },
+  "classification": "ENVIRONMENTAL_CONTENTION",
+  "classification_basis": [
+    "Exact-deadline-boundary signatures on HTTP fixture calls (5.005s/5.012s against a 5000ms client bound) with a functioning process indicate wall-clock host preemption/stall, not request logic.",
+    "SOURCE_DEFECT excluded: zero source changes across the RED window (d367810..HEAD parity check on test + terminal service + route + provider paths) and green at >=3.3x deadline margin across five controlled runs.",
+    "TEST_HARNESS_DEFECT excluded: the same harness produced green results under isolated, four-file parallel, and IO-stress conditions; failures were never deterministic or structural.",
+    "Matches the repository's documented class of arch-fixture deadline misses under host contention (the architecture runner serializes file execution for exactly this reason) and the RED window overlapped a heavily loaded multi-agent host period.",
+    "Unchanged 5000ms deadline retained through all closure runs; no floors, assertions, sleeps, or retries were altered."
+  ],
+  "residual_caveat": "The specific contention burst present during the original RED was not reconstructed (added IO stress did not reproduce it); attribution rests on the deadline-boundary signature, source-parity exclusion, non-reproducibility under controlled load, and the documented contention class. If the signature ever recurs with reproducible conditions, reopen with a preserved failing artifact.",
+  "verdict": "P2_MANAGED_CLIENT_PROVIDER_FOUNDATION_ACCEPTED",
+  "credentials_written_to_this_record": false
+}

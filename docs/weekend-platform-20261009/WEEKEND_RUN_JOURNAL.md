@@ -3,6 +3,9 @@
 ## Ledger
 | Phase | SHA | Notes |
 |---|---|---|
+| P2 closure | (this commit) | terminal-route RED disposition: **ENVIRONMENTAL_CONTENTION** (evidence `p2-terminal-route-red-closure-20261009.json`); battery green: terminal-route 11/11 ×3 isolated + batched 51/51 + IO-stress 11/11, managed-client 24/24, opencode-bridge 13/13, tsc 0, diff-check clean; source parity d367810..HEAD = 0 changes; deadlines untouched. **P2_MANAGED_CLIENT_PROVIDER_FOUNDATION_ACCEPTED**. P3 continues next per recorded plan. |
+| Phase | SHA | Notes |
+|---|---|---|
 | P0 | `19072f7` | baseline + owner map + evidence (accepted) |
 | Ingestion | `b9f4d0c` | zip sha256 match `1550a0cf…`, manifest 70/70, extracted outside repos |
 | P1 reading | `cca9900` | reading record + extracted plan (accepted history) |
