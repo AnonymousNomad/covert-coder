@@ -1,0 +1,123 @@
+{
+  "schema": "covert.local-model-c-recovery-recheck.v1",
+  "observed_at_utc": "2026-10-09T13:04:05.66Z",
+  "repository": {
+    "recovery_worktree": "C:\\Users\\Grey_\\prod_checkpoints\\storage-recovery-2026-10-08\\covert-local-model-demo-proof-20261007",
+    "branch": "feat/local-model-demo-proof-20261007",
+    "source_sha_tested": "70dd12287383b729a25d01ca26a898d7ad8cdc76",
+    "evidence_commit_before_json": "40f970a3afd518813747f7b747485d26bc681e31",
+    "git_common_dir_used": "C:\\Users\\Grey_\\prod_checkpoints\\storage-recovery-2026-10-08\\covert-shared-git",
+    "historical_dot_git_pointer": "E:/aide-sovereign-workbench/.git/worktrees/covert-local-model-demo-proof-20261007",
+    "tree_clean_before_receipt": true,
+    "feature_remote_tracking_ref_present": false,
+    "local_convergence_ref": "7f79be9f09afa43283d3548b3b2fd0c98a6dbca7",
+    "local_convergence_merge_base": "7f79be9f09afa43283d3548b3b2fd0c98a6dbca7",
+    "accidental_e_index_stage": {
+      "paths": [
+        "docs/nightshift/evidence/LOCAL-MODEL-C-RECOVERY-RECHECK-2026-10-09.md",
+        "docs/nightshift/evidence/LOCAL-MODEL-C-RECOVERY-RECHECK-2026-10-09.json"
+      ],
+      "final_index_status": "clean",
+      "only_these_paths_restored": true,
+      "worktree_files_on_e_modified": false,
+      "source_test_runtime_or_recovery_data_on_e_modified": false,
+      "root_cause": "Git environment variables were not re-applied in a later PowerShell command"
+    }
+  },
+  "scratch": {
+    "temp": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-local-model-c-20261009",
+    "tmp": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-local-model-c-20261009",
+    "tmpdir": "C:\\Users\\Grey_\\AppData\\Local\\Temp\\covert-local-model-c-20261009",
+    "git_dir": "C:\\Users\\Grey_\\prod_checkpoints\\storage-recovery-2026-10-08\\covert-shared-git\\worktrees\\covert-local-model-demo-proof-20261007",
+    "git_work_tree": "C:\\Users\\Grey_\\prod_checkpoints\\storage-recovery-2026-10-08\\covert-local-model-demo-proof-20261007",
+    "temp_children_after_tests": 0,
+    "worktree_associated_node_processes_after_tests": 0
+  },
+  "verification": [
+    {
+      "command": "node --experimental-strip-types --test --test-concurrency=1 tests/unit/test-m-hub.mjs tests/unit/test-modelhub-containment.mjs",
+      "exit_code": 0,
+      "tests": 30,
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "duration_ms": 2479.9063,
+      "external_hugging_face_requests": false,
+      "model_runtime_started": false
+    },
+    {
+      "command": "node --experimental-strip-types --test --test-concurrency=1 tests/arch/modelhub-routes.test.ts",
+      "exit_code": 0,
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "duration_ms": 2621.264,
+      "external_hugging_face_requests": false,
+      "model_runtime_started": false
+    }
+  ],
+  "canonical_admission": {
+    "service": "createResourceAdmission().admitLocalRuntimeStart()",
+    "decision": "REFUSE_RESOURCE",
+    "checked_at_utc": "2026-10-09T13:04:05.66Z",
+    "free_physical_memory_mb": 5461,
+    "minimum_free_physical_memory_mb": 6656,
+    "physical_memory_shortfall_mb": 1195,
+    "free_commit_mb": 6373,
+    "minimum_free_commit_mb": 5120,
+    "free_vram_mb": 5234,
+    "minimum_free_vram_mb": 4608,
+    "gpu_utilization_percent": 3,
+    "gpu_utilization_must_be_below_percent": 50,
+    "load_average": "UNKNOWN",
+    "model_runtime_started": false
+  },
+  "task_capacity": {
+    "volume": "C:",
+    "health": "Healthy",
+    "free_bytes_before_tests": 570191872,
+    "free_bytes_after_tests": 565448704,
+    "pinned_artifact_expected_size_bytes": 1674455040,
+    "raw_artifact_only_shortfall_after_tests": 1109006336,
+    "safety_margin_included": false,
+    "download_attempted": false,
+    "result": "BLOCKED_CAPACITY_FOR_THIS_ARTIFACT_OPERATION",
+    "global_storage_disposition_changed": false,
+    "global_storage_disposition": "RECOVERY_PARTIAL",
+    "free_bytes_after_initial_evidence_commit": 565919744
+  },
+  "scope": {
+    "live_search_or_inspection": false,
+    "live_download": false,
+    "registration_through_live_app": false,
+    "inference": false,
+    "stop_restart_qualification": false,
+    "performance_profile": false,
+    "build_or_full_suite": false,
+    "push_or_ci": false,
+    "protected_pr31_modified": false,
+    "e_evidence_artifact_read_or_copied": false,
+    "e_or_l_scratch_used": false,
+    "e_index_temporarily_modified_and_restored": true
+  },
+  "issue_38": {
+    "latest_visible_comment_id": 6036313587,
+    "latest_visible_comment_at_utc": "2026-10-07T10:47:38Z",
+    "newer_comment_found": false,
+    "comment_scope": "separate workstation-shell browser review"
+  },
+  "disposition": "fixture-backed ModelHub gates pass; live acquisition requires additional measured C: capacity; local model start remains refused by canonical physical-memory Admission; no release or model qualification claim",
+  "accepted_storage_disposition": {
+    "state": "RECOVERY_PARTIAL",
+    "c_is_independent_temporary_recovery_target_for_copied_sets": true,
+    "accepted_c_free_bytes": 1754648576,
+    "e_and_l_independent_from_disk0": false,
+    "wsl_full_set_state": "BLOCKED_CAPACITY",
+    "wsl_required_target_bytes": 9028239360,
+    "prior_snapshots_or_manifests_remeasured_or_recopied": false,
+    "destructive_disk_action_performed": false
+  }
+}

@@ -9,6 +9,9 @@ This is a bounded continuation of the local-model vertical from the C:-resident 
 - Git status before and after the focused checks: clean before this receipt; no source/test files changed.
 - The checkout's `.git` text file still names the historical E: worktree. Git commands for this recheck were explicitly bound to the copied C: Git worktree metadata under `C:\Users\Grey_\prod_checkpoints\storage-recovery-2026-10-08\covert-shared-git`; `rev-parse --git-common-dir` resolved to that C: copy. The local convergence reference is `7f79be9f09afa43283d3548b3b2fd0c98a6dbca7`; it is the merge base. No fetch, push, branch switch, or canonical-worktree operation occurred.
 - The local feature branch has no `origin/feat/local-model-demo-proof-20261007` tracking ref in this copied Git snapshot.
+- During receipt staging, one later shell omitted the C: Git environment overrides and staged only these two receipt paths in the historical E: linked index: `docs/nightshift/evidence/LOCAL-MODEL-C-RECOVERY-RECHECK-2026-10-09.md` and `.json`.
+- A read-only inspection found no other staged paths and confirmed the corresponding E: worktree files were absent. `git restore --staged` was then applied only to those two paths. Final E: status and staged diff were clean; no E: worktree file, source/test/runtime data, recovery snapshot, or manifest was modified.
+- Root cause: PowerShell environment variables were scoped to one command invocation and were not set again in the subsequent shell. All remaining Git commands are explicitly bound to the copied C: Git metadata.
 
 ## C:-only scratch and verification
 
@@ -20,6 +23,14 @@ This is a bounded continuation of the local-model vertical from the C:-resident 
 | `node --experimental-strip-types --test --test-concurrency=1 tests/arch/modelhub-routes.test.ts` | exit 0; **12 passed, 0 failed, 0 skipped, 0 cancelled**; 2.622 s |
 
 These suites use controlled upstream fixtures. They verify the current source-level search/inspection/download binding, digest/size/GGUF checks, containment, Authority-bound route wiring, egress policy, and refusal behavior. They are not live Hugging Face acquisition or runtime evidence.
+
+## Accepted storage disposition carried forward
+
+- Overall recovery state remains `RECOVERY_PARTIAL`.
+- C: is the verified physically independent temporary-recovery target for the bounded sets already copied. The accepted recovery record's C: free-space reading was `1,754,648,576` bytes; the fresh task-specific readings below are later and apply only to this acquisition check.
+- E: and L: remain non-independent because both reside on Disk 0.
+- The WSL VHDX/full recovery set remains specifically `BLOCKED_CAPACITY`, requiring `9,028,239,360` bytes under the accepted margin.
+- No completed C: snapshots/manifests were changed, remeasured, or recopied. No CHKDSK, repair, migration, or destructive cleanup was performed.
 
 ## Current execution gates
 
