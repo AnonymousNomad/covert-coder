@@ -1,0 +1,31 @@
+{
+  "checkpoint": "PACKAGE_INGESTION",
+  "zip": "E:/COVERT_DEEPSEEK_WEEKEND_2026-10-09.zip",
+  "zip_sha256": "1550a0cfd7ac15f5d59aeba4bbbef3524890ffa4dee8af823ae85dcae69bb701",
+  "expected_sha256": "1550a0cfd7ac15f5d59aeba4bbbef3524890ffa4dee8af823ae85dcae69bb701",
+  "integrity": "GREEN",
+  "extracted_to": "E:/pip_temp/covert-deepseek-weekend-handoff",
+  "entries_verified": {
+    "documents": "00-13 + copy-paste + install/handoff",
+    "skills": 20,
+    "sops": 7,
+    "matrices": 7,
+    "references": 15,
+    "templates": 4,
+    "manifest": "MANIFEST.sha256"
+  },
+  "observed_at": "2026-10-09T18:59:13.716Z",
+  "read_order_completed": [
+    "00_START_HERE.md",
+    "01_DEEPSEEK_WEEKEND_DIRECTIVE.md",
+    "02_CURRENT_STATE_AND_STARTING_POINT.md"
+  ],
+  "read_order_next": [
+    "03_PRODUCT_LOCKS_AND_ARCHITECTURE.md",
+    "04_PHASE_PLAN.md",
+    "05_SKILL_PLAN.md",
+    "06_CODE_OWNERSHIP_AND_COLLISION_MAP.md",
+    "12_IMPLEMENTATION_BLUEPRINT.md (E: copy already read; package copy pending)"
+  ],
+  "p1_implementation": "BLOCKED_UNTIL_READ_ORDER_COMPLETE_AND_GATE"
+}
