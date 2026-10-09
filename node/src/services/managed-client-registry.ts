@@ -33,30 +33,33 @@ export function createManagedClientRegistry(options: { probes: ClientProbe[] }) 
   }
 
   async function discover(): Promise<ManagedClientDiscoveryT[]> {
-    const ids = [...probes.keys()].sort();
+    const ids = Object.keys(CLIENT_MATRIX).sort() as ManagedClientIdT[];
     const results: ManagedClientDiscoveryT[] = [];
     for (const id of ids) {
-      const probe = probes.get(id)!;
+      const probe = probes.get(id);
       let raw: Awaited<ReturnType<ClientProbe['detect']>> = null;
-      let availability: ManagedClientDiscoveryT['availability'] = 'UNAVAILABLE';
-      let availabilityReason: ManagedClientDiscoveryT['availability_reason'] = 'NOT_INSTALLED';
-      try {
-        raw = await probe.detect();
-        if (raw !== null) {
-          const parsed = ManagedClientProbeResult.safeParse(raw);
-          if (parsed.success) {
-            availability = 'AVAILABLE';
-            availabilityReason = null;
-          } else {
-            availability = 'UNKNOWN';
-            availabilityReason = 'INVALID_PROBE_RESULT';
-            raw = null;
+      let availability: ManagedClientDiscoveryT['availability'] = probe === undefined ? 'UNKNOWN' : 'UNAVAILABLE';
+      let availabilityReason: ManagedClientDiscoveryT['availability_reason'] =
+        probe === undefined ? 'PROBE_NOT_REGISTERED' : 'NOT_INSTALLED';
+      if (probe !== undefined) {
+        try {
+          raw = await probe.detect();
+          if (raw !== null) {
+            const parsed = ManagedClientProbeResult.safeParse(raw);
+            if (parsed.success) {
+              availability = 'AVAILABLE';
+              availabilityReason = null;
+            } else {
+              availability = 'UNKNOWN';
+              availabilityReason = 'INVALID_PROBE_RESULT';
+              raw = null;
+            }
           }
+        } catch {
+          availability = 'UNKNOWN';
+          availabilityReason = 'PROBE_FAILED';
+          raw = null;
         }
-      } catch {
-        availability = 'UNKNOWN';
-        availabilityReason = 'PROBE_FAILED';
-        raw = null;
       }
       const observed = raw === null ? null : ManagedClientProbeResult.parse(raw);
       const matrix = CLIENT_MATRIX[id];
@@ -74,10 +77,10 @@ export function createManagedClientRegistry(options: { probes: ClientProbe[] }) 
         model_identity: observed?.model_identity ?? null,
         governance_state: matrix.default_truth,
         supported_capabilities: [...matrix.supported_capabilities],
-        qualification_state: matrix.qualification_state,
+        provider_qualification_state: matrix.provider_qualification_state,
         execution_surface: matrix.execution_surface,
         ownership: matrix.ownership,
-        evidence_state: probe.evidence_state ?? 'NOT_RUN'
+        evidence_state: probe?.evidence_state ?? 'NOT_RUN'
       }));
     }
     return results;

@@ -113,6 +113,9 @@ const server = http.createServer((request, response) => {
   }
 
   if (url.pathname === '/session/ses_fixture/message' && request.method === 'GET') {
+    if (activeMode === 'malformed-final-response') {
+      return send(response, 200, { messages: 'not-an-array' });
+    }
     const text = activeMode === 'agent-completion'
       ? '<attempt_completion><result>controlled OpenCode completion</result></attempt_completion>'
       : activeMode === 'cancel' ? 'first' : 'streamed answer';

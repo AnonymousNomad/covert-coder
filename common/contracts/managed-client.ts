@@ -25,11 +25,22 @@ export const ManagedClientCapability = z.enum([
 ]);
 export const ManagedSessionLifecycle = z.enum(['STARTING', 'RUNNING', 'CANCELLED', 'EXITED', 'FAILED', 'CLEANUP_UNCERTAIN']);
 
-const Ref = z.string().min(1).max(160);
+const SensitiveCredentialMarker = /(?:sk-|hf_|gh[pousr]_|bearer|token=|secret=|password=)/i;
+const Ref = z.string().min(1).max(160)
+  .refine(value => !SensitiveCredentialMarker.test(value), 'credential material is not allowed in references');
 const Sha256 = z.string().regex(/^[a-f0-9]{64}$/);
-const ProviderModelIdentity = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/);
+const ClientVersion = z.string().max(120)
+  .refine(value => !SensitiveCredentialMarker.test(value), 'credential material is not allowed in versions');
+const ClientExecutablePath = z.string().max(500)
+  .refine(value => !SensitiveCredentialMarker.test(value), 'credential material is not allowed in executable paths');
+const ProviderModelIdentity = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/)
+  .refine(value => !SensitiveCredentialMarker.test(value), 'credential material is not allowed in provider/model identities');
 const EvidenceRef = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/)
-  .refine(value => !/(?:sk-|hf_|gh[pousr]_|bearer|token=|secret=|password=)/i.test(value));
+  .refine(value => !SensitiveCredentialMarker.test(value));
+export const ManagedClientTarget = z.strictObject({
+  provider_identity: ProviderModelIdentity,
+  model_identity: ProviderModelIdentity
+});
 export const ClientConformanceCheckName = z.enum([
   'EXECUTION_BOUNDARY',
   'CALLER_BOUNDARY',
@@ -42,7 +53,7 @@ export const ClientConformanceCheckName = z.enum([
 export const ClientConformanceEvidence = z.strictObject({
   client_id: ManagedClientId,
   evidence_state: z.enum(['LIVE', 'FIXTURE']),
-  version_evaluated: z.string().max(120).nullable(),
+  version_evaluated: ClientVersion.nullable(),
   executable_sha256_evaluated: Sha256.nullable(),
   provider_identity: ProviderModelIdentity.nullable(),
   model_identity: ProviderModelIdentity.nullable(),
@@ -67,9 +78,9 @@ export const ManagedClientDiscovery = z.strictObject({
   client_id: ManagedClientId,
   detected: z.boolean(),
   availability: ClientAvailability,
-  availability_reason: z.enum(['NOT_INSTALLED', 'PROBE_FAILED', 'INVALID_PROBE_RESULT']).nullable(),
-  executable_path: z.string().max(500).nullable(),
-  exact_version: z.string().max(120).nullable(),
+  availability_reason: z.enum(['NOT_INSTALLED', 'PROBE_NOT_REGISTERED', 'PROBE_FAILED', 'INVALID_PROBE_RESULT']).nullable(),
+  executable_path: ClientExecutablePath.nullable(),
+  exact_version: ClientVersion.nullable(),
   executable_sha256: Sha256.nullable(),
   credential_availability: CredentialAvailability,
   credential_owner: z.enum(['CLIENT', 'OPENCODE', 'NONE']),
@@ -77,7 +88,7 @@ export const ManagedClientDiscovery = z.strictObject({
   model_identity: ProviderModelIdentity.nullable(),
   governance_state: GovernanceTruthClass,
   supported_capabilities: z.array(ManagedClientCapability).max(4),
-  qualification_state: ClientQualificationState,
+  provider_qualification_state: ClientQualificationState,
   execution_surface: ClientExecutionSurface,
   ownership: ClientOwnership,
   evidence_state: ClientEvidenceState
@@ -99,16 +110,20 @@ export const ManagedClientDiscovery = z.strictObject({
     context.addIssue({ code: 'custom', message: 'unavailable clients require NOT_INSTALLED reason', path: ['availability_reason'] });
   }
   if (value.availability === 'UNKNOWN' &&
+      value.availability_reason !== 'PROBE_NOT_REGISTERED' &&
       value.availability_reason !== 'PROBE_FAILED' && value.availability_reason !== 'INVALID_PROBE_RESULT') {
     context.addIssue({ code: 'custom', message: 'unknown clients require a probe failure reason', path: ['availability_reason'] });
+  }
+  if (value.availability_reason === 'PROBE_NOT_REGISTERED' && value.evidence_state !== 'NOT_RUN') {
+    context.addIssue({ code: 'custom', message: 'unregistered probes cannot carry evidence', path: ['evidence_state'] });
   }
 });
 
 // Probe output is deliberately value-free with respect to credentials. A
 // probe may report a supported auth-status result, but never secret material.
 export const ManagedClientProbeResult = z.strictObject({
-  executable_path: z.string().min(1).max(500),
-  exact_version: z.string().max(120).nullable(),
+  executable_path: ClientExecutablePath.refine(value => value.length > 0),
+  exact_version: ClientVersion.nullable(),
   executable_sha256: Sha256.nullable(),
   credential_availability: CredentialAvailability.optional(),
   provider_identity: ProviderModelIdentity.nullable().optional(),
@@ -117,16 +132,23 @@ export const ManagedClientProbeResult = z.strictObject({
 
 export const ManagedLaunchDescriptor = z.strictObject({
   client_id: ManagedClientId,
-  executable_path: z.string().max(500),
+  executable_path: ClientExecutablePath,
   arguments: z.array(z.string().max(300)).max(32),
   tool_restrictions: z.array(z.string().max(200)).max(32),
   tui_visible: z.literal(true),
   declaration_only: z.literal(true),
+  supported_capabilities: z.array(ManagedClientCapability).max(4),
+  execution_surface: z.literal('TERMINAL_PTY_DESCRIPTOR'),
+  ownership: z.literal('TERMINAL_SESSION_SERVICE'),
+  credential_availability: CredentialAvailability,
+  credential_owner: z.enum(['CLIENT', 'OPENCODE', 'NONE']),
+  provider_identity: ProviderModelIdentity.nullable(),
+  model_identity: ProviderModelIdentity.nullable(),
+  provider_qualification_state: ClientQualificationState,
   lifecycle_owner: z.literal('TERMINAL_SESSION_SERVICE'),
   cancellation_semantics: z.literal('OWNER_STOP'),
   timeout_semantics: z.literal('NOT_ENFORCED_BY_DESCRIPTOR'),
   governance_state: GovernanceTruthClass,
-  qualification_state: ClientQualificationState,
   evidence_state: ClientEvidenceState,
   notes: z.array(z.string().max(300)).max(8)
 });
@@ -134,15 +156,19 @@ export const ManagedLaunchDescriptor = z.strictObject({
 export const ManagedClientSession = z.strictObject({
   schema: z.literal('covert.managed-client.v1'),
   client_id: ManagedClientId,
-  exact_version: z.string().max(120).nullable(),
+  exact_version: ClientVersion.nullable(),
   executable_sha256: Sha256.nullable(),
   project: z.strictObject({ project_id: z.string().uuid(), checkout_id: z.string().uuid() }),
   principal_id: Ref,
   mission_ref: Ref.nullable(),
-  model_identity: z.string().max(200).nullable(),
-  provider_identity: z.string().max(200).nullable(),
+  model_identity: ProviderModelIdentity.nullable(),
+  provider_identity: ProviderModelIdentity.nullable(),
   truth_class: GovernanceTruthClass,
-  truth_evidence_refs: z.array(Ref).max(32),
+  provider_qualification_state: ClientQualificationState,
+  execution_surface: ClientExecutionSurface,
+  ownership: ClientOwnership,
+  evidence_state: ClientEvidenceState,
+  truth_evidence_refs: z.array(EvidenceRef).max(32),
   lifecycle: ManagedSessionLifecycle,
   cleanup_confirmed: z.boolean()
 });
@@ -150,7 +176,7 @@ export const ManagedClientSession = z.strictObject({
 export const ConformanceVerdict = z.strictObject({
   client_id: ManagedClientId,
   verdict: GovernanceTruthClass,
-  qualification_state: ClientQualificationState,
+  provider_qualification_state: ClientQualificationState,
   provider_identity: ProviderModelIdentity.nullable(),
   model_identity: ProviderModelIdentity.nullable(),
   evidence_state: ClientEvidenceState,
@@ -164,6 +190,7 @@ export const ConformanceVerdict = z.strictObject({
     'RESEARCH_ONLY_CLIENT',
     'NOT_YET_EVALUATED',
     'CLIENT_AVAILABILITY_UNKNOWN',
+    'CLIENT_PROBE_NOT_REGISTERED',
     'CLIENT_PROBE_FAILED',
     'CLIENT_PROBE_INVALID',
     'INVALID_EVIDENCE',
@@ -174,7 +201,8 @@ export const ConformanceVerdict = z.strictObject({
     'FIXTURE_EVIDENCE_ONLY',
     'REQUIRED_CHECKS_MISSING',
     'CREDENTIAL_UNAVAILABLE',
-    'CREDENTIAL_STATE_UNKNOWN'
+    'CREDENTIAL_STATE_UNKNOWN',
+    'LIVE_EVIDENCE_NOT_VERIFIED'
   ])).max(8),
   evidence_refs: z.array(EvidenceRef).max(32)
 });
@@ -190,6 +218,7 @@ export type ClientOwnershipT = z.infer<typeof ClientOwnership>;
 export type ManagedClientCapabilityT = z.infer<typeof ManagedClientCapability>;
 export type ManagedClientDiscoveryT = z.infer<typeof ManagedClientDiscovery>;
 export type ManagedClientProbeResultT = z.infer<typeof ManagedClientProbeResult>;
+export type ManagedClientTargetT = z.infer<typeof ManagedClientTarget>;
 export type ManagedLaunchDescriptorT = z.infer<typeof ManagedLaunchDescriptor>;
 export type ManagedClientSessionT = z.infer<typeof ManagedClientSession>;
 export type ClientConformanceEvidenceT = z.infer<typeof ClientConformanceEvidence>;
@@ -198,7 +227,7 @@ export type ConformanceVerdictT = z.infer<typeof ConformanceVerdict>;
 const target1 = Object.freeze({
   tier: 'TARGET_1' as const,
   default_truth: 'MANAGED_OBSERVED' as const,
-  qualification_state: 'NOT_EVALUATED' as const,
+  provider_qualification_state: 'NOT_EVALUATED' as const,
   supported_capabilities: Object.freeze(['INTERACTIVE_PTY_DESCRIPTOR'] as const),
   execution_surface: 'TERMINAL_PTY_DESCRIPTOR' as const,
   ownership: 'TERMINAL_SESSION_SERVICE' as const,
@@ -207,7 +236,7 @@ const target1 = Object.freeze({
 const bridge = Object.freeze({
   tier: 'BRIDGE' as const,
   default_truth: 'MANAGED_OBSERVED' as const,
-  qualification_state: 'NOT_EVALUATED' as const,
+  provider_qualification_state: 'NOT_EVALUATED' as const,
   supported_capabilities: Object.freeze(['BRIDGE_RUN_TASK', 'BRIDGE_RUN_TASK_STREAM', 'BRIDGE_DISCOVER_MODELS'] as const),
   execution_surface: 'OPENCODE_BRIDGE' as const,
   ownership: 'OPENCODE_BRIDGE' as const,
@@ -216,7 +245,7 @@ const bridge = Object.freeze({
 const research = Object.freeze({
   tier: 'RESEARCH' as const,
   default_truth: 'UNQUALIFIED' as const,
-  qualification_state: 'UNQUALIFIED' as const,
+  provider_qualification_state: 'UNQUALIFIED' as const,
   supported_capabilities: Object.freeze([] as const),
   execution_surface: 'RESEARCH_ONLY' as const,
   ownership: 'NONE' as const,
@@ -236,7 +265,7 @@ export const CLIENT_MATRIX = Object.freeze({
 }) satisfies Record<ManagedClientIdT, {
   tier: 'TARGET_1' | 'BRIDGE' | 'RESEARCH';
   default_truth: GovernanceTruthClassT;
-  qualification_state: ClientQualificationStateT;
+  provider_qualification_state: ClientQualificationStateT;
   supported_capabilities: readonly ManagedClientCapabilityT[];
   execution_surface: ClientExecutionSurfaceT;
   ownership: ClientOwnershipT;

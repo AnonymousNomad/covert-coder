@@ -255,6 +255,31 @@ test('session deletion failure is reported and never converted into a successful
   }
 });
 
+test('malformed authoritative response fails closed and cleans the existing bridge session', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-malformed-response-'));
+  const { bridge, log } = await fixtureBridge(dir, 'malformed-final-response');
+  try {
+    await assert.rejects(
+      () => bridge.runTaskStream({
+        workspace: dir,
+        prompt: 'bounded malformed-response fixture',
+        providerID: 'opencode-go',
+        modelID: 'deepseek-v4.1-flash',
+        timeoutMs: 30000,
+        onDelta: () => undefined
+      }),
+      (error: unknown) => (error as { code?: string })?.code === 'CHILD_FAILED' &&
+        (error as Error).message === 'opencode returned no authoritative assistant message'
+    );
+    const events = await readLog(log);
+    assert.ok(events.some(item => item.event === 'abort'));
+    assert.ok(events.some(item => item.event === 'delete'));
+  } finally {
+    await bridge.stop();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('exact model absent from the pinned provider catalog is rejected before session creation', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aide-opencode-catalog-'));
   const { bridge, log } = await fixtureBridge(dir, 'catalog-missing');

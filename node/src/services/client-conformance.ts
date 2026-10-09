@@ -34,7 +34,7 @@ export function createClientConformance(options: { discovery: () => Promise<Mana
     return ConformanceVerdict.parse({
       client_id: input.clientId,
       verdict: input.state,
-      qualification_state: matrix.qualification_state,
+      provider_qualification_state: matrix.provider_qualification_state,
       provider_identity: input.providerIdentity ?? null,
       model_identity: input.modelIdentity ?? null,
       evidence_state: input.evidenceState,
@@ -80,7 +80,8 @@ export function createClientConformance(options: { discovery: () => Promise<Mana
     }
     if (discovered.availability !== 'AVAILABLE') {
       const reason = discovered.availability === 'UNKNOWN'
-        ? discovered.availability_reason === 'PROBE_FAILED' ? 'CLIENT_PROBE_FAILED' : 'CLIENT_PROBE_INVALID'
+        ? discovered.availability_reason === 'PROBE_NOT_REGISTERED' ? 'CLIENT_PROBE_NOT_REGISTERED'
+          : discovered.availability_reason === 'PROBE_FAILED' ? 'CLIENT_PROBE_FAILED' : 'CLIENT_PROBE_INVALID'
         : 'NOT_DETECTED';
       return verdict({
         clientId,
@@ -144,8 +145,13 @@ export function createClientConformance(options: { discovery: () => Promise<Mana
     if (evidence.negative_bypass_tests.some(test => !test.passed)) reasons.push('NEGATIVE_BYPASS_TESTS_FAILED');
     if (discovered.credential_availability === 'UNAVAILABLE') reasons.push('CREDENTIAL_UNAVAILABLE');
     if (discovered.credential_availability === 'UNKNOWN') reasons.push('CREDENTIAL_STATE_UNKNOWN');
-    if (evidence.evidence_state !== 'LIVE' || discovered.evidence_state !== 'LIVE') {
+    const liveEvidenceClaim = evidence.evidence_state === 'LIVE' && discovered.evidence_state === 'LIVE';
+    if (!liveEvidenceClaim) {
       reasons.push('FIXTURE_EVIDENCE_ONLY');
+    } else {
+      // P2 currently has no trusted evidence-reference verifier. Treat a
+      // caller-supplied LIVE label and booleans as unverified claims.
+      reasons.push('LIVE_EVIDENCE_NOT_VERIFIED');
     }
 
     const completeEvidence = REQUIRED_CHECKS.every(name =>
@@ -162,11 +168,11 @@ export function createClientConformance(options: { discovery: () => Promise<Mana
       state: fullyGoverned ? 'FULLY_GOVERNED'
       : reasons.includes('CREDENTIAL_UNAVAILABLE') ? 'UNQUALIFIED'
           : 'MANAGED_OBSERVED',
-      evidenceState: evidence.evidence_state,
+      evidenceState: liveEvidenceClaim ? 'NOT_RUN' : 'FIXTURE',
       reasons,
       providerIdentity: discovered.provider_identity,
       modelIdentity: discovered.model_identity,
-      evidenceRefs
+      evidenceRefs: liveEvidenceClaim ? [] : evidenceRefs
     });
   }
   return Object.freeze({ evaluate });
