@@ -15,6 +15,7 @@ import path from 'node:path';
 import { createProvenanceLedger } from '../../node/src/services/provenance-ledger.ts';
 import { ArchServer } from '../../node/src/server.ts';
 import { pairFixture } from './authority-fixture.ts';
+import { launchSupervisedStack } from '../helpers/supervised-stack.mjs';
 const { buildRoutes } = await import('../../node/src/openapi.ts');
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -255,6 +256,46 @@ test('INTEGRATION (fixture-backed): agent finalization persists a receipt across
     }
   } finally {
     if (!originalClosed) await closeArchServer(server, http);
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('INTEGRATION (real process restart, fixture receipt): durable receipt content survives child restart', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'prov-process-restart-'));
+  const missionId = 'process-restart-mission';
+  const ledger = createProvenanceLedger({ workspace });
+  await ledger.record(run({ run_id: missionId, task_id: missionId, verification_state: 'unavailable' }));
+  const launch = () => launchSupervisedStack({ workspace, env: {
+    AIDE_ARCH_PORT: '0', AIDE_DAEMON_PORT: '0', AIDE_LEGACY_PORT: '0', AIDE_EMBEDDINGS_URL: ''
+  } });
+  let stack: Awaited<ReturnType<typeof launchSupervisedStack>> | undefined;
+  try {
+    stack = await launch();
+    const first = await stack.json('facade', 'GET', `/api/mission/receipt?id=${encodeURIComponent(missionId)}`);
+    assert.equal(first.status, 200);
+    assert.equal(first.body.ok, true);
+    const firstReceipt = first.body.data as Record<string, unknown>;
+    assert.equal((firstReceipt.runs as unknown[]).length, 1);
+    assert.equal(firstReceipt.supported_conclusion, null);
+    const firstRecordedAt = Date.parse(String(firstReceipt.recorded_at));
+    assert.ok(Number.isFinite(firstRecordedAt), 'receipt projection must include a valid read-time timestamp');
+    await stack.close();
+    stack = undefined;
+
+    stack = await launch();
+    const recovered = await stack.json('facade', 'GET', `/api/mission/receipt?id=${encodeURIComponent(missionId)}`);
+    assert.equal(recovered.status, 200);
+    const recoveredReceipt = recovered.body.data as Record<string, unknown>;
+    const firstDurableContent = Object.fromEntries(Object.entries(firstReceipt).filter(([key]) => key !== 'recorded_at'));
+    const recoveredDurableContent = Object.fromEntries(Object.entries(recoveredReceipt).filter(([key]) => key !== 'recorded_at'));
+    assert.deepEqual(recoveredDurableContent, firstDurableContent,
+      'a fresh supervised child process must read the same durable mission, run, verification, and evidence content');
+    assert.ok(Date.parse(String(recoveredReceipt.recorded_at)) >= firstRecordedAt,
+      'recorded_at is generated for each receipt projection and must not move backwards across restart');
+    assert.equal(recoveredReceipt.supported_conclusion, null,
+      'process restart must not turn unavailable verification into success');
+  } finally {
+    await stack?.close();
     await fs.rm(workspace, { recursive: true, force: true });
   }
 });
