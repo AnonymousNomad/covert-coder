@@ -1,0 +1,138 @@
+{
+  "archive": "verification-logs.zip",
+  "archive_bytes": 39142,
+  "archive_sha256": "B85BD10068D5EC3BF3880D71F5E3F2E0C503A859E92A8BFAFCAC31EB3884366D",
+  "entry_count": 26,
+  "entries": [
+    {
+      "name": "capability-authority-c-temp.log",
+      "bytes": 3212,
+      "sha256": "30D59136FFA8B69A66C705AD825EE45656CB7F2BFEE9429E22B9D583D450582C"
+    },
+    {
+      "name": "core-baseline.log",
+      "bytes": 8642,
+      "sha256": "36EE034FF3F14685565F0248BCD6C9B95D653CA12FCAEE21B1E6BD992BDEC585"
+    },
+    {
+      "name": "core-regressions-c-temp.log",
+      "bytes": 9391,
+      "sha256": "E7097EE0B44D60AFE9E6E5AEE4948D12DDCBD8FD4AEEE7B3C56147E017987F7A"
+    },
+    {
+      "name": "core-regressions-final-green.log",
+      "bytes": 9399,
+      "sha256": "CA50F827B8B8D5B9B38770897E9DFC6F66065E25B9F45B85DF2F51DA2A405DCF"
+    },
+    {
+      "name": "core-regressions-final.log",
+      "bytes": 9359,
+      "sha256": "F79F5FC93533B778A1E97018454CE8E6E64817FBB953761A51DC75649A0B54AF"
+    },
+    {
+      "name": "egress-baseline.log",
+      "bytes": 8227,
+      "sha256": "715A58F4161988AA154855227D10DB036B753107B26ABF3629A1EE33BEDC41D1"
+    },
+    {
+      "name": "egress-regressions-c-temp.log",
+      "bytes": 8424,
+      "sha256": "44A1CECF886A89263F1E183145766DC4C14ADB8A12670569DE59C43F073BA597"
+    },
+    {
+      "name": "eslint-baseline.log",
+      "bytes": 30,
+      "sha256": "17E9D5BCCEE1FE3C7C52B36C0547E47BA26FE2F0FCEE6B3EA4C0416260585A45"
+    },
+    {
+      "name": "facade-map-baseline.log",
+      "bytes": 45,
+      "sha256": "31FDCC2A63552A763EB4870F4A3112FAB356E5C0EB86E2F861CC3D2E9582BA12"
+    },
+    {
+      "name": "facade-map-final.log",
+      "bytes": 45,
+      "sha256": "31FDCC2A63552A763EB4870F4A3112FAB356E5C0EB86E2F861CC3D2E9582BA12"
+    },
+    {
+      "name": "node-typecheck-baseline.log",
+      "bytes": 24,
+      "sha256": "D4F33F6F1860C139899E1DEC9D1A91FE90338F09D1DB304DE044E254E9140786"
+    },
+    {
+      "name": "node-typecheck-final.log",
+      "bytes": 202,
+      "sha256": "CD9A3F15A2319582DA3B176B09E93EFE01C9016AC18BDA9E86D5C9939AC7DC91"
+    },
+    {
+      "name": "npm-ci-final.debug.log",
+      "bytes": 54233,
+      "sha256": "35171DED9D631C3766C0AED2B5FCDC33582B73F6C729DE6C80F0C696CC690C74"
+    },
+    {
+      "name": "npm-zod-final.log",
+      "bytes": 109,
+      "sha256": "C8C3E32FF576DF6816AD8487BB654E1C7067C0AAB361A5272069629BF56CFE2F"
+    },
+    {
+      "name": "openapi-generation-baseline.log",
+      "bytes": 114,
+      "sha256": "C9FA0B0DD6806A1C4B7380CBE4FEF5E1A3B866B5438CB38DDD59D6A6FB0E8AE3"
+    },
+    {
+      "name": "openapi-generation-final.log",
+      "bytes": 114,
+      "sha256": "C9FA0B0DD6806A1C4B7380CBE4FEF5E1A3B866B5438CB38DDD59D6A6FB0E8AE3"
+    },
+    {
+      "name": "partner-baseline.log",
+      "bytes": 787,
+      "sha256": "29C190236E629F9F5821D95C3100E032C1A7F46012C99B53BFFF184E5EB2DCD0"
+    },
+    {
+      "name": "partner-focused.log",
+      "bytes": 1225,
+      "sha256": "1DE78406B04534324B7673A43F72923C48E34AD2D6A698571E790E6FC02C44AD"
+    },
+    {
+      "name": "partner-private-state-final-green.log",
+      "bytes": 1322,
+      "sha256": "F3585A3BC0369E6D66D44034AD48B95B3BD532D8B556E693722B27F9CE159A4B"
+    },
+    {
+      "name": "partner-private-state-final.log",
+      "bytes": 1320,
+      "sha256": "6978EC7AB8BE283992A950115E925B7A527EB595D58DD4262594752F18436B45"
+    },
+    {
+      "name": "route-drift-baseline.log",
+      "bytes": 1155,
+      "sha256": "C8047908296078ED139A29C2FCB8925FFF71EA1363BD394C146B24082E645AD7"
+    },
+    {
+      "name": "route-drift-final.log",
+      "bytes": 1153,
+      "sha256": "CA4D1CFF841AE3DEC779C9422B9E43FA13BA54749559B0DBB6FA5C386AA07ACB"
+    },
+    {
+      "name": "route-ownership-baseline.log",
+      "bytes": 57,
+      "sha256": "137CBD157A526DB77D7328F6A37F3FF9BEA5617B141C6A101B8DED48FE872C0E"
+    },
+    {
+      "name": "route-ownership-final.log",
+      "bytes": 57,
+      "sha256": "137CBD157A526DB77D7328F6A37F3FF9BEA5617B141C6A101B8DED48FE872C0E"
+    },
+    {
+      "name": "syntax-diff-baseline.log",
+      "bytes": 219,
+      "sha256": "89CDAB434F6149AA1E699A511D243FE22528D1D6151950FBCF6418D2DA957723"
+    },
+    {
+      "name": "syntax-diff-final.log",
+      "bytes": 2194,
+      "sha256": "49B99947DE57689F5E37AA50CBEDAB94D7727EA38D956430C2A46308DA1A63E8"
+    }
+  ]
+}

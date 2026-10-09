@@ -1,0 +1,32 @@
+{
+  "temp_directory": "C:\\CovertPartnerProtocol-temp-20261009",
+  "request": {
+    "kind": "worker",
+    "disposable": true,
+    "requirement": {
+      "minimum_free_memory_mb": 3072,
+      "free_commit_strictly_above_mb": 5120
+    }
+  },
+  "result": {
+    "decision": "START",
+    "kind": "worker",
+    "reason": "admitted: worker fits within usable resources",
+    "evidence": {
+      "free_memory_mb": 6499,
+      "safety_mb": 512,
+      "resident_reserve_mb": 1024,
+      "required_memory_mb": null,
+      "vram_free_mb": 5231,
+      "vram_required_mb": null,
+      "load_1m": 0,
+      "cores": 12,
+      "disposable": true,
+      "load_probe": "unknown (platform reports no load average)",
+      "minimum_free_memory_mb": 3072,
+      "free_commit_mb": 8246,
+      "free_commit_strictly_above_mb": 5120
+    },
+    "checked_at": "2026-10-09T04:35:56.941Z"
+  }
+}

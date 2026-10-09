@@ -1,0 +1,23 @@
+{
+  ""schema"": ""covert.partner-recovery-evidence.v1"",
+  ""recovered_head"": ""aba338cb05f8f1b7b77fb897922d61c2c185e310"",
+  ""implementation_commit"": ""5acbb66a63bc4d7baf5b2f848fc91bba3de8a85c"",
+  ""reviewed_base"": ""70420efe26ca31ed41a889c9c2de4c76e026ba43"",
+  ""branch"": ""feat/envoy-partner-protocol-luna-20261008"",
+  ""c_worktree"": ""C:\\CovertPartnerProtocol-recovered-20261008"",
+  ""remote"": ""https://github.com/AnonymousNomad/covert-coder.git"",
+  ""remote_head_verified"": ""aba338cb05f8f1b7b77fb897922d61c2c185e310"",
+  ""bundle_path"": ""C:\CovertRecovery-envoy-partner-protocol-20261008\partner-lane.bundle"",
+  ""bundle_sha256"": ""3D8AC273E3DEF116F30CADB41E082C84F9FC798FB5E931E90ABF23EF375E9587"",
+  ""bundle_bytes"": 32900131,
+  ""source_git_store_mutated"": false,
+  ""source_read_error_counters_before_bundle"": {""uncorrected"": 2298, ""total"": 15558},
+  ""source_read_error_counters_after_bundle"": {""uncorrected"": 2298, ""total"": 15558},
+  ""git_fsck"": ""PASS: git fsck --full --strict --no-reflogs, exit 0"",
+  ""backup_tracked_paths"": 2128,
+  ""backup_missing_paths"": 0,
+  ""backup_raw_hash_mismatches"": 0,
+  ""checkout_raw_eol_differences"": 13,
+  ""checkout_normalized_blob_mismatches"": 0,
+  ""initial_resource_admission"": {""decision"": ""START"", ""checked_at"": ""2026-10-09T04:13:31.184Z"", ""free_memory_mb"": 5971, ""free_vram_mb"": 5231, ""free_commit_mb"": 8184, ""minimum_free_memory_mb"": 3072, ""free_commit_strictly_above_mb"": 5120}
+}
