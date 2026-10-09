@@ -1,0 +1,105 @@
+{
+  "schema": "covert.cipher-mission-composer-rerun.v1",
+  "checkpointSha": "b90b5063b93015f118d6d13a8c92af85f5753bfe",
+  "checkpointTree": "fe820f0aadf76005d1d99b2fc024854305c7bd94",
+  "branch": "codex/cipher-mission-composer-20261009",
+  "remoteHead": "b90b5063b93015f118d6d13a8c92af85f5753bfe",
+  "remoteParity": "PASS",
+  "focusedArchitectureRoutes": {
+    "firstRun": {
+      "skipped": 0,
+      "failed": 1,
+      "durationMs": 375583,
+      "passed": 46,
+      "failure": "C1-02 generator subprocess ETIMEDOUT at fixed 30000ms child deadline; preserved in verification-rerun-01.json"
+    },
+    "command": "node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/model-atlas-routes.test.ts tests/arch/mission-composer-policy.test.ts tests/arch/agent-worker-binding.test.ts tests/arch/platform-app-catalog.test.ts tests/arch/project-private-state.test.ts tests/arch/route-drift.test.ts tests/arch/route-authority-coverage.test.ts tests/arch/openapi-drift.test.ts",
+    "secondRun": {
+      "skipped": 0,
+      "failed": 0,
+      "durationMs": 148953,
+      "passed": 47,
+      "exitCode": 0
+    }
+  },
+  "routeDrift": {
+    "skipped": 0,
+    "failed": 0,
+    "command": "node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 tests/arch/route-drift.test.ts",
+    "durationMs": 37878,
+    "passed": 5
+  },
+  "generatorCheck": {
+    "generatedFilesUnchanged": true,
+    "elapsedMs": 15596,
+    "command": "node scripts/build-c1-02-route-ownership-decisions.mjs --check",
+    "jsonSha256": "53AE28E96A47EABA7181EC165A01DCA5FE822E3842A9D3062E9CE7774682F714",
+    "markdownSha256": "F647CD5610EB505B8AD9FCB5B8728439B0326AEC6339CFB7AF46FAA7C699AE14",
+    "result": "PASS"
+  },
+  "typeScript": [
+    {
+      "command": "node --max-old-space-size=1536 node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit",
+      "result": "PASS"
+    },
+    {
+      "command": "node --max-old-space-size=1536 node_modules/typescript/bin/tsc -p browser/tsconfig.browser.json --noEmit",
+      "result": "PASS"
+    }
+  ],
+  "eslint": {
+    "projectConfigProbe": {
+      "readBytesAtObservation": 12419498,
+      "stop": "exact child PID stopped after command-line identity check",
+      "result": "UNVERIFIED_SPIN",
+      "finalObservation": "child and shell absent on subsequent exact PID query",
+      "cpuKernel100nsAtStop": 7656250,
+      "cpuUser100nsAtStop": 10000000,
+      "exitCode": -1,
+      "readBytesBeforeStop": 12645863,
+      "childPid": 20824,
+      "cpuUser100nsBefore": 9062500,
+      "parentPid": 19988,
+      "command": "node node_modules/eslint/bin/eslint.js common/security/operation-policy.mjs",
+      "cpuKernel100nsBefore": 6562500,
+      "immediateObservation": "CIM briefly still reported the process",
+      "elapsedMs": 86220
+    },
+    "noConfigProbe": {
+      "elapsedMs": 37384,
+      "result": "PASS",
+      "command": "node node_modules/eslint/bin/eslint.js --no-config-lookup common/security/operation-policy.mjs"
+    },
+    "currentConclusion": "Current project-config ESLint is not proven by the fresh rerun; parser-only pass is syntax evidence, not lint pass. No timeout or rule was changed.",
+    "committedBaseline": "PASS in verification.json on the tested source tree",
+    "priorAttempts": [
+      {
+        "elapsed": "over 180 seconds",
+        "scope": "all touched files",
+        "result": "UNVERIFIED_SPIN",
+        "cleanup": "exact owned process stopped and absent",
+        "pid": 27508
+      },
+      {
+        "elapsed": "over 60 seconds",
+        "scope": "accepted two-file narrow command",
+        "result": "UNVERIFIED_SPIN",
+        "cleanup": "exact owned process stopped and absent",
+        "pid": 27420
+      }
+    ]
+  },
+  "diffCheck": {
+    "exitCode": 0,
+    "result": "PASS",
+    "command": "git diff --check HEAD"
+  },
+  "storage": {
+    "testsAndScratchTemp": "L:\\CovertScratch\\cipher-mission-composer-20261009\\temp",
+    "drive": "C:",
+    "noFrontendBuildRerun": "true because C: was critically low; accepted build PASS remains in committed baseline evidence",
+    "status": "C_STORAGE_CRITICAL_RED",
+    "freeBytes": 4812800
+  },
+  "generatedAtUtc": "2026-10-09T19:51:19Z"
+}

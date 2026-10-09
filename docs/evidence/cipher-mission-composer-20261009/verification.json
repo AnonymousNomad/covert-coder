@@ -45,12 +45,14 @@
   },
   "schema": "covert.cipher-mission-composer-verification.v1",
   "source": {
-    "remoteParity": "PENDING_PUSH",
+    "remoteParity": "PASS",
     "branch": "codex/cipher-mission-composer-20261009",
-    "commit": "PENDING_CHECKPOINT",
+    "commit": "b90b5063b93015f118d6d13a8c92af85f5753bfe",
     "testedTreeContainsUncommittedFoundation": true,
     "worktree": "L:\\CovertScratch\\cipher-mission-composer-20261009",
-    "testedBase": "e01915627af2b5e43023efa8ac285b1e70907960"
+    "testedBase": "e01915627af2b5e43023efa8ac285b1e70907960",
+    "checkpointTree": "fe820f0aadf76005d1d99b2fc024854305c7bd94",
+    "remoteHead": "b90b5063b93015f118d6d13a8c92af85f5753bfe"
   },
   "objective": "Cipher Mission Composer foundation focused verification",
   "classification": "FOUNDATION_IMPLEMENTED_FOCUSED_VERIFIED_RUNTIME_UNPROVEN",
@@ -87,5 +89,14 @@
       "disposition": "Added unconditional owned-resource cleanup and failure details; reran worker-binding and final suite successfully. Existing 5-second lifecycle assertion unchanged."
     }
   ],
-  "generatedAtUtc": "2026-10-09T19:12:56.7645003Z"
+  "generatedAtUtc": "2026-10-09T19:51:19Z",
+  "checkpointDisposition": "CIPHER_MISSION_COMPOSER_FOUNDATION_ACCEPTED",
+  "latestRerun": "verification-rerun-02.json",
+  "latestRerunSummary": "Focused architecture/routes 47/47 pass on the checkpoint tree; Node and browser TypeScript pass; fresh project-config ESLint rerun remains UNVERIFIED after bounded no-output spin. The committed baseline scoped ESLint PASS remains historical evidence.",
+  "storageObservation": {
+    "drive": "C:",
+    "note": "No build or install rerun was initiated after this measurement. Scratch and test TEMP/TMP were routed to L:.",
+    "disposition": "C_STORAGE_CRITICAL_RED",
+    "freeBytes": 4812800
+  }
 }

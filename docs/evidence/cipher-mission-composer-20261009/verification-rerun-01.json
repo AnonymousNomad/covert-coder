@@ -1,0 +1,39 @@
+{
+  "runId": "focused-suite-rerun-01",
+  "command": "node --experimental-strip-types --no-warnings --import ./scripts/http-close-shim.mjs --test --test-concurrency=1 --test-timeout=240000 tests/arch/model-atlas-routes.test.ts tests/arch/mission-composer-policy.test.ts tests/arch/agent-worker-binding.test.ts tests/arch/platform-app-catalog.test.ts tests/arch/project-private-state.test.ts tests/arch/route-drift.test.ts tests/arch/route-authority-coverage.test.ts tests/arch/openapi-drift.test.ts",
+  "sourceHead": "e01915627af2b5e43023efa8ac285b1e70907960",
+  "result": {
+    "tests": 47,
+    "exitCode": 1,
+    "skipped": 0,
+    "durationMs": 375583,
+    "passed": 46,
+    "failed": 1
+  },
+  "failure": {
+    "syscall": "spawnSync E:\\nodejs\\node-v26.4.0-win-x64\\node.exe",
+    "testDurationMs": 33551.8216,
+    "assertion": "result.error was expected to be undefined; actual child process timed out.",
+    "test": "C1-02 per-operation decisions and compatibility evidence are reproducible",
+    "code": "ETIMEDOUT",
+    "childCommand": "scripts/build-c1-02-route-ownership-decisions.mjs --check",
+    "fixedChildTimeoutMs": 30000,
+    "line": 178,
+    "file": "tests/arch/route-drift.test.ts"
+  },
+  "createdAtUtc": "2026-10-09T19:25:02.5658480Z",
+  "next": "Run route-drift.test.ts alone; if green, rerun full focused suite with unchanged contracts.",
+  "repair": "None. Timeout, assertions, and generated documents unchanged.",
+  "schema": "covert.verification-failure.v1",
+  "diagnosis": {
+    "matchingLeftoverNodeProcesses": 0,
+    "postRunFreeVirtualMiB": 1496,
+    "artifactsUnchanged": true,
+    "postRunFreePhysicalMiB": 3480,
+    "directGeneratorCheck": "PASS",
+    "jsonSha256": "53AE28E96A47EABA7181EC165A01DCA5FE822E3842A9D3062E9CE7774682F714",
+    "rootCause": "CAUSE_NOT_PROVEN; direct generator passes below the fixed 30-second deadline, while its subprocess timed out inside the long serial suite.",
+    "markdownSha256": "F647CD5610EB505B8AD9FCB5B8728439B0326AEC6339CFB7AF46FAA7C699AE14",
+    "directElapsedMs": 15596
+  }
+}
