@@ -1936,7 +1936,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 152
+          "line": 158
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
@@ -2635,7 +2635,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 285
+          "line": 299
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
@@ -3660,7 +3660,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 273
+          "line": 287
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
@@ -4620,39 +4620,39 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/failure-continuation.test.ts",
-          "line": 250
+          "line": 263
         },
         {
           "file": "tests/arch/failure-continuation.test.ts",
-          "line": 321
+          "line": 335
         },
         {
           "file": "tests/arch/failure-continuation.test.ts",
-          "line": 368
+          "line": 383
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 195
+          "line": 208
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 215
+          "line": 229
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 233
+          "line": 247
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 248
+          "line": 262
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 298
+          "line": 312
         },
         {
           "file": "tests/arch/worker-handoff-live.test.ts",
-          "line": 326
+          "line": 340
         },
         {
           "file": "tests/arch/worker-handoff.test.ts",
@@ -5397,7 +5397,7 @@
         },
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 150
+          "line": 151
         }
       ],
       "requestShape": {
@@ -5639,7 +5639,7 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 161
+          "line": 162
         }
       ],
       "requestShape": {
@@ -5876,11 +5876,19 @@
       "acceptanceTestReferences": [
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 158
+          "line": 159
         },
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 233
+          "line": 234
+        },
+        {
+          "file": "tests/arch/provenance.test.ts",
+          "line": 274
+        },
+        {
+          "file": "tests/arch/provenance.test.ts",
+          "line": 286
         }
       ],
       "requestShape": {
@@ -6359,7 +6367,7 @@
         },
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 195
+          "line": 196
         }
       ],
       "requestShape": {
@@ -7128,7 +7136,7 @@
         },
         {
           "file": "tests/arch/provenance.test.ts",
-          "line": 196
+          "line": 197
         }
       ],
       "requestShape": {

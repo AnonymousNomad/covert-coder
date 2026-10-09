@@ -13468,6 +13468,19 @@
                     "minLength": 1,
                     "maxLength": 255
                   },
+                  "revision": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{40,64}$"
+                  },
+                  "expected_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "expected_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
                   "quant_label": {
                     "anyOf": [
                       {
@@ -13482,7 +13495,10 @@
                 },
                 "required": [
                   "repo_id",
-                  "filename"
+                  "filename",
+                  "revision",
+                  "expected_size",
+                  "expected_sha256"
                 ],
                 "additionalProperties": false
               }
@@ -13511,6 +13527,12 @@
                           },
                           "repo_id": {
                             "type": "string"
+                          },
+                          "revision": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "filename": {
                             "type": "string"
@@ -13551,6 +13573,7 @@
                         "required": [
                           "job_id",
                           "repo_id",
+                          "revision",
                           "filename",
                           "status",
                           "bytes_done",
@@ -13630,6 +13653,10 @@
                     "repo_id": {
                       "type": "string"
                     },
+                    "revision": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{40,64}$"
+                    },
                     "files": {
                       "type": "array",
                       "items": {
@@ -13650,11 +13677,23 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "lfs_sha256": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
                           "filename",
-                          "size"
+                          "size",
+                          "lfs_sha256"
                         ],
                         "additionalProperties": false
                       }
@@ -13662,6 +13701,7 @@
                   },
                   "required": [
                     "repo_id",
+                    "revision",
                     "files"
                   ],
                   "additionalProperties": false
@@ -13933,10 +13973,32 @@
                             "null"
                           ]
                         },
+                        "lfs_sha256": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
                         "etag": {
                           "type": [
                             "string",
                             "null"
+                          ]
+                        },
+                        "revision": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{40,64}$"
+                            },
+                            {
+                              "type": "null"
+                            }
                           ]
                         },
                         "downloaded_at": {
@@ -13953,7 +14015,8 @@
                           "type": "string",
                           "enum": [
                             "ready",
-                            "unsupported-runtime"
+                            "unsupported-runtime",
+                            "invalid-artifact"
                           ]
                         }
                       },
@@ -15254,7 +15317,7 @@
                       "properties": {
                         "persistence_state": {
                           "type": "string",
-                          "const": "NOT_PERSISTED"
+                          "const": "PERSISTED"
                         },
                         "mutation_enabled": {
                           "type": "boolean",
@@ -15262,18 +15325,15 @@
                         },
                         "execution_routing_effect": {
                           "type": "boolean",
-                          "const": false
+                          "const": true
                         },
-                        "scopes": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "enum": [
-                              "GLOBAL",
-                              "PROJECT",
-                              "ROLE"
-                            ]
-                          }
+                        "mutation_owner": {
+                          "type": "string",
+                          "const": "SETTINGS_BYOK_ROUTING"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "const": "WORKSPACE_ROLE"
                         },
                         "roles": {
                           "type": "array",
@@ -15283,43 +15343,18 @@
                               "PLANNING",
                               "IMPLEMENTATION",
                               "REVIEW",
-                              "UTILITY",
-                              "BACKGROUND"
+                              "UTILITY"
                             ]
                           }
-                        },
-                        "precedence": {
-                          "type": "array",
-                          "items": [
-                            {
-                              "type": "string",
-                              "const": "PROJECT_ROLE"
-                            },
-                            {
-                              "type": "string",
-                              "const": "PROJECT_DEFAULT"
-                            },
-                            {
-                              "type": "string",
-                              "const": "GLOBAL_ROLE"
-                            },
-                            {
-                              "type": "string",
-                              "const": "GLOBAL_DEFAULT"
-                            }
-                          ],
-                          "additionalItems": false,
-                          "minItems": 4,
-                          "maxItems": 4
                         }
                       },
                       "required": [
                         "persistence_state",
                         "mutation_enabled",
                         "execution_routing_effect",
-                        "scopes",
-                        "roles",
-                        "precedence"
+                        "mutation_owner",
+                        "scope",
+                        "roles"
                       ],
                       "additionalProperties": false
                     }
@@ -15437,16 +15472,39 @@
                     },
                     "status": {
                       "type": "string",
-                      "const": "ready"
+                      "const": "registered"
                     },
                     "endpoint": {
                       "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "file_size": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "architecture": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "source_revision": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
                     "id",
                     "status",
-                    "endpoint"
+                    "endpoint",
+                    "sha256",
+                    "file_size",
+                    "architecture",
+                    "source_revision"
                   ],
                   "additionalProperties": false
                 }
@@ -15832,6 +15890,55 @@
                           },
                           "setup_message": {
                             "type": "string"
+                          },
+                          "artifact_integrity": {
+                            "type": "string",
+                            "enum": [
+                              "VERIFIED",
+                              "UNBOUND",
+                              "MISMATCH",
+                              "UNAVAILABLE"
+                            ]
+                          },
+                          "observed_sha256": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sha256": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "file_size": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "source_revision": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "qualification": {
                             "type": "string",

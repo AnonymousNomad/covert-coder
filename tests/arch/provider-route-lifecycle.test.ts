@@ -169,7 +169,7 @@ async function startStack(
   openCodeBridge?: BuildRoutesOptions['openCodeBridge']
 ) {
   const arch = new ArchServer(workspace, path.join(workspace, '.aide', `provider-lifecycle-${Date.now()}.log`));
-  const modelRuntime = await createModelRuntime(REPO_ROOT, workspace, { events: arch.events, logger: arch.logger });
+  const modelRuntime = await createModelRuntime(REPO_ROOT, workspace, { events: arch.events, logger: arch.logger, modelStorageDir: workspace });
   const providerRequestCount = { value: 0 };
   const providerService = new ProviderService(workspace, {
     credentials: new CredentialStore(workspace, new FixtureCrypt()),
@@ -183,6 +183,7 @@ async function startStack(
     events: arch.events,
     logger: arch.logger,
     modelRuntime,
+    modelStorageDir: workspace,
     providerService,
     byokSecretStore: createSecretStore({
       secretsPath: path.join(workspace, '.aide', 'fixture-byok-secrets.json'),

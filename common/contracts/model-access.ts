@@ -132,17 +132,12 @@ export const ModelManagerLocalDiscovery = z.strictObject({
 });
 
 export const ModelManagerSelectionPolicy = z.strictObject({
-  persistence_state: z.literal('NOT_PERSISTED'),
+  persistence_state: z.literal('PERSISTED'),
   mutation_enabled: z.literal(false),
-  execution_routing_effect: z.literal(false),
-  scopes: z.array(z.enum(['GLOBAL', 'PROJECT', 'ROLE'])),
-  roles: z.array(z.enum(['PLANNING', 'IMPLEMENTATION', 'REVIEW', 'UTILITY', 'BACKGROUND'])),
-  precedence: z.tuple([
-    z.literal('PROJECT_ROLE'),
-    z.literal('PROJECT_DEFAULT'),
-    z.literal('GLOBAL_ROLE'),
-    z.literal('GLOBAL_DEFAULT')
-  ])
+  execution_routing_effect: z.literal(true),
+  mutation_owner: z.literal('SETTINGS_BYOK_ROUTING'),
+  scope: z.literal('WORKSPACE_ROLE'),
+  roles: z.array(z.enum(['PLANNING', 'IMPLEMENTATION', 'REVIEW', 'UTILITY']))
 });
 
 export const ModelManagerResponse = z.strictObject({

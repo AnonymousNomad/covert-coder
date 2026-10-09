@@ -60,26 +60,35 @@ test('ambiguous OpenCode provider/model identity is visible but cannot be select
   assert.match(collision.label, /Ambiguous provider\/model identity/);
 });
 
-test('new conversation uses the workspace act target or local route, never the first ready cloud route', () => {
+test('new conversation uses only an exact persisted target and never guesses the first ready model', () => {
   const routes = [
     { id: 'cloud:openai:gpt-x', providerType: 'cloud', status: 'ready' },
     { id: 'local:local-coder', providerType: 'local', status: 'unverified' }
   ] as const;
-  assert.equal(initialConversationRouteId(routes, 'local'), 'local:local-coder');
+  assert.equal(routes.filter(route => route.status === 'ready').length, 1);
+  assert.equal(initialConversationRouteId('local'), '');
   assert.equal(
-    initialConversationRouteId(routes, { provider_id: 'opencode', model_id: 'opencode-go/deepseek-v4.1-flash' }),
+    initialConversationRouteId({ provider_id: 'opencode', model_id: 'opencode-go/deepseek-v4.1-flash' }),
     'cloud:opencode:opencode-go/deepseek-v4.1-flash'
   );
-  assert.equal(initialConversationRouteId([{ ...routes[0], status: 'down' }], 'local'), '');
+});
+
+test('unqualified local model remains selectable as an identity but is labeled unavailable for execution', () => {
+  const target = { provider_id: 'local', model_id: 'qwen-coder-0.5b-q4' } as const;
+  const options = projectRoleTargetOptions([], [{
+    id: 'local-runtime', provider_id: 'local', kind: 'local-runtime', status: 'configured_not_verified', routing_available: false,
+    access: { model_refs: [{ model_id: target.model_id, provider_model_id: target.model_id, model_support_state: 'unknown' }] }
+  }] as never, target);
+  const selected = options.find(option => option.key === roleTargetKey(target));
+  assert.ok(selected);
+  assert.equal(selected.unavailable, false, 'the operator can persist an exact selection before qualification');
+  assert.match(selected.label, /execution remains closed/);
+  assert.equal(initialConversationRouteId(target), `local:${target.model_id}`);
 });
 
 test('exact local workspace coder target stays bound to that model when routes are unavailable', () => {
   const target = { provider_id: 'local', model_id: 'qualified-coder' } as const;
-  const routes = [
-    { id: 'local:another-model', providerType: 'local', status: 'ready' },
-    { id: 'cloud:openai:gpt-x', providerType: 'cloud', status: 'ready' }
-  ] as const;
-  assert.equal(initialConversationRouteId(routes, target), 'local:qualified-coder');
+  assert.equal(initialConversationRouteId(target), 'local:qualified-coder');
 });
 
 test('saved conversation route remains exact when its catalog entry disappears', () => {

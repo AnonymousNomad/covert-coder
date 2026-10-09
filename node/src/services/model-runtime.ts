@@ -1,4 +1,4 @@
-import { promises as fs, existsSync, createReadStream, readFileSync } from 'node:fs';
+import { promises as fs, existsSync, createReadStream, readFileSync, constants as fsConstants } from 'node:fs';
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import net from 'node:net';
 import path from 'node:path';
@@ -25,6 +25,22 @@ export class ModelRuntimeError extends Error {
 // Authority-bound product route applies canonical Resource Admission,
 // including Windows commit and qualified-profile GPU floors, first.
 export const RAM_GUARD_BYTES = Math.ceil(6.5 * 1024 ** 3);
+
+function pathIsWithin(root: string, candidate: string): boolean {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+export async function readableArtifactWithin(root: string, file: string): Promise<boolean> {
+  try {
+    const [rootReal, fileReal, stat] = await Promise.all([fs.realpath(root), fs.realpath(file), fs.stat(file)]);
+    if (!stat.isFile() || !pathIsWithin(rootReal, fileReal)) return false;
+    await fs.access(fileReal, fsConstants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // W6 convergence: binary llama-server is the verified engine path on Windows
 // (python llama_cpp.server spawn hangs under node on this class of machine;
@@ -141,6 +157,7 @@ export interface ModelEntry {
   fileSize?: number;
   sha256?: string;
   repo_id?: string;
+  source_revision?: string;
   quant_label?: string;
 }
 
@@ -239,9 +256,15 @@ export class ModelRuntime {
   private entryFromManifest(raw: Record<string, unknown>): ModelEntry | null {
     const id = raw.id;
     const endpoint = raw.endpoint;
-    const file = typeof raw.file === 'string' ? raw.file : String(raw.artifact_uri ?? '').startsWith('local://')
-      ? this.resolveArtifactPath(path.basename(String(raw.artifact_uri).replace('local://', '')))
-      : '';
+    const rawFile = typeof raw.file === 'string' && raw.file.length > 0 ? raw.file : null;
+    const rawUri = typeof raw.artifact_uri === 'string' && raw.artifact_uri.startsWith('local://')
+      ? raw.artifact_uri.slice('local://'.length)
+      : null;
+    const fileFromField = rawFile === null ? null : this.resolveStoredArtifactPath(rawFile);
+    const fileFromUri = rawUri === null ? null : this.resolveStoredArtifactPath(rawUri);
+    if ((rawFile !== null && fileFromField === null) || (rawUri !== null && fileFromUri === null)) return null;
+    if (fileFromField !== null && fileFromUri !== null && path.resolve(fileFromField) !== path.resolve(fileFromUri)) return null;
+    const file = fileFromField ?? fileFromUri ?? '';
     if (typeof id !== 'string' || id.length === 0 || typeof endpoint !== 'string' || endpoint.length === 0) return null;
     const entry: ModelEntry = {
       id,
@@ -258,6 +281,7 @@ export class ModelRuntime {
     if (typeof raw.system_prompt === 'string') entry.system_prompt = raw.system_prompt;
     if (typeof raw.file_size === 'number') entry.fileSize = raw.file_size;
     if (typeof raw.repo_id === 'string') entry.repo_id = raw.repo_id;
+    if (typeof raw.source_revision === 'string') entry.source_revision = raw.source_revision;
     if (typeof raw.quant_label === 'string') entry.quant_label = raw.quant_label;
     if (typeof raw.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(raw.sha256)) entry.sha256 = raw.sha256.toLowerCase();
     return entry;
@@ -321,27 +345,49 @@ export class ModelRuntime {
     const engineAvailable = resolveLlamaBinary(this.workspace) !== null || this.pythonReady;
     return {
       runtime: engineAvailable,
-      models: [...this.models.values()].map(model => {
-        const artifactAvailable = model.file.length > 0 && existsSync(model.file);
+      models: await Promise.all([...this.models.values()].map(async model => {
+        const artifactAvailable = model.file.length > 0 && await readableArtifactWithin(this.modelDir, model.file);
+        let observedSha256: string | null = null;
+        let artifactIntegrity: 'VERIFIED' | 'UNBOUND' | 'MISMATCH' | 'UNAVAILABLE' = 'UNAVAILABLE';
+        if (artifactAvailable) {
+          const stat = await fs.stat(model.file);
+          const cached = this.hashCache.get(model.file);
+          if (cached !== undefined && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+            observedSha256 = cached.hash;
+          } else {
+            observedSha256 = await hashModelArtifact(model.file);
+            this.hashCache.set(model.file, { mtimeMs: stat.mtimeMs, size: stat.size, hash: observedSha256 });
+          }
+          artifactIntegrity = model.sha256 === undefined ? 'UNBOUND'
+            : model.sha256.toLowerCase() === observedSha256 ? 'VERIFIED' : 'MISMATCH';
+        }
         let modelStatus = model.status;
-        if (artifactAvailable && model.status !== 'ready' && engineAvailable) modelStatus = 'ready';
+        if (!artifactAvailable || artifactIntegrity !== 'VERIFIED') modelStatus = 'pending';
+        else if (model.status !== 'ready' && engineAvailable) modelStatus = 'ready';
         const setup: string[] = [];
         if (!engineAvailable) setup.push('no engine available: install llama-server binary (runtime/ or E:\\llama-cpp) or set AIDE_PYTHON to a Python 3.10 interpreter with llama-cpp-python');
-        if (modelStatus === 'ready' && !artifactAvailable) setup.push(`model file was not found at ${model.file}`);
+        if (!artifactAvailable) setup.push('model artifact is missing, unreadable, or outside configured AIDE_MODEL_DIR');
+        else if (artifactIntegrity === 'UNBOUND') setup.push('model artifact SHA-256 is not bound; register and verify this exact artifact');
+        else if (artifactIntegrity === 'MISMATCH') setup.push('model artifact SHA-256 differs from its persisted identity');
         const entry: Record<string, unknown> = {
           id: model.id,
           name: model.name,
-          status: this.processes.has(model.id) ? 'running' : modelStatus,
+          status: this.processes.has(model.id) && artifactAvailable && artifactIntegrity === 'VERIFIED' ? 'running' : modelStatus,
           declared_status: modelStatus,
           endpoint: model.endpoint,
           runtime_available: engineAvailable,
           artifact_available: artifactAvailable,
-          setup_required: setup.length > 0 && modelStatus === 'ready',
+          artifact_integrity: artifactIntegrity,
+          observed_sha256: observedSha256,
+          sha256: model.sha256 ?? null,
+          file_size: model.fileSize ?? null,
+          source_revision: model.source_revision ?? null,
+          setup_required: setup.length > 0,
           setup_message: setup.length > 0 ? setup.join('; ') : undefined,
           ingested: model.ingested === true
         };
         return entry;
-      })
+      }))
     };
   }
 
@@ -462,6 +508,14 @@ export class ModelRuntime {
   async start(id: string): Promise<{ id: string; status: string; endpoint: string }> {
     const model = this.models.get(id);
     if (!model) throw new ModelRuntimeError('CHILD_FAILED', 'model is not allowlisted');
+    if (model.file.length === 0 || !await readableArtifactWithin(this.modelDir, model.file)) {
+      throw new ModelRuntimeError('NOT_READY', 'selected model artifact is missing, unreadable, or outside configured AIDE_MODEL_DIR');
+    }
+    if (model.sha256 === undefined) throw new ModelRuntimeError('NOT_READY', 'selected model artifact has no persisted SHA-256 identity');
+    const observedSha256 = await hashModelArtifact(model.file);
+    if (observedSha256 !== model.sha256.toLowerCase()) {
+      throw new ModelRuntimeError('CONFLICT', 'model artifact SHA-256 differs from its persisted identity');
+    }
     if (this.processes.has(id)) return { id, status: 'running', endpoint: model.endpoint };
     if (model.file.length === 0) throw new ModelRuntimeError('NOT_READY', `Local model setup required: model file was not found at ${model.file || '(unknown path)'}.`);
     await fs.access(model.file).catch(() => {
@@ -1060,52 +1114,130 @@ export class ModelRuntime {
     }
   }
 
-  // Register parity with the legacy /api/models/register: a downloaded GGUF in
-  // the models directory becomes a ready engine. Persists to the TS dynamic
+  // Registration binds one readable, structurally valid GGUF to a canonical
+  // identity and persists its observed SHA-256. It does not qualify or start it.
+  // Persists to the TS dynamic
   // store (ingested-models.json), NOT the checked-in manifest.json — the
   // manifest stays pristine (git clean); the ingested store survives restarts.
-  // Acquisition (import/download) lands artifacts in the WORKSPACE models
-  // directory; the bundled starter manifest resolves from the repo models
-  // directory. Registration and local:// resolution must accept both canonical
-  // roots (D2 repair: import -> workspace/models vs register -> repoRoot/models
-  // mismatch broke the artifact -> installed -> startable lifecycle).
+  // Acquisition, registration, Model Manager discovery and execution all use
+  // this one configured canonical root.
   private resolveArtifactPath(rel: string): string {
-    const repoCandidate = path.resolve(this.modelDir, rel);
-    if (existsSync(repoCandidate)) return repoCandidate;
-    const workspaceCandidate = path.resolve(path.join(this.workspace, 'models'), rel);
-    if (existsSync(workspaceCandidate)) return workspaceCandidate;
-    return repoCandidate;
+    const safe = validateRegistrationFilename(this.modelDir, rel);
+    return path.resolve(this.modelDir, safe);
   }
 
-  async register(options: { filename: string; repo_id?: string; quant_label?: string; context_tokens?: number }): Promise<{ id: string; status: string; endpoint: string }> {
+  private resolveStoredArtifactPath(value: string): string | null {
+    let relative = value;
+    if (path.isAbsolute(value)) {
+      if (!pathIsWithin(this.modelDir, value)) return null;
+      // Reuse the registration validator's canonical slash-separated form.
+      // path.relative() returns backslashes on Windows, which that validator
+      // correctly rejects for untrusted request paths.
+      relative = path.relative(this.modelDir, value).split(path.sep).join('/');
+    }
+    try {
+      return this.resolveArtifactPath(relative);
+    } catch {
+      return null;
+    }
+  }
+
+  async register(options: { filename: string; repo_id?: string; quant_label?: string; context_tokens?: number }): Promise<{ id: string; status: 'registered'; endpoint: string; sha256: string; file_size: number; architecture: string; source_revision: string | null }> {
     const rel = validateRegistrationFilename(this.modelDir, options.filename);
     const file = this.resolveArtifactPath(rel);
     const stat = await fs.stat(file).catch(() => {
       throw new ModelRuntimeError('BAD_REQUEST', `artifact not found in models directory: ${rel}`);
     });
-    const id = path.basename(rel).replace(/\.gguf$/i, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!stat.isFile() || !await readableArtifactWithin(this.modelDir, file)) {
+      throw new ModelRuntimeError('NOT_READY', 'artifact is not a readable regular file beneath configured AIDE_MODEL_DIR');
+    }
+    let gguf;
+    try {
+      gguf = await probeGguf(file);
+    } catch (error) {
+      throw new ModelRuntimeError('BAD_REQUEST', `artifact is not a structurally valid GGUF: ${error instanceof Error ? error.message : 'header validation failed'}`);
+    }
+    if (!ALLOWED_ARCHITECTURES.includes(gguf.architecture)) {
+      throw new ModelRuntimeError('NOT_READY', `unsupported GGUF architecture: ${gguf.architecture}`);
+    }
+    if (gguf.chatTemplate === null) throw new ModelRuntimeError('NOT_READY', 'GGUF has no tokenizer.chat_template; refusing an unqualified execution artifact');
+    const digestHex = await hashModelArtifact(file);
+    const statAfterHash = await fs.stat(file);
+    if (statAfterHash.size !== stat.size || statAfterHash.mtimeMs !== stat.mtimeMs) {
+      throw new ModelRuntimeError('CONFLICT', 'model artifact changed while its identity was being verified');
+    }
+    let sourceRevision: string | undefined;
+    const acquisitionManifestPath = `${file}.manifest.json`;
+    let acquisitionManifest: Record<string, unknown> | null = null;
+    try {
+      const parsed = JSON.parse(await fs.readFile(acquisitionManifestPath, 'utf8')) as unknown;
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid acquisition manifest');
+      acquisitionManifest = parsed as Record<string, unknown>;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw new ModelRuntimeError('CONFLICT', 'artifact acquisition manifest is invalid; inspect it before registration');
+      }
+    }
+    if (acquisitionManifest !== null) {
+      if (acquisitionManifest.filename !== rel || acquisitionManifest.size_bytes !== stat.size) {
+        throw new ModelRuntimeError('CONFLICT', 'artifact path or size differs from its acquisition manifest');
+      }
+      if (typeof acquisitionManifest.sha256 === 'string' && acquisitionManifest.sha256.toLowerCase() !== digestHex) {
+        throw new ModelRuntimeError('CONFLICT', 'artifact SHA-256 differs from its acquisition manifest');
+      }
+      if (acquisitionManifest.source === 'hf') {
+        const revision = acquisitionManifest.revision;
+        const lfsSha256 = acquisitionManifest.lfs_sha256;
+        if (typeof acquisitionManifest.repo_id !== 'string' || !/^[a-f0-9]{40,64}$/i.test(String(revision ?? '')) ||
+            typeof lfsSha256 !== 'string' || lfsSha256.toLowerCase() !== digestHex) {
+          throw new ModelRuntimeError('NOT_READY', 'Hugging Face artifact lacks a verified immutable revision or matching LFS SHA-256');
+        }
+        if (options.repo_id !== undefined && options.repo_id !== acquisitionManifest.repo_id) {
+          throw new ModelRuntimeError('CONFLICT', 'requested repository differs from the verified acquisition manifest');
+        }
+        sourceRevision = `${acquisitionManifest.repo_id}@${String(revision).toLowerCase()}`;
+      }
+    }
+    const samePath = (left: string, right: string): boolean => process.platform === 'win32'
+      ? path.resolve(left).toLowerCase() === path.resolve(right).toLowerCase()
+      : path.resolve(left) === path.resolve(right);
+    const sameFile = [...this.models.values()].find(model => samePath(model.file, file));
+    const slug = path.basename(rel).replace(/\.gguf$/i, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+    const id = sameFile?.id ?? slug;
     const existing = this.models.get(id);
-    if (existing) return { id: existing.id, status: 'ready', endpoint: existing.endpoint };
+    if (existing !== undefined && !samePath(existing.file, file)) {
+      throw new ModelRuntimeError('CONFLICT', 'canonical model identity is already bound to a different artifact path');
+    }
+    if (existing?.sha256 !== undefined && existing.sha256.toLowerCase() !== digestHex) {
+      throw new ModelRuntimeError('CONFLICT', 'canonical model identity is already bound to a different artifact SHA-256');
+    }
     const port = nextFreePort(this.models);
-    const entry: ModelEntry = {
+    const entry: ModelEntry = existing ?? {
       id,
-      name: path.basename(rel).replace(/\.gguf$/i, ''),
-      status: 'ready',
+      name: gguf.name || path.basename(rel).replace(/\.gguf$/i, ''),
+      status: 'pending',
       roles: ['chat'],
       endpoint: `http://127.0.0.1:${port}/v1`,
       model: rel,
       artifact_uri: `local://${rel}`,
       context_tokens: Number(options.context_tokens) || 2048,
       ingested: true,
-      file,
-      fileSize: stat.size
+      file
     };
-    if (options.repo_id) entry.repo_id = options.repo_id;
+    entry.file = file;
+    entry.fileSize = stat.size;
+    entry.sha256 = digestHex;
+    if (sourceRevision !== undefined) entry.source_revision = sourceRevision;
+    if (typeof acquisitionManifest?.repo_id === 'string') entry.repo_id = acquisitionManifest.repo_id;
+    else if (options.repo_id) entry.repo_id = options.repo_id;
+    entry.ingested = true;
+    entry.status = 'pending';
+    this.hashCache.set(file, { mtimeMs: stat.mtimeMs, size: stat.size, hash: digestHex });
     if (options.quant_label) entry.quant_label = options.quant_label;
     this.models.set(id, entry);
     await this.persistIngested();
     this.logger?.info('model registered', { id, endpoint: entry.endpoint, source: rel });
-    return { id, status: 'ready', endpoint: entry.endpoint };
+    return { id, status: 'registered', endpoint: entry.endpoint, sha256: digestHex, file_size: stat.size, architecture: gguf.architecture, source_revision: entry.source_revision ?? null };
   }
 
   // Profile parity with the legacy /api/models/profile: presets + sampler /
@@ -1226,6 +1358,7 @@ export class ModelRuntime {
         file_size: model.fileSize,
         sha256: model.sha256,
         repo_id: model.repo_id,
+        source_revision: model.source_revision,
         quant_label: model.quant_label,
         ingested: true
       }));

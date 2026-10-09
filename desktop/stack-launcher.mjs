@@ -6,13 +6,14 @@ import { execFile, spawn } from 'node:child_process';
 const root = path.dirname(fileURLToPath(import.meta.url));
 // Staged resource root is explicit, as with the backend entrypoints below.
 const { superviseAuthority } = await import(pathToFileURL(path.join(root, 'common/security/authority-channel.mjs')).href);
+const { resolveModelStorageDirectory } = await import(pathToFileURL(path.join(root, 'node/src/services/model-storage.mjs')).href);
 const nativeBootstrap = process.argv.includes('--native-bootstrap');
 const pairingOrigin = process.argv.find(arg => arg.startsWith('--pair-origin='))?.slice('--pair-origin='.length);
 if (!nativeBootstrap || !['http://127.0.0.1:5173', 'http://tauri.localhost', 'https://tauri.localhost', 'tauri://localhost'].includes(pairingOrigin)) {
   throw new Error('native parent bootstrap required');
 }
 const workspace = path.resolve(process.env.AIDE_WORKSPACE || path.join(root, 'workspace'));
-const modelDir = path.resolve(process.env.AIDE_MODEL_DIR || path.join(workspace, 'models'));
+const modelDir = await resolveModelStorageDirectory(process.env.AIDE_MODEL_DIR);
 const logsDir = path.join(workspace, '.aide', 'logs');
 const nodeName = process.platform === 'win32' ? 'node.exe' : 'node';
 const node = path.join(root, 'runtime', nodeName);
@@ -85,7 +86,6 @@ async function stop(code) {
 }
 
 await fs.mkdir(logsDir, { recursive: true });
-await fs.mkdir(modelDir, { recursive: true });
 supervisor = superviseAuthority(spawnChild('arch', ['--experimental-strip-types', path.join(root, 'node', 'src', 'server.ts')]));
 supervisor.attach('legacy', spawnChild('legacy', [path.join(root, 'daemon', 'server.mjs')]));
 supervisor.attach('facade', spawnChild('facade', [path.join(root, 'scripts', 'facade.mjs')]));

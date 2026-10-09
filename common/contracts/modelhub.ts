@@ -25,11 +25,13 @@ export const HubFilesQuery = z.object({
 
 export const HubFileEntry = z.object({
   filename: z.string().min(1),
-  size: z.number().int().gte(0).nullable()
+  size: z.number().int().gte(0).nullable(),
+  lfs_sha256: z.string().regex(/^[a-f0-9]{64}$/i).nullable()
 }).strict();
 
 export const HubFilesResponse = z.object({
   repo_id: z.string(),
+  revision: z.string().regex(/^[a-f0-9]{40,64}$/i),
   files: z.array(HubFileEntry)
 }).strict();
 
@@ -44,6 +46,9 @@ export const HubFilename = z.string().min(1).max(255).refine(
 export const HubDownloadRequest = z.object({
   repo_id: z.string().min(1).max(200).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/, 'repo_id must look like owner/name'),
   filename: HubFilename,
+  revision: z.string().regex(/^[a-f0-9]{40,64}$/i),
+  expected_size: z.number().int().gte(1),
+  expected_sha256: z.string().regex(/^[a-f0-9]{64}$/i),
   quant_label: z.string().max(32).nullable().optional()
 }).strict();
 
@@ -64,6 +69,7 @@ export const DownloadJobState = z.enum(['running', 'done', 'error', 'cancelled']
 export const HubDownloadJob = z.object({
   job_id: z.string(),
   repo_id: z.string(),
+  revision: z.string().nullable(),
   filename: z.string(),
   status: DownloadJobState,
   bytes_done: z.number().int().gte(0),
@@ -75,7 +81,7 @@ export const HubDownloadsListResponse = z.object({
   jobs: z.array(HubDownloadJob)
 }).strict();
 
-export const ModelManifestStatus = z.enum(['ready', 'unsupported-runtime']);
+export const ModelManifestStatus = z.enum(['ready', 'unsupported-runtime', 'invalid-artifact']);
 export const ModelSource = z.enum(['hf', 'manual']);
 
 export const ModelManifest = z.object({
@@ -85,7 +91,9 @@ export const ModelManifest = z.object({
   size_bytes: z.number().int().gte(0),
   architecture: z.string(),
   sha256: z.string().nullable().optional(),
+  lfs_sha256: z.string().regex(/^[a-f0-9]{64}$/i).nullable().optional(),
   etag: z.string().nullable().optional(),
+  revision: z.string().regex(/^[a-f0-9]{40,64}$/i).nullable().optional(),
   downloaded_at: z.string(),
   source: ModelSource,
   status: ModelManifestStatus

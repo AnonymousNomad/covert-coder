@@ -7,6 +7,7 @@ import type { ChatMessageT } from '../../../common/contracts/chat.ts';
 import type { RouteFallbackT, RouteStatusT } from '../../../common/contracts/routing.ts';
 import { ModelDispatchInputObservation, type ModelDispatchInputObservationT, type ModelAdapterRequestInputObservationT } from '../../../common/contracts/routing.ts';
 import type { ModelProviderRouteT } from '../../../common/contracts/model-access.ts';
+import type { RoleTargetT } from '../../../common/contracts/byok.ts';
 import type { AdapterRequestInputOptions } from './model-request-input.ts';
 
 export type RouteFailureReason = 'down' | 'busy' | 'unsupported' | 'context_overflow';
@@ -187,6 +188,7 @@ export class ModelRouter {
   private readonly providerCatalog: readonly ProviderDefinition[];
   private readonly providerModelRoutes: () => Promise<readonly ModelProviderRouteT[]>;
   private readonly openCode: OpenCodeModelRouterAdapter | null;
+  private readonly roleTarget: (role: string) => RoleTargetT;
   private readonly health = new Map<string, { status: RouteStatusT; at: number }>();
 
   constructor(
@@ -194,13 +196,15 @@ export class ModelRouter {
     providers: ProviderService,
     providerCatalog: readonly ProviderDefinition[] = BUILTIN_PROVIDERS,
     providerModelRoutes: () => Promise<readonly ModelProviderRouteT[]> = async () => [],
-    openCode: OpenCodeModelRouterAdapter | null = null
+    openCode: OpenCodeModelRouterAdapter | null = null,
+    roleTarget: (role: string) => RoleTargetT = () => 'local'
   ) {
     this.runtime = runtime;
     this.providers = providers;
     this.providerCatalog = providerCatalog;
     this.providerModelRoutes = providerModelRoutes;
     this.openCode = openCode;
+    this.roleTarget = roleTarget;
   }
 
   private async eligibleProviderModelRoute(providerId: string, providerModelId: string): Promise<ModelProviderRouteT | null> {
@@ -621,40 +625,38 @@ export class ModelRouter {
 
   async routeForRole(role: string): Promise<RouteSelection> {
     const routes = await this.routes();
-    const candidates = routes.filter(route => route.providerType === 'local' && route.roles.includes(role));
-    if (candidates.length === 0) {
-      throw new RouterError('down', `no local model is configured for role "${role}"`);
+    const targetRole = role === 'chat' || role === 'act' || role === 'implementation' ? 'coder' : role;
+    if (!['planner', 'coder', 'reviewer', 'utility'].includes(targetRole)) {
+      throw new RouterError('unsupported', `role "${role}" has no canonical persisted model target`);
     }
-    const probeable = candidates.filter(candidate => candidate.status !== 'down');
-    for (const candidate of probeable) {
-      const status = await this.freshStatus(candidate.id);
-      if (status === 'ready') {
-        const fellBack = candidate.id !== candidates[0]!.id ? { from: candidates[0]!.id, to: candidate.id, reason: 'down' as const } : undefined;
-        return { modelId: candidate.id, displayName: candidate.displayName, providerType: candidate.providerType, status, contextLength: candidate.contextLength, ...(fellBack !== undefined ? { fellBack } : {}) };
-      }
+    const target = this.roleTarget(targetRole);
+    if (target === 'local') {
+      throw new RouterError('down', `no exact model is selected for role "${targetRole}"; choose one in Model Access`);
     }
-    throw new RouterError('down', `no model is ready for role "${role}"; start this model in the models panel and try again`);
+    if (target.provider_id !== 'local') {
+      throw new RouterError('unsupported', `role "${targetRole}" selects external model ${target.provider_id}:${target.model_id}; this local runtime route cannot substitute another model`);
+    }
+    const id = `local:${target.model_id}`;
+    const candidate = routes.find(route => route.id === id && route.providerType === 'local');
+    if (candidate === undefined) {
+      throw new RouterError('down', `the exact selected model ${target.model_id} is unavailable; no replacement was selected`);
+    }
+    const status = await this.freshStatus(candidate.id);
+    if (status !== 'ready') {
+      throw new RouterError('down', `the exact selected model ${target.model_id} is ${status}; start or qualify this model before dispatch`);
+    }
+    return { modelId: candidate.id, displayName: candidate.displayName, providerType: candidate.providerType, status, contextLength: candidate.contextLength };
   }
 
   async routeForId(id: string): Promise<RouteSelection> {
     const routes = await this.routes();
     const route = routes.find(entry => entry.id === id) ?? routes.find(entry => entry.id === `local:${id}`);
     if (route === undefined) throw new RouterError('down', `start this model before chatting: route ${id} is not available`);
-    const status = await this.freshStatus(id);
+    const status = await this.freshStatus(route.id);
     if (status === 'ready') {
       return { modelId: route.id, displayName: route.displayName, providerType: route.providerType, status, contextLength: route.contextLength };
     }
-    const role = route.roles[0] ?? 'chat';
-    const fallback = await this.routeForRole(role).catch(() => null);
-    if (fallback === null) throw new RouterError('down', `start this model before chatting: route ${id} is down (${status}) and no fallback is ready`);
-    return {
-      modelId: fallback.modelId,
-      displayName: fallback.displayName,
-      providerType: fallback.providerType,
-      status: fallback.status,
-      contextLength: fallback.contextLength,
-      fellBack: { from: id, to: fallback.modelId, reason: 'down' }
-    };
+    throw new RouterError('down', `the exact selected route ${route.id} is ${status}; no replacement was selected`);
   }
 
   private async resolve(routeId: string): Promise<{ route: ModelRoute; selection: RouteSelection }> {
@@ -664,13 +666,11 @@ export class ModelRouter {
     const direct = routes.find(entry => entry.id === routeId)
       ?? routes.find(entry => entry.id === `local:${routeId}`);
     if (direct === undefined) throw new RouterError('down', `unknown route ${routeId}`);
-    if ((await this.freshStatus(direct.id)) === 'ready') {
-      return { route: direct, selection: { modelId: direct.id, displayName: direct.displayName, providerType: direct.providerType, status: 'ready', contextLength: direct.contextLength } };
+    const status = await this.freshStatus(direct.id);
+    if (status !== 'ready') {
+      throw new RouterError('down', `the exact selected route ${direct.id} is ${status}; no replacement was selected`);
     }
-    const selection = await this.routeForId(routeId);
-    const fallback = routes.find(entry => entry.id === selection.modelId);
-    if (fallback === undefined) throw new RouterError('down', `fallback route ${selection.modelId} disappeared`);
-    return { route: fallback, selection };
+    return { route: direct, selection: { modelId: direct.id, displayName: direct.displayName, providerType: direct.providerType, status, contextLength: direct.contextLength } };
   }
 
   // Fit history against the engine's EFFECTIVE served window, not the

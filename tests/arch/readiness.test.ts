@@ -24,7 +24,7 @@ function localModelAccess(): ModelManagerResponseT {
     credential_sources: [],
     execution_adapters: [{ id: 'local-runtime', kind: 'LOCAL_RUNTIME', implementation: 'IMPLEMENTED', discovered: true, configured: true, available: true, canonical_default: true }],
     connections: { consensus: 'local-first', routed_roles: { planner: 'local', coder: 'local', reviewer: 'local', utility: 'local' }, preference: 'local-first', connections: [] },
-    selection_policy: { persistence_state: 'NOT_PERSISTED', mutation_enabled: false, execution_routing_effect: false, scopes: ['PROJECT', 'ROLE'], roles: ['IMPLEMENTATION'], precedence: ['PROJECT_ROLE', 'PROJECT_DEFAULT', 'GLOBAL_ROLE', 'GLOBAL_DEFAULT'] }
+    selection_policy: { persistence_state: 'PERSISTED', mutation_enabled: false, execution_routing_effect: true, mutation_owner: 'SETTINGS_BYOK_ROUTING', scope: 'WORKSPACE_ROLE', roles: ['PLANNING', 'IMPLEMENTATION', 'REVIEW', 'UTILITY'] }
   };
 }
 

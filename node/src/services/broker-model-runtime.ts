@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
 import { existsSync, statSync } from 'node:fs';
 import type { RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
 import type { createResourceAdmission } from './resource-admission.ts';
@@ -8,6 +9,7 @@ import {
   ModelRuntime,
   ModelRuntimeError,
   readModelProfileSidecar,
+  readableArtifactWithin,
   type ModelProfileBinding,
   type ModelProfilePatch,
   type ModelRuntimeOptions
@@ -36,6 +38,7 @@ export class BrokerModelRuntime extends ModelRuntime {
   private observedStatusCache: { status: RuntimeStatusResponseT; at: number } | null = null;
   private observedStatusGeneration = 0;
   private observedStatusInFlight: { generation: number; promise: Promise<RuntimeStatusResponseT> } | null = null;
+  private readonly artifactHashCache = new Map<string, { mtimeMs: number; size: number; hash: string }>();
 
   constructor(
     options: ModelRuntimeOptions,
@@ -217,9 +220,25 @@ export class BrokerModelRuntime extends ModelRuntime {
     const runtime = status.backend === 'UNSLOTH' && (status.health === 'STOPPED' || status.health === 'HEALTHY');
     return {
       runtime,
-      models: this.list().map(model => {
-        const artifactAvailable = model.file.length > 0 && existsSync(model.file);
-        const artifactCandidate = artifactAvailable && this.artifactMatchesProfile(model.file) && status.version === this.qualification.backendVersion;
+      models: await Promise.all(this.list().map(async model => {
+        const artifactAvailable = model.file.length > 0 && await readableArtifactWithin(this.modelDir, model.file);
+        let observedSha256: string | null = null;
+        if (artifactAvailable && (model.sha256 !== undefined || this.artifactMatchesProfile(model.file))) {
+          try {
+            const stat = await fs.stat(model.file);
+            const cached = this.artifactHashCache.get(model.file);
+            observedSha256 = cached !== undefined && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size
+              ? cached.hash : await hashModelArtifact(model.file);
+            this.artifactHashCache.set(model.file, { mtimeMs: stat.mtimeMs, size: stat.size, hash: observedSha256 });
+          } catch { observedSha256 = null; }
+        }
+        const expectedSha256 = model.sha256 ?? (this.artifactMatchesProfile(model.file) ? this.qualification.artifactSha256 : undefined);
+        const artifactIntegrity = !artifactAvailable ? 'UNAVAILABLE'
+          : observedSha256 === null || expectedSha256 === undefined ? 'UNBOUND'
+            : observedSha256 === expectedSha256.toLowerCase() ? 'VERIFIED' : 'MISMATCH';
+        const artifactCandidate = artifactAvailable && artifactIntegrity === 'VERIFIED' &&
+          observedSha256 === this.qualification.artifactSha256.toLowerCase() &&
+          this.artifactMatchesProfile(model.file) && status.version === this.qualification.backendVersion;
         let savedProfileCandidate = false;
         if (artifactCandidate) {
           try {
@@ -239,6 +258,11 @@ export class BrokerModelRuntime extends ModelRuntime {
           endpoint: model.endpoint,
           runtime_available: runtime,
           artifact_available: artifactAvailable,
+          artifact_integrity: artifactIntegrity,
+          observed_sha256: observedSha256,
+          sha256: expectedSha256 ?? null,
+          file_size: artifactAvailable ? (await fs.stat(model.file).catch(() => null))?.size ?? null : null,
+          source_revision: model.source_revision ?? null,
           setup_required: !runtime || !profileCandidate,
           setup_message: !runtime ? status.health === 'NOT_INSTALLED' ?
             'Unsloth CLI not discovered; set AIDE_UNSLOTH_CLI to its absolute path and restart Covert, or install the qualified runtime' :
@@ -249,7 +273,7 @@ export class BrokerModelRuntime extends ModelRuntime {
           qualification: running ? 'accepted_hash_verified' : 'requires_start_preflight',
           ingested: model.ingested === true
         };
-      })
+      }))
     };
   }
 

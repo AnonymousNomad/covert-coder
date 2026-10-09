@@ -8,8 +8,9 @@ type SelectionView = {
 
 type WorkerRole = 'planner' | 'coder' | 'reviewer';
 
-// Project role defaults and the observed loaded runtime remain owned by Model
-// Access. This is only an exact request projection, never readiness or fallback.
+// Project role targets and the observed loaded runtime remain owned by Model
+// Access. A provider sentinel is not an artifact identity and must never be
+// resolved from whichever model happens to be loaded.
 export function residentWorkerForSelection(view: SelectionView, role: WorkerRole = 'coder'): WorkerDescriptorT {
   const selected = view.connections.routed_roles[role];
   if (selected !== 'local' && selected.provider_id === 'local') {
@@ -23,7 +24,5 @@ export function residentWorkerForSelection(view: SelectionView, role: WorkerRole
     if (!selected.provider_id || !selected.model_id) throw new Error('The selected project worker has no exact provider/model identity.');
     return { worker: `cloud:${selected.provider_id}:${selected.model_id}`, provider: selected.provider_id, model: selected.model_id, role };
   }
-  const model = view.runtime.selected_model_id;
-  if (view.runtime.health !== 'HEALTHY' || model === null) throw new Error('No healthy exact local model is loaded. Review Model Access; no replacement was selected.');
-  return { worker: `local:${model}`, provider: 'local', model, role };
+  throw new Error(`No exact ${role} model is selected in Model Access; the loaded runtime model is not an implicit role selection.`);
 }

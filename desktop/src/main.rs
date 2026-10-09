@@ -324,7 +324,6 @@ fn main() {
                     .stdout(Stdio::piped())
                     .current_dir(&resource_root)
                     .env("AIDE_WORKSPACE", &resource_root)
-                    .env("AIDE_MODEL_DIR", resource_root.join("models"))
                     .env("AIDE_ARCH_PORT", "4778")
                     .env("AIDE_LEGACY_PORT", "4779")
                     .env("AIDE_FACADE_PORT", "4777")

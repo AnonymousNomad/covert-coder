@@ -14,6 +14,7 @@ import {
 } from '../../../common/contracts/model-access.ts';
 import type { ModelRuntime } from './model-runtime.ts';
 import type { RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
+import { sameModelStorageDirectory } from './model-storage.mjs';
 
 type RuntimeObservation = Partial<RuntimeStatusResponseT> & {
   backend?: 'UNSLOTH' | 'LLAMA_CPP' | null;
@@ -43,6 +44,7 @@ export function evaluateQualificationFreshness(
 
 export interface ModelManagerViewOptions {
   workspace: string;
+  modelDir?: string;
   manifestPath: string;
   modelRuntime: Pick<ModelRuntime, 'list' | 'status'>;
   connectionsService: {
@@ -56,7 +58,6 @@ const SAFE_HASH = /^[a-f0-9]{64}$/i;
 const SECRET_VALUE_RE = /(?:sk-[A-Za-z0-9_-]{12,}|hf_[A-Za-z0-9]{12,}|Bearer\s+\S+|(?:api[_-]?key|token)=\S+)/i;
 const ABSOLUTE_PATH_RE = /(?:\b[A-Za-z]:[\\/]|\\\\|(?:^|[\s"'=])\/(?:root|home|Users|mnt|tmp|private|var|etc)\/)/i;
 const QUANT_RE = /(?:^|[._-])((?:Q\d(?:_[A-Z0-9]+)*(?:_[A-Z])?|IQ\d_[A-Z]+|BF16|F16|F32))(?:[._-]|$)/i;
-const MAX_DISCOVERY_DIRS = 8;
 const MAX_DISCOVERY_FILES = 512;
 
 function record(value: unknown): Record<string, unknown> {
@@ -77,15 +78,14 @@ function validHash(value: unknown): string | null {
   return typeof value === 'string' && SAFE_HASH.test(value) ? value.toLowerCase() : null;
 }
 
-function modelDirectories(workspace: string): string[] {
-  const configured = (process.env.AIDE_MODEL_DIRS ?? '').split(path.delimiter).map(value => value.trim()).filter(Boolean);
-  return [...new Set([path.join(workspace, 'models'), ...configured].map(value => path.resolve(value)))].slice(0, MAX_DISCOVERY_DIRS);
+function modelDirectories(modelDir: string): string[] {
+  return [path.resolve(modelDir)];
 }
 
-async function discoverLocalArtifacts(workspace: string, ignoredPaths: Set<string>, knownNames: Set<string>) {
+async function discoverLocalArtifacts(modelDir: string, ignoredPaths: Set<string>, knownNames: Set<string>) {
   const entries: Array<{ id: string; name: string; filename: string; quantization: string | null }> = [];
   const errors: string[] = [];
-  const dirs = modelDirectories(workspace);
+  const dirs = modelDirectories(modelDir);
   let scannedDirs = 0;
   for (const dir of dirs) {
     let files;
@@ -259,6 +259,13 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
   snapshot(): Promise<ModelManagerResponseT>;
   externalRoutes(): Promise<ModelProviderRouteT[]>;
 } {
+  const runtimeModelDir = (options.modelRuntime as Pick<ModelRuntime, 'list' | 'status'> & { modelDir?: string }).modelDir;
+  const configuredModelDir = options.modelDir ?? runtimeModelDir;
+  const modelDir = configuredModelDir === undefined ? null : path.resolve(configuredModelDir);
+  if (options.modelDir !== undefined && runtimeModelDir !== undefined &&
+      !sameModelStorageDirectory(runtimeModelDir, options.modelDir)) {
+    throw new Error('model storage path disagreement between Model Manager and Model Runtime');
+  }
   return Object.freeze({
     externalRoutes: async () => {
       const raw = await (options.connectionsService.listExternalExecution
@@ -272,6 +279,7 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
       );
     },
     snapshot: async () => {
+    if (modelDir === null) throw new Error('Model Manager requires the canonical model directory from Model Runtime');
     const [manifestText, runtimeView, connectionsRaw, runtimeObservation] = await Promise.all([
       fs.readFile(options.manifestPath, 'utf8').catch(() => null),
       options.modelRuntime.status().catch(() => ({ runtime: false, models: [] })),
@@ -318,11 +326,13 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
         context_tokens: entry.context_tokens,
         quant_label: entry.quant_label,
         sha256: entry.sha256,
+        source_revision: entry.source_revision,
+        source_repo: entry.repo_id,
         ingested: true
       });
     }
     const knownNames = new Set([...records.values()].map(candidate => safeText(candidate.file, '').toLowerCase()).filter(Boolean));
-    const discovery = await discoverLocalArtifacts(options.workspace, ignoredPaths, knownNames);
+    const discovery = await discoverLocalArtifacts(modelDir, ignoredPaths, knownNames);
     const localDiscovery = {
       status: discovery.status,
       scanned_dirs: discovery.scanned_dirs,
@@ -346,7 +356,7 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
       const filename = rawFilename ? safeText(rawFilename, 'model.gguf') : null;
       const expectedHash = validHash(raw.sha256);
       const loadedHash = runtimeObservation?.loaded_model?.model_id === id ? validHash(runtimeObservation.loaded_model.artifact_sha256) : null;
-      const observedHash = loadedHash;
+      const observedHash = validHash(statusRow.observed_sha256) ?? loadedHash;
       const hashMismatch = Boolean(expectedHash && observedHash && expectedHash !== observedHash);
       const installed = statusRow.artifact_available === true || (raw.discovered === true);
       const artifactAvailability = installed ? 'INSTALLED' as const : raw.ingested === true ? 'UNAVAILABLE' as const : source.source ? 'AVAILABLE' as const : 'UNAVAILABLE' as const;
@@ -455,12 +465,12 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
       execution_adapters: buildAdapters(connections, runtime),
       connections,
       selection_policy: {
-        persistence_state: 'NOT_PERSISTED' as const,
+        persistence_state: 'PERSISTED' as const,
         mutation_enabled: false as const,
-        execution_routing_effect: false as const,
-        scopes: ['GLOBAL', 'PROJECT', 'ROLE'] as const,
-        roles: ['PLANNING', 'IMPLEMENTATION', 'REVIEW', 'UTILITY', 'BACKGROUND'] as const,
-        precedence: ['PROJECT_ROLE', 'PROJECT_DEFAULT', 'GLOBAL_ROLE', 'GLOBAL_DEFAULT'] as const
+        execution_routing_effect: true as const,
+        mutation_owner: 'SETTINGS_BYOK_ROUTING' as const,
+        scope: 'WORKSPACE_ROLE' as const,
+        roles: ['PLANNING', 'IMPLEMENTATION', 'REVIEW', 'UTILITY'] as const
       }
     };
     return ModelManagerResponse.parse(snapshot);
