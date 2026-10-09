@@ -371,7 +371,7 @@ test('Telegram HTTP routes propagate canonical authority and never grant from pa
 // Actual route/server/facade; capture the executor so a red security test
 // cannot mutate a repository. No test-only bypass is added to production.
 test('unpaired capability callers cannot stage through direct TS or facade', async () => {
-  const workspace = await fs.mkdtemp(path.join(process.platform === 'win32' ? 'E:/pip_temp/opencode' : os.tmpdir(), 'phase2a-authority-'));
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'phase2a-authority-'));
   const arch = new ArchServer(workspace, path.join(workspace, 'arch.log'));
   const savedStage = GitService.prototype.stage;
   const savedRun = GitService.prototype.run;
@@ -412,7 +412,13 @@ test('unpaired capability callers cannot stage through direct TS or facade', asy
       await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
     }
     await arch.logger.flush();
-    console.log(JSON.stringify({ cleanup: 'closed', archListening: server?.listening ?? false, facadeListening: facade?.server.listening ?? false }));
+    await fs.rm(workspace, { recursive: true, force: true });
+    console.log(JSON.stringify({
+      cleanup: 'closed',
+      archListening: server?.listening ?? false,
+      facadeListening: facade?.server.listening ?? false,
+      workspaceRemoved: true
+    }));
   }
 });
 
