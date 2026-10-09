@@ -103,6 +103,31 @@
     "e_or_l_scratch_used": false,
     "e_index_temporarily_modified_and_restored": true
   },
+  "canonical_reconciliation": {
+    "performed_from": "Committed evidence and source in the C:-resident isolated checkout only; no E: or L: reads",
+    "canonical_artifact_identity": {
+      "model": "LFM2.5-2.6B-Q4_K_M.gguf",
+      "upstream_repo": "LiquidAI/LFM2.5-2.6B-GGUF",
+      "upstream_revision": "e7caca5d835a3901a8e0d63e94009429bafafdfc",
+      "bytes": 1674455040,
+      "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+      "matches_unsloth_v1_passport_and_broker_qualification": true
+    },
+    "historical_host_path": "E:/models/house-model/lfm25_gguf/LFM2.5-2.6B-Q4_K_M.gguf",
+    "historical_host_observation_currently_reverified": false,
+    "current_safe_artifact_availability": "UNKNOWN",
+    "model_identity_missing": false,
+    "proposed_live_download_classification": "DUPLICATE_ACQUISITION_PATH",
+    "resident_role_qualification": "UNKNOWN_NOT_ESTABLISHED_BY_RUNTIME_PASSPORT",
+    "existing_runtime_qualification_scope": "Windows Administrator + Unsloth 2026.9.11 + Vulkan + GTX 1060 Mobile; exact artifact and frozen request profile only",
+    "covert_liquid_model_pack_included": false,
+    "canonical_product_lock_audit_file_found_in_isolated_checkout": false,
+    "this_record_is_audit_input_not_a_replacement": true,
+    "download_attempted": false,
+    "model_runtime_started": false,
+    "admission_rerun": false,
+    "convergence_mutated": false
+  },
   "issue_38": {
     "latest_visible_comment_id": 6036313587,
     "latest_visible_comment_at_utc": "2026-10-07T10:47:38Z",

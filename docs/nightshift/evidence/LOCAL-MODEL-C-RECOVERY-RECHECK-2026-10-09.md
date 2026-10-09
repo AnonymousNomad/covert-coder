@@ -49,6 +49,20 @@ For the pinned LFM2.5 GGUF acquisition already described in the prior lane evide
 
 The known exact artifact on E: was not read or copied during this recheck. No E:/L: temporary or scratch path was used. The previously verified C: recovery snapshots and manifests were left untouched.
 
+## Canonical Product-Lock / Implementation Reconciliation input
+
+This section carries the local-model evidence into the product-lock reconciliation. It is based only on files already present in this C: checkout; E: and L: were not read during this handoff.
+
+- The pinned artifact is **the same exact Liquid LFM2.5 artifact already represented by Covert's existing V1 Unsloth qualification**, not a distinct candidate: `LFM2.5-2.6B-Q4_K_M.gguf`, `1,674,455,040` bytes, SHA-256 `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed`, upstream `LiquidAI/LFM2.5-2.6B-GGUF` revision `e7caca5d835a3901a8e0d63e94009429bafafdfc`. The same exact identity appears in `node/src/services/broker-model-runtime.ts` as `UNSLOTH_V1_QUALIFICATION` and in `docs/design/local-runtime-lab/evidence/UNSLOTH-RUNTIME-PASSPORT-V1.json`.
+- `docs/nightshift/evidence/MODEL-CARD-LFM2.5-2.6B-Q4_K_M.md` records two exact-artifact start/stop cycles with successful generation, cancellation, restart and second generation on 2026-10-01. The Passport limits that qualification to Windows Administrator + Unsloth 2026.9.11 + Vulkan + GTX 1060 Mobile and the pinned request profile. It does **not** establish Resident/Cipher role qualification, general tool qualification, redistribution clearance, or present readiness.
+- `docs/nightshift/evidence/local-gguf-host-inventory-2026-09-30.md` and the prior 2026-10-08 local-model record document that this exact file was previously observed at `E:\models\house-model\lfm25_gguf\LFM2.5-2.6B-Q4_K_M.gguf` with the same size and hash. That is historical host evidence only. Current file presence and safe accessibility are **UNKNOWN** here because this handoff did not read E: or L:.
+- `models/manifest.json` says Liquid models are not included in the optional pack (`liquid_models_included: false`). The `ACTIVE-CONTEXT-PACKET.md` records a prior Model Access import for this exact hash. Therefore a new live Hub download of this pinned revision would reacquire bytes already represented by the established artifact/profile/import history; it is a **duplicate acquisition path**, not evidence that the model identity is missing. The actual weights are absent from this C: checkout, which does not prove they are missing elsewhere.
+- Source inspection confirms the existing product owner: `BrokerModelRuntime` composes the canonical `RuntimeBroker`, binds the exact V1 artifact identity, and gates local starts through Resource Admission. The Resident route exposes observed runtime/model availability. The inspected code and prior Passport do not prove the Liquid artifact is currently selected or qualified for a Resident role.
+
+**Reconciliation classification:** `EXISTING_CANONICAL_ARTIFACT_IDENTITY`; proposed new download is `DUPLICATE_ACQUISITION_PATH`; last-known host location is historical and current safe availability is `UNKNOWN`; artifact identity is not genuinely missing, while current Resident-role qualification and live availability remain `UNKNOWN`/unproven.
+
+No download, registration, model start, fresh Admission call, E:/L: access, or convergence mutation occurred. The unchanged capacity and Admission reds above still govern. A bounded search of this isolated checkout found no separate file titled or referenced as the Covert Canonical Product-Lock / Implementation Reconciliation Audit; this section is reconciliation input for that audit and does not claim to replace or complete the canonical audit.
+
 ## Disposition
 
 - ModelHub focused source/route checks: **PASS for tested fixture-backed scope**.
