@@ -1,0 +1,445 @@
+{
+  "directive": "P2 TERMINAL ROUTE RED CAUSE ISOLATION",
+  "lane": "deepseek/weekend-native-platform-20261009",
+  "head": "8037f39",
+  "campaign": {
+    "campaign": "p2-boundary-campaign",
+    "started_at": "2026-10-10T02:52:47.841Z",
+    "max_runs": 20,
+    "trace_on": true,
+    "runs": [
+      {
+        "index": 1,
+        "ts": "2026-10-10T02:53:00.425Z",
+        "exit": 0,
+        "pass": 11,
+        "fail": 0,
+        "duration_ms": 7866.4663,
+        "wall_ms": 7956,
+        "free_ram_before": 4502286336,
+        "free_ram_after": 4178874368,
+        "cpu_busy": 0.273,
+        "trace_present": true,
+        "trace_events": 336,
+        "request_count": 12,
+        "timed_out": 0,
+        "new_workspaces": [],
+        "server_logs": [],
+        "red": false
+      },
+      {
+        "index": 2,
+        "ts": "2026-10-10T02:53:09.505Z",
+        "exit": 0,
+        "pass": 11,
+        "fail": 0,
+        "duration_ms": 8961.7663,
+        "wall_ms": 9035,
+        "free_ram_before": 4180230144,
+        "free_ram_after": 3924643840,
+        "cpu_busy": 0.288,
+        "trace_present": true,
+        "trace_events": 346,
+        "request_count": 12,
+        "timed_out": 0,
+        "new_workspaces": [],
+        "server_logs": [],
+        "red": false
+      },
+      {
+        "index": 3,
+        "ts": "2026-10-10T02:53:13.932Z",
+        "exit": 0,
+        "pass": 11,
+        "fail": 0,
+        "duration_ms": 4309.4049,
+        "wall_ms": 4381,
+        "free_ram_before": 3921940480,
+        "free_ram_after": 3853459456,
+        "cpu_busy": 0.301,
+        "trace_present": true,
+        "trace_events": 335,
+        "request_count": 12,
+        "timed_out": 0,
+        "new_workspaces": [],
+        "server_logs": [],
+        "red": false
+      },
+      {
+        "index": 4,
+        "ts": "2026-10-10T02:53:18.341Z",
+        "exit": 0,
+        "pass": 11,
+        "fail": 0,
+        "duration_ms": 4275.0997,
+        "wall_ms": 4366,
+        "free_ram_before": 3840634880,
+        "free_ram_after": 3833974784,
+        "cpu_busy": 0.248,
+        "trace_present": true,
+        "trace_events": 335,
+        "request_count": 12,
+        "timed_out": 0,
+        "new_workspaces": [],
+        "server_logs": [],
+        "red": false
+      },
+      {
+        "index": 5,
+        "ts": "2026-10-10T02:53:29.021Z",
+        "exit": 0,
+        "pass": 11,
+        "fail": 0,
+        "duration_ms": 10571.8294,
+        "wall_ms": 10638,
+        "free_ram_before": 3835781120,
+        "free_ram_after": 4210028544,
+        "cpu_busy": 0.149,
+        "trace_present": true,
+        "trace_events": 352,
+        "request_count": 12,
+        "timed_out": 0,
+        "new_workspaces": [],
+        "server_logs": [],
+        "red": false
+      },
+      {
+        "index": 6,
+        "ts": "2026-10-10T02:53:35.321Z",
+        "exit": 0,
+        "pass": 11,
+        "fail": 0,
+        "duration_ms": 5981.2529,
+        "wall_ms": 6060,
+        "free_ram_before": 4210315264,
+        "free_ram_after": 4354842624,
+        "cpu_busy": 0.178,
+        "trace_present": true,
+        "trace_events": 340,
+        "request_count": 12,
+        "timed_out": 0,
+        "new_workspaces": [],
+        "server_logs": [],
+        "red": false
+      },
+      {
+        "index": 7,
+        "ts": "2026-10-10T02:53:52.619Z",
+        "exit": 1,
+        "pass": 10,
+        "fail": 1,
+        "duration_ms": 17188.4387,
+        "wall_ms": 17253,
+        "free_ram_before": 4358569984,
+        "free_ram_after": 4180692992,
+        "cpu_busy": 0.23,
+        "trace_present": true,
+        "trace_events": 335,
+        "request_count": 11,
+        "timed_out": 0,
+        "new_workspaces": [],
+        "server_logs": [],
+        "red": true
+      }
+    ],
+    "recurrence_count": 1,
+    "stopped_reason": "RED_RECURRENCE_FIRST_PRESERVED",
+    "first_red_run": 7
+  },
+  "preserved_run": 7,
+  "cause_classification": {
+    "phase": "PHASE_4_COMPLETE / PHASE_6_APPLY",
+    "result": "P2_RED_CAUSE_LOCALIZED",
+    "instrumented_stage": "AUTHORITY_PREPARE_DELAY",
+    "single_stage_recurrence": true,
+    "chain": "owner.approve -> propose -> POST /api/authority/prepare -> authority.prepare -> required(event)-> audit.emitAuthority -> emit -> createStateBus(workspace).append -> fs.open/writeFile/sync/close on .aide/cipher-state.jsonl (%%TEMP%% worktree, C:)",
+    "mechanism": "async fs I/O await inside the per-event cipher-state.jsonl append stalled ~10s then ~5s; the 5000ms client AbortSignal.timeout aborted the first fetch (TimeoutError, test fail at line 524); event loop remained responsive (telemetry fired every ~510ms; cpu_busy 0.23; free RAM stable ~4.2GB) so EVENT_LOOP_DELAY is excluded.",
+    "s15": {
+      "sseq": "s15",
+      "route_enter_t_ms": 5178.29,
+      "prepare_start_t_ms": 5178.48,
+      "prepare_end_t_ms": 15214.69,
+      "wait_ms": 10036.21,
+      "client_deadline_ms": 5000,
+      "aborted": true,
+      "test": "handleControl fails closed on malformed payloads, ambient identity, and wrong owner",
+      "fail_at_line": 524,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    "s16": {
+      "sseq": "s16",
+      "route_enter_t_ms": 10170.5,
+      "prepare_start_t_ms": 10170.62,
+      "prepare_end_t_ms": 15093.79,
+      "wait_ms": 4922.96,
+      "client_deadline_ms": 5000,
+      "aborted": false,
+      "margin_ms": 77.04
+    },
+    "aftermath": "all appends recovered to 11-15ms immediately after the stall cleared; the aborted s15 request completed server-side 200 at 15214.70 (rejected-0; request_rejected 0 is correct - no server refusal occurred).",
+    "stage_aggregates": {
+      "pair_end": {
+        "count": 2,
+        "min_ms": 227.61,
+        "median_ms": 251.96,
+        "p95_ms": 251.96,
+        "max_ms": 251.96
+      },
+      "route_POST_/api/authority/pair_exit": {
+        "count": 2,
+        "min_ms": 227.65,
+        "median_ms": 252.14,
+        "p95_ms": 252.14,
+        "max_ms": 252.14
+      },
+      "authenticate_end": {
+        "count": 30,
+        "min_ms": 0.02,
+        "median_ms": 0.04,
+        "p95_ms": 0.07,
+        "max_ms": 0.13
+      },
+      "prepare_end": {
+        "count": 11,
+        "min_ms": 11.53,
+        "median_ms": 49.05,
+        "p95_ms": 10036.21,
+        "max_ms": 10036.21
+      },
+      "provider_probe_file_exists_exit": {
+        "count": 4,
+        "min_ms": 0.01,
+        "median_ms": 0.02,
+        "p95_ms": 0.13,
+        "max_ms": 0.13
+      },
+      "provider_probe_exec_exit": {
+        "count": 1,
+        "min_ms": 0.05,
+        "median_ms": 0.05,
+        "p95_ms": 0.05,
+        "max_ms": 0.05
+      },
+      "provider_lookup_exit": {
+        "count": 1,
+        "min_ms": 0.51,
+        "median_ms": 0.51,
+        "p95_ms": 0.51,
+        "max_ms": 0.51
+      },
+      "route_GET_/api/terminal/providers_exit": {
+        "count": 1,
+        "min_ms": 0.56,
+        "median_ms": 0.56,
+        "p95_ms": 0.56,
+        "max_ms": 0.56
+      },
+      "execute_end": {
+        "count": 8,
+        "min_ms": 29.62,
+        "median_ms": 60.37,
+        "p95_ms": 73.36,
+        "max_ms": 73.36
+      },
+      "response_resolved": {
+        "count": 11,
+        "min_ms": 4.83,
+        "median_ms": 68.55,
+        "p95_ms": 212.9,
+        "max_ms": 212.9
+      },
+      "session_list_exit": {
+        "count": 2,
+        "min_ms": 0.05,
+        "median_ms": 0.12,
+        "p95_ms": 0.12,
+        "max_ms": 0.12
+      },
+      "route_GET_/api/terminal/sessions_exit": {
+        "count": 2,
+        "min_ms": 0.15,
+        "median_ms": 0.17,
+        "p95_ms": 0.17,
+        "max_ms": 0.17
+      },
+      "route_POST_/api/authority/prepare_exit": {
+        "count": 8,
+        "min_ms": 13.29,
+        "median_ms": 52.45,
+        "p95_ms": 10036.41,
+        "max_ms": 10036.41
+      },
+      "decide_end": {
+        "count": 7,
+        "min_ms": 12.31,
+        "median_ms": 27.2,
+        "p95_ms": 214.82,
+        "max_ms": 214.82
+      },
+      "route_POST_/api/authority/decision_exit": {
+        "count": 7,
+        "min_ms": 12.34,
+        "median_ms": 27.29,
+        "p95_ms": 214.85,
+        "max_ms": 214.85
+      },
+      "terminal_open_exit": {
+        "count": 5,
+        "min_ms": 0.02,
+        "median_ms": 1.39,
+        "p95_ms": 1.82,
+        "max_ms": 1.82
+      },
+      "route_POST_/api/terminal/sessions_exit": {
+        "count": 4,
+        "min_ms": 0.48,
+        "median_ms": 1.87,
+        "p95_ms": 1.97,
+        "max_ms": 1.97
+      },
+      "route_POST_/api/terminal/sessions_throw": {
+        "count": 1,
+        "min_ms": 0.15,
+        "median_ms": 0.15,
+        "p95_ms": 0.15,
+        "max_ms": 0.15
+      },
+      "execute_throw": {
+        "count": 2,
+        "min_ms": 29.69,
+        "median_ms": 205.65,
+        "p95_ms": 205.65,
+        "max_ms": 205.65
+      },
+      "terminal_stop_exit": {
+        "count": 3,
+        "min_ms": 0.03,
+        "median_ms": 0.46,
+        "p95_ms": 0.52,
+        "max_ms": 0.52
+      },
+      "route_POST_/api/terminal/sessions/stop_throw": {
+        "count": 1,
+        "min_ms": 0.2,
+        "median_ms": 0.2,
+        "p95_ms": 0.2,
+        "max_ms": 0.2
+      },
+      "route_POST_/api/terminal/sessions/stop_exit": {
+        "count": 1,
+        "min_ms": 0.54,
+        "median_ms": 0.54,
+        "p95_ms": 0.54,
+        "max_ms": 0.54
+      },
+      "teardown_end": {
+        "count": 1,
+        "min_ms": 8.74,
+        "median_ms": 8.74,
+        "p95_ms": 8.74,
+        "max_ms": 8.74
+      }
+    },
+    "excluded": [
+      "EVENT_LOOP_DELAY",
+      "AUTHENTICATE_DELAY",
+      "DISPATCH_DELAY",
+      "EXECUTE_DELAY",
+      "DECISION_DELAY"
+    ],
+    "witness": {
+      "during_stall_telemetry_t_ms": [
+        5369.23,
+        5878.39,
+        6378.28,
+        6890.15,
+        7398.05,
+        7913.03,
+        8413.07,
+        8928.17,
+        9443.63,
+        9954.24
+      ],
+      "gap_ms_telemetry_interval": 510
+    }
+  },
+  "compare_greens": {
+    "run_indexes_1_through_6": [
+      {
+        "index": 1,
+        "exit": 0,
+        "pass": 11,
+        "duration_ms": 7866.4663,
+        "request_count": 12
+      },
+      {
+        "index": 2,
+        "exit": 0,
+        "pass": 11,
+        "duration_ms": 8961.7663,
+        "request_count": 12
+      },
+      {
+        "index": 3,
+        "exit": 0,
+        "pass": 11,
+        "duration_ms": 4309.4049,
+        "request_count": 12
+      },
+      {
+        "index": 4,
+        "exit": 0,
+        "pass": 11,
+        "duration_ms": 4275.0997,
+        "request_count": 12
+      },
+      {
+        "index": 5,
+        "exit": 0,
+        "pass": 11,
+        "duration_ms": 10571.8294,
+        "request_count": 12
+      },
+      {
+        "index": 6,
+        "exit": 0,
+        "pass": 11,
+        "duration_ms": 5981.2529,
+        "request_count": 12
+      }
+    ],
+    "normal_prepare_wait_after_stall_ms": 11.53
+  },
+  "boundaries_run_7": {
+    "present": [
+      "request_start",
+      "client_deadline_created",
+      "dispatch_initiated",
+      "server_received",
+      "authenticate_start",
+      "authenticate_end",
+      "prepare_start",
+      "prepare_end",
+      "execute_start",
+      "execute_end",
+      "server_sent",
+      "response_resolved",
+      "telemetry_sample",
+      "stage_delay",
+      "event_loop_delay"
+    ],
+    "missing": [],
+    "all_instrumented_boundaries_present": true,
+    "zero_occurrence_expected": [
+      "request_rejected",
+      "timed_out"
+    ],
+    "zero_occurrence_reason": "no server-side rejection and no wrapped-client timeout occurred (summary timed_out=0); absence = zero count, not missing instrumentation",
+    "note": "pair/decide/fixture/route stages additionally present in trace payload"
+  },
+  "trace_events_run_7": 335,
+  "evidence_sources": {
+    "run": "docs/weekend-platform-20261009/evidence/p2-boundary-campaign-20261009/run-7.txt",
+    "summary": "docs/weekend-platform-20261009/evidence/p2-boundary-campaign-20261009/summary.json"
+  }
+}

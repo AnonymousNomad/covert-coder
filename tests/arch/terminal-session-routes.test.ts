@@ -4,7 +4,7 @@ import type http from 'node:http';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { performance } from 'node:perf_hooks';
+import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { WebSocket } from 'ws';
 import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
@@ -13,6 +13,7 @@ import { TerminalProviderListResponse, TerminalSessionListResponse, TerminalSess
 import { pairFixture } from './authority-fixture.ts';
 import { TerminalSessionService, buildTerminalEnv } from '../../node/src/services/terminal-sessions.ts';
 import { translateCwd, createDefaultProviderDeps, type PtySpawnOptions } from '../../node/src/services/runtime-providers.ts';
+import type { ExecutionAuthority } from '../../node/src/services/execution-authority.mjs';
 
 // Interactive terminal session tests.
 //
@@ -67,16 +68,83 @@ const TRACE_ON = process.env.COVERT_P2_TERMINAL_TRACE !== '0';
 const traceOrigin = performance.now();
 const traceEvents: Array<Record<string, string | number | boolean | null>> = [];
 let traceRequestSeq = 0;
+let serverRequestSeq = 0;
+let lastTraceStage = '';
+let lastTraceAt = performance.now();
+let lastCpu = process.cpuUsage();
+let sampler: NodeJS.Timeout | undefined;
+const STAGE_DELAY_MS = 400;
+const eventLoopDelay = monitorEventLoopDelay({ resolution: 20 });
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+function pushEvent(stage: string, fields: Record<string, string | number | boolean | null> = {}): void {
+  traceEvents.push({ seq: traceEvents.length + 1, t_ms: round2(performance.now() - traceOrigin), stage, ...fields });
+}
 function trace(stage: string, fields: Record<string, string | number | boolean | null> = {}): void {
   if (!TRACE_ON) return;
-  traceEvents.push({ seq: traceEvents.length + 1, t_ms: Math.round((performance.now() - traceOrigin) * 1000) / 1000, stage, ...fields });
+  const now = performance.now();
+  const gap = now - lastTraceAt;
+  if (lastTraceStage !== '' && gap >= STAGE_DELAY_MS) {
+    pushEvent('stage_delay', { gap_ms: round2(gap), from_stage: lastTraceStage, to_stage: stage, ...snapshot() });
+  }
+  lastTraceStage = stage;
+  lastTraceAt = now;
+  pushEvent(stage, fields);
 }
 function traceMs(since: number): number {
-  return Math.round((performance.now() - since) * 1000) / 1000;
+  return round2(performance.now() - since);
+}
+function snapshot(): Record<string, string | number> {
+  const cumulative = process.cpuUsage();
+  const cpuUserMs = Math.max(0, cumulative.user - lastCpu.user);
+  const cpuSystemMs = Math.max(0, cumulative.system - lastCpu.system);
+  lastCpu = cumulative;
+  const memory = process.memoryUsage();
+  return {
+    rss_bytes: memory.rss,
+    heap_used_bytes: memory.heapUsed,
+    free_ram_bytes: os.freemem(),
+    total_ram_bytes: os.totalmem(),
+    cpu_user_ms: Math.round(cpuUserMs / 1000),
+    cpu_system_ms: Math.round(cpuSystemMs / 1000),
+    children: 0,
+    evl_mean_ms: round2(eventLoopDelay.mean),
+    evl_max_ms: round2(eventLoopDelay.max)
+  };
+}
+
+// Summary of the trace plus per-stage timing stats, emitted in the after() hook
+// so a single instrumented run is self-describing without a second parser.
+function stageStats(events: typeof traceEvents): string {
+  const stageMs = new Map<string, number[]>();
+  for (const event of events) {
+    if (typeof event.stage !== 'string') continue;
+    if (typeof event.ms !== 'number') continue;
+    const key = event.stage;
+    const list = stageMs.get(key) ?? [];
+    list.push(event.ms);
+    stageMs.set(key, list);
+  }
+  const summary: Array<{ stage: string; count: number; median_ms: number; p95_ms: number; max_ms: number }> = [];
+  for (const [stage, values] of stageMs) {
+    values.sort((a, b) => a - b);
+    const mid = Math.floor(values.length / 2);
+    const median = values.length % 2 === 1 ? (values[mid] ?? 0) : (((values[mid - 1] ?? 0) + (values[mid] ?? 0)) / 2);
+    const p95 = values[Math.min(values.length - 1, Math.floor(values.length * 0.95))] ?? 0;
+    const maxValue = values[values.length - 1] ?? 0;
+    summary.push({ stage, count: values.length, median_ms: round2(median), p95_ms: round2(p95), max_ms: round2(maxValue) });
+  }
+  return JSON.stringify(summary.sort((a, b) => b.max_ms - a.max_ms));
 }
 function emitTrace(): void {
   if (!TRACE_ON || traceEvents.length === 0) return;
-  console.log('P2_TERMINAL_TRACE ' + JSON.stringify({ deadline_ms: Number.parseInt(process.env.AIDE_FIXTURE_TIMEOUT_MS ?? '', 10) || 5000, events: traceEvents }));
+  const payload = {
+    deadline_ms: Number.parseInt(process.env.AIDE_FIXTURE_TIMEOUT_MS ?? '', 10) || 5000,
+    stage_stats: JSON.parse(stageStats(traceEvents)) as unknown,
+    events: traceEvents
+  };
+  console.log('P2_TERMINAL_TRACE ' + JSON.stringify(payload));
 }
 function traceService<A extends unknown[], R>(label: string, fn: (...args: A) => R): (...args: A) => R {
   return (...args: A): R => {
@@ -106,9 +174,10 @@ function wrapFixtureRequest<T extends { request: (pathname: string, init?: Reque
     const started = performance.now();
     trace('request_start', { id, method: init.method ?? 'GET', path: pathname });
     trace('client_deadline_created', { id, deadline_ms: Number.parseInt(process.env.AIDE_FIXTURE_TIMEOUT_MS ?? '', 10) || 5000 });
+    trace('dispatch_initiated', { id });
     return inner(pathname, init).then(
       response => { trace('response_resolved', { id, status: response.status, ms: traceMs(started) }); return response; },
-      error => { trace('request_rejected', { id, ms: traceMs(started), reason: (error as Error)?.name ?? 'Error' }); throw error; }
+      error => { trace('request_rejected', { id, ms: traceMs(started), reason: (error as Error)?.name ?? 'Error', timed_out: (error as Error)?.name === 'TimeoutError' }); throw error; }
     );
   };
   return fixture;
@@ -118,6 +187,63 @@ const openBody = { provider: 'native', shell: null, cwd: workspace, cols: 120, r
 
 before(async () => {
   server = new ArchServer(workspace, path.join(workspace, 'arch-test.log'));
+  // TEST/TRACE-ONLY boundary instrumentation. server.authority is a plain
+  // instance property holding a frozen authority object; a Proxy over it is
+  // impossible (frozen non-configurable target properties reject wrapped
+  // get-trap values with an ES invariant TypeError), so we swap in a plain
+  // wrapper object that enumerates the frozen target's own properties,
+  // records only the timed authority methods, binds every other method to
+  // the target, and passes objects (control) through untouched.
+  if (TRACE_ON) {
+    const authorityTarget = server.authority;
+    const timedMethods = new Set(['pair', 'authenticate', 'prepare', 'decide', 'execute']);
+    const authorityWrapper: Record<string, unknown> = {};
+    for (const key of Object.getOwnPropertyNames(authorityTarget)) {
+      const value = (authorityTarget as unknown as Record<string, unknown>)[key];
+      if (typeof value === 'function' && timedMethods.has(key)) {
+        // Preserve the raw method's contract exactly: authenticate is
+        // synchronous (the router assigns its return value without await)
+        // while pair/prepare/decide/execute are async. An async wrapper
+        // around a sync method would hand the router a Promise and fail
+        // the actor identity check inside Authority.prepare.
+        const raw = value as (...a: unknown[]) => unknown;
+        if (value.constructor?.name === 'AsyncFunction') {
+          authorityWrapper[key] = async (...args: unknown[]) => {
+            trace(`${key}_start`);
+            const started = performance.now();
+            try {
+              const result = await raw.apply(authorityTarget, args);
+              trace(`${key}_end`, { ms: traceMs(started) });
+              return result;
+            } catch (error) {
+              trace(`${key}_throw`, { ms: traceMs(started), reason: (error as Error)?.name ?? 'Error' });
+              throw error;
+            }
+          };
+        } else {
+          authorityWrapper[key] = (...args: unknown[]) => {
+            trace(`${key}_start`);
+            const started = performance.now();
+            try {
+              const result = raw.apply(authorityTarget, args);
+              trace(`${key}_end`, { ms: traceMs(started) });
+              return result;
+            } catch (error) {
+              trace(`${key}_throw`, { ms: traceMs(started), reason: (error as Error)?.name ?? 'Error' });
+              throw error;
+            }
+          };
+        }
+      } else if (typeof value === 'function') {
+        authorityWrapper[key] = (value as (...a: unknown[]) => unknown).bind(authorityTarget);
+      } else {
+        authorityWrapper[key] = value;
+      }
+    }
+    (server as unknown as { authority: ExecutionAuthority }).authority =
+      authorityWrapper as unknown as ExecutionAuthority;
+    eventLoopDelay.enable();
+  }
   sessions = new TerminalSessionService({
     defaultCwd: workspace,
     // Small buffer + fast drain make the backpressure/truncation test
@@ -156,6 +282,21 @@ before(async () => {
   assert.ok(address && typeof address === 'object');
   base = `http://127.0.0.1:${address.port}`;
   port = address.port;
+  // Server-side receive/send boundaries. Every fixture request is awaited
+  // before the next is issued, so exactly one HTTP request is in flight at a
+  // time and arrival order is deterministic (order-based correlation). This
+  // listener never consumes the request stream.
+  if (TRACE_ON) {
+    httpServer.on('request', (request, response) => {
+      const sseq = `s${++serverRequestSeq}`;
+      trace('server_received', { sseq, method: request.method ?? 'GET', path: request.url?.split('?')[0] ?? '' });
+      request.on('error', () => {});
+      response.on('error', () => {});
+      response.on('finish', () => trace('server_sent', { sseq, status: response.statusCode }));
+    });
+    sampler = setInterval(() => pushEvent('telemetry_sample', snapshot()), 500);
+    sampler.unref();
+  }
   owner = wrapFixtureRequest(await pairFixture(server, base));
   intruder = wrapFixtureRequest(await pairFixture(server, base, 'http://intruder.local'));
   trace('fixtures_paired');
@@ -180,6 +321,20 @@ after(async () => {
     }
   } finally {
     trace('teardown_end', { ms: traceMs(teardownStart) });
+    if (TRACE_ON) {
+      if (sampler) clearInterval(sampler);
+      eventLoopDelay.disable();
+      const pct = (p: number): number => round2(Number(eventLoopDelay.percentile(p)));
+      pushEvent('event_loop_delay', {
+        mean_ms: round2(eventLoopDelay.mean),
+        p50_ms: pct(50),
+        p90_ms: pct(90),
+        p95_ms: pct(95),
+        p99_ms: pct(99),
+        max_ms: round2(eventLoopDelay.max),
+        stddev_ms: round2(eventLoopDelay.stddev)
+      });
+    }
     emitTrace();
   }
 });
