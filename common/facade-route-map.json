@@ -255,6 +255,15 @@
     },
     {
       "method": "GET",
+      "path": "/api/creation-studio/productions",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "GET",
       "path": "/api/dap/state",
       "match": "exact",
       "target": "ts",
@@ -2299,6 +2308,15 @@
     {
       "method": "PUT",
       "path": "/api/connections/preference",
+      "match": "exact",
+      "target": "ts",
+      "classification": "PUBLIC_TYPED",
+      "owner": "typed-server",
+      "rawResponse": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/creation-studio/production",
       "match": "exact",
       "target": "ts",
       "classification": "PUBLIC_TYPED",

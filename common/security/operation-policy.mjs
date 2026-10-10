@@ -65,6 +65,9 @@ const HTTP_POLICY = new Map([
   ['GET /api/agent/sessions', 'agent.read'],
   ['GET /api/cipher/laptop/notebook', 'capability.read'], ['POST /api/cipher/laptop/notebook', 'capability.write'], ['POST /api/cipher/laptop/notebook/remove', 'capability.write'],
   ['GET /api/cipher/laptop/status', 'capability.read'], ['GET /api/cipher/laptop/activity', 'capability.read'],
+  // Creation Studio records are canonical read-only production state. Mutations
+  // carry their exact route-owned capability.write descriptor.
+  ['GET /api/creation-studio/productions', 'capability.read'],
   ['GET /api/audit/events', 'capability.read'], ['GET /api/audit/session', 'capability.read'],
   ['GET /api/audit/bundle', 'capability.read'], ['GET /api/openapi.json', 'capability.read'],
   // Read-only notification/hook observation. Mutating notification/hook routes

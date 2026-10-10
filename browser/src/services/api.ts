@@ -189,6 +189,14 @@ import {
 } from '../../../common/contracts/hardware.ts';
 import { WorkflowState, type WorkflowStateT } from '../../../common/contracts/workflow.ts';
 import {
+  CreationStudioListResponse,
+  type CreationStudioListResponseT,
+  CreationStudioPutRequest,
+  type CreationStudioPutRequestT,
+  CreationStudioRecord,
+  type CreationStudioRecordT
+} from '../../../common/contracts/creation-studio.ts';
+import {
   TerminalProviderListResponse,
   type TerminalProviderListResponseT,
   TerminalSessionListResponse,
@@ -378,6 +386,14 @@ export const api = {
   },
   cipherLaptopActivity(signal?: AbortSignal, projectId?: string): Promise<CipherLedgerListResponseT> {
     return call('/api/cipher/laptop/activity', { schema: CipherLedgerListResponse, ...(projectId !== undefined ? { query: { project_id: projectId } } : {}), ...(signal !== undefined ? { signal } : {}) });
+  },
+  creationStudioList(signal?: AbortSignal): Promise<CreationStudioListResponseT> {
+    return call('/api/creation-studio/productions', { schema: CreationStudioListResponse, ...(signal !== undefined ? { signal } : {}) });
+  },
+  creationStudioPut(input: CreationStudioPutRequestT): Promise<CreationStudioRecordT> {
+    const body = CreationStudioPutRequest.safeParse(input);
+    if (!body.success) throw new ApiError('BAD_REQUEST', 'invalid Creation Studio record');
+    return call('/api/creation-studio/production', { method: 'PUT', body: body.data, schema: CreationStudioRecord });
   },
   hardwareProfile(signal?: AbortSignal): Promise<HardwareProfileResponseT> {
     return call('/api/hardware/profile', { schema: HardwareProfileResponse, ...(signal !== undefined ? { signal } : {}) });

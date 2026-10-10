@@ -7323,6 +7323,1060 @@
         }
       }
     },
+    "/api/creation-studio/production": {
+      "put": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "production": {
+                      "type": "object",
+                      "properties": {
+                        "production_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "premise": {
+                          "type": "string",
+                          "maxLength": 8000
+                        },
+                        "target_duration_seconds": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 21600
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "READY_FOR_RENDER",
+                            "RENDERING",
+                            "REVIEW",
+                            "COMPLETE"
+                          ]
+                        },
+                        "execution_connection": {
+                          "type": "string",
+                          "const": "NOT_CONNECTED"
+                        },
+                        "scenes": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "scene_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "order": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "summary": {
+                                "type": "string",
+                                "maxLength": 4000
+                              },
+                              "shots": {
+                                "maxItems": 500,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "shot_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "order": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "prompt": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 8000
+                                    },
+                                    "duration_seconds": {
+                                      "type": "number",
+                                      "exclusiveMinimum": 0,
+                                      "maximum": 60
+                                    },
+                                    "aspect_ratio": {
+                                      "type": "string",
+                                      "enum": [
+                                        "16:9",
+                                        "9:16",
+                                        "1:1",
+                                        "2.39:1"
+                                      ]
+                                    },
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "PLANNED",
+                                        "QUEUED",
+                                        "RENDERING",
+                                        "REVIEW",
+                                        "ACCEPTED",
+                                        "REJECTED",
+                                        "BLOCKED"
+                                      ]
+                                    },
+                                    "assignments": {
+                                      "maxItems": 12,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "capability": {
+                                            "type": "string",
+                                            "enum": [
+                                              "SCRIPT",
+                                              "CONCEPT_ART",
+                                              "VIDEO",
+                                              "VOICE",
+                                              "MUSIC",
+                                              "UPSCALE"
+                                            ]
+                                          },
+                                          "provider_id": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 120
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "model_id": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 160
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "state": {
+                                            "type": "string",
+                                            "enum": [
+                                              "UNASSIGNED",
+                                              "ASSIGNED",
+                                              "UNAVAILABLE"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "capability",
+                                          "provider_id",
+                                          "model_id",
+                                          "state"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "shot_id",
+                                    "order",
+                                    "prompt",
+                                    "duration_seconds",
+                                    "aspect_ratio",
+                                    "state",
+                                    "assignments"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "scene_id",
+                              "order",
+                              "title",
+                              "summary",
+                              "shots"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "production_id",
+                        "title",
+                        "premise",
+                        "target_duration_seconds",
+                        "status",
+                        "execution_connection",
+                        "scenes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "bible_entries": {
+                      "maxItems": 2000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "entry_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "CHARACTER",
+                              "LOCATION",
+                              "VISUAL_RULE",
+                              "PROP",
+                              "VEHICLE",
+                              "VOICE",
+                              "MUSIC",
+                              "TERMINOLOGY"
+                            ]
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "content": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 8000
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "DRAFT",
+                              "APPROVED"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "entry_id",
+                          "category",
+                          "title",
+                          "content",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "continuity_entries": {
+                      "maxItems": 4000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "entry_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "scope_kind": {
+                            "type": "string",
+                            "enum": [
+                              "PRODUCTION",
+                              "SCENE",
+                              "SHOT"
+                            ]
+                          },
+                          "scope_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "content": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 8000
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ACTIVE",
+                              "RESOLVED"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "entry_id",
+                          "scope_kind",
+                          "scope_id",
+                          "title",
+                          "content",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "production",
+                    "bible_entries",
+                    "continuity_entries",
+                    "revision",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expected_revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "production": {
+                    "type": "object",
+                    "properties": {
+                      "production_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240
+                      },
+                      "premise": {
+                        "type": "string",
+                        "maxLength": 8000
+                      },
+                      "target_duration_seconds": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 21600
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "DRAFT",
+                          "READY_FOR_RENDER",
+                          "RENDERING",
+                          "REVIEW",
+                          "COMPLETE"
+                        ]
+                      },
+                      "execution_connection": {
+                        "type": "string",
+                        "const": "NOT_CONNECTED"
+                      },
+                      "scenes": {
+                        "maxItems": 500,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "scene_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "order": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "summary": {
+                              "type": "string",
+                              "maxLength": 4000
+                            },
+                            "shots": {
+                              "maxItems": 500,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "shot_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "order": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "prompt": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 8000
+                                  },
+                                  "duration_seconds": {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 60
+                                  },
+                                  "aspect_ratio": {
+                                    "type": "string",
+                                    "enum": [
+                                      "16:9",
+                                      "9:16",
+                                      "1:1",
+                                      "2.39:1"
+                                    ]
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PLANNED",
+                                      "QUEUED",
+                                      "RENDERING",
+                                      "REVIEW",
+                                      "ACCEPTED",
+                                      "REJECTED",
+                                      "BLOCKED"
+                                    ]
+                                  },
+                                  "assignments": {
+                                    "maxItems": 12,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "capability": {
+                                          "type": "string",
+                                          "enum": [
+                                            "SCRIPT",
+                                            "CONCEPT_ART",
+                                            "VIDEO",
+                                            "VOICE",
+                                            "MUSIC",
+                                            "UPSCALE"
+                                          ]
+                                        },
+                                        "provider_id": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 120
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "model_id": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 160
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "UNASSIGNED",
+                                            "ASSIGNED",
+                                            "UNAVAILABLE"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "capability",
+                                        "provider_id",
+                                        "model_id",
+                                        "state"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "shot_id",
+                                  "order",
+                                  "prompt",
+                                  "duration_seconds",
+                                  "aspect_ratio",
+                                  "state",
+                                  "assignments"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "scene_id",
+                            "order",
+                            "title",
+                            "summary",
+                            "shots"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "production_id",
+                      "title",
+                      "premise",
+                      "target_duration_seconds",
+                      "status",
+                      "execution_connection",
+                      "scenes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "bible_entries": {
+                    "maxItems": 2000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "entry_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "CHARACTER",
+                            "LOCATION",
+                            "VISUAL_RULE",
+                            "PROP",
+                            "VEHICLE",
+                            "VOICE",
+                            "MUSIC",
+                            "TERMINOLOGY"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "content": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 8000
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "APPROVED"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "entry_id",
+                        "category",
+                        "title",
+                        "content",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "continuity_entries": {
+                    "maxItems": 4000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "entry_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "scope_kind": {
+                          "type": "string",
+                          "enum": [
+                            "PRODUCTION",
+                            "SCENE",
+                            "SHOT"
+                          ]
+                        },
+                        "scope_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "content": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 8000
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ACTIVE",
+                            "RESOLVED"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "entry_id",
+                        "scope_kind",
+                        "scope_id",
+                        "title",
+                        "content",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "expected_revision",
+                  "production",
+                  "bible_entries",
+                  "continuity_entries"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/creation-studio/productions": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "records": {
+                      "maxItems": 100,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "production": {
+                            "type": "object",
+                            "properties": {
+                              "production_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 240
+                              },
+                              "premise": {
+                                "type": "string",
+                                "maxLength": 8000
+                              },
+                              "target_duration_seconds": {
+                                "type": "number",
+                                "exclusiveMinimum": 0,
+                                "maximum": 21600
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "READY_FOR_RENDER",
+                                  "RENDERING",
+                                  "REVIEW",
+                                  "COMPLETE"
+                                ]
+                              },
+                              "execution_connection": {
+                                "type": "string",
+                                "const": "NOT_CONNECTED"
+                              },
+                              "scenes": {
+                                "maxItems": 500,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "scene_id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "order": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "title": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 240
+                                    },
+                                    "summary": {
+                                      "type": "string",
+                                      "maxLength": 4000
+                                    },
+                                    "shots": {
+                                      "maxItems": 500,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "shot_id": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 120
+                                          },
+                                          "order": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "prompt": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 8000
+                                          },
+                                          "duration_seconds": {
+                                            "type": "number",
+                                            "exclusiveMinimum": 0,
+                                            "maximum": 60
+                                          },
+                                          "aspect_ratio": {
+                                            "type": "string",
+                                            "enum": [
+                                              "16:9",
+                                              "9:16",
+                                              "1:1",
+                                              "2.39:1"
+                                            ]
+                                          },
+                                          "state": {
+                                            "type": "string",
+                                            "enum": [
+                                              "PLANNED",
+                                              "QUEUED",
+                                              "RENDERING",
+                                              "REVIEW",
+                                              "ACCEPTED",
+                                              "REJECTED",
+                                              "BLOCKED"
+                                            ]
+                                          },
+                                          "assignments": {
+                                            "maxItems": 12,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "capability": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "SCRIPT",
+                                                    "CONCEPT_ART",
+                                                    "VIDEO",
+                                                    "VOICE",
+                                                    "MUSIC",
+                                                    "UPSCALE"
+                                                  ]
+                                                },
+                                                "provider_id": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 120
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                },
+                                                "model_id": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 160
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                },
+                                                "state": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "UNASSIGNED",
+                                                    "ASSIGNED",
+                                                    "UNAVAILABLE"
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "capability",
+                                                "provider_id",
+                                                "model_id",
+                                                "state"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "shot_id",
+                                          "order",
+                                          "prompt",
+                                          "duration_seconds",
+                                          "aspect_ratio",
+                                          "state",
+                                          "assignments"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "scene_id",
+                                    "order",
+                                    "title",
+                                    "summary",
+                                    "shots"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "production_id",
+                              "title",
+                              "premise",
+                              "target_duration_seconds",
+                              "status",
+                              "execution_connection",
+                              "scenes"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "bible_entries": {
+                            "maxItems": 2000,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "entry_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "category": {
+                                  "type": "string",
+                                  "enum": [
+                                    "CHARACTER",
+                                    "LOCATION",
+                                    "VISUAL_RULE",
+                                    "PROP",
+                                    "VEHICLE",
+                                    "VOICE",
+                                    "MUSIC",
+                                    "TERMINOLOGY"
+                                  ]
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                },
+                                "content": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 8000
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "DRAFT",
+                                    "APPROVED"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "entry_id",
+                                "category",
+                                "title",
+                                "content",
+                                "status"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "continuity_entries": {
+                            "maxItems": 4000,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "entry_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "scope_kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "PRODUCTION",
+                                    "SCENE",
+                                    "SHOT"
+                                  ]
+                                },
+                                "scope_id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 240
+                                },
+                                "content": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 8000
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ACTIVE",
+                                    "RESOLVED"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "entry_id",
+                                "scope_kind",
+                                "scope_id",
+                                "title",
+                                "content",
+                                "status"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "production",
+                          "bible_entries",
+                          "continuity_entries",
+                          "revision",
+                          "updated_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "records"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/dap/breakpoints": {
       "post": {
         "responses": {

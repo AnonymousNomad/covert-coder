@@ -111,6 +111,8 @@ import { createProviderConnectionsService, type ProviderConnectionsService } fro
 import { createModelManagerView } from './services/model-manager-view.ts';
 import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 import { routesForConnections } from './routes/connections.ts';
+import { createCreationStudioService } from './services/creation-studio-service.mjs';
+import { routesForCreationStudio } from './routes/creation-studio.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
 import { TutorManager } from '../../academy/tutor-manager.mjs';
 import { ExerciseEngine } from '../../academy/exercise-engine.mjs';
@@ -733,6 +735,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     }
   };
   const workerHandoffService = createWorkerHandoffService({ workspace, workflowService });
+  const creationStudioService = createCreationStudioService({ workspace });
   const readinessSupervisor = createHealthSupervisor({
     workspace,
     version,
@@ -1113,6 +1116,7 @@ export async function buildRoutes(workspace: string, version: string, options: B
     ...routesForHandoff(handoffService),
     ...routesForByok(byokService, workspace),
     ...routesForConnections(connectionsService as any, workspace),
+    ...routesForCreationStudio(creationStudioService, workspace),
     routeForLspStatus(manager),
     routeForLspStart(manager),
     routeForLspOpen(manager),

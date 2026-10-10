@@ -43,3 +43,44 @@ export const CreationStudioProduction = z.object({
   scenes: z.array(CreationStudioScene).max(500)
 }).strict();
 export type CreationStudioProductionT = z.infer<typeof CreationStudioProduction>;
+
+export const CreationStudioBibleEntry = z.object({
+  entry_id: z.string().min(1).max(120),
+  category: z.enum(['CHARACTER', 'LOCATION', 'VISUAL_RULE', 'PROP', 'VEHICLE', 'VOICE', 'MUSIC', 'TERMINOLOGY']),
+  title: z.string().min(1).max(240),
+  content: z.string().min(1).max(8000),
+  status: z.enum(['DRAFT', 'APPROVED'])
+}).strict();
+export type CreationStudioBibleEntryT = z.infer<typeof CreationStudioBibleEntry>;
+
+export const CreationStudioContinuityEntry = z.object({
+  entry_id: z.string().min(1).max(120),
+  scope_kind: z.enum(['PRODUCTION', 'SCENE', 'SHOT']),
+  scope_id: z.string().min(1).max(120).nullable(),
+  title: z.string().min(1).max(240),
+  content: z.string().min(1).max(8000),
+  status: z.enum(['ACTIVE', 'RESOLVED'])
+}).strict();
+export type CreationStudioContinuityEntryT = z.infer<typeof CreationStudioContinuityEntry>;
+
+export const CreationStudioRecord = z.object({
+  production: CreationStudioProduction,
+  bible_entries: z.array(CreationStudioBibleEntry).max(2000),
+  continuity_entries: z.array(CreationStudioContinuityEntry).max(4000),
+  revision: z.number().int().positive(),
+  updated_at: z.string().datetime()
+}).strict();
+export type CreationStudioRecordT = z.infer<typeof CreationStudioRecord>;
+
+export const CreationStudioListResponse = z.object({
+  records: z.array(CreationStudioRecord).max(100)
+}).strict();
+export type CreationStudioListResponseT = z.infer<typeof CreationStudioListResponse>;
+
+export const CreationStudioPutRequest = z.object({
+  expected_revision: z.number().int().nonnegative(),
+  production: CreationStudioProduction,
+  bible_entries: z.array(CreationStudioBibleEntry).max(2000),
+  continuity_entries: z.array(CreationStudioContinuityEntry).max(4000)
+}).strict();
+export type CreationStudioPutRequestT = z.infer<typeof CreationStudioPutRequest>;
