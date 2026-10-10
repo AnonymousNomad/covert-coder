@@ -4,6 +4,7 @@ import type http from 'node:http';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { WebSocket } from 'ws';
 import { ArchServer } from '../../node/src/server.ts';
 import { buildRoutes } from '../../node/src/openapi.ts';
@@ -57,6 +58,62 @@ let spawnCount = 0;
 const ptyInstances: FakePty[] = [];
 const sockets: WebSocket[] = [];
 
+// P2 RED recurrence instrumentation (persistent, behavior-neutral).
+// Records STAGE-LEVEL timings only — never headers, tokens, bodies, or
+// credentials. The 5000ms client deadline is unchanged; no sleeps, retries,
+// or widened timeouts are introduced. Default-on, but negligible cost; set
+// COVERT_P2_TERMINAL_TRACE=0 to silence.
+const TRACE_ON = process.env.COVERT_P2_TERMINAL_TRACE !== '0';
+const traceOrigin = performance.now();
+const traceEvents: Array<Record<string, string | number | boolean | null>> = [];
+let traceRequestSeq = 0;
+function trace(stage: string, fields: Record<string, string | number | boolean | null> = {}): void {
+  if (!TRACE_ON) return;
+  traceEvents.push({ seq: traceEvents.length + 1, t_ms: Math.round((performance.now() - traceOrigin) * 1000) / 1000, stage, ...fields });
+}
+function traceMs(since: number): number {
+  return Math.round((performance.now() - since) * 1000) / 1000;
+}
+function emitTrace(): void {
+  if (!TRACE_ON || traceEvents.length === 0) return;
+  console.log('P2_TERMINAL_TRACE ' + JSON.stringify({ deadline_ms: Number.parseInt(process.env.AIDE_FIXTURE_TIMEOUT_MS ?? '', 10) || 5000, events: traceEvents }));
+}
+function traceService<A extends unknown[], R>(label: string, fn: (...args: A) => R): (...args: A) => R {
+  return (...args: A): R => {
+    const started = performance.now();
+    trace(`${label}_enter`);
+    let result: R;
+    try {
+      result = fn(...args);
+    } catch (error) {
+      trace(`${label}_throw`, { ms: traceMs(started), reason: (error as Error)?.name ?? 'Error' });
+      throw error;
+    }
+    if (result !== null && typeof result === 'object' && typeof (result as { then?: unknown }).then === 'function') {
+      return (result as unknown as Promise<unknown>).then(
+        value => { trace(`${label}_exit`, { ms: traceMs(started) }); return value as R; },
+        error => { trace(`${label}_throw`, { ms: traceMs(started), reason: (error as Error)?.name ?? 'Error' }); throw error; }
+      ) as R;
+    }
+    trace(`${label}_exit`, { ms: traceMs(started) });
+    return result;
+  };
+}
+function wrapFixtureRequest<T extends { request: (pathname: string, init?: RequestInit) => Promise<Response> }>(fixture: T): T {
+  const inner = fixture.request.bind(fixture);
+  fixture.request = (pathname: string, init: RequestInit = {}) => {
+    const id = ++traceRequestSeq;
+    const started = performance.now();
+    trace('request_start', { id, method: init.method ?? 'GET', path: pathname });
+    trace('client_deadline_created', { id, deadline_ms: Number.parseInt(process.env.AIDE_FIXTURE_TIMEOUT_MS ?? '', 10) || 5000 });
+    return inner(pathname, init).then(
+      response => { trace('response_resolved', { id, status: response.status, ms: traceMs(started) }); return response; },
+      error => { trace('request_rejected', { id, ms: traceMs(started), reason: (error as Error)?.name ?? 'Error' }); throw error; }
+    );
+  };
+  return fixture;
+}
+
 const openBody = { provider: 'native', shell: null, cwd: workspace, cols: 120, rows: 40 };
 
 before(async () => {
@@ -79,36 +136,51 @@ before(async () => {
     deps: createDefaultProviderDeps({
       platform: 'win32',
       loadPty: () => ({ spawn() { throw new Error('test must never reach the real engine'); } }),
-      fileExists: async () => true,
-      listDir: async () => ['Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe'],
-      exec: async () => ({ code: 0, stdout: 'Debian', stderr: '' })
+      fileExists: traceService('provider_probe_file_exists', async () => true),
+      listDir: traceService('provider_probe_list_dir', async () => ['Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe']),
+      exec: traceService('provider_probe_exec', async () => ({ code: 0, stdout: 'Debian', stderr: '' }))
     })
   });
+  sessions.providers = traceService('provider_lookup', sessions.providers.bind(sessions));
+  sessions.list = traceService('session_list', sessions.list.bind(sessions));
+  sessions.open = traceService('terminal_open', sessions.open.bind(sessions));
+  sessions.stop = traceService('terminal_stop', sessions.stop.bind(sessions));
   server.registerControlHandler((message, context) => sessions.handleControl(message, context.identity));
   const routes = await buildRoutes(workspace, 'test', { authority: server.authority, events: server.events, terminalSessions: sessions });
-  for (const route of routes) server.route(route);
+  for (const route of routes) {
+    route.handler = traceService(`route_${route.method}_${route.path}`, route.handler);
+    server.route(route);
+  }
   httpServer = await server.listen(0);
   const address = httpServer.address();
   assert.ok(address && typeof address === 'object');
   base = `http://127.0.0.1:${address.port}`;
   port = address.port;
-  owner = await pairFixture(server, base);
-  intruder = await pairFixture(server, base, 'http://intruder.local');
+  owner = wrapFixtureRequest(await pairFixture(server, base));
+  intruder = wrapFixtureRequest(await pairFixture(server, base, 'http://intruder.local'));
+  trace('fixtures_paired');
 });
 
 after(async () => {
-  for (const socket of sockets) socket.terminate();
-  sessions.stopAll();
-  server.events.close();
-  await new Promise<void>(resolve => httpServer.close(() => resolve()));
-  for (let attempt = 0; attempt < 10; attempt++) {
-    try {
-      await fs.rm(workspace, { recursive: true, force: true });
-      return;
-    } catch (error) {
-      if (!['EBUSY', 'ENOTEMPTY', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
-      await new Promise(resolve => setTimeout(resolve, 500));
+  const teardownStart = performance.now();
+  trace('teardown_start');
+  try {
+    for (const socket of sockets) socket.terminate();
+    sessions.stopAll();
+    server.events.close();
+    await new Promise<void>(resolve => httpServer.close(() => resolve()));
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        await fs.rm(workspace, { recursive: true, force: true });
+        break;
+      } catch (error) {
+        if (!['EBUSY', 'ENOTEMPTY', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
+  } finally {
+    trace('teardown_end', { ms: traceMs(teardownStart) });
+    emitTrace();
   }
 });
 
