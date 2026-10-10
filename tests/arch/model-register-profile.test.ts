@@ -150,6 +150,29 @@ test('nested external model paths survive runtime restart', async () => {
   assert.equal(restored.sha256, registered.sha256);
 });
 
+test('legacy ingest refuses an artifact outside the canonical model directory', async () => {
+  const outsidePath = path.join(dir, 'outside-model.gguf');
+  await fs.writeFile(outsidePath, syntheticGgufWithChatTemplate());
+  const before = await ingestedRaw();
+
+  await assert.rejects(
+    () => runtime.ingest(outsidePath),
+    (error: unknown) => error instanceof ModelRuntimeError && error.code === 'NOT_READY' && /within configured AIDE_MODEL_DIR/.test(error.message)
+  );
+
+  assert.equal(await ingestedRaw(), before, 'rejected off-root imports do not change persisted model registrations');
+});
+
+test('legacy ingest retains exact identity for an artifact within the canonical model directory', async () => {
+  const canonicalPath = path.join(modelDir, 'inside-model.gguf');
+  await fs.writeFile(canonicalPath, syntheticGgufWithChatTemplate());
+  const imported = await runtime.ingest(canonicalPath);
+
+  assert.equal(runtime.get(imported.id)?.file, canonicalPath);
+  assert.equal(runtime.get(imported.id)?.sha256, imported.sha256);
+  assert.equal((await ingestedRaw()).includes(imported.sha256), true);
+});
+
 test('POST /api/models/register rejects non-gguf and escaping filenames', async () => {
   const nonGguf = await owner.request('/api/models/register', { method: 'POST', body: JSON.stringify({ filename: 'notes.txt' }) });
   assert.equal(nonGguf.status, 400);

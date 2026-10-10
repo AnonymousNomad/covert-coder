@@ -1009,6 +1009,9 @@ export class ModelRuntime {
       throw new Error(`model file was not found at ${absolute}`);
     });
     if (!stat.isFile()) throw new Error('model path is not a file');
+    if (!await readableArtifactWithin(this.modelDir, absolute)) {
+      throw new ModelRuntimeError('NOT_READY', 'model import source must be a readable artifact within configured AIDE_MODEL_DIR');
+    }
     const info = await probeGguf(absolute);
     if (!ALLOWED_ARCHITECTURES.includes(info.architecture)) throw new Error(`unsupported GGUF architecture: ${info.architecture}`);
     if (info.chatTemplate === null) throw new Error('this GGUF has no tokenizer.chat_template; serving it would silently fall back to llama-2 formatting (gibberish). Rejecting for safety.');
