@@ -14521,6 +14521,88 @@
                               "UNKNOWN"
                             ]
                           },
+                          "qualification_gate": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "state": {
+                                    "type": "string",
+                                    "const": "NOT_EVALUATED"
+                                  },
+                                  "reasons": {
+                                    "minItems": 0,
+                                    "maxItems": 0,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "STORAGE_UNSAFE",
+                                        "RESOURCE_FLOOR_NOT_MET"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "state",
+                                  "reasons"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "state": {
+                                    "type": "string",
+                                    "const": "PREFLIGHT_CLEAR"
+                                  },
+                                  "reasons": {
+                                    "minItems": 0,
+                                    "maxItems": 0,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "STORAGE_UNSAFE",
+                                        "RESOURCE_FLOOR_NOT_MET"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "state",
+                                  "reasons"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "state": {
+                                    "type": "string",
+                                    "const": "QUALIFICATION_BLOCKED"
+                                  },
+                                  "reasons": {
+                                    "minItems": 1,
+                                    "maxItems": 2,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "STORAGE_UNSAFE",
+                                        "RESOURCE_FLOOR_NOT_MET"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "state",
+                                  "reasons"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
                           "readiness": {
                             "type": "string",
                             "enum": [
@@ -14551,6 +14633,7 @@
                           "artifact_ids",
                           "availability",
                           "compatibility",
+                          "qualification_gate",
                           "readiness",
                           "recommended_roles",
                           "execution_selected_roles"

@@ -7,6 +7,12 @@ const Sha256 = z.string().regex(/^[a-f0-9]{64}$/i);
 export const ModelAccessQualificationState = z.enum([
   'UNTESTED', 'TESTED', 'QUALIFIED', 'NOT_QUALIFIED', 'INVALID_EVIDENCE', 'STALE', 'REQUIRES_PREFLIGHT'
 ]);
+export const ModelQualificationBlockerCode = z.enum(['STORAGE_UNSAFE', 'RESOURCE_FLOOR_NOT_MET']);
+export const ModelQualificationGate = z.discriminatedUnion('state', [
+  z.strictObject({ state: z.literal('NOT_EVALUATED'), reasons: z.array(ModelQualificationBlockerCode).length(0) }),
+  z.strictObject({ state: z.literal('PREFLIGHT_CLEAR'), reasons: z.array(ModelQualificationBlockerCode).length(0) }),
+  z.strictObject({ state: z.literal('QUALIFICATION_BLOCKED'), reasons: z.array(ModelQualificationBlockerCode).min(1).max(2) })
+]);
 export const ModelAccessAvailability = z.enum([
   'UNAVAILABLE', 'DISCOVERED', 'AVAILABLE', 'INSTALLED', 'CONNECTED', 'LOADABLE'
 ]);
@@ -107,6 +113,7 @@ export const ModelManagerModel = z.strictObject({
   artifact_ids: z.array(SafeRef),
   availability: ModelAccessAvailability,
   compatibility: ModelArtifactCompatibility,
+  qualification_gate: ModelQualificationGate,
   readiness: ModelManagerReadiness,
   recommended_roles: z.array(z.string().max(64)),
   execution_selected_roles: z.array(z.string().max(64))
@@ -159,4 +166,5 @@ export type ModelArtifactSourceT = z.infer<typeof ModelArtifactSource>;
 export type ModelProviderRouteT = z.infer<typeof ModelProviderRoute>;
 export type ModelCredentialSourceT = z.infer<typeof ModelCredentialSource>;
 export type ModelExecutionAdapterT = z.infer<typeof ModelExecutionAdapter>;
+export type ModelQualificationGateT = z.infer<typeof ModelQualificationGate>;
 export type ModelManagerResponseT = z.infer<typeof ModelManagerResponse>;

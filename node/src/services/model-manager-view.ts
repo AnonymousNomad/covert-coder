@@ -9,12 +9,14 @@ import {
   type ModelArtifactSourceT,
   type ModelCredentialSourceT,
   type ModelExecutionAdapterT,
+  type ModelQualificationGateT,
   type ModelManagerResponseT,
   type ModelProviderRouteT
 } from '../../../common/contracts/model-access.ts';
 import type { ModelRuntime } from './model-runtime.ts';
 import type { RuntimeStatusResponseT } from '../../../common/contracts/runtime.ts';
 import { sameModelStorageDirectory } from './model-storage.mjs';
+import { LOCAL_RUNTIME_START_FLOORS } from './resource-admission.ts';
 
 type RuntimeObservation = Partial<RuntimeStatusResponseT> & {
   backend?: 'UNSLOTH' | 'LLAMA_CPP' | null;
@@ -29,6 +31,32 @@ type QualificationBasis = {
   runtime_id: string | null;
   runtime_version: string | null;
 };
+
+export type ModelQualificationPreflightObservation = {
+  storage_read_safety: 'SAFE' | 'UNSAFE' | 'UNKNOWN';
+  available_physical_memory_mib: number | null;
+};
+
+export function evaluateModelQualificationGate(
+  artifactPresent: boolean,
+  observation: ModelQualificationPreflightObservation | null
+): ModelQualificationGateT {
+  if (!artifactPresent || observation === null) return { state: 'NOT_EVALUATED', reasons: [] };
+  const reasons: Array<'STORAGE_UNSAFE' | 'RESOURCE_FLOOR_NOT_MET'> = [];
+  if (observation.storage_read_safety === 'UNSAFE') reasons.push('STORAGE_UNSAFE');
+  const available = observation.available_physical_memory_mib;
+  if (typeof available === 'number' && Number.isFinite(available) &&
+      available < LOCAL_RUNTIME_START_FLOORS.freePhysicalMemoryMB) {
+    reasons.push('RESOURCE_FLOOR_NOT_MET');
+  }
+  return reasons.length > 0
+    ? { state: 'QUALIFICATION_BLOCKED', reasons }
+    : observation.storage_read_safety === 'SAFE' &&
+        typeof available === 'number' && Number.isFinite(available) &&
+        available >= LOCAL_RUNTIME_START_FLOORS.freePhysicalMemoryMB
+      ? { state: 'PREFLIGHT_CLEAR', reasons: [] }
+      : { state: 'NOT_EVALUATED', reasons: [] };
+}
 
 export function evaluateQualificationFreshness(
   evidence: { state: 'QUALIFIED'; basis: QualificationBasis },
@@ -52,6 +80,9 @@ export interface ModelManagerViewOptions {
     listExternalExecution?(): Promise<ConnectionsViewResponseT>;
   };
   runtimeStatus?: () => Promise<RuntimeObservation | null>;
+  // Fresh read-only inputs for the Model Manager's qualification explanation.
+  // This is not Resource Admission and does not authorize a model start.
+  qualificationPreflight?: () => Promise<ModelQualificationPreflightObservation | null>;
 }
 
 const SAFE_HASH = /^[a-f0-9]{64}$/i;
@@ -344,6 +375,12 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
     }
     const statusRows = Array.isArray(runtimeView.models) ? runtimeView.models.map(record) : [];
     const statusById = new Map(statusRows.map(row => [String(row.id ?? ''), row]));
+    const hasPresentLocalArtifact = [...records.entries()].some(([id, raw]) =>
+      raw.discovered === true || statusById.get(id)?.artifact_available === true
+    );
+    const qualificationPreflight = hasPresentLocalArtifact && options.qualificationPreflight
+      ? await options.qualificationPreflight().catch(() => null)
+      : null;
     const artifactById = new Map<string, ModelArtifactSourceT>();
     const identityById = new Map<string, ModelAccessIdentityT>();
     const modelById = new Map<string, ModelManagerResponseT['models'][number]>();
@@ -358,9 +395,16 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
       const loadedHash = runtimeObservation?.loaded_model?.model_id === id ? validHash(runtimeObservation.loaded_model.artifact_sha256) : null;
       const observedHash = validHash(statusRow.observed_sha256) ?? loadedHash;
       const hashMismatch = Boolean(expectedHash && observedHash && expectedHash !== observedHash);
-      const installed = statusRow.artifact_available === true || (raw.discovered === true);
-      const artifactAvailability = installed ? 'INSTALLED' as const : raw.ingested === true ? 'UNAVAILABLE' as const : source.source ? 'AVAILABLE' as const : 'UNAVAILABLE' as const;
-      const sourceKind = raw.ingested === true ? 'LOCAL_IMPORT' as const : raw.discovered === true ? 'LOCAL_DISCOVERY' as const : installed ? 'LOCAL_MANIFEST' as const : 'MODEL_CATALOG' as const;
+      const runtimeArtifactAvailable = statusRow.artifact_available === true;
+      const discovered = raw.discovered === true;
+      const artifactPresent = runtimeArtifactAvailable || discovered;
+      const artifactAvailability = runtimeArtifactAvailable ? 'INSTALLED' as const
+        : discovered ? 'DISCOVERED' as const
+          : raw.ingested === true ? 'UNAVAILABLE' as const
+            : source.source ? 'AVAILABLE' as const : 'UNAVAILABLE' as const;
+      const sourceKind = raw.ingested === true ? 'LOCAL_IMPORT' as const
+        : raw.discovered === true ? 'LOCAL_DISCOVERY' as const
+          : runtimeArtifactAvailable ? 'LOCAL_MANIFEST' as const : 'MODEL_CATALOG' as const;
       const hashStatus = hashMismatch ? 'MISMATCH' as const : observedHash ? 'VERIFIED' as const : expectedHash ? 'EXPECTED' as const : 'NOT_COMPUTED' as const;
       const artifact: ModelArtifactSourceT = {
         id: 'artifact:' + id,
@@ -407,6 +451,7 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
         artifact_ids: [artifact.id],
         availability: recordAvailability,
         compatibility: artifact.compatibility,
+        qualification_gate: evaluateModelQualificationGate(artifactPresent, qualificationPreflight),
         readiness: 'NOT_READY',
         recommended_roles: Array.isArray(raw.recommended_roles) ? raw.recommended_roles.filter((value): value is string => typeof value === 'string').map(value => safeText(value, '').slice(0, 64)).filter(Boolean) : [],
         execution_selected_roles: []
@@ -435,23 +480,26 @@ export function createModelManagerView(options: ModelManagerViewOptions): {
               artifact_ids: [],
               availability: availability(connection, reference.model_support_state),
               compatibility: 'UNKNOWN',
+              qualification_gate: { state: 'NOT_EVALUATED', reasons: [] },
               readiness: 'NOT_READY',
               recommended_roles: [],
               execution_selected_roles: []
             });
           }
-          const route = connectionRoute(connections, connection, reference, adapter,
-            identityById.get(reference.model_id)?.qualification.state === 'QUALIFIED');
-          routes.push(route);
           const model = modelById.get(reference.model_id);
+          const qualifiedLocal = model?.identity.qualification.state === 'QUALIFIED' &&
+            model.qualification_gate.state !== 'QUALIFICATION_BLOCKED';
+          const route = connectionRoute(connections, connection, reference, adapter, qualifiedLocal);
+          routes.push(route);
           if (model) model.execution_selected_roles = [...new Set([...model.execution_selected_roles, ...route.selected_roles])];
         }
       }
     }
     for (const model of modelById.values()) {
-      if (model.identity.qualification.state === 'QUALIFIED' && routes.some(route => route.model_id === model.identity.canonical_id && route.available && route.health === 'HEALTHY')) model.readiness = 'READY';
+      if (model.qualification_gate.state === 'QUALIFICATION_BLOCKED') model.readiness = 'NOT_READY';
+      else if (model.identity.qualification.state === 'QUALIFIED' && routes.some(route => route.model_id === model.identity.canonical_id && route.available && route.health === 'HEALTHY')) model.readiness = 'READY';
       else if (model.availability === 'UNAVAILABLE') model.readiness = 'UNAVAILABLE';
-      else if (model.availability === 'INSTALLED') model.readiness = 'SETUP_REQUIRED';
+      else if (model.availability === 'INSTALLED' || model.availability === 'DISCOVERED') model.readiness = 'SETUP_REQUIRED';
     }
     const snapshot = {
       generated_at: new Date().toISOString(),

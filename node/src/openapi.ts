@@ -105,7 +105,7 @@ import { createSecretStore } from '../../node/src/services/secret-store.mjs';
 import { createByokService } from '../../node/src/services/byok-service.mjs';
 import { routesForByok } from './routes/byok.ts';
 import { createProviderConnectionsService, type ProviderConnectionsService } from '../../node/src/services/provider-connections.mjs';
-import { createModelManagerView } from './services/model-manager-view.ts';
+import { createModelManagerView, type ModelQualificationPreflightObservation } from './services/model-manager-view.ts';
 import type { ModelProviderRouteT } from '../../common/contracts/model-access.ts';
 import { routesForConnections } from './routes/connections.ts';
 import { LearnerState } from '../../academy/learner-state.mjs';
@@ -173,6 +173,9 @@ export interface BuildRoutesOptions {
   // Optional resource probes for deterministic integration tests; production
   // uses the canonical host probes by default.
   resourceAdmission?: ReturnType<typeof createResourceAdmission>;
+  // Optional fresh, read-only observations for Model Manager's qualification
+  // explanation. This is not Resource Admission and cannot authorize a start.
+  qualificationPreflight?: () => Promise<ModelQualificationPreflightObservation | null>;
   // Optional Authorization bearer source for modelhub egress (e.g. a vaulted
   // Hugging Face access token). Failures degrade to anonymous access.
   modelHubAuthorization?: () => Promise<string | null>;
@@ -727,7 +730,8 @@ export async function buildRoutes(workspace: string, version: string, options: B
     manifestPath: path.join(repoRoot, 'models', 'manifest.json'),
     modelRuntime,
     connectionsService,
-    ...(modelRuntime instanceof BrokerModelRuntime ? { runtimeStatus: () => modelRuntime.runtimeStatusSnapshot() } : {})
+    ...(modelRuntime instanceof BrokerModelRuntime ? { runtimeStatus: () => modelRuntime.runtimeStatusSnapshot() } : {}),
+    ...(options.qualificationPreflight ? { qualificationPreflight: options.qualificationPreflight } : {})
   });
   modelProviderRouteSnapshot = () => modelManagerView.externalRoutes();
   const huggingfaceAuthorization =

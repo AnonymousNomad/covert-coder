@@ -639,9 +639,11 @@ test('local artifact discovery is bounded and never means model readiness', asyn
   assert.deepEqual(Object.keys(snapshot.local_discovery).sort(), ['discovered_count', 'error_count', 'scanned_dirs', 'status']);
   const found = snapshot.models[0];
   assert.ok(found);
-  assert.equal(found.availability, 'INSTALLED');
+  assert.equal(found.availability, 'DISCOVERED');
   assert.equal(found.readiness, 'SETUP_REQUIRED');
   assert.equal(found.identity.qualification.state, 'UNTESTED');
+  assert.deepEqual(found.qualification_gate, { state: 'NOT_EVALUATED', reasons: [] });
+  assert.equal(snapshot.artifacts[0]?.hash_status, 'NOT_COMPUTED');
   assert.equal('entries' in (snapshot.local_discovery as any), false);
 });
 

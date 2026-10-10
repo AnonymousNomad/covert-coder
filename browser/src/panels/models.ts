@@ -6,6 +6,7 @@ import type { Store } from '../store/store.ts';
 import type { AppState } from '../store/state.ts';
 import { api } from '../services/api.ts';
 import type { ModelManagerResponseT } from '../../../common/contracts/model-access.ts';
+import { presentModelQualification } from './model-qualification-presentation.ts';
 
 export interface PanelHandles {
   dispose(): void;
@@ -25,7 +26,7 @@ function stateClass(state: string): 'ok' | 'warn' | 'err' | 'dim' {
   const upper = state.toUpperCase();
   if (['READY', 'QUALIFIED', 'VERIFIED', 'HEALTHY', 'AVAILABLE', 'ELIGIBLE'].includes(upper)) return 'ok';
   if (['UNAVAILABLE', 'UNHEALTHY', 'UNSUPPORTED', 'INVALID_EVIDENCE', 'MISMATCH'].includes(upper)) return 'err';
-  if (['UNKNOWN', 'UNTESTED', 'STALE', 'REQUIRES_PREFLIGHT', 'SETUP_REQUIRED', 'CONSENT_REQUIRED', 'VERIFICATION_REQUIRED', 'NOT_READY', 'BLOCKED', 'UNVERIFIED'].includes(upper)) return 'warn';
+  if (['UNKNOWN', 'UNTESTED', 'STALE', 'REQUIRES_PREFLIGHT', 'SETUP_REQUIRED', 'CONSENT_REQUIRED', 'VERIFICATION_REQUIRED', 'NOT_READY', 'BLOCKED', 'QUALIFICATION BLOCKED', 'DISCOVERED', 'INTEGRITY_NOT_VERIFIED', 'UNVERIFIED'].includes(upper)) return 'warn';
   return 'dim';
 }
 
@@ -130,7 +131,9 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
     for (const model of view.models) {
       const hasLocalArtifact = model.artifact_ids.length > 0;
       const exactRoutes = view.routes.filter(route => route.model_id === model.identity.canonical_id);
-      const modelState = hasLocalArtifact ? model.readiness : exactRoutes.some(route => route.available) ? 'AVAILABLE' : 'UNVERIFIED';
+      const presentation = presentModelQualification(model, view.artifacts);
+      const modelState = model.qualification_gate.state === 'QUALIFICATION_BLOCKED' ? 'QUALIFICATION BLOCKED'
+        : hasLocalArtifact ? model.readiness : exactRoutes.some(route => route.available) ? 'AVAILABLE' : 'UNVERIFIED';
       const card = el('div', 'model-card ' + stateClass(modelState));
       const head = el('div', 'model-card-head');
       head.appendChild(el('span', 'model-card-name', model.identity.display_name));
@@ -139,10 +142,23 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
       card.appendChild(metadata('id: ' + model.identity.canonical_id, 'availability: ' + model.availability));
       if (hasLocalArtifact) {
         card.appendChild(metadata(
+          presentation.artifact_presence,
+          'integrity: ' + presentation.integrity,
           'local readiness: ' + model.readiness,
-          'qualification: ' + model.identity.qualification.state,
+          'qualification: ' + presentation.qualification,
+          'qualification evidence: ' + presentation.qualification_evidence,
+          'qualification preflight: ' + presentation.preflight,
           'artifact compatibility: ' + model.compatibility
         ));
+        if (presentation.reason_codes.length > 0) {
+          card.appendChild(metadata('qualification blockers: ' + presentation.reason_codes.join(', ')));
+        }
+        if (presentation.model_invalid !== null) {
+          card.appendChild(metadata(presentation.model_invalid));
+        }
+        if (presentation.explanation !== null) {
+          card.appendChild(el('p', 'model-card-meta', presentation.explanation));
+        }
       } else {
         card.appendChild(metadata('source: managed provider', 'exact routes: ' + exactRoutes.length));
       }
@@ -164,7 +180,7 @@ export function createModelsPanel(parent: HTMLElement, _store: Store<AppState>):
           'artifact: ' + (artifact.filename ?? artifact.id),
           'format: ' + (artifact.format ?? 'UNKNOWN'),
           'quantization: ' + (artifact.quantization ?? 'UNKNOWN'),
-          'hash: ' + artifact.hash_status
+          'integrity: ' + presentModelQualification(model, [artifact]).integrity
         ));
         if (artifact.observed_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Observed SHA-256: ' + artifact.observed_sha256));
         else if (artifact.expected_sha256 !== null) card.appendChild(el('div', 'model-card-endpoint', 'Expected SHA-256: ' + artifact.expected_sha256));
