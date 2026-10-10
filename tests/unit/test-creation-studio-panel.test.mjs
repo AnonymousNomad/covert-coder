@@ -332,6 +332,52 @@ test('Continuity reload supports edit and removal while preserving Bible and gat
   h.handle.dispose();
 });
 
+test('studio switches canonical productions by identity and creates a new revision-zero production without overwriting either', async () => {
+  const first = record(4);
+  const second = record(2);
+  second.production = {
+    ...second.production,
+    production_id: 'production-second',
+    title: 'Second Production',
+    premise: 'Second canonical premise'
+  };
+  second.bible_entries = [{
+    entry_id: 'second-location',
+    category: 'LOCATION',
+    title: 'Second Location',
+    content: 'Distinct second-production Bible.',
+    status: 'APPROVED'
+  }];
+  const h = harness({ list: async () => ({ records: [first, second] }) });
+  await tick();
+
+  assert.equal(byLabel(h.parent, 'Production title').value, 'Persisted Pilot');
+  assert.equal(byLabel(h.parent, 'Canonical production selection').value, 'production-persisted');
+
+  byLabel(h.parent, 'Canonical production selection').value = 'production-second';
+  byLabel(h.parent, 'Canonical production selection').listeners.get('change')();
+  assert.equal(byLabel(h.parent, 'Production title').value, 'Second Production');
+  assert.match(textOf(h.parent), /Second Location.*Distinct second-production Bible/);
+
+  button(h.parent, 'NEW PRODUCTION').listeners.get('click')();
+  const newId = h.handle.production.production_id;
+  assert.notEqual(newId, 'production-persisted');
+  assert.notEqual(newId, 'production-second');
+  assert.equal(byLabel(h.parent, 'Production title').value, 'Untitled production');
+  assert.match(textOf(h.parent), /UNSAVED CHANGES.*BASE REVISION 0/);
+  assert.equal(button(h.parent, 'SAVE PRODUCTION').disabled, false);
+
+  button(h.parent, 'SAVE PRODUCTION').listeners.get('click')();
+  await tick();
+  assert.equal(h.calls.put, 1);
+  assert.equal(h.calls.inputs[0].expected_revision, 0);
+  assert.equal(h.calls.inputs[0].production.production_id, newId);
+  assert.equal(h.calls.inputs[0].bible_entries.length, 0);
+  assert.equal(h.calls.inputs[0].continuity_entries.length, 0);
+  assert.match(textOf(h.parent), /SAVED REVISION 1/);
+  h.handle.dispose();
+});
+
 test('revision conflict fails closed and requires a canonical reload before another save', async () => {
   const h = harness({
     list: async () => ({ records: [record(2)] }),

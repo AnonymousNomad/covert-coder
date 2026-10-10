@@ -52,6 +52,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   let editingBibleId: string | null = null;
   let editingContinuityId: string | null = null;
   let production: CreationStudioProductionT = blankProduction();
+  let availableRecords: CreationStudioRecordT[] = [];
   let bibleEntries: CreationStudioBibleEntryT[] = [];
   let continuityEntries: CreationStudioContinuityEntryT[] = [];
   let recordRevision = 0;
@@ -99,11 +100,18 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   duration.max = '360';
   duration.setAttribute('aria-label', 'Target duration minutes');
 
+  const productionSelect = document.createElement('select');
+  productionSelect.setAttribute('aria-label', 'Canonical production selection');
+  const newProduction = document.createElement('button');
+  newProduction.type = 'button';
+  newProduction.textContent = 'NEW PRODUCTION';
   const productionForm = el('div', 'creation-studio-production');
   const canonicalMemory = el('p', 'creation-studio-note');
   canonicalMemory.setAttribute('aria-label', 'Canonical production memory');
   productionForm.append(
     el('h3', '', 'PRODUCTION'),
+    field('OPEN', productionSelect),
+    newProduction,
     field('TITLE', title),
     field('PREMISE', premise),
     field('TARGET MINUTES', duration),
@@ -272,7 +280,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   manifest.append(el('h3', '', 'RENDER MANIFEST'), manifestStatus, manifestOutput);
 
   const editControls: Array<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement> = [
-    title, premise, duration, bibleCategory, bibleTitle, bibleContent, bibleStatus, bibleSubmit, bibleCancel,
+    productionSelect, newProduction, title, premise, duration, bibleCategory, bibleTitle, bibleContent, bibleStatus, bibleSubmit, bibleCancel,
     continuityScopeKind, continuityScopeId, continuityTitle, continuityContent, continuityStatus, continuitySubmit, continuityCancel,
     sceneTitle, sceneSummary, addScene, sceneSelect, shotPrompt, shotDuration, aspect, provider, model, addShot
   ];
@@ -281,6 +289,28 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     title.value = production.title;
     premise.value = production.premise;
     duration.value = String(Math.max(1, production.target_duration_seconds / 60));
+  }
+
+  function refreshProductionSelect(): void {
+    productionSelect.replaceChildren();
+    let currentIncluded = false;
+    for (const record of availableRecords) {
+      const option = document.createElement('option');
+      option.value = record.production.production_id;
+      const current = record.production.production_id === production.production_id;
+      currentIncluded ||= current;
+      option.textContent = current && dirty
+        ? 'UNSAVED · ' + production.title + ' · base r' + String(record.revision)
+        : record.production.title + ' · r' + String(record.revision);
+      productionSelect.appendChild(option);
+    }
+    if (!currentIncluded) {
+      const option = document.createElement('option');
+      option.value = production.production_id;
+      option.textContent = 'NEW · ' + production.title;
+      productionSelect.appendChild(option);
+    }
+    productionSelect.value = production.production_id;
   }
 
   function syncProductionFields(): void {
@@ -527,6 +557,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
 
   function render(): void {
     syncProductionFields();
+    refreshProductionSelect();
     refreshSceneSelect();
     refreshContinuityScopeTargets();
     renderBible();
@@ -594,7 +625,8 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     try {
       const result = await api.creationStudioList(controller.signal);
       if (!alive || controller.signal.aborted) return;
-      const record = result.records[0] ?? null;
+      availableRecords = clone(result.records);
+      const record = availableRecords.find(candidate => candidate.production.production_id === production.production_id) ?? availableRecords[0] ?? null;
       if (record) applyRecord(record);
       else {
         production = blankProduction();
@@ -635,6 +667,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
         continuity_entries: clone(continuityEntries)
       });
       if (!alive) return;
+      availableRecords = [clone(record), ...availableRecords.filter(candidate => candidate.production.production_id !== record.production.production_id)];
       applyRecord(record);
       statusDetail = 'canonical save confirmed';
     } catch (error) {
@@ -651,6 +684,40 @@ export function createCreationStudioPanel(parent: HTMLElement) {
       if (alive) paintState();
     }
   }
+
+  productionSelect.addEventListener('change', () => {
+    if (busy) return;
+    const requested = productionSelect.value;
+    if (requested === production.production_id) return;
+    const record = availableRecords.find(candidate => candidate.production.production_id === requested);
+    if (!record) {
+      refreshProductionSelect();
+      return;
+    }
+    if (dirty && typeof window !== 'undefined' && typeof window.confirm === 'function' &&
+        !window.confirm('Discard unsaved Creation Studio changes and switch productions?')) {
+      refreshProductionSelect();
+      return;
+    }
+    applyRecord(record);
+  });
+  newProduction.addEventListener('click', () => {
+    if (busy) return;
+    if (dirty && typeof window !== 'undefined' && typeof window.confirm === 'function' &&
+        !window.confirm('Discard unsaved Creation Studio changes and start a new production?')) return;
+    production = blankProduction();
+    bibleEntries = [];
+    continuityEntries = [];
+    recordRevision = 0;
+    ownerReadable = true;
+    dirty = true;
+    statusDetail = 'new production draft';
+    resetBibleEditor();
+    resetContinuityEditor();
+    recalculateSequences();
+    syncControlsFromProduction();
+    render();
+  });
 
   bibleSubmit.addEventListener('click', () => {
     if (busy) return;
