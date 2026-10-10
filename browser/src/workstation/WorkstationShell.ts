@@ -12,6 +12,7 @@ import { createActivityTimeline, type ActivityTimelineHandles } from '../cockpit
 import { createBottomStrip, type BottomStripHandles } from '../cockpit/BottomStrip.ts';
 import { createCommandCenterPanel } from '../panels/command-center.ts';
 import { createCipherLaptopPanel } from '../panels/cipher-laptop.ts';
+import { createCreationStudioPanel } from '../panels/creation-studio.ts';
 import { createModelsPanel } from '../panels/models.ts';
 import { createConnectionsPanel } from '../connections/connections.ts';
 import { TerminalViewBindings } from '../desktop/terminal-view-bindings.ts';
@@ -210,6 +211,7 @@ export function mountWorkstation(app: HTMLElement, store: Store<AppState>): Work
   const connectionsRoot = appRoot('connections');
   const resourcesRoot = appRoot('resources');
   const laptopRoot = appRoot('cipher-laptop');
+  const creationStudioRoot = appRoot('creation-studio');
   const skillsRoot = appRoot('skills');
   const memoryRoot = appRoot('memory');
   const verificationRoot = appRoot('verification');
@@ -241,6 +243,7 @@ export function mountWorkstation(app: HTMLElement, store: Store<AppState>): Work
   const connections = lazyPanel(connectionsRoot, () => createConnectionsPanel(connectionsRoot, { onToast: notify }));
   const resources = lazyPanel(resourcesRoot, () => createSystemTelemetry(resourcesRoot, store));
   const laptop = lazyPanel(laptopRoot, () => createCipherLaptopPanel(laptopRoot));
+  const creationStudio = lazyPanel(creationStudioRoot, () => createCreationStudioPanel(creationStudioRoot));
   const skills = lazyPanel(skillsRoot, () => createSkillsPanel(skillsRoot, store));
   const memory = lazyPanel(memoryRoot, () => createMemoryPanel(memoryRoot, store));
   const verification = lazyPanel(verificationRoot, () => createVerificationPanel(verificationRoot, store));
@@ -292,6 +295,7 @@ export function mountWorkstation(app: HTMLElement, store: Store<AppState>): Work
     connections,
     resources,
     'cipher-laptop': laptop,
+    'creation-studio': creationStudio,
     skills,
     memory,
     verification,

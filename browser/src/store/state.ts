@@ -26,6 +26,7 @@ export type Panel =
   | 'connections'
   | 'resources'
   | 'cipher-laptop'
+  | 'creation-studio'
   | 'skills'
   | 'memory'
   | 'verification'

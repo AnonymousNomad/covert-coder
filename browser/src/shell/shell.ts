@@ -109,7 +109,8 @@ export function createShell(app: HTMLElement, store: Store<AppState>): Shell {
     'extensions': null,
     'settings': null,
     'resources': null,
-    'cipher-laptop': null
+    'cipher-laptop': null,
+    'creation-studio': null
   };
 
   function applyPanelState(panel: Panel): void {
