@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import ts from 'typescript';
+const { projectCipherCreativeOperations } = await import('../../browser/src/services/cipher-creative-operations.ts');
 const source=await readFile(new URL('../../browser/src/panels/cipher-laptop.ts',import.meta.url),'utf8');
 const script=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 class Element {
@@ -17,13 +18,23 @@ const tick=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 const projectId='11111111-1111-4111-8111-111111111111',checkoutId='22222222-2222-4222-8222-222222222222';
 const address=()=>({project:{project_id:projectId,created_at:'2026-10-07T01:00:00.000Z'},checkout:{project_id:projectId,checkout_id:checkoutId,root:'C:\\projects\\covert',root_device:'1',root_inode:'2',created_at:'2026-10-07T01:00:00.000Z'},foreground_state:'BOUND_CONFIGURED_CHECKOUT',switching:'GATED_OWNER_REBIND_REQUIRED',resident_seat:'LIVE_ENROLLMENT_GATED',continuity_scope:'CONFIGURED_STORAGE_ROOT'});
 const snapshot=(state='NORMAL')=>({records:[{sequence:0,recorded_at:'2026-10-07T01:00:00.000Z',action_id:'action',project_id:projectId,checkout_id:checkoutId,principal_kind:'operator',capability:'workspace.write',event_type:'OBSERVATION',result_state:'OBSERVED'}],status:{state,integrity:'HASH_CHAIN_VERIFIED',resident_id:'covert.resident.cipher',ledger_id:'ledger',signature_state:'SIGNATURE_UNAVAILABLE',record_count:1,unresolved_actions:[],operator_ack_required:state==='LOCKDOWN',reasons:[],limitations:['Unsigned local hash chain.']}});
+const creativeRecord=()=>({
+ production:{production_id:'canonical-production',title:'Canonical Creative Ops Production',premise:'Persisted premise.',target_duration_seconds:300,status:'REVIEW',execution_connection:'NOT_CONNECTED',scenes:[{scene_id:'scene-1',order:0,title:'Opening Scene',summary:'Canonical scene.',shots:[{shot_id:'shot-1',order:0,prompt:'Canonical shot prompt.',duration_seconds:5,aspect_ratio:'16:9',state:'PLANNED',assignments:[{capability:'VIDEO',provider_id:null,model_id:null,state:'UNASSIGNED'}]}]}]},
+ bible_entries:[{entry_id:'bible-1',category:'CHARACTER',title:'Mara',content:'Canonical appearance note.',status:'APPROVED'}],
+ continuity_entries:[{entry_id:'continuity-1',scope_kind:'SHOT',scope_id:'shot-1',title:'Keep coat torn',content:'Canonical continuity note.',status:'ACTIVE'}],
+ revision:2,updated_at:'2026-10-10T01:23:45.000Z'
+});
 function harness(provider=async()=>snapshot(),options={}){
- const parent=new Element('section'),timers=new Map();let calls=0,projectCalls=0,notebookCalls=0,writes=0,now=10000,signal;
+ const parent=new Element('section'),timers=new Map();let calls=0,projectCalls=0,notebookCalls=0,writes=0,creativeOpsCalls=0,creativeOpsWrites=0,now=10000,signal;
  const documentEvents=new Map();const document={hidden:false,createElement:tag=>new Element(tag),addEventListener:(name,fn)=>documentEvents.set(name,fn),removeEventListener:(name,fn)=>{if(documentEvents.get(name)===fn)documentEvents.delete(name);}};
  const exports={};const window={setTimeout:fn=>{timers.set('timeout',fn);return 'timeout';},clearTimeout:id=>timers.delete(id),setInterval:fn=>{timers.set('interval',fn);return 'interval';},clearInterval:id=>timers.delete(id)};
- vm.runInNewContext(script,{exports,require:name=>{assert.equal(name,'../services/api.ts');return {api:{projectsCurrent:s=>{projectCalls++;signal=s;return options.project?options.project(s):Promise.resolve(address());},cipherNotebook:async()=>{notebookCalls++;return options.notebook?options.notebook():{resident_id:'covert.resident.cipher',records:[]};},cipherNotebookPut:async()=>{writes++;},cipherNotebookRemove:async()=>{writes++;},cipherLaptopActivity:(s,p)=>{calls++;signal=s;return provider(s,p);}}};},document,window,AbortController,Date:class extends Date {static now(){return now;}}});
+ vm.runInNewContext(script,{exports,require:name=>{
+  if(name==='../services/cipher-creative-operations.ts')return {projectCipherCreativeOperations};
+  assert.equal(name,'../services/api.ts');
+  return {api:{projectsCurrent:s=>{projectCalls++;signal=s;return options.project?options.project(s):Promise.resolve(address());},cipherNotebook:async()=>{notebookCalls++;return options.notebook?options.notebook():{resident_id:'covert.resident.cipher',records:[]};},cipherNotebookPut:async()=>{writes++;},cipherNotebookRemove:async()=>{writes++;},cipherLaptopActivity:(s,p)=>{calls++;signal=s;return provider(s,p);},creationStudioList:s=>{creativeOpsCalls++;signal=s;return options.creativeOperations?options.creativeOperations(s):Promise.resolve({records:[]});},creationStudioPut:async()=>{creativeOpsWrites++;}}};
+ },document,window,AbortController,Date:class extends Date {static now(){return now;}}});
  const handle=exports.createCipherLaptopPanel(parent);
- return {parent,handle,timers,pair:()=>documentEvents.get('covert:authority-paired')?.(),get documentEvents(){return documentEvents;},get calls(){return calls;},get projectCalls(){return projectCalls;},get notebookCalls(){return notebookCalls;},get writes(){return writes;},get signal(){return signal;},setTime:value=>{now=value;},click:text=>{const button=all(parent).find(node=>node.tag==='button'&&node.textContent===text);assert.ok(button);button.listeners.get('click')();}};
+ return {parent,handle,timers,pair:()=>documentEvents.get('covert:authority-paired')?.(),get documentEvents(){return documentEvents;},get calls(){return calls;},get projectCalls(){return projectCalls;},get notebookCalls(){return notebookCalls;},get writes(){return writes;},get creativeOpsCalls(){return creativeOpsCalls;},get creativeOpsWrites(){return creativeOpsWrites;},get signal(){return signal;},setTime:value=>{now=value;},click:text=>{const button=all(parent).find(node=>node.tag==='button'&&node.textContent===text);assert.ok(button);button.listeners.get('click')();}};
 }
 test('Laptop projects OBSERVED distinctly from verification and signature trust',async()=>{
  const h=harness();await tick();assert.match(textOf(h.parent),/OBSERVED is not VERIFIED/);
@@ -43,7 +54,34 @@ test('last receipt ages without polling owner or manufacturing a live state',asy
 test('lockdown is owner-derived and presents no self-authorizing recovery button',async()=>{
  const h=harness(async()=>snapshot('LOCKDOWN'));await tick();assert.match(textOf(h.parent),/LOCKDOWN/);
  h.click('INTEGRITY');assert.match(textOf(h.parent),/Effects are held/);
- assert.deepEqual(all(h.parent).filter(n=>n.tag==='button').map(n=>n.textContent),['REFRESH','NOTEBOOK','ACTIVITY','INTEGRITY','MISSIONS · GATED','INBOX · GATED','WATCHES · GATED','SECURITY · GATED','COMMS · NOT CONFIGURED','EVIDENCE · GATED','PERMISSIONS · GATED']);h.handle.dispose();
+ assert.deepEqual(all(h.parent).filter(n=>n.tag==='button').map(n=>n.textContent),['REFRESH','NOTEBOOK','ACTIVITY','INTEGRITY','CREATIVE OPS','MISSIONS · GATED','INBOX · GATED','WATCHES · GATED','SECURITY · GATED','COMMS · NOT CONFIGURED','EVIDENCE · GATED','PERMISSIONS · GATED']);h.handle.dispose();
+});
+
+test('Creative Ops projects canonical production, Bible, continuity and queue read-only',async()=>{
+ const h=harness(undefined,{creativeOperations:async()=>({records:[creativeRecord()]})});await tick();
+ assert.equal(h.creativeOpsCalls,1);h.click('CREATIVE OPS');
+ assert.match(textOf(h.parent),/Canonical Creative Ops Production/);assert.match(textOf(h.parent),/REVISION/);
+ assert.match(textOf(h.parent),/NOT_CONNECTED/);assert.match(textOf(h.parent),/GATED_NOT_CONNECTED/);
+ assert.match(textOf(h.parent),/canonical production progress percentage/);
+ h.click('BIBLE');assert.match(textOf(h.parent),/CHARACTER · APPROVED/);assert.match(textOf(h.parent),/Canonical appearance note/);
+ h.click('CONTINUITY');assert.match(textOf(h.parent),/SHOT · shot-1/);assert.match(textOf(h.parent),/ACTIVE · Keep coat torn/);
+ h.click('SHOT QUEUE');assert.match(textOf(h.parent),/shot-1 · PLANNED/);assert.match(textOf(h.parent),/VIDEO · UNASSIGNED/);
+ assert.doesNotMatch(textOf(h.parent),/missing requirement/i);
+ assert.equal(h.creativeOpsWrites,0);assert.equal(h.writes,0);
+ assert.deepEqual(all(h.parent).filter(n=>n.tag==='button').map(n=>n.textContent).filter(label=>/^(RENDER|RUN|GENERATE|START MODEL)/i.test(label)),[]);
+ h.handle.dispose();
+});
+
+test('Creative Ops distinguishes an empty canonical list from an unavailable owner',async()=>{
+ const empty=harness(undefined,{creativeOperations:async()=>({records:[]})});await tick();empty.click('CREATIVE OPS');assert.match(textOf(empty.parent),/NO CANONICAL PRODUCTIONS/);empty.handle.dispose();
+ const unavailable=harness(undefined,{creativeOperations:async()=>{throw new Error('owner unavailable');}});await tick();unavailable.click('CREATIVE OPS');assert.match(textOf(unavailable.parent),/CREATIVE OPS UNAVAILABLE/);unavailable.handle.dispose();
+});
+
+test('Creative Ops preserves prior owner data only with a stale label and never calls the Creation Studio writer',async()=>{
+ let fail=false;const h=harness(undefined,{creativeOperations:async()=>{if(fail)throw new Error('owner unavailable');return {records:[creativeRecord()]};}});await tick();
+ h.click('CREATIVE OPS');h.setTime(41000);h.timers.get('interval')();assert.match(textOf(h.parent),/STALE · last canonical Creation Studio read/);
+ fail=true;await h.handle.refresh();assert.match(textOf(h.parent),/STALE · CREATIVE OPS UNAVAILABLE/);assert.match(textOf(h.parent),/Canonical Creative Ops Production/);
+ assert.equal(h.creativeOpsWrites,0);h.handle.dispose();
 });
 
 test('real read-only Laptop application is launchable and restores its window without replacing record ownership',async()=>{

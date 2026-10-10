@@ -1,7 +1,9 @@
 import { api } from '../services/api.ts';
 import type { CipherNotebookRecordT } from '../../../common/contracts/cipher-notebook.ts';
 import type { CipherLedgerListResponseT } from '../../../common/contracts/cipher-laptop.ts';
+import type { CreationStudioListResponseT } from '../../../common/contracts/creation-studio.ts';
 import type { CurrentProjectResponseT } from '../../../common/contracts/project.ts';
+import { projectCipherCreativeOperations } from '../services/cipher-creative-operations.ts';
 
 const GATED_SECTIONS = [
  ['MISSIONS','GATED','Mission/task owner projection has not been integrated into this Laptop. No active mission is implied.'],
@@ -12,7 +14,9 @@ const GATED_SECTIONS = [
  ['EVIDENCE','GATED','Dedicated verifier/evidence projection is not integrated. Activity may show actual evidence references.'],
  ['PERMISSIONS','GATED','Live Resident enrollment, context leases and a current grant projection are not integrated.']
 ] as const;
-type Section = 'ACTIVITY'|'INTEGRITY'|'NOTEBOOK'|typeof GATED_SECTIONS[number][0];
+type CreativeOperationsView = 'PRODUCTION'|'BIBLE'|'CONTINUITY'|'SHOT QUEUE';
+const CREATIVE_OPERATIONS_VIEWS: CreativeOperationsView[] = ['PRODUCTION','BIBLE','CONTINUITY','SHOT QUEUE'];
+type Section = 'ACTIVITY'|'INTEGRITY'|'NOTEBOOK'|'CREATIVE OPS'|typeof GATED_SECTIONS[number][0];
 function sameAddress(left:CurrentProjectResponseT,right:CurrentProjectResponseT):boolean {
  return left.project.project_id===right.project.project_id&&left.checkout.checkout_id===right.checkout.checkout_id;
 }
@@ -36,8 +40,9 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  const activityButton=document.createElement('button');activityButton.type='button';activityButton.textContent='ACTIVITY';
  const securityButton=document.createElement('button');securityButton.type='button';securityButton.textContent='INTEGRITY';
  const notebookButton=document.createElement('button');notebookButton.type='button';notebookButton.textContent='NOTEBOOK';
- const sectionButtons=new Map<Section,HTMLButtonElement>([['ACTIVITY',activityButton],['INTEGRITY',securityButton],['NOTEBOOK',notebookButton]]);
- tabs.append(notebookButton,activityButton,securityButton);
+ const creativeOperationsButton=document.createElement('button');creativeOperationsButton.type='button';creativeOperationsButton.textContent='CREATIVE OPS';
+ const sectionButtons=new Map<Section,HTMLButtonElement>([['ACTIVITY',activityButton],['INTEGRITY',securityButton],['NOTEBOOK',notebookButton],['CREATIVE OPS',creativeOperationsButton]]);
+ tabs.append(notebookButton,activityButton,securityButton,creativeOperationsButton);
  for(const [name,state] of GATED_SECTIONS){
   const button=document.createElement('button');button.type='button';button.textContent=`${name} · ${state}`;
   button.setAttribute('aria-label',`${name}, ${state}`);sectionButtons.set(name,button);tabs.append(button);
@@ -49,6 +54,8 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  let alive=true,inFlight=false,failed=false,receivedAt=0,refreshAfterPair=false;
  let projection:CipherLedgerListResponseT|null=null;
  let selected:Section='ACTIVITY';
+ let creativeOperations:CreationStudioListResponseT|null=null,creativeOperationsFailed=false,creativeOperationsReceivedAt=0,creativeOperationsView:CreativeOperationsView='PRODUCTION';
+ let creativeOperationsFreshness:HTMLElement|null=null;
  let project:CurrentProjectResponseT|null=null,scopeError='',projectReceivedAt=0;
  let memories:CipherNotebookRecordT[]|null=null,notebookFailed=false,editing:CipherNotebookRecordT|null=null,writing=false;
  let writeMessage='';
@@ -80,12 +87,115 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
   const age=Math.max(0,Math.floor((Date.now()-receivedAt)/1000));
   status.textContent=`${failed||age>30?'STALE':'SNAPSHOT'} · ${projection.status.state} · ${projection.status.integrity} · receipt ${age}s ago${inFlight?' · refresh pending':''}`;
  }
+ function updateCreativeOperationsFreshness(){
+  if(!creativeOperationsFreshness)return;
+  if(!creativeOperations){creativeOperationsFreshness.textContent=creativeOperationsFailed?'CREATIVE OPS UNAVAILABLE':'CREATIVE OPS · LOADING CANONICAL STATE';return;}
+  const age=Math.max(0,Math.floor((Date.now()-creativeOperationsReceivedAt)/1000));
+  creativeOperationsFreshness.textContent=creativeOperationsFailed
+   ?`STALE · CREATIVE OPS UNAVAILABLE · last canonical Creation Studio read ${age}s ago`
+   :age>30?`STALE · last canonical Creation Studio read ${age}s ago`
+   :`SNAPSHOT · canonical Creation Studio read ${age}s ago`;
+ }
+ function paintCreativeOperations(){
+  const heading=el('h3','cipher-laptop-section-title','CREATIVE OPS');
+  const subnav=el('nav','cipher-laptop-tabs');subnav.setAttribute('aria-label','Creative Operations views');
+  for(const view of CREATIVE_OPERATIONS_VIEWS){
+   const button=document.createElement('button');button.type='button';button.textContent=view;
+   button.setAttribute('aria-pressed',String(creativeOperationsView===view));
+   button.addEventListener('click',()=>{creativeOperationsView=view;paint();});subnav.append(button);
+  }
+  creativeOperationsFreshness=el('p','cipher-laptop-note');
+  content.append(heading,subnav,creativeOperationsFreshness);
+  updateCreativeOperationsFreshness();
+  if(!creativeOperations){
+   content.append(el('p','',creativeOperationsFailed?'CREATIVE OPS UNAVAILABLE':'Loading canonical Creation Studio state.'));
+   return;
+  }
+  const stale=creativeOperationsFailed||Date.now()-creativeOperationsReceivedAt>30000;
+  if(creativeOperations.records.length===0){
+   content.append(el('p','',stale?'STALE · NO PRODUCTIONS IN THE LAST SUCCESSFUL SNAPSHOT':'NO CANONICAL PRODUCTIONS'));
+   appendNotModeled();
+   return;
+  }
+  const projections=creativeOperations.records.map(projectCipherCreativeOperations);
+  if(creativeOperationsView==='PRODUCTION'){
+   for(const item of projections){
+    const value=item.production,card=el('section','cipher-notebook-record');
+    card.append(el('h3','',value.title),el('p','cipher-laptop-note',`PRODUCTION · ${value.production_id}`));
+    const details=el('dl','cipher-laptop-security');
+    for(const [name,text] of [
+     ['PREMISE',value.premise],['STATUS',value.status],['REVISION',String(value.revision)],['UPDATED',value.updated_at],
+     ['EXECUTION',value.execution_connection],['RENDER MANIFEST',value.render_manifest_state],['SCENES',String(value.scene_count)],
+     ['SHOTS',String(value.shot_count)],['BLOCKED SHOTS',String(value.blocked_shot_count)],
+     ['UNAVAILABLE ASSIGNMENTS',String(value.unavailable_assignment_count)]
+    ])details.append(el('dt','',name),el('dd','',text));
+    card.append(details);content.append(card);
+   }
+   appendNotModeled();
+   return;
+  }
+  if(creativeOperationsView==='BIBLE'){
+   for(const item of projections){
+    const section=el('section','cipher-notebook-record');
+    section.append(el('h3','',item.production.title),el('p','cipher-laptop-note',`PRODUCTION · ${item.production.production_id}`));
+    if(item.bible_entries.length===0)section.append(el('p','','NO CANONICAL BIBLE ENTRIES'));
+    for(const entry of item.bible_entries){
+     const row=el('article','cipher-creative-ops-entry');
+     row.append(el('h4','',`${entry.category} · ${entry.status}`),el('p','cipher-laptop-note',`ENTRY · ${entry.entry_id}`),el('strong','',entry.title),el('p','',entry.content));
+     section.append(row);
+    }
+    content.append(section);
+   }
+   appendNotModeled();
+   return;
+  }
+  if(creativeOperationsView==='CONTINUITY'){
+   for(const item of projections){
+    const section=el('section','cipher-notebook-record');
+    section.append(el('h3','',item.production.title),el('p','cipher-laptop-note',`PRODUCTION · ${item.production.production_id}`));
+    if(item.continuity_entries.length===0)section.append(el('p','','NO CANONICAL CONTINUITY ENTRIES'));
+    for(const entry of item.continuity_entries){
+     const scope=entry.scope_id===null?'ALL PRODUCTION':entry.scope_id;
+     const row=el('article','cipher-creative-ops-entry');
+     row.append(el('h4','',`${entry.status} · ${entry.title}`),el('p','cipher-laptop-note',`ENTRY · ${entry.entry_id} · ${entry.scope_kind} · ${scope}`),el('p','',entry.content));
+     section.append(row);
+    }
+    content.append(section);
+   }
+   appendNotModeled();
+   return;
+  }
+  for(const item of projections){
+   const section=el('section','cipher-notebook-record');
+   section.append(el('h3','',item.production.title),el('p','cipher-laptop-note',`PRODUCTION · ${item.production.production_id} · ${item.production.execution_connection} · ${item.production.render_manifest_state}`));
+   if(item.shot_queue.length===0)section.append(el('p','','NO CANONICAL SHOTS'));
+   for(const shot of item.shot_queue){
+    const row=el('article','cipher-creative-ops-shot');
+    row.append(el('h4','',`${shot.scene_title} · SCENE ${shot.scene_id}`),el('p','cipher-laptop-note',`SHOT ${shot.shot_id} · ${shot.state}`),el('p','',shot.prompt),el('p','cipher-laptop-note',`${shot.duration_seconds}s · ${shot.aspect_ratio}`));
+    for(const assignment of shot.assignments){
+     row.append(el('p','cipher-laptop-note',`${assignment.capability} · ${assignment.state} · provider ${assignment.provider_id??'NOT ASSIGNED'} · model ${assignment.model_id??'NOT ASSIGNED'}`));
+    }
+    section.append(row);
+   }
+   content.append(section);
+  }
+  appendNotModeled();
+ }
+ function appendNotModeled(){
+  const note=el('section','cipher-laptop-note');note.append(el('strong','','NOT MODELED'));
+  for(const item of [
+   'requirement semantics','dependency graph','accepted take identity','artifact references','production-level blocker reasons',
+   'typed wardrobe','typed appearance/reference assets','continuity provenance','per-entry continuity revisions','canonical production progress percentage'
+  ])note.append(el('p','',`NOT MODELED · ${item}`));
+  content.append(note);
+ }
  function paint(){
-  if(!alive)return;captureNotebookDraft();notebookForm=null;paintStatus();content.innerHTML='';notebookControls=[];
+  if(!alive)return;captureNotebookDraft();notebookForm=null;creativeOperationsFreshness=null;paintStatus();content.innerHTML='';notebookControls=[];
   for(const [name,button] of sectionButtons)button.setAttribute('aria-pressed',String(selected===name));
   const gated=GATED_SECTIONS.find(([name])=>name===selected);
   if(gated){content.append(el('h3','cipher-laptop-section-title',`${gated[0]} · ${gated[1]}`),el('p','',gated[2]));return;}
   if(selected==='NOTEBOOK'){paintNotebook();return;}
+  if(selected==='CREATIVE OPS'){paintCreativeOperations();return;}
   if(!projection){content.append(el('p','','No owner records available. No action history has been manufactured.'));return;}
   const state=projection.status;
   if(selected==='INTEGRITY'){
@@ -187,13 +297,15 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
    try{initiating=await api.projectsCurrent(current.signal);}catch{if(alive)invalidateProject('canonical project binding unavailable');}
    if(!alive)return;
    if(initiating&&project&&!sameAddress(project,initiating)){memories=null;editing=null;projection=null;clearNotebookDraft();}
-   const [activity,notebook]=await Promise.allSettled([
+   const [activity,notebook,creativeOps]=await Promise.allSettled([
     api.cipherLaptopActivity(current.signal,initiating?.project.project_id),
-    initiating?api.cipherNotebook(current.signal):Promise.resolve(null)
+    initiating?api.cipherNotebook(current.signal):Promise.resolve(null),
+    api.creationStudioList(current.signal)
    ]);
    if(!alive)return;
    // Integrity is owner-readable even when the project binding is unavailable.
    if(activity.status==='fulfilled'){projection=activity.value;receivedAt=Date.now();failed=false;}else failed=true;
+   if(creativeOps.status==='fulfilled'){creativeOperations=creativeOps.value;creativeOperationsReceivedAt=Date.now();creativeOperationsFailed=false;}else creativeOperationsFailed=true;
    if(initiating){
     const observed=await api.projectsCurrent(current.signal);
     if(!alive)return;
@@ -216,6 +328,6 @@ export function createCipherLaptopPanel(parent:HTMLElement) {
  refresh.addEventListener('click',()=>{void read();});
  for(const [name,button] of sectionButtons)button.addEventListener('click',()=>{selected=name;paint();});
  paint();void read();
- const timer=window.setInterval(()=>{if(alive&&!document.hidden&&root.isConnected&&!root.closest('[hidden]'))paintStatus();},5000);
+ const timer=window.setInterval(()=>{if(alive&&!document.hidden&&root.isConnected&&!root.closest('[hidden]')){paintStatus();updateCreativeOperationsFreshness();}},5000);
  return {root,refresh:read,activate:()=>{void read();},dispose(){alive=false;refreshAfterPair=false;document.removeEventListener('covert:authority-paired',paired);clearNotebookDraft();request?.abort();if(requestTimeout!==null)window.clearTimeout(requestTimeout);window.clearInterval(timer);parent.innerHTML='';}};
 }
