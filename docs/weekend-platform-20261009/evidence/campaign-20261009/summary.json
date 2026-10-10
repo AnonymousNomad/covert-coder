@@ -1,0 +1,140 @@
+{
+  "schema": "covert.weekend-platform.p2-terminal-route-recurrence-campaign.v1",
+  "runs": [
+    {
+      "run": "r1.txt",
+      "pass": 11,
+      "fail": 0,
+      "duration_ms": 6160.815,
+      "per_test_max_ms": 2073,
+      "per_test_total_ms": 4911.92,
+      "trace": {
+        "events": 131,
+        "total_trace_ms": 4934.653,
+        "max_stage_gap_ms": 1513.85,
+        "max_gap_at": "route_POST_/api/authority/prepare_enter->route_POST_/api/authority/prepare_exit",
+        "requests": 12,
+        "max_request_ms": 63.881,
+        "requests_past_deadline": [],
+        "slowest_prepare_ms": 1513.847,
+        "slowest_decision_ms": 45.578,
+        "slowest_response_ms": 63.892,
+        "opens_observed": 6,
+        "stops_observed": 3,
+        "deadline_ms": 5000
+      }
+    },
+    {
+      "run": "r2.txt",
+      "pass": 11,
+      "fail": 0,
+      "duration_ms": 6057.9566,
+      "per_test_max_ms": 1905,
+      "per_test_total_ms": 4920.03,
+      "trace": {
+        "events": 131,
+        "total_trace_ms": 4945.221,
+        "max_stage_gap_ms": 1709.244,
+        "max_gap_at": "client_deadline_created->route_POST_/api/terminal/sessions_enter",
+        "requests": 12,
+        "max_request_ms": 1749.493,
+        "requests_past_deadline": [],
+        "slowest_prepare_ms": 25.08,
+        "slowest_decision_ms": 26.004,
+        "slowest_response_ms": 1749.49,
+        "opens_observed": 6,
+        "stops_observed": 3,
+        "deadline_ms": 5000
+      }
+    },
+    {
+      "run": "r3.txt",
+      "pass": 11,
+      "fail": 0,
+      "duration_ms": 4759.8248,
+      "per_test_max_ms": 2310,
+      "per_test_total_ms": 3804.56,
+      "trace": {
+        "events": 131,
+        "total_trace_ms": 3825.798,
+        "max_stage_gap_ms": 525.199,
+        "max_gap_at": "route_POST_/api/authority/pair_enter->route_POST_/api/authority/pair_exit",
+        "requests": 12,
+        "max_request_ms": 83.614,
+        "requests_past_deadline": [],
+        "slowest_prepare_ms": 65.775,
+        "slowest_decision_ms": 25.979,
+        "slowest_response_ms": 83.633,
+        "opens_observed": 6,
+        "stops_observed": 3,
+        "deadline_ms": 5000
+      }
+    },
+    {
+      "run": "r4.txt",
+      "pass": 11,
+      "fail": 0,
+      "duration_ms": 5292.0412,
+      "per_test_max_ms": 2254,
+      "per_test_total_ms": 4274.37,
+      "trace": {
+        "events": 131,
+        "total_trace_ms": 4299.447,
+        "max_stage_gap_ms": 741.794,
+        "max_gap_at": "client_deadline_created->route_POST_/api/terminal/sessions_enter",
+        "requests": 12,
+        "max_request_ms": 793.595,
+        "requests_past_deadline": [],
+        "slowest_prepare_ms": 24.401,
+        "slowest_decision_ms": 22.579,
+        "slowest_response_ms": 793.595,
+        "opens_observed": 6,
+        "stops_observed": 3,
+        "deadline_ms": 5000
+      }
+    }
+  ],
+  "env": {
+    "env-1.json": {
+      "tag": "run-1",
+      "free_physical_mb": 5240,
+      "commit_free_mb": 9862,
+      "cpu_load": 24,
+      "wuauserv": "Running",
+      "reboot_pending": false
+    },
+    "env-2.json": {
+      "tag": "run-2",
+      "free_physical_mb": 5362,
+      "commit_free_mb": 9992,
+      "cpu_load": 15,
+      "wuauserv": "Running",
+      "reboot_pending": false
+    },
+    "env-3.json": {
+      "tag": "run-3",
+      "free_physical_mb": 5398,
+      "commit_free_mb": 10020,
+      "cpu_load": 25,
+      "wuauserv": "Running",
+      "reboot_pending": false
+    },
+    "env-4.json": {
+      "tag": "run-4",
+      "free_physical_mb": 5348,
+      "commit_free_mb": 9918,
+      "cpu_load": 57,
+      "wuauserv": "Running",
+      "reboot_pending": false
+    },
+    "env-start.json": {
+      "tag": "start",
+      "free_physical_mb": 5294,
+      "commit_free_mb": 9921,
+      "cpu_load": 28,
+      "wuauserv": "Running",
+      "reboot_pending": false
+    }
+  },
+  "recurrence_count": 0
+}

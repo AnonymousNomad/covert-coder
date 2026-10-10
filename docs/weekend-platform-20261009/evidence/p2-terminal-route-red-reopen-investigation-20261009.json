@@ -1,0 +1,94 @@
+{
+  "schema": "covert.weekend-platform.p2-terminal-route-red-reopen-investigation.v1",
+  "recorded_at_utc": "2026-10-10T01:57:19Z",
+  "lane": "deepseek/weekend-native-platform-20261009",
+  "worktree": "E:/covert-deepseek-weekend-20261009",
+  "head_at_investigation": "4d6ba68",
+  "supersedes": {
+    "record": "docs/weekend-platform-20261009/evidence/p2-terminal-route-red-closure-20261009.json",
+    "remains_byte_identical_history": "p2-terminal-route-red-closure-20261009.json is NOT edited; it remains in the tree and in history as the historical claim.",
+    "superseded_claim": "P2_MANAGED_CLIENT_PROVIDER_FOUNDATION_ACCEPTED / classification ENVIRONMENTAL_CONTENTION",
+    "reason": "The preserved terminal-route RED (11 tests / 6 passed / 5 timed out at the unchanged 5000ms fixture deadline) was never explained; the environmental-contention attribution was asserted, not proven. Per owner directive the earlier closure verdict is void and commit 797b08f is NOT valid P2 acceptance evidence."
+  },
+  "subject": "Reopen of the preserved terminal-route RED: persistent stage-level instrumentation + bounded recurrence campaign under controlled conditions",
+  "status_change": {
+    "p2_prior_claim": "P2_MANAGED_CLIENT_PROVIDER_FOUNDATION_ACCEPTED",
+    "p2_prior_claim_valid": false,
+    "p2_current": "P2_BLOCKED_RED_CAUSE_UNKNOWN",
+    "classification": "INTERMITTENT_UNRESOLVED",
+    "p3_state": "P3_EXPLORATORY_WORK_PRESENT_NOT_ACCEPTED",
+    "p3_frozen": true
+  },
+  "preserved_original_red": {
+    "record": "docs/weekend-platform-20261009/evidence/p2-managed-client-provider-20261009.json remaining_red_or_unknown[0]",
+    "tests": 11, "passed": 6, "timed_out": 5,
+    "failures": [
+      "GET /api/terminal/providers: request timeout ~18.95s including test setup",
+      "GET /api/terminal/sessions: request timeout ~5.005s",
+      "approved PTY open: request timeout ~5.012s",
+      "unknown-provider open: request timeout ~5.012s",
+      "owner stop: request timeout ~13.526s"
+    ],
+    "fixture_timeout_ms": 5000,
+    "timeout_changed": false,
+    "cause": "UNKNOWN; not reproduced; NOT classified as source/harness/environment in THIS round"
+  },
+  "instrumentation": {
+    "file": "tests/arch/terminal-session-routes.test.ts",
+    "commit": "(test(p2): instrument terminal-route suite with persistent stage-level timing)",
+    "deadline_changed": false,
+    "constraints_honored": [
+      "5000ms fixture deadline byte-identical (AIDE_FIXTURE_TIMEOUT_MS default unchanged)",
+      "no sleeps, no retries, no widened timeouts, no skipped assertions, no serialization to hide contention",
+      "no production behavior change; test-only module-local tracing",
+      "no credential, header, body, or token logging (stage names + counts + timings only)",
+      "default-on but negligible; COVERT_P2_TERMINAL_TRACE=0 disables"
+    ],
+    "event_stream": "P2_TERMINAL_TRACE <json> — stages: request_start, client_deadline_created, route_<METHOD>_<path>_enter/_exit/_throw, provider_lookup, provider_probe_file_exists/list_dir/exec, session_list, terminal_open, terminal_stop, response_resolved, request_rejected, teardown_start/_end",
+    "wrap_points": [
+      "client fixture request (request_start -> client_deadline_created -> response_resolved/request_rejected)",
+      "terminal service providers/list/open/stop",
+      "default provider deps (fileExists/listDir/exec)",
+      "every registered route handler (enter/exit/throw)"
+    ],
+    "verification": "instrumented suite 11/11 green with full 131-event trace; tsc exit 0; git diff --check clean"
+  },
+  "campaign": {
+    "directory": "docs/weekend-platform-20261009/evidence/campaign-20261009/",
+    "runs_attempted": 4,
+    "runs_completed": 4,
+    "per_run_artifacts": ["run-1.txt .. run-4.txt (full P2_TERMINAL_TRACE + per-test durations)", "env-start.json, env-1.json .. env-4.json (free RAM / commit / CPU / wuauserv / reboot-pending)", "summary.json (parsed, schema covert.weekend-platform.p2-terminal-route-recurrence-campaign.v1)"],
+    "result_each_run": "11/11 pass, 0 fail",
+    "requests_observed_per_run": 12,
+    "requests_past_5000ms_deadline": "none in any run",
+    "recurrence_count": 0,
+    "env_range": {
+      "free_physical_mb": "5240-5398 of 16384",
+      "commit_free_mb": "9862-10020",
+      "cpu_load_sampled_percent": "15-57",
+      "wuauserv": "Running (all samples)",
+      "reboot_pending": false
+    },
+    "candidate_signal_below_deadline": {
+      "observed": true,
+      "description": "Occasional single-stall dark time in the authority `prepare` route (max 1513.85ms; r1) and in the dispatch gap between deadline creation and route entry (max 1749.49ms; r2), plus sub-deadline response slowness with the 12th (final) request consistently slower (e.g. 793ms r4). All terminal service internals (provider_lookup, provider_probe_*, terminal_open, terminal_stop, session_list) stayed sub-ms.",
+      "not_attributed": "Correlates with the authority audit-write path rather than terminal logic, but attribution is NOT claimed; these are recorded as sub-deadline phenomena, far below 5000ms.",
+      "recurrence_classification_contribution": "Consistent with (but not proof of) environmental contention during the original RED; the original bursts (~5.0s) were an order of magnitude larger and were not reproduced."
+    }
+  },
+  "classification": "INTERMITTENT_UNRESOLVED",
+  "classification_basis": [
+    "The preserved RED was NOT reproduced in 4 controlled runs (0 recurrences). Non-reproduction does NOT explain or clear the preserved RED.",
+    "Original RED cause remains UNKNOWN; no source defect identified OR excluded in this round, no harness defect identified or excluded, environmental contention remains plausible but unproven.",
+    "A sub-deadline stall signal (authority prepare dark time) was captured and preserved for future diagnosis, but is not attributable by current evidence.",
+    "Instrumentation is persistent, dormant, deadline-neutral, and now ships with the suite so any future recurrence is captured at stage granularity."
+  ],
+  "verdict": "P2_BLOCKED_RED_CAUSE_UNKNOWN",
+  "decision_rules_applied": [
+    "Recurrence absent -> do NOT turn non-reproduction into acceptance (verdict stays blocked).",
+    "Cause not closed -> P3 remains frozen; no mailbox/scheduler/wake/operations implementation proceeds.",
+    "a2e3fcf (P3 sqlite spike) and 4d6ba68 (journal correction) remain in history untouched; a2e3fcf remains classified P3_SQLITE_SPIKE_EXPLORATORY, never acceptance."
+  ],
+  "next": "If the RED recurs with reproducible conditions, capture the exact stalled stage from the preserved P2_TERMINAL_TRACE and classify SOURCE_DEFECT / TEST_HARNESS_DEFECT / ENVIRONMENTAL_CONTENTION from evidence; repair only what evidence identifies.",
+  "credentials_written_to_this_record": false
+}
