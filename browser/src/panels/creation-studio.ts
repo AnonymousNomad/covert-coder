@@ -47,6 +47,8 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   parent.replaceChildren();
   let sceneSequence = 0;
   let shotSequence = 0;
+  let bibleSequence = 0;
+  let editingBibleId: string | null = null;
   let production: CreationStudioProductionT = blankProduction();
   let bibleEntries: CreationStudioBibleEntryT[] = [];
   let continuityEntries: CreationStudioContinuityEntryT[] = [];
@@ -104,6 +106,53 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     field('PREMISE', premise),
     field('TARGET MINUTES', duration),
     canonicalMemory
+  );
+
+  const bibleCategory = document.createElement('select');
+  bibleCategory.setAttribute('aria-label', 'Bible category');
+  for (const value of ['CHARACTER', 'LOCATION', 'VISUAL_RULE', 'PROP', 'VEHICLE', 'VOICE', 'MUSIC', 'TERMINOLOGY']) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value.replaceAll('_', ' ');
+    bibleCategory.appendChild(option);
+  }
+  const bibleTitle = document.createElement('input');
+  bibleTitle.maxLength = 240;
+  bibleTitle.placeholder = 'Character, location, rule, prop…';
+  bibleTitle.setAttribute('aria-label', 'Bible entry title');
+  const bibleContent = document.createElement('textarea');
+  bibleContent.maxLength = 8000;
+  bibleContent.placeholder = 'Canonical production fact Cipher should preserve.';
+  bibleContent.setAttribute('aria-label', 'Bible entry content');
+  const bibleStatus = document.createElement('select');
+  bibleStatus.setAttribute('aria-label', 'Bible entry status');
+  for (const value of ['DRAFT', 'APPROVED']) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    bibleStatus.appendChild(option);
+  }
+  const bibleSubmit = document.createElement('button');
+  bibleSubmit.type = 'button';
+  bibleSubmit.textContent = 'ADD BIBLE ENTRY';
+  const bibleCancel = document.createElement('button');
+  bibleCancel.type = 'button';
+  bibleCancel.textContent = 'CANCEL EDIT';
+  bibleCancel.hidden = true;
+  const bibleList = el('div', 'creation-studio-bible-list');
+  bibleList.setAttribute('aria-label', 'Production Bible entries');
+  let bibleRowButtons: HTMLButtonElement[] = [];
+  const bibleBuilder = el('div', 'creation-studio-builder');
+  bibleBuilder.append(
+    el('h3', '', 'PRODUCTION BIBLE'),
+    el('p', 'creation-studio-note', 'Canonical creative facts consumed by Cipher. Keep credentials and provider secrets out of free-form content.'),
+    field('CATEGORY', bibleCategory),
+    field('TITLE', bibleTitle),
+    field('CONTENT', bibleContent),
+    field('STATUS', bibleStatus),
+    bibleSubmit,
+    bibleCancel,
+    bibleList
   );
 
   const sceneTitle = document.createElement('input');
@@ -164,15 +213,15 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     field('VIDEO MODEL', model),
     addShot
   );
-  planning.append(productionForm, sceneBuilder, shotBuilder);
+  planning.append(productionForm, bibleBuilder, sceneBuilder, shotBuilder);
 
   const manifestOutput = el('pre', 'creation-studio-manifest-json');
   const manifestStatus = el('p', 'creation-studio-note');
   manifest.append(el('h3', '', 'RENDER MANIFEST'), manifestStatus, manifestOutput);
 
   const editControls: Array<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement> = [
-    title, premise, duration, sceneTitle, sceneSummary, addScene, sceneSelect, shotPrompt,
-    shotDuration, aspect, provider, model, addShot
+    title, premise, duration, bibleCategory, bibleTitle, bibleContent, bibleStatus, bibleSubmit, bibleCancel,
+    sceneTitle, sceneSummary, addScene, sceneSelect, shotPrompt, shotDuration, aspect, provider, model, addShot
   ];
 
   function syncControlsFromProduction(): void {
@@ -191,6 +240,11 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   function recalculateSequences(): void {
     sceneSequence = 0;
     shotSequence = 0;
+    bibleSequence = 0;
+    for (const entry of bibleEntries) {
+      const bibleMatch = /^bible-(\d+)$/.exec(entry.entry_id);
+      if (bibleMatch) bibleSequence = Math.max(bibleSequence, Number(bibleMatch[1]));
+    }
     for (const scene of production.scenes) {
       const sceneMatch = /^scene-(\d+)$/.exec(scene.scene_id);
       if (sceneMatch) sceneSequence = Math.max(sceneSequence, Number(sceneMatch[1]));
@@ -199,6 +253,13 @@ export function createCreationStudioPanel(parent: HTMLElement) {
         if (shotMatch) shotSequence = Math.max(shotSequence, Number(shotMatch[1]));
       }
     }
+  }
+
+  function nextBibleId(): string {
+    const used = new Set(bibleEntries.map(entry => entry.entry_id));
+    let value = '';
+    do value = 'bible-' + String(++bibleSequence).padStart(4, '0'); while (used.has(value));
+    return value;
   }
 
   function nextSceneId(): string {
@@ -215,6 +276,62 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     return value;
   }
 
+  function resetBibleEditor(): void {
+    editingBibleId = null;
+    bibleCategory.value = 'CHARACTER';
+    bibleTitle.value = '';
+    bibleContent.value = '';
+    bibleStatus.value = 'DRAFT';
+    bibleSubmit.textContent = 'ADD BIBLE ENTRY';
+    bibleCancel.hidden = true;
+  }
+
+  function renderBible(): void {
+    bibleList.replaceChildren();
+    bibleRowButtons = [];
+    if (bibleEntries.length === 0) {
+      bibleList.append(el('p', 'creation-studio-note', 'No Bible entries yet. Add canonical characters, locations, visual rules, props or terminology.'));
+      return;
+    }
+    for (const entry of bibleEntries) {
+      const item = el('article', 'creation-studio-bible-entry');
+      item.append(
+        el('strong', '', entry.category.replaceAll('_', ' ') + ' · ' + entry.title),
+        el('span', 'creation-studio-shot-state', entry.status),
+        el('p', '', entry.content)
+      );
+      const controls = el('div', 'creation-studio-entry-actions');
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.textContent = 'EDIT';
+      edit.disabled = busy;
+      edit.addEventListener('click', () => {
+        if (busy) return;
+        editingBibleId = entry.entry_id;
+        bibleCategory.value = entry.category;
+        bibleTitle.value = entry.title;
+        bibleContent.value = entry.content;
+        bibleStatus.value = entry.status;
+        bibleSubmit.textContent = 'SAVE BIBLE ENTRY';
+        bibleCancel.hidden = false;
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = 'REMOVE';
+      remove.disabled = busy;
+      remove.addEventListener('click', () => {
+        if (busy) return;
+        bibleEntries = bibleEntries.filter(candidate => candidate.entry_id !== entry.entry_id);
+        if (editingBibleId === entry.entry_id) resetBibleEditor();
+        markDirty();
+      });
+      bibleRowButtons.push(edit, remove);
+      controls.append(edit, remove);
+      item.append(controls);
+      bibleList.append(item);
+    }
+  }
+
   function paintState(): void {
     canonicalMemory.textContent = 'CANONICAL RECORD · ' + production.production_id + ' · BIBLE ' + String(bibleEntries.length) + ' · CONTINUITY ' + String(continuityEntries.length);
     if (busy) state.textContent = 'OWNER REQUEST IN FLIGHT · RENDER NOT CONNECTED';
@@ -226,6 +343,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     reload.disabled = busy;
     save.disabled = busy || !ownerReadable || !dirty;
     for (const control of editControls) control.disabled = busy;
+    for (const control of bibleRowButtons) control.disabled = busy;
     if (!busy) {
       sceneSelect.disabled = production.scenes.length === 0;
       addShot.disabled = production.scenes.length === 0;
@@ -247,6 +365,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   function render(): void {
     syncProductionFields();
     refreshSceneSelect();
+    renderBible();
     outline.replaceChildren(el('h3', '', 'PRODUCTION OUTLINE'));
     if (production.scenes.length === 0) {
       outline.append(el('p', 'creation-studio-note', 'No scenes yet. Add a scene, then break it into short renderable shots.'));
@@ -287,6 +406,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     bibleEntries = clone(record.bible_entries);
     continuityEntries = clone(record.continuity_entries);
     recordRevision = record.revision;
+    resetBibleEditor();
     dirty = false;
     ownerReadable = true;
     statusDetail = 'canonical owner read';
@@ -315,6 +435,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
         bibleEntries = [];
         continuityEntries = [];
         recordRevision = 0;
+        resetBibleEditor();
         ownerReadable = true;
         dirty = false;
         statusDetail = 'canonical owner empty';
@@ -363,6 +484,29 @@ export function createCreationStudioPanel(parent: HTMLElement) {
       if (alive) paintState();
     }
   }
+
+  bibleSubmit.addEventListener('click', () => {
+    if (busy) return;
+    const nextTitle = bibleTitle.value.trim();
+    const nextContent = bibleContent.value.trim();
+    if (!nextTitle || !nextContent) return;
+    const next: CreationStudioBibleEntryT = {
+      entry_id: editingBibleId ?? nextBibleId(),
+      category: bibleCategory.value as CreationStudioBibleEntryT['category'],
+      title: nextTitle,
+      content: nextContent,
+      status: bibleStatus.value as CreationStudioBibleEntryT['status']
+    };
+    const index = bibleEntries.findIndex(entry => entry.entry_id === next.entry_id);
+    if (index >= 0) bibleEntries[index] = next;
+    else bibleEntries.push(next);
+    resetBibleEditor();
+    markDirty();
+  });
+  bibleCancel.addEventListener('click', () => {
+    if (busy) return;
+    resetBibleEditor();
+  });
 
   addScene.addEventListener('click', () => {
     const nextTitle = sceneTitle.value.trim();

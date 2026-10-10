@@ -941,6 +941,15 @@ body,
 .covert-desktop-shell .creation-studio-shot p { margin: 0; }
 .covert-desktop-shell .creation-studio-shot code { color: var(--desktop-text-secondary); white-space: normal; overflow-wrap: anywhere; }
 .covert-desktop-shell .creation-studio-shot-state { color: var(--desktop-warning); font-size: 10px; }
+.covert-desktop-shell .creation-studio-bible-list { display: grid; gap: 7px; }
+.covert-desktop-shell .creation-studio-bible-entry {
+  display: grid;
+  gap: 4px;
+  padding: 7px 0 7px 10px;
+  border-left: 2px solid var(--desktop-border-focus);
+}
+.covert-desktop-shell .creation-studio-bible-entry p { margin: 0; color: var(--desktop-text-secondary); }
+.covert-desktop-shell .creation-studio-entry-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .covert-desktop-shell .creation-studio-manifest-json {
   margin: 8px 0 0;
   padding: 8px;

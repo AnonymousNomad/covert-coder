@@ -192,6 +192,76 @@ test('studio resumes the canonical record and preserves Bible and continuity on 
   h.handle.dispose();
 });
 
+test('Production Bible entries are added and persisted through the canonical owner', async () => {
+  const h = harness();
+  await tick();
+
+  byLabel(h.parent, 'Bible category').value = 'CHARACTER';
+  byLabel(h.parent, 'Bible entry title').value = 'Shade';
+  byLabel(h.parent, 'Bible entry content').value = 'Technical prodigy with a dark field jacket.';
+  byLabel(h.parent, 'Bible entry status').value = 'APPROVED';
+  button(h.parent, 'ADD BIBLE ENTRY').listeners.get('click')();
+
+  assert.match(textOf(h.parent), /CHARACTER.*Shade.*APPROVED/);
+  assert.match(textOf(h.parent), /UNSAVED CHANGES/);
+  button(h.parent, 'SAVE PRODUCTION').listeners.get('click')();
+  await tick();
+
+  assert.equal(h.calls.put, 1);
+  assert.equal(h.calls.inputs[0].bible_entries.length, 1);
+  assert.equal(h.calls.inputs[0].bible_entries[0].category, 'CHARACTER');
+  assert.equal(h.calls.inputs[0].bible_entries[0].title, 'Shade');
+  assert.equal(h.calls.inputs[0].bible_entries[0].status, 'APPROVED');
+  assert.match(h.calls.inputs[0].bible_entries[0].content, /Technical prodigy/);
+  assert.match(textOf(h.parent), /SAVED REVISION 1/);
+  h.handle.dispose();
+});
+
+test('Production Bible reload supports edit and removal without changing continuity or rendering state', async () => {
+  const persisted = record(3);
+  const h = harness({
+    list: async () => ({ records: [persisted] }),
+    put: async input => ({
+      production: input.production,
+      bible_entries: input.bible_entries,
+      continuity_entries: input.continuity_entries,
+      revision: input.expected_revision + 1,
+      updated_at: '2026-10-10T01:03:00.000Z'
+    })
+  });
+  await tick();
+
+  assert.match(textOf(h.parent), /CHARACTER.*Hero.*Approved appearance/);
+  assert.equal(button(h.parent, 'EDIT').disabled, false);
+  button(h.parent, 'EDIT').listeners.get('click')();
+  assert.equal(byLabel(h.parent, 'Bible entry title').value, 'Hero');
+  assert.equal(byLabel(h.parent, 'Bible entry status').value, 'APPROVED');
+
+  byLabel(h.parent, 'Bible entry content').value = 'Updated approved appearance.';
+  byLabel(h.parent, 'Bible entry status').value = 'DRAFT';
+  button(h.parent, 'SAVE BIBLE ENTRY').listeners.get('click')();
+  assert.match(textOf(h.parent), /DRAFT.*Updated approved appearance/);
+
+  button(h.parent, 'SAVE PRODUCTION').listeners.get('click')();
+  await tick();
+  assert.equal(h.calls.inputs[0].expected_revision, 3);
+  assert.equal(h.calls.inputs[0].bible_entries[0].content, 'Updated approved appearance.');
+  assert.equal(h.calls.inputs[0].bible_entries[0].status, 'DRAFT');
+  assert.equal(JSON.stringify(h.calls.inputs[0].continuity_entries), JSON.stringify(persisted.continuity_entries));
+  assert.equal(h.calls.inputs[0].production.execution_connection, 'NOT_CONNECTED');
+  assert.equal(h.handle.buildManifest().execution_state, 'GATED_NOT_CONNECTED');
+
+  button(h.parent, 'REMOVE').listeners.get('click')();
+  assert.doesNotMatch(textOf(h.parent), /Updated approved appearance/);
+  button(h.parent, 'SAVE PRODUCTION').listeners.get('click')();
+  await tick();
+  assert.equal(h.calls.put, 2);
+  assert.equal(h.calls.inputs[1].expected_revision, 4);
+  assert.equal(h.calls.inputs[1].bible_entries.length, 0);
+  assert.equal(JSON.stringify(h.calls.inputs[1].continuity_entries), JSON.stringify(persisted.continuity_entries));
+  h.handle.dispose();
+});
+
 test('revision conflict fails closed and requires a canonical reload before another save', async () => {
   const h = harness({
     list: async () => ({ records: [record(2)] }),
