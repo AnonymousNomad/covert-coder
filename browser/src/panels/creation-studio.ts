@@ -48,7 +48,9 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   let sceneSequence = 0;
   let shotSequence = 0;
   let bibleSequence = 0;
+  let continuitySequence = 0;
   let editingBibleId: string | null = null;
+  let editingContinuityId: string | null = null;
   let production: CreationStudioProductionT = blankProduction();
   let bibleEntries: CreationStudioBibleEntryT[] = [];
   let continuityEntries: CreationStudioContinuityEntryT[] = [];
@@ -155,6 +157,56 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     bibleList
   );
 
+  const continuityScopeKind = document.createElement('select');
+  continuityScopeKind.setAttribute('aria-label', 'Continuity scope kind');
+  for (const value of ['PRODUCTION', 'SCENE', 'SHOT']) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    continuityScopeKind.appendChild(option);
+  }
+  const continuityScopeId = document.createElement('select');
+  continuityScopeId.setAttribute('aria-label', 'Continuity scope target');
+  const continuityTitle = document.createElement('input');
+  continuityTitle.maxLength = 240;
+  continuityTitle.placeholder = 'Continuity fact title';
+  continuityTitle.setAttribute('aria-label', 'Continuity entry title');
+  const continuityContent = document.createElement('textarea');
+  continuityContent.maxLength = 8000;
+  continuityContent.placeholder = 'What later scenes or shots must preserve?';
+  continuityContent.setAttribute('aria-label', 'Continuity entry content');
+  const continuityStatus = document.createElement('select');
+  continuityStatus.setAttribute('aria-label', 'Continuity entry status');
+  for (const value of ['ACTIVE', 'RESOLVED']) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    continuityStatus.appendChild(option);
+  }
+  const continuitySubmit = document.createElement('button');
+  continuitySubmit.type = 'button';
+  continuitySubmit.textContent = 'ADD CONTINUITY';
+  const continuityCancel = document.createElement('button');
+  continuityCancel.type = 'button';
+  continuityCancel.textContent = 'CANCEL CONTINUITY EDIT';
+  continuityCancel.hidden = true;
+  const continuityList = el('div', 'creation-studio-continuity-list');
+  continuityList.setAttribute('aria-label', 'Continuity entries');
+  let continuityRowButtons: HTMLButtonElement[] = [];
+  const continuityBuilder = el('div', 'creation-studio-builder');
+  continuityBuilder.append(
+    el('h3', '', 'CONTINUITY'),
+    el('p', 'creation-studio-note', 'Canonical continuity facts. Scope them to the whole production, a scene, or a shot.'),
+    field('SCOPE', continuityScopeKind),
+    field('TARGET', continuityScopeId),
+    field('TITLE', continuityTitle),
+    field('CONTENT', continuityContent),
+    field('STATUS', continuityStatus),
+    continuitySubmit,
+    continuityCancel,
+    continuityList
+  );
+
   const sceneTitle = document.createElement('input');
   sceneTitle.maxLength = 240;
   sceneTitle.placeholder = 'Scene title';
@@ -213,7 +265,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     field('VIDEO MODEL', model),
     addShot
   );
-  planning.append(productionForm, bibleBuilder, sceneBuilder, shotBuilder);
+  planning.append(productionForm, bibleBuilder, continuityBuilder, sceneBuilder, shotBuilder);
 
   const manifestOutput = el('pre', 'creation-studio-manifest-json');
   const manifestStatus = el('p', 'creation-studio-note');
@@ -221,6 +273,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
 
   const editControls: Array<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement> = [
     title, premise, duration, bibleCategory, bibleTitle, bibleContent, bibleStatus, bibleSubmit, bibleCancel,
+    continuityScopeKind, continuityScopeId, continuityTitle, continuityContent, continuityStatus, continuitySubmit, continuityCancel,
     sceneTitle, sceneSummary, addScene, sceneSelect, shotPrompt, shotDuration, aspect, provider, model, addShot
   ];
 
@@ -241,9 +294,14 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     sceneSequence = 0;
     shotSequence = 0;
     bibleSequence = 0;
+    continuitySequence = 0;
     for (const entry of bibleEntries) {
       const bibleMatch = /^bible-(\d+)$/.exec(entry.entry_id);
       if (bibleMatch) bibleSequence = Math.max(bibleSequence, Number(bibleMatch[1]));
+    }
+    for (const entry of continuityEntries) {
+      const continuityMatch = /^continuity-(\d+)$/.exec(entry.entry_id);
+      if (continuityMatch) continuitySequence = Math.max(continuitySequence, Number(continuityMatch[1]));
     }
     for (const scene of production.scenes) {
       const sceneMatch = /^scene-(\d+)$/.exec(scene.scene_id);
@@ -262,6 +320,13 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     return value;
   }
 
+  function nextContinuityId(): string {
+    const used = new Set(continuityEntries.map(entry => entry.entry_id));
+    let value = '';
+    do value = 'continuity-' + String(++continuitySequence).padStart(4, '0'); while (used.has(value));
+    return value;
+  }
+
   function nextSceneId(): string {
     const used = new Set(production.scenes.map(scene => scene.scene_id));
     let value = '';
@@ -274,6 +339,102 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     let value = '';
     do value = 'shot-' + String(++shotSequence).padStart(4, '0'); while (used.has(value));
     return value;
+  }
+
+  function refreshContinuityScopeTargets(): void {
+    const selected = continuityScopeId.value;
+    continuityScopeId.replaceChildren();
+    if (continuityScopeKind.value === 'PRODUCTION') {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Entire production';
+      continuityScopeId.appendChild(option);
+      continuityScopeId.value = '';
+      continuityScopeId.disabled = true;
+      return;
+    }
+    if (continuityScopeKind.value === 'SCENE') {
+      for (const scene of [...production.scenes].sort((a, b) => a.order - b.order || a.scene_id.localeCompare(b.scene_id))) {
+        const option = document.createElement('option');
+        option.value = scene.scene_id;
+        option.textContent = String(scene.order + 1) + '. ' + scene.title;
+        continuityScopeId.appendChild(option);
+      }
+      continuityScopeId.disabled = production.scenes.length === 0 || busy;
+      if (production.scenes.some(scene => scene.scene_id === selected)) continuityScopeId.value = selected;
+      return;
+    }
+    const shots = production.scenes
+      .flatMap(scene => scene.shots.map(shot => ({ scene, shot })))
+      .sort((left, right) => left.scene.order - right.scene.order || left.scene.scene_id.localeCompare(right.scene.scene_id) || left.shot.order - right.shot.order || left.shot.shot_id.localeCompare(right.shot.shot_id));
+    for (const { scene, shot } of shots) {
+      const option = document.createElement('option');
+      option.value = shot.shot_id;
+      option.textContent = scene.title + ' · shot ' + String(shot.order + 1);
+      continuityScopeId.appendChild(option);
+    }
+    continuityScopeId.disabled = shots.length === 0 || busy;
+    if (shots.some(({ shot }) => shot.shot_id === selected)) continuityScopeId.value = selected;
+  }
+
+  function resetContinuityEditor(): void {
+    editingContinuityId = null;
+    continuityScopeKind.value = 'PRODUCTION';
+    continuityTitle.value = '';
+    continuityContent.value = '';
+    continuityStatus.value = 'ACTIVE';
+    continuitySubmit.textContent = 'ADD CONTINUITY';
+    continuityCancel.hidden = true;
+    refreshContinuityScopeTargets();
+  }
+
+  function renderContinuity(): void {
+    continuityList.replaceChildren();
+    continuityRowButtons = [];
+    if (continuityEntries.length === 0) {
+      continuityList.append(el('p', 'creation-studio-note', 'No continuity facts yet. Record only facts that later work must preserve.'));
+      return;
+    }
+    for (const entry of continuityEntries) {
+      const item = el('article', 'creation-studio-continuity-entry');
+      const scope = entry.scope_kind === 'PRODUCTION' ? 'PRODUCTION' : entry.scope_kind + ' · ' + String(entry.scope_id);
+      item.append(
+        el('strong', '', scope + ' · ' + entry.title),
+        el('span', 'creation-studio-shot-state', entry.status),
+        el('p', '', entry.content)
+      );
+      const controls = el('div', 'creation-studio-entry-actions');
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.textContent = 'EDIT CONTINUITY';
+      edit.disabled = busy;
+      edit.addEventListener('click', () => {
+        if (busy) return;
+        editingContinuityId = entry.entry_id;
+        continuityScopeKind.value = entry.scope_kind;
+        refreshContinuityScopeTargets();
+        continuityScopeId.value = entry.scope_id ?? '';
+        continuityTitle.value = entry.title;
+        continuityContent.value = entry.content;
+        continuityStatus.value = entry.status;
+        continuitySubmit.textContent = 'SAVE CONTINUITY';
+        continuityCancel.hidden = false;
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = 'REMOVE CONTINUITY';
+      remove.disabled = busy;
+      remove.addEventListener('click', () => {
+        if (busy) return;
+        continuityEntries = continuityEntries.filter(candidate => candidate.entry_id !== entry.entry_id);
+        if (editingContinuityId === entry.entry_id) resetContinuityEditor();
+        markDirty();
+      });
+      continuityRowButtons.push(edit, remove);
+      controls.append(edit, remove);
+      item.append(controls);
+      continuityList.append(item);
+    }
   }
 
   function resetBibleEditor(): void {
@@ -344,7 +505,9 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     save.disabled = busy || !ownerReadable || !dirty;
     for (const control of editControls) control.disabled = busy;
     for (const control of bibleRowButtons) control.disabled = busy;
+    for (const control of continuityRowButtons) control.disabled = busy;
     if (!busy) {
+      refreshContinuityScopeTargets();
       sceneSelect.disabled = production.scenes.length === 0;
       addShot.disabled = production.scenes.length === 0;
     }
@@ -365,7 +528,9 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   function render(): void {
     syncProductionFields();
     refreshSceneSelect();
+    refreshContinuityScopeTargets();
     renderBible();
+    renderContinuity();
     outline.replaceChildren(el('h3', '', 'PRODUCTION OUTLINE'));
     if (production.scenes.length === 0) {
       outline.append(el('p', 'creation-studio-note', 'No scenes yet. Add a scene, then break it into short renderable shots.'));
@@ -407,6 +572,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
     continuityEntries = clone(record.continuity_entries);
     recordRevision = record.revision;
     resetBibleEditor();
+    resetContinuityEditor();
     dirty = false;
     ownerReadable = true;
     statusDetail = 'canonical owner read';
@@ -436,6 +602,7 @@ export function createCreationStudioPanel(parent: HTMLElement) {
         continuityEntries = [];
         recordRevision = 0;
         resetBibleEditor();
+        resetContinuityEditor();
         ownerReadable = true;
         dirty = false;
         statusDetail = 'canonical owner empty';
@@ -506,6 +673,33 @@ export function createCreationStudioPanel(parent: HTMLElement) {
   bibleCancel.addEventListener('click', () => {
     if (busy) return;
     resetBibleEditor();
+  });
+
+  continuityScopeKind.addEventListener('change', () => refreshContinuityScopeTargets());
+  continuitySubmit.addEventListener('click', () => {
+    if (busy) return;
+    const nextTitle = continuityTitle.value.trim();
+    const nextContent = continuityContent.value.trim();
+    const scopeKind = continuityScopeKind.value as CreationStudioContinuityEntryT['scope_kind'];
+    const scopeId = scopeKind === 'PRODUCTION' ? null : (continuityScopeId.value || null);
+    if (!nextTitle || !nextContent || (scopeKind !== 'PRODUCTION' && scopeId === null)) return;
+    const next: CreationStudioContinuityEntryT = {
+      entry_id: editingContinuityId ?? nextContinuityId(),
+      scope_kind: scopeKind,
+      scope_id: scopeId,
+      title: nextTitle,
+      content: nextContent,
+      status: continuityStatus.value as CreationStudioContinuityEntryT['status']
+    };
+    const index = continuityEntries.findIndex(entry => entry.entry_id === next.entry_id);
+    if (index >= 0) continuityEntries[index] = next;
+    else continuityEntries.push(next);
+    resetContinuityEditor();
+    markDirty();
+  });
+  continuityCancel.addEventListener('click', () => {
+    if (busy) return;
+    resetContinuityEditor();
   });
 
   addScene.addEventListener('click', () => {

@@ -262,6 +262,76 @@ test('Production Bible reload supports edit and removal without changing continu
   h.handle.dispose();
 });
 
+test('Continuity facts are added and persisted through the canonical owner', async () => {
+  const h = harness();
+  await tick();
+
+  byLabel(h.parent, 'Continuity scope kind').value = 'PRODUCTION';
+  byLabel(h.parent, 'Continuity scope kind').listeners.get('change')();
+  byLabel(h.parent, 'Continuity entry title').value = 'Lighting direction';
+  byLabel(h.parent, 'Continuity entry content').value = 'Dawn light remains camera-left.';
+  byLabel(h.parent, 'Continuity entry status').value = 'ACTIVE';
+  button(h.parent, 'ADD CONTINUITY').listeners.get('click')();
+
+  assert.match(textOf(h.parent), /PRODUCTION.*Lighting direction.*ACTIVE.*camera-left/);
+  assert.match(textOf(h.parent), /CONTINUITY 1/);
+  button(h.parent, 'SAVE PRODUCTION').listeners.get('click')();
+  await tick();
+
+  assert.equal(h.calls.put, 1);
+  assert.equal(h.calls.inputs[0].continuity_entries.length, 1);
+  assert.equal(h.calls.inputs[0].continuity_entries[0].scope_kind, 'PRODUCTION');
+  assert.equal(h.calls.inputs[0].continuity_entries[0].scope_id, null);
+  assert.equal(h.calls.inputs[0].continuity_entries[0].status, 'ACTIVE');
+  assert.match(h.calls.inputs[0].continuity_entries[0].content, /camera-left/);
+  assert.equal(h.calls.inputs[0].production.execution_connection, 'NOT_CONNECTED');
+  h.handle.dispose();
+});
+
+test('Continuity reload supports edit and removal while preserving Bible and gated execution', async () => {
+  const persisted = record(6);
+  const h = harness({
+    list: async () => ({ records: [persisted] }),
+    put: async input => ({
+      production: input.production,
+      bible_entries: input.bible_entries,
+      continuity_entries: input.continuity_entries,
+      revision: input.expected_revision + 1,
+      updated_at: '2026-10-10T01:04:00.000Z'
+    })
+  });
+  await tick();
+
+  assert.match(textOf(h.parent), /PRODUCTION.*Lighting.*ACTIVE.*Cold dawn light/);
+  assert.equal(button(h.parent, 'EDIT CONTINUITY').disabled, false);
+  button(h.parent, 'EDIT CONTINUITY').listeners.get('click')();
+  assert.equal(byLabel(h.parent, 'Continuity scope kind').value, 'PRODUCTION');
+  assert.equal(byLabel(h.parent, 'Continuity entry title').value, 'Lighting');
+
+  byLabel(h.parent, 'Continuity entry content').value = 'Resolved after the dawn sequence.';
+  byLabel(h.parent, 'Continuity entry status').value = 'RESOLVED';
+  button(h.parent, 'SAVE CONTINUITY').listeners.get('click')();
+  assert.match(textOf(h.parent), /RESOLVED.*Resolved after the dawn sequence/);
+
+  button(h.parent, 'SAVE PRODUCTION').listeners.get('click')();
+  await tick();
+  assert.equal(h.calls.inputs[0].expected_revision, 6);
+  assert.equal(h.calls.inputs[0].continuity_entries[0].status, 'RESOLVED');
+  assert.equal(h.calls.inputs[0].continuity_entries[0].content, 'Resolved after the dawn sequence.');
+  assert.equal(JSON.stringify(h.calls.inputs[0].bible_entries), JSON.stringify(persisted.bible_entries));
+  assert.equal(h.handle.buildManifest().execution_state, 'GATED_NOT_CONNECTED');
+
+  button(h.parent, 'REMOVE CONTINUITY').listeners.get('click')();
+  assert.doesNotMatch(textOf(h.parent), /Resolved after the dawn sequence/);
+  button(h.parent, 'SAVE PRODUCTION').listeners.get('click')();
+  await tick();
+  assert.equal(h.calls.put, 2);
+  assert.equal(h.calls.inputs[1].expected_revision, 7);
+  assert.equal(h.calls.inputs[1].continuity_entries.length, 0);
+  assert.equal(JSON.stringify(h.calls.inputs[1].bible_entries), JSON.stringify(persisted.bible_entries));
+  h.handle.dispose();
+});
+
 test('revision conflict fails closed and requires a canonical reload before another save', async () => {
   const h = harness({
     list: async () => ({ records: [record(2)] }),
