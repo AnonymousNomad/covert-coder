@@ -38,7 +38,7 @@ function harness({left=true,windows=[]}={}){
 test('desktop launcher is mounted in its left host with only pinned workstation applications; taskbar is separate',()=>{
  const h=harness();assert.ok(h.launcherHost.querySelector('.desktop-launcher'));
  assert.equal(h.dock.querySelector('.desktop-launcher'),null);
- for(const label of ['Projects','Editor','Terminal','Cipher Laptop','Models','Connections','Resource Monitor','Evidence','Settings'])assert.match(textOf(h.launcherHost),new RegExp(label));
+ for(const label of ['Projects','Editor','Terminal','Cipher Laptop','Studio','Models','Connections','Resource Monitor','Evidence','Settings'])assert.match(textOf(h.launcherHost),new RegExp(label));
  for(const appId of ['resident','command-center','skills','memory','security','extensions'])assert.equal(all(h.launcherHost).some(node=>node.dataset.appId===appId),false);
  const open=all(h.launcherHost).find(node=>node.dataset.appId==='cipher-laptop');open.listeners.get('click')();assert.deepEqual(h.calls,[['open','cipher-laptop']]);
  h.view.dispose();assert.equal(h.launcherHost.children.length,0);assert.equal(h.dock.children.length,0);

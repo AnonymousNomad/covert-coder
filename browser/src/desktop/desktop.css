@@ -878,3 +878,20 @@ body,
 .covert-desktop-shell .desktop-taskbar { order: 3; }
 .covert-desktop-shell .aide-toast-region { flex: 1 1 auto; min-width: 0; align-items: stretch; gap: 2px; }
 .covert-desktop-shell .aide-toast { max-width: none; padding: 3px 6px; font: 10px/1.3 var(--desktop-font-mono); box-shadow: none; background: var(--desktop-surface); overflow-wrap: anywhere; }
+
+/* Covert Studio is a governed production-planning surface; generation remains behind canonical owners. */
+.covert-desktop-shell .covert-studio { height: 100%; box-sizing: border-box; padding: 10px; overflow: auto; color: var(--desktop-text); font: 12px/1.45 var(--desktop-font-mono); }
+.covert-desktop-shell .covert-studio-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding-bottom: 8px; border-bottom: 1px solid var(--desktop-border); }
+.covert-desktop-shell .covert-studio h2, .covert-desktop-shell .covert-studio h3 { margin: 0; font: inherit; }
+.covert-desktop-shell .covert-studio h2 { color: var(--desktop-accent); letter-spacing: 0.05em; }
+.covert-desktop-shell .covert-studio-subtitle, .covert-desktop-shell .covert-studio-note { margin: 4px 0 0; color: var(--desktop-text-muted); }
+.covert-desktop-shell .covert-studio-state { flex: 0 0 auto; color: var(--desktop-text-secondary); font-size: 10px; }
+.covert-desktop-shell .covert-studio-flow { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.covert-desktop-shell .covert-studio-flow-step { padding: 3px 6px; border: 1px solid var(--desktop-border); color: var(--desktop-text-secondary); }
+.covert-desktop-shell .covert-studio-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 12px; }
+.covert-desktop-shell .covert-studio-workspace { min-width: 0; padding: 9px 0; border-bottom: 1px solid var(--desktop-border); }
+.covert-desktop-shell .covert-studio-workspace h3 { color: var(--desktop-text-secondary); letter-spacing: 0.04em; }
+.covert-desktop-shell .covert-studio-workspace strong { display: block; margin-top: 3px; color: var(--desktop-accent); font-weight: normal; }
+.covert-desktop-shell .covert-studio-workspace p { margin: 4px 0 0; color: var(--desktop-text-muted); overflow-wrap: anywhere; }
+@media (max-width: 900px) { .covert-desktop-shell .covert-studio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .covert-desktop-shell .covert-studio-grid { grid-template-columns: minmax(0, 1fr); } }
