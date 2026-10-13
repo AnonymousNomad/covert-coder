@@ -1,0 +1,7 @@
+COVERT_COLLAB_ENUFF_TECH_MISSION_001_R2_2026-10-13.zip
+size_bytes=44509
+sha256=ff65cabc41de7afd367d8c46e9fd1abf1b1cbc9bc70ba128c79764630e82a6ec
+zip_integrity=PASS
+internal_manifest=PASS
+mission_scope=unchanged
+source_lock=1dd2b1729e470713156da821679a46c5583daac4
